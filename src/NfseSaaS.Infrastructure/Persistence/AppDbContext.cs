@@ -85,14 +85,69 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
+        ApplyTenantIsolation();
         ApplyAuditTimestamps();
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
 
     public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
+        ApplyTenantIsolation();
         ApplyAuditTimestamps();
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    /// <summary>
+    /// Isolamento de multi-tenant nas ESCRITAS — complementa o Global Query
+    /// Filter (que só protege leituras). Sem isto, nada impediria um bug
+    /// (ou uma requisição manipulada) de gravar uma entidade tenant-scoped
+    /// com o TenantId de outro tenant. Regras:
+    ///
+    /// - Added: o TenantId é SEMPRE sobrescrito pelo tenant atual — nunca se
+    ///   confia em um valor de TenantId vindo de fora da camada de
+    ///   persistência, mesmo que ele já "pareça" correto.
+    /// - Modified/Deleted: se a entidade em memória não pertence ao tenant
+    ///   atual, a operação é rejeitada (lança exceção) — isto só pode
+    ///   acontecer se alguém montar/anexar a entidade manualmente, já que o
+    ///   Global Query Filter garante que toda entidade CARREGADA por consulta
+    ///   já pertence ao tenant atual.
+    /// - Modified: uma tentativa de alterar o próprio TenantId é sempre
+    ///   revertida antes de persistir — TenantId é imutável após a criação.
+    /// - Sem tenant resolvido (ex.: contexto de sistema/seed): qualquer
+    ///   gravação de entidade tenant-scoped é rejeitada.
+    /// </summary>
+    private void ApplyTenantIsolation()
+    {
+        var tenantId = _currentTenant.TenantId;
+
+        foreach (var entry in ChangeTracker.Entries<ITenantEntity>())
+        {
+            switch (entry.State)
+            {
+                case EntityState.Added:
+                    if (tenantId is null)
+                        throw new InvalidOperationException(
+                            $"Não é possível gravar '{entry.Entity.GetType().Name}': nenhum Tenant resolvido para a requisição atual.");
+
+                    entry.Entity.TenantId = tenantId.Value;
+                    break;
+
+                case EntityState.Modified:
+                    if (tenantId is null || entry.Entity.TenantId != tenantId.Value)
+                        throw new InvalidOperationException(
+                            $"Tentativa de modificar '{entry.Entity.GetType().Name}' fora do Tenant atual.");
+
+                    // TenantId é imutável após a criação — qualquer alteração é descartada.
+                    entry.Property(nameof(ITenantEntity.TenantId)).IsModified = false;
+                    break;
+
+                case EntityState.Deleted:
+                    if (tenantId is null || entry.Entity.TenantId != tenantId.Value)
+                        throw new InvalidOperationException(
+                            $"Tentativa de excluir '{entry.Entity.GetType().Name}' fora do Tenant atual.");
+                    break;
+            }
+        }
     }
 
     /// <summary>Preenche UpdatedAt (UTC) em toda entidade modificada nesta unidade de trabalho.</summary>

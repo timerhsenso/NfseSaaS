@@ -25,6 +25,7 @@
     <ProjectReference Include="..\..\src\NfseSaaS.Domain\NfseSaaS.Domain.csproj" />
     <ProjectReference Include="..\..\src\NfseSaaS.Application\NfseSaaS.Application.csproj" />
     <ProjectReference Include="..\..\src\NfseSaaS.Nacional\NfseSaaS.Nacional.csproj" />
+	  <ProjectReference Include="..\..\src\NfseSaaS.Infrastructure\NfseSaaS.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,12 +1,15 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NfseSaaS.Application.Abstractions;
+using NfseSaaS.Infrastructure.Certificates;
 using NfseSaaS.Infrastructure.Identity;
 using NfseSaaS.Infrastructure.MultiTenancy;
 using NfseSaaS.Infrastructure.Persistence;
+using NfseSaaS.Nacional.Abstractions;
 
 namespace NfseSaaS.Infrastructure;
 
@@ -40,6 +43,41 @@ public static class DependencyInjection
             .AddEntityFrameworkStores<AppDbContext>()
             .AddDefaultTokenProviders();
 
+        AddCertificateStorage(services, configuration);
+
         return services;
+    }
+
+    /// <summary>
+    /// Armazenamento de certificados .pfx por Empresa: arquivo criptografado
+    /// em disco (fora do wwwroot, fora do Git), protegido com ASP.NET Core
+    /// Data Protection. No Windows, as chaves de proteção em si são
+    /// protegidas via DPAPI em nível de MÁQUINA (não por usuário) — decisão
+    /// deliberada porque a identidade do App Pool do IIS pode não ter
+    /// perfil de usuário carregado; qualquer processo com acesso
+    /// administrativo a esta máquina consegue descriptografar, o que é uma
+    /// premissa aceitável para um servidor único on-premises como este.
+    /// </summary>
+    private static void AddCertificateStorage(IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<CertificateStorageOptions>(configuration.GetSection(CertificateStorageOptions.SectionName));
+
+        var certOptions = configuration.GetSection(CertificateStorageOptions.SectionName).Get<CertificateStorageOptions>()
+            ?? new CertificateStorageOptions();
+
+        var dataProtectionBuilder = services.AddDataProtection().SetApplicationName("NfseSaaS");
+
+        if (!string.IsNullOrWhiteSpace(certOptions.BasePath))
+        {
+            var keysPath = Path.Combine(certOptions.BasePath, "dp-keys");
+            Directory.CreateDirectory(keysPath);
+            dataProtectionBuilder.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+        }
+
+        if (OperatingSystem.IsWindows())
+            dataProtectionBuilder.ProtectKeysWithDpapi(protectToLocalMachine: true);
+
+        services.AddScoped<CertificateFileStore>();
+        services.AddScoped<ICertificateProvider, FileCertificateProvider>();
     }
 }

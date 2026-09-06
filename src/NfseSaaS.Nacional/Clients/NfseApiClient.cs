@@ -7,33 +7,36 @@ namespace NfseSaaS.Nacional.Clients;
 
 /// <summary>
 /// Implementação HTTP usando IHttpClientFactory (nunca "new HttpClient()"
-/// manual — ver Requisito 13). BaseAddress, timeout e headers vêm de
-/// NfseNacionalOptions.
+/// manual — ver Requisito 13). O certificado mTLS é anexado por Empresa
+/// através de CertificateHttpMessageHandlerBuilderFilter, disparado pela
+/// convenção de nome de SefinNacionalClientNames — ver comentário completo
+/// da decisão de arquitetura em CertificateHttpMessageHandlerBuilderFilter.
 ///
-/// NOTA IMPORTANTE (Fase 1): o certificado cliente para mTLS ainda NÃO está
-/// incorporado aqui — conforme Requisito 13/11 da especificação, isso será
-/// feito na Fase 2 através de ICertificateProvider, quando a origem real do
-/// certificado (arquivo, Key Vault, etc.) for definida. A POC já validou
-/// que o fluxo completo com mTLS funciona (HTTP 201 obtido); falta apenas
-/// conectar esse client à abstração de certificado.
+/// A URL base não é configurada via HttpClient.BaseAddress (que exigiria
+/// nomes de client conhecidos em tempo de registro); em vez disso, é
+/// montada a partir de NfseNacionalOptions a cada chamada, o que também
+/// permite trocar o ambiente (homologação/produção) sem recompilar.
 /// </summary>
 public sealed class NfseApiClient : INfseApiClient
 {
-    public const string HttpClientName = "SefinNacional";
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly NfseNacionalOptions _options;
 
-    private readonly HttpClient _httpClient;
-
-    public NfseApiClient(IHttpClientFactory httpClientFactory)
+    public NfseApiClient(IHttpClientFactory httpClientFactory, IOptions<NfseNacionalOptions> options)
     {
-        _httpClient = httpClientFactory.CreateClient(HttpClientName);
+        _httpClientFactory = httpClientFactory;
+        _options = options.Value;
     }
 
-    public async Task<(int StatusCode, string Body)> EnviarDpsAsync(string dpsXmlGZipBase64, CancellationToken cancellationToken)
+    public async Task<(int StatusCode, string Body)> EnviarDpsAsync(Guid empresaId, string dpsXmlGZipBase64, CancellationToken cancellationToken)
     {
+        var client = ObterClient(empresaId);
+        using var timeoutCts = CriarTokenComTimeout(cancellationToken);
+
         try
         {
             var payload = new { dpsXmlGZipB64 = dpsXmlGZipBase64 };
-            using var response = await _httpClient.PostAsJsonAsync("nfse", payload, cancellationToken);
+            using var response = await client.PostAsJsonAsync(MontarUrl("nfse"), payload, timeoutCts.Token);
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
             return ((int)response.StatusCode, body);
         }
@@ -41,13 +44,20 @@ public sealed class NfseApiClient : INfseApiClient
         {
             throw new NfseApiException("Falha de comunicação com a SEFIN Nacional ao enviar a DPS.", ex);
         }
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new NfseApiException($"Tempo limite ({_options.TimeoutSeconds}s) excedido ao enviar a DPS à SEFIN Nacional.", ex);
+        }
     }
 
-    public async Task<(int StatusCode, string Body)> ConsultarPorChaveAsync(string chaveAcesso, CancellationToken cancellationToken)
+    public async Task<(int StatusCode, string Body)> ConsultarPorChaveAsync(Guid empresaId, string chaveAcesso, CancellationToken cancellationToken)
     {
+        var client = ObterClient(empresaId);
+        using var timeoutCts = CriarTokenComTimeout(cancellationToken);
+
         try
         {
-            using var response = await _httpClient.GetAsync($"nfse/{chaveAcesso}", cancellationToken);
+            using var response = await client.GetAsync(MontarUrl($"nfse/{chaveAcesso}"), timeoutCts.Token);
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
             return ((int)response.StatusCode, body);
         }
@@ -55,5 +65,28 @@ public sealed class NfseApiClient : INfseApiClient
         {
             throw new NfseApiException($"Falha de comunicação com a SEFIN Nacional ao consultar a chave {chaveAcesso}.", ex);
         }
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new NfseApiException($"Tempo limite ({_options.TimeoutSeconds}s) excedido ao consultar a chave {chaveAcesso}.", ex);
+        }
+    }
+
+    private HttpClient ObterClient(Guid empresaId) =>
+        _httpClientFactory.CreateClient(SefinNacionalClientNames.ParaEmpresa(empresaId));
+
+    private Uri MontarUrl(string caminhoRelativo)
+    {
+        if (string.IsNullOrWhiteSpace(_options.BaseUrl))
+            throw new NfseApiException("NfseNacional:BaseUrl não configurada.");
+
+        var baseUrl = _options.BaseUrl.EndsWith('/') ? _options.BaseUrl : _options.BaseUrl + "/";
+        return new Uri(new Uri(baseUrl), caminhoRelativo);
+    }
+
+    private CancellationTokenSource CriarTokenComTimeout(CancellationToken cancellationToken)
+    {
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(TimeSpan.FromSeconds(_options.TimeoutSeconds));
+        return cts;
     }
 }

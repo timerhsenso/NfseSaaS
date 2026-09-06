@@ -7,9 +7,20 @@
     <RootNamespace>NfseSaaS.Infrastructure</RootNamespace>
   </PropertyGroup>
 
+  <!--
+    Infrastructure é um classlib puro (Microsoft.NET.Sdk), mas precisa de
+    APIs do ASP.NET Core (IHttpContextAccessor, AddHttpContextAccessor,
+    AddIdentity). A forma correta de obter isso SEM pacotes NuGet soltos
+    e desatualizados é referenciar o shared framework diretamente.
+  -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\NfseSaaS.Domain\NfseSaaS.Domain.csproj" />
     <ProjectReference Include="..\NfseSaaS.Application\NfseSaaS.Application.csproj" />
+	  <ProjectReference Include="..\NfseSaaS.Nacional\NfseSaaS.Nacional.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,9 +31,6 @@
     </PackageReference>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.10" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.2.0" />
   </ItemGroup>
 
 </Project>

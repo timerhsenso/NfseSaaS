@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http;
 using NfseSaaS.Nacional.Builders;
 using NfseSaaS.Nacional.Clients;
 using NfseSaaS.Nacional.Options;
@@ -13,9 +14,12 @@ namespace NfseSaaS.Nacional;
 /// Ponto único de registro do módulo NfseSaaS.Nacional no container de DI.
 /// Mantém o Program.cs do Web enxuto (ver Requisito 16 da especificação).
 ///
-/// NÃO registra ICertificateProvider — a implementação concreta depende de
-/// onde o certificado será armazenado (decisão de fase futura) e deve ser
-/// registrada pela camada que a implementar.
+/// NÃO registra ICertificateProvider — a implementação real
+/// (FileCertificateProvider, certificado criptografado em disco por
+/// Empresa) é registrada por NfseSaaS.Infrastructure.AddInfrastructure.
+/// Se o Web chamar AddNfseNacional sem antes chamar AddInfrastructure, a
+/// falha na resolução de ICertificateProvider é explícita (DI recusa
+/// construir o host), não silenciosa.
 /// </summary>
 public static class DependencyInjection
 {
@@ -23,17 +27,13 @@ public static class DependencyInjection
     {
         services.Configure<NfseNacionalOptions>(configuration.GetSection(NfseNacionalOptions.SectionName));
 
-        var options = configuration.GetSection(NfseNacionalOptions.SectionName).Get<NfseNacionalOptions>()
-            ?? new NfseNacionalOptions();
-
-        services.AddHttpClient(NfseApiClient.HttpClientName, client =>
-        {
-            if (!string.IsNullOrWhiteSpace(options.BaseUrl))
-                client.BaseAddress = new Uri(options.BaseUrl);
-
-            client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
-            client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
-        });
+        // Registra a infraestrutura do IHttpClientFactory. Não usamos um
+        // nome fixo de client aqui — os clients são criados dinamicamente
+        // por Empresa (SefinNacionalClientNames.ParaEmpresa) porque o
+        // certificado mTLS depende de qual Empresa está emitindo. Ver
+        // CertificateHttpMessageHandlerBuilderFilter para o porquê.
+        services.AddHttpClient();
+        services.AddSingleton<IHttpMessageHandlerBuilderFilter, CertificateHttpMessageHandlerBuilderFilter>();
 
         services.AddScoped<IDpsValidator, DpsValidator>();
         services.AddScoped<IDpsBuilder, DpsBuilder>();
