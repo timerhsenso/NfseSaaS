@@ -1,0 +1,22 @@
+# docker-compose para AMBIENTE DE DESENVOLVIMENTO apenas.
+# Sobe somente o PostgreSQL — a aplicação continua rodando via
+# "dotnet run" / Visual Studio, fora do Docker, nesta fase.
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: nfsesaas-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nfse_saas
+      POSTGRES_USER: postgres
+      # Senha apenas para desenvolvimento local. Nunca usar em produção.
+      POSTGRES_PASSWORD: postgres_dev_only
+    ports:
+      - "5432:5432"
+    volumes:
+      - nfsesaas_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  nfsesaas_postgres_data:

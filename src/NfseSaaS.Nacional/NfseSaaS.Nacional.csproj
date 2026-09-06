@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>NfseSaaS.Nacional</RootNamespace>
+  </PropertyGroup>
+
+  <!--
+    Integração fiscal com o Sistema Nacional da NFS-e.
+    Isolado de propósito: não referencia Domain, Application, EF Core ou ASP.NET.
+    Mesma dependência de assinatura XML-DSig já validada na POC.
+  -->
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>

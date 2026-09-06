@@ -1,0 +1,46 @@
+## Visual Studio / .NET
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ll]og/
+[Ll]ogs/
+
+## Testes
+[Tt]est[Rr]esult*/
+*.trx
+*.coverage
+*.coveragexml
+
+## Rider / VS Code
+.idea/
+.vscode/
+
+## Certificados e segredos — NUNCA versionar
+*.pfx
+*.p12
+*.cer
+*.crt
+*.key
+secrets/
+appsettings.*.local.json
+appsettings.Production.json
+
+## User Secrets (ficam fora do repo, associados por UserSecretsId)
+**/secrets.json
+
+## Docker
+docker-compose.override.yml
+
+## SO
+.DS_Store
+Thumbs.db

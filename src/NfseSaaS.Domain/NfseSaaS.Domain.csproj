@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>NfseSaaS.Domain</RootNamespace>
+  </PropertyGroup>
+
+  <!--
+    Núcleo de domínio: propositalmente SEM dependências de EF Core, ASP.NET,
+    PostgreSQL ou qualquer detalhe de infraestrutura. Apenas BCL.
+  -->
+
+</Project>
