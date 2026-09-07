@@ -266,6 +266,8 @@ namespace NfseSaaS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("EmpresaId");
+
                     b.HasIndex("TenantId", "EmpresaId", "CpfCnpj")
                         .IsUnique();
 
@@ -447,6 +449,10 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("\"ChaveAcesso\" IS NOT NULL");
 
+                    b.HasIndex("ClienteId");
+
+                    b.HasIndex("EmpresaId");
+
                     b.HasIndex("TenantId", "EmpresaId", "NumeroDps", "SerieDps")
                         .IsUnique();
 
@@ -493,6 +499,8 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasColumnType("numeric(18,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EmpresaId");
 
                     b.HasIndex("TenantId", "EmpresaId");
 
@@ -652,6 +660,39 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.Cliente", b =>
+                {
+                    b.HasOne("NfseSaaS.Domain.Entities.Empresa", null)
+                        .WithMany()
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.Nfse", b =>
+                {
+                    b.HasOne("NfseSaaS.Domain.Entities.Cliente", null)
+                        .WithMany()
+                        .HasForeignKey("ClienteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("NfseSaaS.Domain.Entities.Empresa", null)
+                        .WithMany()
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.Servico", b =>
+                {
+                    b.HasOne("NfseSaaS.Domain.Entities.Empresa", null)
+                        .WithMany()
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 #pragma warning restore 612, 618

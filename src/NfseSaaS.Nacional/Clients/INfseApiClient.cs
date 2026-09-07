@@ -8,4 +8,7 @@ public interface INfseApiClient
 
     /// <summary>Consulta uma NFS-e já emitida pela chave de acesso via GET /nfse/{chaveAcesso}, usando o certificado mTLS da Empresa informada.</summary>
     Task<(int StatusCode, string Body)> ConsultarPorChaveAsync(Guid empresaId, string chaveAcesso, CancellationToken cancellationToken);
+
+    /// <summary>Envia um evento (já assinado, compactado em GZip+Base64) via POST /nfse/{chaveAcesso}/eventos, usando o certificado mTLS da Empresa informada.</summary>
+    Task<(int StatusCode, string Body)> EnviarEventoAsync(Guid empresaId, string chaveAcesso, string eventoXmlGZipBase64, CancellationToken cancellationToken);
 }

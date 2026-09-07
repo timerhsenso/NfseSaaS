@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.Clientes;
 using NfseSaaS.Domain.Entities;
@@ -9,10 +10,12 @@ namespace NfseSaaS.Infrastructure.UseCases;
 public sealed class CadastrarClienteUseCase : ICadastrarClienteUseCase
 {
     private readonly AppDbContext _db;
+    private readonly IAuditLogWriter _auditLogWriter;
 
-    public CadastrarClienteUseCase(AppDbContext db)
+    public CadastrarClienteUseCase(AppDbContext db, IAuditLogWriter auditLogWriter)
     {
         _db = db;
+        _auditLogWriter = auditLogWriter;
     }
 
     public async Task<Guid> ExecutarAsync(CadastrarClienteRequest request, CancellationToken cancellationToken)
@@ -42,6 +45,9 @@ public sealed class CadastrarClienteUseCase : ICadastrarClienteUseCase
         };
 
         _db.Clientes.Add(cliente);
+
+        _auditLogWriter.Registrar("CadastrarCliente", "Cliente", cliente.Id, new { cliente.EmpresaId, cliente.CpfCnpj, cliente.Nome });
+
         await _db.SaveChangesAsync(cancellationToken);
 
         return cliente.Id;

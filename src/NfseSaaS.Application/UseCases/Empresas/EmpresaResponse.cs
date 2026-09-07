@@ -1,0 +1,22 @@
+namespace NfseSaaS.Application.UseCases.Empresas;
+
+public sealed record EmpresaResponse(
+    Guid Id,
+    string Cnpj,
+    string RazaoSocial,
+    string? NomeFantasia,
+    string InscricaoMunicipal,
+    string CodigoMunicipio,
+    string Telefone,
+    string Email,
+    string OpSimpNac,
+    string RegApTribSN,
+    string RegEspTrib,
+    string TribIssqn,
+    string TpRetIssqn,
+    string CstPisCofins,
+    string TpRetPisCofins,
+    string PercentualTotalTributosSimplesNacional,
+    bool Ativo,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? UpdatedAt);

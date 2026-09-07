@@ -46,5 +46,18 @@ public sealed class NfseConfiguration : IEntityTypeConfiguration<Nfse>
         builder.HasIndex(n => n.ChaveAcesso)
             .IsUnique()
             .HasFilter("\"ChaveAcesso\" IS NOT NULL");
+
+        // FKs reais — ver comentário completo em ClienteConfiguration.
+        // Restrict nos dois: uma Nfse (documento fiscal, mesmo Rejeitada)
+        // nunca pode ficar órfã de Empresa ou Cliente.
+        builder.HasOne<Empresa>()
+            .WithMany()
+            .HasForeignKey(n => n.EmpresaId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<Cliente>()
+            .WithMany()
+            .HasForeignKey(n => n.ClienteId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

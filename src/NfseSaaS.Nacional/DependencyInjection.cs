@@ -38,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<IDpsValidator, DpsValidator>();
         services.AddScoped<IDpsBuilder, DpsBuilder>();
         services.AddScoped<IDpsSigner, DpsSigner>();
+        services.AddScoped<IEventoCancelamentoBuilder, EventoCancelamentoBuilder>();
         services.AddScoped<INfseApiClient, NfseApiClient>();
         services.AddScoped<INfseNacionalService, NfseNacionalService>();
 

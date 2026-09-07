@@ -36,6 +36,7 @@ public sealed class ExceptionHandlingMiddleware
 
             var statusCode = ex switch
             {
+                ValidacaoException => HttpStatusCode.UnprocessableEntity,
                 RecursoNaoEncontradoException => HttpStatusCode.NotFound,
                 RegraNegocioException => HttpStatusCode.UnprocessableEntity,
                 NfseValidationException => HttpStatusCode.UnprocessableEntity,
@@ -47,9 +48,20 @@ public sealed class ExceptionHandlingMiddleware
             context.Response.StatusCode = (int)statusCode;
             context.Response.ContentType = "application/json";
 
-            var payload = _environment.IsDevelopment()
-                ? new { erro = ex.Message, detalhe = ex.ToString() }
-                : new { erro = "Ocorreu um erro ao processar a solicitação.", detalhe = (string?)null };
+            // ValidacaoException sempre inclui os erros por campo — não é
+            // segredo de infraestrutura, é informação que o próprio cliente
+            // da API precisa para corrigir a requisição, então vai em
+            // qualquer ambiente (não só Development).
+            object payload = ex switch
+            {
+                ValidacaoException validacaoException => new
+                {
+                    erro = validacaoException.Message,
+                    erros = validacaoException.Erros
+                },
+                _ when _environment.IsDevelopment() => new { erro = ex.Message, detalhe = ex.ToString() },
+                _ => new { erro = "Ocorreu um erro ao processar a solicitação.", detalhe = (string?)null }
+            };
 
             await context.Response.WriteAsync(JsonSerializer.Serialize(payload));
         }

@@ -3,6 +3,7 @@ using NfseSaaS.Application;
 using NfseSaaS.Infrastructure;
 using NfseSaaS.Infrastructure.Persistence;
 using NfseSaaS.Nacional;
+using NfseSaaS.Web.Filters;
 using NfseSaaS.Web.HealthChecks;
 using NfseSaaS.Web.Middleware;
 using Serilog;
@@ -30,7 +31,12 @@ try
     builder.Services.AddInfrastructure(builder.Configuration);
     builder.Services.AddNfseNacional(builder.Configuration);
 
-    builder.Services.AddControllersWithViews();
+    builder.Services.AddControllersWithViews(options =>
+    {
+        // Validação automática (FluentValidation) de todo DTO de entrada
+        // que tenha um IValidator<T> registrado — ver AddApplication().
+        options.Filters.Add<ValidacaoAutomaticaFilter>();
+    });
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
 

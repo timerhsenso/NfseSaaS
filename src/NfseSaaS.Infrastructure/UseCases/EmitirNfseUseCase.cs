@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.Nfse;
 using NfseSaaS.Domain.Enums;
@@ -24,11 +25,13 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
 
     private readonly AppDbContext _db;
     private readonly INfseNacionalService _nfseNacionalService;
+    private readonly IAuditLogWriter _auditLogWriter;
 
-    public EmitirNfseUseCase(AppDbContext db, INfseNacionalService nfseNacionalService)
+    public EmitirNfseUseCase(AppDbContext db, INfseNacionalService nfseNacionalService, IAuditLogWriter auditLogWriter)
     {
         _db = db;
         _nfseNacionalService = nfseNacionalService;
+        _auditLogWriter = auditLogWriter;
     }
 
     public async Task<EmitirNfseResult> ExecutarAsync(EmitirNfseRequest request, CancellationToken cancellationToken)
@@ -46,7 +49,8 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
 
         // Grava como "Processando" ANTES de chamar a SEFIN — se a chamada
         // falhar (rede, timeout), já existe um registro rastreável em vez
-        // de perder silenciosamente a tentativa.
+        // de perder silenciosamente a tentativa. (Auditoria fica só no
+        // desfecho final, não neste insert intermediário — ver abaixo.)
         var nfse = new Domain.Entities.Nfse
         {
             EmpresaId = empresa.Id,
@@ -120,6 +124,8 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
                 nfse.MensagemErro = primeiroErro?.Descricao;
             }
 
+            _auditLogWriter.Registrar("EmitirNfse", "Nfse", nfse.Id, new { nfse.Status, nfse.ChaveAcesso, nfse.ValorServico });
+
             await _db.SaveChangesAsync(cancellationToken);
 
             return new EmitirNfseResult(nfse.Id, resposta.Sucesso, nfse.NumeroNfse, nfse.ChaveAcesso, nfse.CodigoErro, nfse.MensagemErro);
@@ -130,6 +136,9 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
             // própria Nfse em vez de deixá-la "Processando" para sempre.
             nfse.Status = NfseStatus.Rejeitada;
             nfse.MensagemErro = ex.Message;
+
+            _auditLogWriter.Registrar("EmitirNfse", "Nfse", nfse.Id, new { nfse.Status, Erro = ex.Message });
+
             await _db.SaveChangesAsync(cancellationToken);
             throw;
         }

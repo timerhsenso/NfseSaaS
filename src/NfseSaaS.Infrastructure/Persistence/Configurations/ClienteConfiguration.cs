@@ -47,5 +47,17 @@ public sealed class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
         // final através de mais de uma empresa que gerencia).
         builder.HasIndex(c => new { c.TenantId, c.EmpresaId, c.CpfCnpj })
             .IsUnique();
+
+        // FK real (sem navigation property — este projeto usa acesso
+        // direto por EmpresaId, não navegação de grafo de objetos).
+        // Restrict = ON DELETE RESTRICT: o Postgres recusa excluir a
+        // Empresa se ainda existir Cliente apontando pra ela. É o
+        // backstop de banco para a mesma regra já checada em
+        // ExcluirEmpresaUseCase — fecha a janela de corrida entre o
+        // COUNT() e o DELETE.
+        builder.HasOne<Empresa>()
+            .WithMany()
+            .HasForeignKey(c => c.EmpresaId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

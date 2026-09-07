@@ -71,6 +71,30 @@ public sealed class NfseApiClient : INfseApiClient
         }
     }
 
+    public async Task<(int StatusCode, string Body)> EnviarEventoAsync(Guid empresaId, string chaveAcesso, string eventoXmlGZipBase64, CancellationToken cancellationToken)
+    {
+        var client = ObterClient(empresaId);
+        using var timeoutCts = CriarTokenComTimeout(cancellationToken);
+
+        try
+        {
+            // Nome do campo confirmado no Swagger oficial da SEFIN Nacional
+            // (schema EventosPostRequest): "pedidoRegistroEventoXmlGZipB64".
+            var payload = new { pedidoRegistroEventoXmlGZipB64 = eventoXmlGZipBase64 };
+            using var response = await client.PostAsJsonAsync(MontarUrl($"nfse/{chaveAcesso}/eventos"), payload, timeoutCts.Token);
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            return ((int)response.StatusCode, body);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new NfseApiException($"Falha de comunicação com a SEFIN Nacional ao enviar o evento da chave {chaveAcesso}.", ex);
+        }
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new NfseApiException($"Tempo limite ({_options.TimeoutSeconds}s) excedido ao enviar o evento da chave {chaveAcesso}.", ex);
+        }
+    }
+
     private HttpClient ObterClient(Guid empresaId) =>
         _httpClientFactory.CreateClient(SefinNacionalClientNames.ParaEmpresa(empresaId));
 

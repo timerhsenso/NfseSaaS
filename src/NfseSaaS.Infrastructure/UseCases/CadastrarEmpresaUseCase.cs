@@ -1,3 +1,4 @@
+using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.UseCases.Empresas;
 using NfseSaaS.Domain.Entities;
 using NfseSaaS.Infrastructure.Persistence;
@@ -13,10 +14,12 @@ namespace NfseSaaS.Infrastructure.UseCases;
 public sealed class CadastrarEmpresaUseCase : ICadastrarEmpresaUseCase
 {
     private readonly AppDbContext _db;
+    private readonly IAuditLogWriter _auditLogWriter;
 
-    public CadastrarEmpresaUseCase(AppDbContext db)
+    public CadastrarEmpresaUseCase(AppDbContext db, IAuditLogWriter auditLogWriter)
     {
         _db = db;
+        _auditLogWriter = auditLogWriter;
     }
 
     public async Task<Guid> ExecutarAsync(CadastrarEmpresaRequest request, CancellationToken cancellationToken)
@@ -43,6 +46,9 @@ public sealed class CadastrarEmpresaUseCase : ICadastrarEmpresaUseCase
         // TenantId é preenchido automaticamente pelo AppDbContext.SaveChanges
         // (ver ApplyTenantIsolation) — nunca setado manualmente aqui.
         _db.Empresas.Add(empresa);
+
+        _auditLogWriter.Registrar("CadastrarEmpresa", "Empresa", empresa.Id, new { empresa.Cnpj, empresa.RazaoSocial });
+
         await _db.SaveChangesAsync(cancellationToken);
 
         return empresa.Id;

@@ -5,10 +5,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NfseSaaS.Application.Abstractions;
+using NfseSaaS.Application.UseCases.AuditLogs;
 using NfseSaaS.Application.UseCases.Clientes;
 using NfseSaaS.Application.UseCases.Empresas;
 using NfseSaaS.Application.UseCases.Nfse;
 using NfseSaaS.Application.UseCases.Servicos;
+using NfseSaaS.Infrastructure.Auditing;
 using NfseSaaS.Infrastructure.Certificates;
 using NfseSaaS.Infrastructure.Identity;
 using NfseSaaS.Infrastructure.MultiTenancy;
@@ -36,6 +38,8 @@ public static class DependencyInjection
 
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentTenant, CurrentTenant>();
+        services.AddScoped<ICurrentUser, CurrentUser>();
+        services.AddScoped<IAuditLogWriter, AuditLogWriter>();
 
         services
             .AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
@@ -86,9 +90,36 @@ public static class DependencyInjection
         // porque tocam EF Core diretamente — sem repository genérico nem
         // UnitOfWork artificial em cima do EF Core.
         services.AddScoped<ICadastrarEmpresaUseCase, CadastrarEmpresaUseCase>();
+        services.AddScoped<IListarEmpresasUseCase, ListarEmpresasUseCase>();
+        services.AddScoped<IObterEmpresaPorIdUseCase, ObterEmpresaPorIdUseCase>();
+        services.AddScoped<IAtualizarEmpresaUseCase, AtualizarEmpresaUseCase>();
+        services.AddScoped<IDesativarEmpresaUseCase, DesativarEmpresaUseCase>();
+        services.AddScoped<IReativarEmpresaUseCase, ReativarEmpresaUseCase>();
+        services.AddScoped<IExcluirEmpresaUseCase, ExcluirEmpresaUseCase>();
+
         services.AddScoped<ICadastrarClienteUseCase, CadastrarClienteUseCase>();
+        services.AddScoped<IListarClientesUseCase, ListarClientesUseCase>();
+        services.AddScoped<IObterClientePorIdUseCase, ObterClientePorIdUseCase>();
+        services.AddScoped<IAtualizarClienteUseCase, AtualizarClienteUseCase>();
+        services.AddScoped<IDesativarClienteUseCase, DesativarClienteUseCase>();
+        services.AddScoped<IReativarClienteUseCase, ReativarClienteUseCase>();
+        services.AddScoped<IExcluirClienteUseCase, ExcluirClienteUseCase>();
+
         services.AddScoped<ICadastrarServicoUseCase, CadastrarServicoUseCase>();
+        services.AddScoped<IListarServicosUseCase, ListarServicosUseCase>();
+        services.AddScoped<IObterServicoPorIdUseCase, ObterServicoPorIdUseCase>();
+        services.AddScoped<IAtualizarServicoUseCase, AtualizarServicoUseCase>();
+        services.AddScoped<IDesativarServicoUseCase, DesativarServicoUseCase>();
+        services.AddScoped<IReativarServicoUseCase, ReativarServicoUseCase>();
+        services.AddScoped<IExcluirServicoUseCase, ExcluirServicoUseCase>();
+
         services.AddScoped<IEmitirNfseUseCase, EmitirNfseUseCase>();
+        services.AddScoped<IListarNfseUseCase, ListarNfseUseCase>();
+        services.AddScoped<IObterNfsePorIdUseCase, ObterNfsePorIdUseCase>();
+        services.AddScoped<ICancelarNfseUseCase, CancelarNfseUseCase>();
+
+        services.AddScoped<IListarAuditLogsUseCase, ListarAuditLogsUseCase>();
+        services.AddScoped<IObterAuditLogPorIdUseCase, ObterAuditLogPorIdUseCase>();
 
         return services;
     }

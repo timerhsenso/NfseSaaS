@@ -27,5 +27,14 @@ public sealed class ServicoConfiguration : IEntityTypeConfiguration<Servico>
             .HasColumnType("numeric(18,2)");
 
         builder.HasIndex(s => new { s.TenantId, s.EmpresaId });
+
+        // FK real — ver comentário completo em ClienteConfiguration.
+        // Note que isso protege Empresa→Servico (não deixa excluir a
+        // Empresa com Servico vinculado); NÃO existe (e não deve existir)
+        // uma FK de Nfse para Servico, ver ExcluirServicoUseCase.
+        builder.HasOne<Empresa>()
+            .WithMany()
+            .HasForeignKey(s => s.EmpresaId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

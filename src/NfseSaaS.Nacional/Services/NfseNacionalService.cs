@@ -17,12 +17,17 @@ namespace NfseSaaS.Nacional.Services;
 /// os passos de build/assinatura (<see cref="IDpsBuilder"/>, <see cref="IDpsSigner"/>)
 /// permanecem como placeholder até a migração da Fase 2 (ver comentários
 /// nas respectivas classes).
+///
+/// Também orquestra o cancelamento (evento e101101): constrói → assina
+/// (mesmo IDpsSigner, que assina por elemento Id, não é específico da DPS)
+/// → gzip/base64 → envia → interpreta.
 /// </summary>
 public sealed class NfseNacionalService : INfseNacionalService
 {
     private readonly IDpsValidator _validator;
     private readonly IDpsBuilder _builder;
     private readonly IDpsSigner _signer;
+    private readonly IEventoCancelamentoBuilder _eventoCancelamentoBuilder;
     private readonly ICertificateProvider _certificateProvider;
     private readonly INfseApiClient _apiClient;
 
@@ -30,12 +35,14 @@ public sealed class NfseNacionalService : INfseNacionalService
         IDpsValidator validator,
         IDpsBuilder builder,
         IDpsSigner signer,
+        IEventoCancelamentoBuilder eventoCancelamentoBuilder,
         ICertificateProvider certificateProvider,
         INfseApiClient apiClient)
     {
         _validator = validator;
         _builder = builder;
         _signer = signer;
+        _eventoCancelamentoBuilder = eventoCancelamentoBuilder;
         _certificateProvider = certificateProvider;
         _apiClient = apiClient;
     }
@@ -55,5 +62,18 @@ public sealed class NfseNacionalService : INfseNacionalService
         var (statusCode, body) = await _apiClient.EnviarDpsAsync(empresaId, gzipBase64, cancellationToken);
 
         return NfseResponseParser.Parse(statusCode, body);
+    }
+
+    public async Task<EventoNacionalResponse> CancelarAsync(EventoCancelamentoRequest request, Guid empresaId, CancellationToken cancellationToken)
+    {
+        var certificado = await _certificateProvider.ObterCertificadoAsync(empresaId, cancellationToken);
+
+        var (xmlEvento, infPedRegId) = _eventoCancelamentoBuilder.Construir(request);
+        var xmlAssinado = _signer.Assinar(xmlEvento, infPedRegId, certificado);
+        var gzipBase64 = GZipHelper.ComprimirParaBase64(xmlAssinado);
+
+        var (statusCode, body) = await _apiClient.EnviarEventoAsync(empresaId, request.ChaveAcesso, gzipBase64, cancellationToken);
+
+        return EventoResponseParser.Parse(statusCode, body);
     }
 }
