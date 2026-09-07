@@ -41,6 +41,11 @@ public sealed class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
         builder.Property(c => c.Bairro)
             .HasMaxLength(100);
 
-        builder.HasIndex(c => new { c.TenantId, c.CpfCnpj });
+        // Mesmo CPF/CNPJ não pode se repetir para a mesma Empresa — mas
+        // PODE ser cliente de duas Empresas diferentes do mesmo Tenant
+        // (ex.: escritório de contabilidade que atende o mesmo cliente
+        // final através de mais de uma empresa que gerencia).
+        builder.HasIndex(c => new { c.TenantId, c.EmpresaId, c.CpfCnpj })
+            .IsUnique();
     }
 }

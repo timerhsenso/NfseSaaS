@@ -21,6 +21,12 @@ public sealed class CadastrarClienteUseCase : ICadastrarClienteUseCase
         if (!empresaExiste)
             throw new RecursoNaoEncontradoException($"Empresa {request.EmpresaId} não encontrada.");
 
+        var jaExisteClienteComMesmoDocumento = await _db.Clientes
+            .AnyAsync(c => c.EmpresaId == request.EmpresaId && c.CpfCnpj == request.CpfCnpj, cancellationToken);
+
+        if (jaExisteClienteComMesmoDocumento)
+            throw new RegraNegocioException($"Já existe um cliente com o CPF/CNPJ '{request.CpfCnpj}' cadastrado para esta empresa.");
+
         var cliente = new Cliente
         {
             EmpresaId = request.EmpresaId,

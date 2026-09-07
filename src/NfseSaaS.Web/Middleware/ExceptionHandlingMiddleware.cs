@@ -37,6 +37,7 @@ public sealed class ExceptionHandlingMiddleware
             var statusCode = ex switch
             {
                 RecursoNaoEncontradoException => HttpStatusCode.NotFound,
+                RegraNegocioException => HttpStatusCode.UnprocessableEntity,
                 NfseValidationException => HttpStatusCode.UnprocessableEntity,
                 NfseCertificateException => HttpStatusCode.InternalServerError,
                 NfseApiException => HttpStatusCode.BadGateway,
