@@ -20,6 +20,9 @@ public sealed class ServicoConfiguration : IEntityTypeConfiguration<Servico>
             .HasMaxLength(10)
             .IsRequired();
 
+        builder.Property(s => s.CodigoNbs)
+            .HasMaxLength(10);
+
         builder.Property(s => s.ValorPadrao)
             .HasColumnType("numeric(18,2)");
 

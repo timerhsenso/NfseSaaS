@@ -17,6 +17,9 @@ public sealed class Servico : BaseEntity, ITenantEntity
     /// <summary>Código de tributação nacional (cTribNac) do layout da NFS-e Nacional.</summary>
     public string CodigoTributacaoNacional { get; set; } = string.Empty;
 
+    /// <summary>Código NBS (Nomenclatura Brasileira de Serviços), campo cNBS da DPS.</summary>
+    public string CodigoNbs { get; set; } = string.Empty;
+
     public decimal ValorPadrao { get; set; }
 
     public bool Ativo { get; set; } = true;

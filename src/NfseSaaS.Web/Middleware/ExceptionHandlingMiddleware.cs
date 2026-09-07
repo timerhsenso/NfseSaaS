@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Nacional.Exceptions;
 
 namespace NfseSaaS.Web.Middleware;
@@ -35,6 +36,7 @@ public sealed class ExceptionHandlingMiddleware
 
             var statusCode = ex switch
             {
+                RecursoNaoEncontradoException => HttpStatusCode.NotFound,
                 NfseValidationException => HttpStatusCode.UnprocessableEntity,
                 NfseCertificateException => HttpStatusCode.InternalServerError,
                 NfseApiException => HttpStatusCode.BadGateway,

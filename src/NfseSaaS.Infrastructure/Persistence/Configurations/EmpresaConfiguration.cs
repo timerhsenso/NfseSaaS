@@ -28,6 +28,36 @@ public sealed class EmpresaConfiguration : IEntityTypeConfiguration<Empresa>
             .HasMaxLength(7)
             .IsRequired();
 
+        builder.Property(e => e.Telefone)
+            .HasMaxLength(20);
+
+        builder.Property(e => e.Email)
+            .HasMaxLength(200);
+
+        builder.Property(e => e.OpSimpNac)
+            .HasMaxLength(1);
+
+        builder.Property(e => e.RegApTribSN)
+            .HasMaxLength(1);
+
+        builder.Property(e => e.RegEspTrib)
+            .HasMaxLength(1);
+
+        builder.Property(e => e.TribIssqn)
+            .HasMaxLength(1);
+
+        builder.Property(e => e.TpRetIssqn)
+            .HasMaxLength(1);
+
+        builder.Property(e => e.CstPisCofins)
+            .HasMaxLength(2);
+
+        builder.Property(e => e.TpRetPisCofins)
+            .HasMaxLength(1);
+
+        builder.Property(e => e.PercentualTotalTributosSimplesNacional)
+            .HasMaxLength(10);
+
         // Um mesmo CNPJ não pode se repetir dentro do mesmo tenant.
         builder.HasIndex(e => new { e.TenantId, e.Cnpj })
             .IsUnique();

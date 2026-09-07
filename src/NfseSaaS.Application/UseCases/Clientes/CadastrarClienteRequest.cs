@@ -6,4 +6,9 @@ public sealed record CadastrarClienteRequest(
     string CpfCnpj,
     string Nome,
     string? Email,
-    string? Telefone);
+    string? Telefone,
+    string CodigoMunicipio,
+    string Cep,
+    string Logradouro,
+    string Numero,
+    string Bairro);

@@ -17,7 +17,7 @@ public sealed class NfseConfiguration : IEntityTypeConfiguration<Nfse>
             .IsRequired();
 
         builder.Property(n => n.NumeroNfse)
-            .HasMaxLength(50);
+            .HasMaxLength(80);
 
         builder.Property(n => n.ChaveAcesso)
             .HasMaxLength(60);

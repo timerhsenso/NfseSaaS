@@ -5,4 +5,5 @@ public sealed record CadastrarServicoRequest(
     Guid EmpresaId,
     string Descricao,
     string CodigoTributacaoNacional,
+    string CodigoNbs,
     decimal ValorPadrao);

@@ -5,10 +5,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NfseSaaS.Application.Abstractions;
+using NfseSaaS.Application.UseCases.Clientes;
+using NfseSaaS.Application.UseCases.Empresas;
+using NfseSaaS.Application.UseCases.Nfse;
+using NfseSaaS.Application.UseCases.Servicos;
 using NfseSaaS.Infrastructure.Certificates;
 using NfseSaaS.Infrastructure.Identity;
 using NfseSaaS.Infrastructure.MultiTenancy;
 using NfseSaaS.Infrastructure.Persistence;
+using NfseSaaS.Infrastructure.UseCases;
 using NfseSaaS.Nacional.Abstractions;
 
 namespace NfseSaaS.Infrastructure;
@@ -41,9 +46,49 @@ public static class DependencyInjection
                 options.User.RequireUniqueEmail = true;
             })
             .AddEntityFrameworkStores<AppDbContext>()
-            .AddDefaultTokenProviders();
+            .AddDefaultTokenProviders()
+            .AddClaimsPrincipalFactory<ApplicationUserClaimsPrincipalFactory>();
+
+        // Por padrão, o cookie do Identity REDIRECIONA (302) para uma
+        // página de login em caso de falha de autenticação — faz sentido
+        // para MVC, mas não para as rotas /api (que não têm essa página e
+        // esperam um 401 puro, como qualquer API JSON).
+        services.ConfigureApplicationCookie(options =>
+        {
+            options.Events.OnRedirectToLogin = context =>
+            {
+                if (context.Request.Path.StartsWithSegments("/api"))
+                {
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    return Task.CompletedTask;
+                }
+
+                context.Response.Redirect(context.RedirectUri);
+                return Task.CompletedTask;
+            };
+
+            options.Events.OnRedirectToAccessDenied = context =>
+            {
+                if (context.Request.Path.StartsWithSegments("/api"))
+                {
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    return Task.CompletedTask;
+                }
+
+                context.Response.Redirect(context.RedirectUri);
+                return Task.CompletedTask;
+            };
+        });
 
         AddCertificateStorage(services, configuration);
+
+        // Casos de uso: implementações reais aqui (não em Application),
+        // porque tocam EF Core diretamente — sem repository genérico nem
+        // UnitOfWork artificial em cima do EF Core.
+        services.AddScoped<ICadastrarEmpresaUseCase, CadastrarEmpresaUseCase>();
+        services.AddScoped<ICadastrarClienteUseCase, CadastrarClienteUseCase>();
+        services.AddScoped<ICadastrarServicoUseCase, CadastrarServicoUseCase>();
+        services.AddScoped<IEmitirNfseUseCase, EmitirNfseUseCase>();
 
         return services;
     }

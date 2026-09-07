@@ -23,5 +23,29 @@ public sealed class Empresa : BaseEntity, ITenantEntity
     /// <summary>Código do município (IBGE) onde a empresa está estabelecida.</summary>
     public string CodigoMunicipio { get; set; } = string.Empty;
 
+    public string Telefone { get; set; } = string.Empty;
+
+    public string Email { get; set; } = string.Empty;
+
+    // --- Regime tributário (necessário para montar a DPS — ver <regTrib> e <trib> no layout da NFS-e Nacional) ---
+
+    /// <summary>Opção pelo Simples Nacional ("1" Não optante, "2" Optante MEI, "3" Optante Simples Nacional exceto MEI).</summary>
+    public string OpSimpNac { get; set; } = string.Empty;
+
+    public string RegApTribSN { get; set; } = string.Empty;
+
+    public string RegEspTrib { get; set; } = string.Empty;
+
+    public string TribIssqn { get; set; } = string.Empty;
+
+    public string TpRetIssqn { get; set; } = string.Empty;
+
+    public string CstPisCofins { get; set; } = string.Empty;
+
+    public string TpRetPisCofins { get; set; } = string.Empty;
+
+    /// <summary>Percentual total de tributos do Simples Nacional (campo pTotTribSN da DPS), ex.: "3.00".</summary>
+    public string PercentualTotalTributosSimplesNacional { get; set; } = string.Empty;
+
     public bool Ativo { get; set; } = true;
 }

@@ -26,6 +26,21 @@ public sealed class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
         builder.Property(c => c.Telefone)
             .HasMaxLength(20);
 
+        builder.Property(c => c.CodigoMunicipio)
+            .HasMaxLength(7);
+
+        builder.Property(c => c.Cep)
+            .HasMaxLength(8);
+
+        builder.Property(c => c.Logradouro)
+            .HasMaxLength(200);
+
+        builder.Property(c => c.Numero)
+            .HasMaxLength(20);
+
+        builder.Property(c => c.Bairro)
+            .HasMaxLength(100);
+
         builder.HasIndex(c => new { c.TenantId, c.CpfCnpj });
     }
 }
