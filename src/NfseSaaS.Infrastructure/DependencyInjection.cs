@@ -12,6 +12,7 @@ using NfseSaaS.Application.UseCases.Nfse;
 using NfseSaaS.Application.UseCases.Servicos;
 using NfseSaaS.Infrastructure.Auditing;
 using NfseSaaS.Infrastructure.Certificates;
+using NfseSaaS.Infrastructure.Email;
 using NfseSaaS.Infrastructure.Identity;
 using NfseSaaS.Infrastructure.MultiTenancy;
 using NfseSaaS.Infrastructure.Persistence;
@@ -40,6 +41,9 @@ public static class DependencyInjection
         services.AddScoped<ICurrentTenant, CurrentTenant>();
         services.AddScoped<ICurrentUser, CurrentUser>();
         services.AddScoped<IAuditLogWriter, AuditLogWriter>();
+
+        services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
+        services.AddScoped<IEmailSender, SmtpEmailSender>();
 
         services
             .AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>

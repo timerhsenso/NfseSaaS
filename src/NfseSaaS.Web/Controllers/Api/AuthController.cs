@@ -1,8 +1,13 @@
+using System.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Domain.Entities;
+using NfseSaaS.Infrastructure.Email;
 using NfseSaaS.Infrastructure.Identity;
 using NfseSaaS.Infrastructure.Persistence;
 
@@ -23,10 +28,7 @@ public sealed record AceitarConviteRequest(string Email, string Token, string No
 ///
 /// Convite reaproveita o mecanismo de token de redefinição de senha do
 /// próprio ASP.NET Core Identity (o mesmo de "esqueci minha senha") — não
-/// há geração de token própria. Como o envio de e-mail está fora do
-/// escopo desta fase, o token retorna na resposta da API e precisa ser
-/// repassado manualmente à pessoa convidada; isso muda no dia em que o
-/// envio de e-mail for implementado, sem alterar a lógica de convite.
+/// há geração de token própria.
 /// </summary>
 [ApiController]
 [Route("api/auth")]
@@ -36,17 +38,26 @@ public sealed class AuthController : ControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly ICurrentTenant _currentTenant;
+    private readonly IEmailSender _emailSender;
+    private readonly EmailOptions _emailOptions;
+    private readonly IHostEnvironment _environment;
 
     public AuthController(
         AppDbContext db,
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
-        ICurrentTenant currentTenant)
+        ICurrentTenant currentTenant,
+        IEmailSender emailSender,
+        IOptions<EmailOptions> emailOptions,
+        IHostEnvironment environment)
     {
         _db = db;
         _userManager = userManager;
         _signInManager = signInManager;
         _currentTenant = currentTenant;
+        _emailSender = emailSender;
+        _emailOptions = emailOptions.Value;
+        _environment = environment;
     }
 
     /// <summary>Cria um novo Tenant e seu primeiro usuário, já autenticado (cookie com o Claim tenant_id).</summary>
@@ -97,13 +108,14 @@ public sealed class AuthController : ControllerBase
 
     /// <summary>
     /// Convida um e-mail para entrar no MESMO Tenant do usuário autenticado.
-    /// Cria a conta (sem senha utilizável) e devolve um token de convite —
-    /// a pessoa convidada usa esse token em AceitarConvite para definir a
-    /// própria senha e ficar autenticada.
+    /// Cria a conta (sem senha utilizável), gera um token de convite e
+    /// tenta enviá-lo por e-mail. Se o envio falhar (ou em ambiente de
+    /// Development), o token também volta na resposta da API — nunca
+    /// deixamos o convite sem nenhuma forma de ser completado.
     /// </summary>
     [Authorize]
     [HttpPost("convidar")]
-    public async Task<IActionResult> Convidar([FromBody] ConvidarRequest request)
+    public async Task<IActionResult> Convidar([FromBody] ConvidarRequest request, CancellationToken cancellationToken)
     {
         if (_currentTenant.TenantId is not { } tenantId)
             return Unauthorized();
@@ -130,7 +142,24 @@ public sealed class AuthController : ControllerBase
 
         var token = await _userManager.GeneratePasswordResetTokenAsync(novoUsuario);
 
-        return Ok(new { userId = novoUsuario.Id, email = novoUsuario.Email, token });
+        var tenant = await _db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
+        var emailEnviado = await EnviarEmailDeConviteAsync(request.Email, token, tenant?.RazaoSocial, cancellationToken);
+
+        var resposta = new Dictionary<string, object?>
+        {
+            ["userId"] = novoUsuario.Id,
+            ["email"] = novoUsuario.Email,
+            ["emailEnviado"] = emailEnviado
+        };
+
+        // Sem o token aqui, um e-mail que falhou vira um convite sem
+        // nenhuma forma de ser completado — então ele SEMPRE volta quando
+        // o envio não deu certo, mesmo em produção. Em Development volta
+        // sempre, pra testar via Swagger sem precisar de SMTP configurado.
+        if (_environment.IsDevelopment() || !emailEnviado)
+            resposta["token"] = token;
+
+        return Ok(resposta);
     }
 
     /// <summary>Aceita um convite: define a senha da conta criada em Convidar (via token) e já autentica.</summary>
@@ -149,5 +178,26 @@ public sealed class AuthController : ControllerBase
         await _signInManager.SignInAsync(usuario, isPersistent: false);
 
         return Ok();
+    }
+
+    private async Task<bool> EnviarEmailDeConviteAsync(string destinatarioEmail, string token, string? razaoSocialTenant, CancellationToken cancellationToken)
+    {
+        var nomeExibicao = string.IsNullOrWhiteSpace(razaoSocialTenant) ? "NfseSaaS" : razaoSocialTenant;
+
+        var linkAceite = string.IsNullOrWhiteSpace(_emailOptions.AppBaseUrl)
+            ? null
+            : $"{_emailOptions.AppBaseUrl.TrimEnd('/')}/aceitar-convite?email={Uri.EscapeDataString(destinatarioEmail)}&token={Uri.EscapeDataString(token)}";
+
+        var corpoHtml = $"""
+            <p>Você foi convidado para acessar o <strong>{WebUtility.HtmlEncode(nomeExibicao)}</strong> no NfseSaaS.</p>
+            {(linkAceite is not null ? $"""<p><a href="{linkAceite}">Clique aqui para definir sua senha e aceitar o convite</a></p>""" : "")}
+            <p>Se o link acima não abrir uma tela (ou se preferir usar via API), utilize estes dados no aceite do convite:</p>
+            <ul>
+                <li>E-mail: {WebUtility.HtmlEncode(destinatarioEmail)}</li>
+                <li>Token: {WebUtility.HtmlEncode(token)}</li>
+            </ul>
+            """;
+
+        return await _emailSender.EnviarAsync(destinatarioEmail, $"Convite — {nomeExibicao}", corpoHtml, cancellationToken);
     }
 }
