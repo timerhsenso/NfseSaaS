@@ -9,6 +9,7 @@ using NfseSaaS.Application.UseCases.AuditLogs;
 using NfseSaaS.Application.UseCases.Clientes;
 using NfseSaaS.Application.UseCases.Empresas;
 using NfseSaaS.Application.UseCases.Nfse;
+using NfseSaaS.Application.UseCases.NfseEventos;
 using NfseSaaS.Application.UseCases.Servicos;
 using NfseSaaS.Infrastructure.Auditing;
 using NfseSaaS.Infrastructure.Certificates;
@@ -41,6 +42,7 @@ public static class DependencyInjection
         services.AddScoped<ICurrentTenant, CurrentTenant>();
         services.AddScoped<ICurrentUser, CurrentUser>();
         services.AddScoped<IAuditLogWriter, AuditLogWriter>();
+        services.AddScoped<INfseEventoWriter, NfseEventoWriter>();
 
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
         services.AddScoped<IEmailSender, SmtpEmailSender>();
@@ -121,6 +123,8 @@ public static class DependencyInjection
         services.AddScoped<IListarNfseUseCase, ListarNfseUseCase>();
         services.AddScoped<IObterNfsePorIdUseCase, ObterNfsePorIdUseCase>();
         services.AddScoped<ICancelarNfseUseCase, CancelarNfseUseCase>();
+        services.AddScoped<IListarEventosDaNfseUseCase, ListarEventosDaNfseUseCase>();
+        services.AddScoped<IObterSnapshotFiscalDaNfseUseCase, ObterSnapshotFiscalDaNfseUseCase>();
 
         services.AddScoped<IListarAuditLogsUseCase, ListarAuditLogsUseCase>();
         services.AddScoped<IObterAuditLogPorIdUseCase, ObterAuditLogPorIdUseCase>();

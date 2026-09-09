@@ -1,0 +1,449 @@
+diff --git a/src/NfseSaaS.Application/Abstractions/INfseEventoWriter.cs b/src/NfseSaaS.Application/Abstractions/INfseEventoWriter.cs
+new file mode 100644
+index 0000000..2c8f6aa
+--- /dev/null
++++ b/src/NfseSaaS.Application/Abstractions/INfseEventoWriter.cs
+@@ -0,0 +1,24 @@
++using NfseSaaS.Domain.Enums;
++
++namespace NfseSaaS.Application.Abstractions;
++
++/// <summary>
++/// Registra um evento no histórico de uma Nfse (ver NfseEvento) dentro da
++/// MESMA unidade de trabalho da operação que o originou — Registrar() só
++/// adiciona ao ChangeTracker, NUNCA chama SaveChanges por conta própria.
++/// Mesmo raciocínio de atomicidade de <see cref="IAuditLogWriter"/>: se a
++/// operação principal falhar antes do SaveChanges, o evento também não é
++/// persistido.
++///
++/// TenantId é preenchido automaticamente pelo AppDbContext
++/// (ApplyTenantIsolation) — quem chama Registrar() só informa o que é
++/// específico do evento.
++/// </summary>
++public interface INfseEventoWriter
++{
++    /// <param name="nfseId">Id da Nfse a que este evento pertence.</param>
++    /// <param name="tipo">Tipo do evento — ver NfseEventoTipo.</param>
++    /// <param name="codigo">Código de erro/rejeição da SEFIN, quando houver.</param>
++    /// <param name="mensagem">Mensagem/descrição do evento, quando houver.</param>
++    void Registrar(Guid nfseId, NfseEventoTipo tipo, string? codigo = null, string? mensagem = null);
++}
+diff --git a/src/NfseSaaS.Application/UseCases/NfseEventos/IListarEventosDaNfseUseCase.cs b/src/NfseSaaS.Application/UseCases/NfseEventos/IListarEventosDaNfseUseCase.cs
+new file mode 100644
+index 0000000..e3584db
+--- /dev/null
++++ b/src/NfseSaaS.Application/UseCases/NfseEventos/IListarEventosDaNfseUseCase.cs
+@@ -0,0 +1,12 @@
++namespace NfseSaaS.Application.UseCases.NfseEventos;
++
++/// <summary>
++/// Histórico completo de uma Nfse, em ordem cronológica. Sem paginação
++/// deliberadamente: o volume de eventos por Nfse é pequeno (um punhado de
++/// transições ao longo do ciclo de vida), diferente de AuditLog (que
++/// cresce por todo o sistema e por isso é paginado).
++/// </summary>
++public interface IListarEventosDaNfseUseCase
++{
++    Task<IReadOnlyList<NfseEventoResponse>> ExecutarAsync(Guid nfseId, CancellationToken cancellationToken);
++}
+diff --git a/src/NfseSaaS.Application/UseCases/NfseEventos/NfseEventoResponse.cs b/src/NfseSaaS.Application/UseCases/NfseEventos/NfseEventoResponse.cs
+new file mode 100644
+index 0000000..60f7fe1
+--- /dev/null
++++ b/src/NfseSaaS.Application/UseCases/NfseEventos/NfseEventoResponse.cs
+@@ -0,0 +1,9 @@
++namespace NfseSaaS.Application.UseCases.NfseEventos;
++
++public sealed record NfseEventoResponse(
++    Guid Id,
++    Guid NfseId,
++    string Tipo,
++    string? Codigo,
++    string? Mensagem,
++    DateTimeOffset DataHora);
+diff --git a/src/NfseSaaS.Domain/Entities/NfseEvento.cs b/src/NfseSaaS.Domain/Entities/NfseEvento.cs
+new file mode 100644
+index 0000000..053fff5
+--- /dev/null
++++ b/src/NfseSaaS.Domain/Entities/NfseEvento.cs
+@@ -0,0 +1,34 @@
++using NfseSaaS.Domain.Common;
++using NfseSaaS.Domain.Enums;
++
++namespace NfseSaaS.Domain.Entities;
++
++/// <summary>
++/// Um evento no ciclo de vida de uma Nfse (DPS enviada, autorizada,
++/// rejeitada, cancelada, cancelamento rejeitado etc.). Existe porque
++/// guardar só o Status atual da Nfse dificulta suporte e diagnóstico —
++/// uma nota rejeitada e depois corrigida/reenviada, por exemplo, não
++/// deixa rastro de qual foi o erro original sem isto.
++///
++/// Entidade TENANT-SCOPED: sofre o Global Query Filter por TenantId.
++///
++/// Deliberadamente NÃO duplica XmlDps/XmlNfse aqui — esses já ficam
++/// persistidos na própria Nfse; um evento aponta pra eles pelo NfseId,
++/// não guarda cópia do payload.
++/// </summary>
++public sealed class NfseEvento : BaseEntity, ITenantEntity
++{
++    public Guid TenantId { get; set; }
++
++    public Guid NfseId { get; set; }
++
++    public NfseEventoTipo Tipo { get; set; }
++
++    /// <summary>Código de erro/rejeição retornado pela SEFIN, quando houver (ex.: "E0008").</summary>
++    public string? Codigo { get; set; }
++
++    public string? Mensagem { get; set; }
++
++    // DataHora do evento é o próprio CreatedAt herdado de BaseEntity —
++    // não duplicado aqui como campo separado.
++}
+diff --git a/src/NfseSaaS.Domain/Enums/NfseEventoTipo.cs b/src/NfseSaaS.Domain/Enums/NfseEventoTipo.cs
+new file mode 100644
+index 0000000..3bf1207
+--- /dev/null
++++ b/src/NfseSaaS.Domain/Enums/NfseEventoTipo.cs
+@@ -0,0 +1,29 @@
++namespace NfseSaaS.Domain.Enums;
++
++/// <summary>
++/// Tipo de evento registrado no histórico de uma Nfse (ver
++/// <see cref="Entities.NfseEvento"/>). Cada transição real de
++/// <see cref="NfseStatus"/> ao longo do fluxo de emissão/cancelamento
++/// gera um evento correspondente — a trilha completa fica em NfseEvento,
++/// não só o estado final na própria Nfse.
++/// </summary>
++public enum NfseEventoTipo
++{
++    /// <summary>DPS montada, assinada e enviada à SEFIN Nacional (Nfse gravada como Processando).</summary>
++    DpsEnviada = 0,
++
++    /// <summary>NFS-e autorizada pela SEFIN Nacional.</summary>
++    Autorizada = 1,
++
++    /// <summary>DPS rejeitada pela SEFIN Nacional (ver Codigo/Mensagem do evento).</summary>
++    Rejeitada = 2,
++
++    /// <summary>Falha de comunicação, certificado ou infraestrutura ao tentar emitir — não é uma rejeição fiscal da SEFIN.</summary>
++    FalhaComunicacao = 3,
++
++    /// <summary>Evento de cancelamento (e101101) aceito pela SEFIN Nacional.</summary>
++    Cancelada = 4,
++
++    /// <summary>Tentativa de cancelamento rejeitada pela SEFIN Nacional — a Nfse permanece Autorizada.</summary>
++    CancelamentoRejeitado = 5
++}
+diff --git a/src/NfseSaaS.Infrastructure/Auditing/NfseEventoWriter.cs b/src/NfseSaaS.Infrastructure/Auditing/NfseEventoWriter.cs
+new file mode 100644
+index 0000000..060447b
+--- /dev/null
++++ b/src/NfseSaaS.Infrastructure/Auditing/NfseEventoWriter.cs
+@@ -0,0 +1,35 @@
++using NfseSaaS.Application.Abstractions;
++using NfseSaaS.Domain.Entities;
++using NfseSaaS.Domain.Enums;
++using NfseSaaS.Infrastructure.Persistence;
++
++namespace NfseSaaS.Infrastructure.Auditing;
++
++/// <summary>
++/// Implementação real de INfseEventoWriter. Só adiciona ao ChangeTracker
++/// do AppDbContext (nunca chama SaveChanges) — quem chamou Registrar() é
++/// quem, ao final da própria unidade de trabalho, decide quando salvar.
++/// TenantId é preenchido pelo AppDbContext.ApplyTenantIsolation
++/// (NfseEvento implementa ITenantEntity, igual toda entidade
++/// tenant-scoped).
++/// </summary>
++public sealed class NfseEventoWriter : INfseEventoWriter
++{
++    private readonly AppDbContext _db;
++
++    public NfseEventoWriter(AppDbContext db)
++    {
++        _db = db;
++    }
++
++    public void Registrar(Guid nfseId, NfseEventoTipo tipo, string? codigo = null, string? mensagem = null)
++    {
++        _db.NfseEventos.Add(new NfseEvento
++        {
++            NfseId = nfseId,
++            Tipo = tipo,
++            Codigo = codigo,
++            Mensagem = mensagem
++        });
++    }
++}
+diff --git a/src/NfseSaaS.Infrastructure/DependencyInjection.cs b/src/NfseSaaS.Infrastructure/DependencyInjection.cs
+index 200d719..0719c6a 100644
+--- a/src/NfseSaaS.Infrastructure/DependencyInjection.cs
++++ b/src/NfseSaaS.Infrastructure/DependencyInjection.cs
+@@ -9,6 +9,7 @@ using NfseSaaS.Application.UseCases.AuditLogs;
+ using NfseSaaS.Application.UseCases.Clientes;
+ using NfseSaaS.Application.UseCases.Empresas;
+ using NfseSaaS.Application.UseCases.Nfse;
++using NfseSaaS.Application.UseCases.NfseEventos;
+ using NfseSaaS.Application.UseCases.Servicos;
+ using NfseSaaS.Infrastructure.Auditing;
+ using NfseSaaS.Infrastructure.Certificates;
+@@ -41,6 +42,7 @@ public static class DependencyInjection
+         services.AddScoped<ICurrentTenant, CurrentTenant>();
+         services.AddScoped<ICurrentUser, CurrentUser>();
+         services.AddScoped<IAuditLogWriter, AuditLogWriter>();
++        services.AddScoped<INfseEventoWriter, NfseEventoWriter>();
+ 
+         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
+         services.AddScoped<IEmailSender, SmtpEmailSender>();
+@@ -121,6 +123,7 @@ public static class DependencyInjection
+         services.AddScoped<IListarNfseUseCase, ListarNfseUseCase>();
+         services.AddScoped<IObterNfsePorIdUseCase, ObterNfsePorIdUseCase>();
+         services.AddScoped<ICancelarNfseUseCase, CancelarNfseUseCase>();
++        services.AddScoped<IListarEventosDaNfseUseCase, ListarEventosDaNfseUseCase>();
+ 
+         services.AddScoped<IListarAuditLogsUseCase, ListarAuditLogsUseCase>();
+         services.AddScoped<IObterAuditLogPorIdUseCase, ObterAuditLogPorIdUseCase>();
+diff --git a/src/NfseSaaS.Infrastructure/Persistence/AppDbContext.cs b/src/NfseSaaS.Infrastructure/Persistence/AppDbContext.cs
+index 3d01ebb..69198d3 100644
+--- a/src/NfseSaaS.Infrastructure/Persistence/AppDbContext.cs
++++ b/src/NfseSaaS.Infrastructure/Persistence/AppDbContext.cs
+@@ -34,6 +34,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
+     public DbSet<Cliente> Clientes => Set<Cliente>();
+     public DbSet<Servico> Servicos => Set<Servico>();
+     public DbSet<Nfse> NotasFiscais => Set<Nfse>();
++    public DbSet<NfseEvento> NfseEventos => Set<NfseEvento>();
+     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+     public DbSet<ContadorDps> ContadoresDps => Set<ContadorDps>();
+ 
+diff --git a/src/NfseSaaS.Infrastructure/Persistence/Configurations/NfseEventoConfiguration.cs b/src/NfseSaaS.Infrastructure/Persistence/Configurations/NfseEventoConfiguration.cs
+new file mode 100644
+index 0000000..92407d3
+--- /dev/null
++++ b/src/NfseSaaS.Infrastructure/Persistence/Configurations/NfseEventoConfiguration.cs
+@@ -0,0 +1,37 @@
++using Microsoft.EntityFrameworkCore;
++using Microsoft.EntityFrameworkCore.Metadata.Builders;
++using NfseSaaS.Domain.Entities;
++
++namespace NfseSaaS.Infrastructure.Persistence.Configurations;
++
++public sealed class NfseEventoConfiguration : IEntityTypeConfiguration<NfseEvento>
++{
++    public void Configure(EntityTypeBuilder<NfseEvento> builder)
++    {
++        builder.ToTable("nfse_eventos");
++
++        builder.HasKey(e => e.Id);
++
++        builder.Property(e => e.Tipo)
++            .HasConversion<string>()
++            .HasMaxLength(30);
++
++        builder.Property(e => e.Codigo)
++            .HasMaxLength(20);
++
++        builder.Property(e => e.Mensagem)
++            .HasMaxLength(1000);
++
++        // Consulta principal: histórico de uma Nfse em ordem cronológica.
++        builder.HasIndex(e => new { e.TenantId, e.NfseId, e.CreatedAt });
++
++        // FK real — ver comentário completo em ClienteConfiguration. Não
++        // há hoje (nem está previsto) exclusão física de Nfse, então
++        // Restrict aqui é só o mesmo backstop de banco usado em toda
++        // entidade tenant-scoped do projeto, não uma restrição ativa.
++        builder.HasOne<Nfse>()
++            .WithMany()
++            .HasForeignKey(e => e.NfseId)
++            .OnDelete(DeleteBehavior.Restrict);
++    }
++}
+diff --git a/src/NfseSaaS.Infrastructure/UseCases/CancelarNfseUseCase.cs b/src/NfseSaaS.Infrastructure/UseCases/CancelarNfseUseCase.cs
+index 98921ab..1aa3566 100644
+--- a/src/NfseSaaS.Infrastructure/UseCases/CancelarNfseUseCase.cs
++++ b/src/NfseSaaS.Infrastructure/UseCases/CancelarNfseUseCase.cs
+@@ -24,12 +24,18 @@ public sealed class CancelarNfseUseCase : ICancelarNfseUseCase
+     private readonly AppDbContext _db;
+     private readonly INfseNacionalService _nfseNacionalService;
+     private readonly IAuditLogWriter _auditLogWriter;
++    private readonly INfseEventoWriter _nfseEventoWriter;
+ 
+-    public CancelarNfseUseCase(AppDbContext db, INfseNacionalService nfseNacionalService, IAuditLogWriter auditLogWriter)
++    public CancelarNfseUseCase(
++        AppDbContext db,
++        INfseNacionalService nfseNacionalService,
++        IAuditLogWriter auditLogWriter,
++        INfseEventoWriter nfseEventoWriter)
+     {
+         _db = db;
+         _nfseNacionalService = nfseNacionalService;
+         _auditLogWriter = auditLogWriter;
++        _nfseEventoWriter = nfseEventoWriter;
+     }
+ 
+     public async Task<CancelarNfseResult> ExecutarAsync(Guid nfseId, CancelarNfseRequest request, CancellationToken cancellationToken)
+@@ -58,6 +64,7 @@ public sealed class CancelarNfseUseCase : ICancelarNfseUseCase
+         {
+             nfse.Status = NfseStatus.Cancelada;
+ 
++            _nfseEventoWriter.Registrar(nfse.Id, NfseEventoTipo.Cancelada, mensagem: request.Motivo);
+             _auditLogWriter.Registrar("CancelarNfse", "Nfse", nfse.Id, new { Sucesso = true, request.CodigoMotivo, request.Motivo });
+ 
+             await _db.SaveChangesAsync(cancellationToken);
+@@ -67,6 +74,7 @@ public sealed class CancelarNfseUseCase : ICancelarNfseUseCase
+ 
+         // Cancelamento rejeitado pela SEFIN — Nfse continua Autorizada,
+         // mas a tentativa é registrada no AuditLog.
++        _nfseEventoWriter.Registrar(nfse.Id, NfseEventoTipo.CancelamentoRejeitado, resposta.Erro?.Codigo, resposta.Erro?.Descricao);
+         _auditLogWriter.Registrar("CancelarNfse", "Nfse", nfse.Id, new
+         {
+             Sucesso = false,
+diff --git a/src/NfseSaaS.Infrastructure/UseCases/EmitirNfseUseCase.cs b/src/NfseSaaS.Infrastructure/UseCases/EmitirNfseUseCase.cs
+index 4928210..f07a176 100644
+--- a/src/NfseSaaS.Infrastructure/UseCases/EmitirNfseUseCase.cs
++++ b/src/NfseSaaS.Infrastructure/UseCases/EmitirNfseUseCase.cs
+@@ -26,12 +26,18 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
+     private readonly AppDbContext _db;
+     private readonly INfseNacionalService _nfseNacionalService;
+     private readonly IAuditLogWriter _auditLogWriter;
++    private readonly INfseEventoWriter _nfseEventoWriter;
+ 
+-    public EmitirNfseUseCase(AppDbContext db, INfseNacionalService nfseNacionalService, IAuditLogWriter auditLogWriter)
++    public EmitirNfseUseCase(
++        AppDbContext db,
++        INfseNacionalService nfseNacionalService,
++        IAuditLogWriter auditLogWriter,
++        INfseEventoWriter nfseEventoWriter)
+     {
+         _db = db;
+         _nfseNacionalService = nfseNacionalService;
+         _auditLogWriter = auditLogWriter;
++        _nfseEventoWriter = nfseEventoWriter;
+     }
+ 
+     public async Task<EmitirNfseResult> ExecutarAsync(EmitirNfseRequest request, CancellationToken cancellationToken)
+@@ -101,6 +107,7 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
+         };
+ 
+         _db.NotasFiscais.Add(nfse);
++        _nfseEventoWriter.Registrar(nfse.Id, NfseEventoTipo.DpsEnviada);
+         await _db.SaveChangesAsync(cancellationToken);
+ 
+         var dpsRequest = new DpsRequest(
+@@ -158,6 +165,8 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
+                     nfse.XmlNfse = GZipHelper.DescomprimirDeBase64(resposta.NfseXmlGZipB64);
+                     nfse.ValorLiquido = NfseXmlValoresParser.ExtrairValorLiquido(nfse.XmlNfse);
+                 }
++
++                _nfseEventoWriter.Registrar(nfse.Id, NfseEventoTipo.Autorizada, mensagem: nfse.ChaveAcesso);
+             }
+             else
+             {
+@@ -165,6 +174,8 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
+                 nfse.Status = NfseStatus.Rejeitada;
+                 nfse.CodigoErro = primeiroErro?.Codigo;
+                 nfse.MensagemErro = primeiroErro?.Descricao;
++
++                _nfseEventoWriter.Registrar(nfse.Id, NfseEventoTipo.Rejeitada, primeiroErro?.Codigo, primeiroErro?.Descricao);
+             }
+ 
+             _auditLogWriter.Registrar("EmitirNfse", "Nfse", nfse.Id, new { nfse.Status, nfse.ChaveAcesso, nfse.ValorServico });
+@@ -180,6 +191,7 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
+             nfse.Status = NfseStatus.Rejeitada;
+             nfse.MensagemErro = ex.Message;
+ 
++            _nfseEventoWriter.Registrar(nfse.Id, NfseEventoTipo.FalhaComunicacao, mensagem: ex.Message);
+             _auditLogWriter.Registrar("EmitirNfse", "Nfse", nfse.Id, new { nfse.Status, Erro = ex.Message });
+ 
+             await _db.SaveChangesAsync(cancellationToken);
+diff --git a/src/NfseSaaS.Infrastructure/UseCases/ListarEventosDaNfseUseCase.cs b/src/NfseSaaS.Infrastructure/UseCases/ListarEventosDaNfseUseCase.cs
+new file mode 100644
+index 0000000..d443dd2
+--- /dev/null
++++ b/src/NfseSaaS.Infrastructure/UseCases/ListarEventosDaNfseUseCase.cs
+@@ -0,0 +1,37 @@
++using Microsoft.EntityFrameworkCore;
++using NfseSaaS.Application.Exceptions;
++using NfseSaaS.Application.UseCases.NfseEventos;
++using NfseSaaS.Infrastructure.Persistence;
++
++namespace NfseSaaS.Infrastructure.UseCases;
++
++/// <summary>
++/// Só leitura — não há endpoint de escrita para NfseEvento, ele é gravado
++/// exclusivamente por INfseEventoWriter (ver Infrastructure.Auditing)
++/// como efeito colateral de EmitirNfseUseCase/CancelarNfseUseCase, nunca
++/// diretamente pela API.
++/// </summary>
++public sealed class ListarEventosDaNfseUseCase : IListarEventosDaNfseUseCase
++{
++    private readonly AppDbContext _db;
++
++    public ListarEventosDaNfseUseCase(AppDbContext db)
++    {
++        _db = db;
++    }
++
++    public async Task<IReadOnlyList<NfseEventoResponse>> ExecutarAsync(Guid nfseId, CancellationToken cancellationToken)
++    {
++        var nfseExiste = await _db.NotasFiscais.AsNoTracking().AnyAsync(n => n.Id == nfseId, cancellationToken);
++        if (!nfseExiste)
++            throw new RecursoNaoEncontradoException($"Nfse {nfseId} não encontrada.");
++
++        return await _db.NfseEventos
++            .AsNoTracking()
++            .Where(e => e.NfseId == nfseId)
++            .OrderBy(e => e.CreatedAt)
++            .Select(e => new NfseEventoResponse(
++                e.Id, e.NfseId, e.Tipo.ToString(), e.Codigo, e.Mensagem, e.CreatedAt))
++            .ToListAsync(cancellationToken);
++    }
++}
+diff --git a/src/NfseSaaS.Web/Controllers/Api/NfseController.cs b/src/NfseSaaS.Web/Controllers/Api/NfseController.cs
+index f2c420f..0d79f48 100644
+--- a/src/NfseSaaS.Web/Controllers/Api/NfseController.cs
++++ b/src/NfseSaaS.Web/Controllers/Api/NfseController.cs
+@@ -1,6 +1,7 @@
+ using Microsoft.AspNetCore.Authorization;
+ using Microsoft.AspNetCore.Mvc;
+ using NfseSaaS.Application.UseCases.Nfse;
++using NfseSaaS.Application.UseCases.NfseEventos;
+ using NfseSaaS.Domain.Enums;
+ 
+ namespace NfseSaaS.Web.Controllers.Api;
+@@ -14,17 +15,20 @@ public sealed class NfseController : ControllerBase
+     private readonly IListarNfseUseCase _listarNfse;
+     private readonly IObterNfsePorIdUseCase _obterNfsePorId;
+     private readonly ICancelarNfseUseCase _cancelarNfse;
++    private readonly IListarEventosDaNfseUseCase _listarEventosDaNfse;
+ 
+     public NfseController(
+         IEmitirNfseUseCase emitirNfse,
+         IListarNfseUseCase listarNfse,
+         IObterNfsePorIdUseCase obterNfsePorId,
+-        ICancelarNfseUseCase cancelarNfse)
++        ICancelarNfseUseCase cancelarNfse,
++        IListarEventosDaNfseUseCase listarEventosDaNfse)
+     {
+         _emitirNfse = emitirNfse;
+         _listarNfse = listarNfse;
+         _obterNfsePorId = obterNfsePorId;
+         _cancelarNfse = cancelarNfse;
++        _listarEventosDaNfse = listarEventosDaNfse;
+     }
+ 
+     [HttpPost("emitir")]
+@@ -60,4 +64,11 @@ public sealed class NfseController : ControllerBase
+         var resultado = await _cancelarNfse.ExecutarAsync(id, request, cancellationToken);
+         return Ok(resultado);
+     }
++
++    [HttpGet("{id:guid}/eventos")]
++    public async Task<IActionResult> ListarEventos(Guid id, CancellationToken cancellationToken)
++    {
++        var eventos = await _listarEventosDaNfse.ExecutarAsync(id, cancellationToken);
++        return Ok(eventos);
++    }
+ }

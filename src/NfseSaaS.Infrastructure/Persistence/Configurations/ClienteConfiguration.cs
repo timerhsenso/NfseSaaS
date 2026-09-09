@@ -38,8 +38,14 @@ public sealed class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
         builder.Property(c => c.Numero)
             .HasMaxLength(20);
 
+        builder.Property(c => c.Complemento)
+            .HasMaxLength(100);
+
         builder.Property(c => c.Bairro)
             .HasMaxLength(100);
+
+        builder.Property(c => c.Uf)
+            .HasMaxLength(2);
 
         // Mesmo CPF/CNPJ não pode se repetir para a mesma Empresa — mas
         // PODE ser cliente de duas Empresas diferentes do mesmo Tenant

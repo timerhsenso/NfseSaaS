@@ -23,7 +23,7 @@ public sealed class ObterNfsePorIdUseCase : IObterNfsePorIdUseCase
 
         return new NfseResponse(
             nfse.Id, nfse.EmpresaId, nfse.ClienteId, nfse.NumeroDps, nfse.SerieDps, nfse.NumeroNfse, nfse.ChaveAcesso,
-            nfse.DataCompetencia, nfse.DataEmissao, nfse.ValorServico, nfse.DescricaoServico, nfse.Status,
+            nfse.DataCompetencia, nfse.DataEmissao, nfse.ValorServico, nfse.ValorLiquido, nfse.DescricaoServico, nfse.Status,
             nfse.CodigoErro, nfse.MensagemErro, nfse.CreatedAt, nfse.UpdatedAt);
     }
 }

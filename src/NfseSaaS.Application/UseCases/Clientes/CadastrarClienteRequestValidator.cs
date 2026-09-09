@@ -31,6 +31,11 @@ public sealed class CadastrarClienteRequestValidator : AbstractValidator<Cadastr
 
         RuleFor(x => x.Logradouro).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Numero).NotEmpty().MaximumLength(20);
+        RuleFor(x => x.Complemento).MaximumLength(100);
         RuleFor(x => x.Bairro).NotEmpty().MaximumLength(100);
+
+        RuleFor(x => x.Uf)
+            .NotEmpty()
+            .Matches(@"^[A-Z]{2}$").WithMessage("Uf deve ter exatamente 2 letras maiúsculas (ex.: 'BA').");
     }
 }

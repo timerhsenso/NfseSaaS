@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NfseSaaS.Application.Authorization;
 using NfseSaaS.Application.UseCases.Servicos;
 
 namespace NfseSaaS.Web.Controllers.Api;
@@ -35,6 +36,7 @@ public sealed class ServicosController : ControllerBase
         _excluirServico = excluirServico;
     }
 
+    [Authorize(Roles = Papeis.Administrador)]
     [HttpPost]
     public async Task<IActionResult> Cadastrar([FromBody] CadastrarServicoRequest request, CancellationToken cancellationToken)
     {
@@ -63,6 +65,7 @@ public sealed class ServicosController : ControllerBase
         return Ok(servico);
     }
 
+    [Authorize(Roles = Papeis.Administrador)]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Atualizar(Guid id, [FromBody] AtualizarServicoRequest request, CancellationToken cancellationToken)
     {
@@ -71,6 +74,7 @@ public sealed class ServicosController : ControllerBase
     }
 
     /// <summary>Soft delete (Ativo=false) — reversível via /reativar.</summary>
+    [Authorize(Roles = Papeis.Administrador)]
     [HttpPost("{id:guid}/desativar")]
     public async Task<IActionResult> Desativar(Guid id, CancellationToken cancellationToken)
     {
@@ -78,6 +82,7 @@ public sealed class ServicosController : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Roles = Papeis.Administrador)]
     [HttpPost("{id:guid}/reativar")]
     public async Task<IActionResult> Reativar(Guid id, CancellationToken cancellationToken)
     {
@@ -86,6 +91,7 @@ public sealed class ServicosController : ControllerBase
     }
 
     /// <summary>Exclusão REAL — sempre permitida (Nfse não referencia ServicoId, ver ExcluirServicoUseCase).</summary>
+    [Authorize(Roles = Papeis.Administrador)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Excluir(Guid id, CancellationToken cancellationToken)
     {

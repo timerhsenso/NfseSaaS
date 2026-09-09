@@ -30,7 +30,12 @@ public sealed class Cliente : BaseEntity, ITenantEntity
 
     public string Numero { get; set; } = string.Empty;
 
+    public string? Complemento { get; set; }
+
     public string Bairro { get; set; } = string.Empty;
+
+    /// <summary>UF (sigla, 2 letras) do endereço — mesmo raciocínio do campo equivalente em Empresa.</summary>
+    public string Uf { get; set; } = string.Empty;
 
     public bool Ativo { get; set; } = true;
 }

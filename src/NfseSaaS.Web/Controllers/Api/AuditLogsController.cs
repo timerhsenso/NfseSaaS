@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NfseSaaS.Application.Authorization;
 using NfseSaaS.Application.UseCases.AuditLogs;
 
 namespace NfseSaaS.Web.Controllers.Api;
@@ -9,10 +10,11 @@ namespace NfseSaaS.Web.Controllers.Api;
 /// deve existir) POST/PUT/DELETE aqui. AuditLog só é escrito internamente
 /// por IAuditLogWriter, como efeito colateral de outras operações; expor
 /// escrita por API tornaria o log adulterável, o que anula o propósito
-/// dele.
+/// dele. Leitura restrita a Administrador — é dado de compliance sobre
+/// TODAS as operações do Tenant, não só as do próprio usuário.
 /// </summary>
 [ApiController]
-[Authorize]
+[Authorize(Roles = Papeis.Administrador)]
 [Route("api/auditlogs")]
 public sealed class AuditLogsController : ControllerBase
 {

@@ -1,8 +1,10 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.Nfse;
 using NfseSaaS.Domain.Enums;
+using NfseSaaS.Domain.Snapshots;
 using NfseSaaS.Infrastructure.Persistence;
 using NfseSaaS.Nacional.Helpers;
 using NfseSaaS.Nacional.Models;
@@ -26,12 +28,18 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
     private readonly AppDbContext _db;
     private readonly INfseNacionalService _nfseNacionalService;
     private readonly IAuditLogWriter _auditLogWriter;
+    private readonly INfseEventoWriter _nfseEventoWriter;
 
-    public EmitirNfseUseCase(AppDbContext db, INfseNacionalService nfseNacionalService, IAuditLogWriter auditLogWriter)
+    public EmitirNfseUseCase(
+        AppDbContext db,
+        INfseNacionalService nfseNacionalService,
+        IAuditLogWriter auditLogWriter,
+        INfseEventoWriter nfseEventoWriter)
     {
         _db = db;
         _nfseNacionalService = nfseNacionalService;
         _auditLogWriter = auditLogWriter;
+        _nfseEventoWriter = nfseEventoWriter;
     }
 
     public async Task<EmitirNfseResult> ExecutarAsync(EmitirNfseRequest request, CancellationToken cancellationToken)
@@ -80,6 +88,25 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
         // agora e nunca mais lidos de Servico/Empresa depois, para que uma
         // edição futura no cadastro não altere retroativamente o que já
         // foi declarado nesta nota.
+        var snapshotFiscal = new NfseSnapshotFiscal(
+            Versao: 1,
+            Empresa: new NfseSnapshotEmpresa(
+                RazaoSocial: empresa.RazaoSocial,
+                NomeFantasia: empresa.NomeFantasia,
+                Cnpj: empresa.Cnpj,
+                InscricaoMunicipal: empresa.InscricaoMunicipal,
+                OpSimpNac: empresa.OpSimpNac,
+                RegApTribSN: empresa.RegApTribSN,
+                RegEspTrib: empresa.RegEspTrib,
+                Endereco: new NfseSnapshotEndereco(empresa.Cep, empresa.Logradouro, empresa.Numero, empresa.Complemento, empresa.Bairro, empresa.Uf)),
+            Cliente: new NfseSnapshotCliente(
+                Nome: cliente.Nome,
+                CpfCnpj: cliente.CpfCnpj,
+                Endereco: new NfseSnapshotEndereco(cliente.Cep, cliente.Logradouro, cliente.Numero, cliente.Complemento, cliente.Bairro, cliente.Uf)),
+            Servico: new NfseSnapshotServico(
+                DescricaoCadastro: servico.Descricao,
+                ValorPadraoCadastro: servico.ValorPadrao));
+
         var nfse = new Domain.Entities.Nfse
         {
             EmpresaId = empresa.Id,
@@ -97,10 +124,12 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
             TpRetPisCofins = empresa.TpRetPisCofins,
             PercentualTotalTributosSimplesNacional = empresa.PercentualTotalTributosSimplesNacional,
             IdempotencyKey = request.IdempotencyKey,
+            SnapshotFiscalJson = JsonSerializer.Serialize(snapshotFiscal),
             Status = NfseStatus.Processando
         };
 
         _db.NotasFiscais.Add(nfse);
+        _nfseEventoWriter.Registrar(nfse.Id, NfseEventoTipo.DpsEnviada);
         await _db.SaveChangesAsync(cancellationToken);
 
         var dpsRequest = new DpsRequest(
@@ -154,7 +183,12 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
                 nfse.Status = NfseStatus.Autorizada;
 
                 if (!string.IsNullOrWhiteSpace(resposta.NfseXmlGZipB64))
+                {
                     nfse.XmlNfse = GZipHelper.DescomprimirDeBase64(resposta.NfseXmlGZipB64);
+                    nfse.ValorLiquido = NfseXmlValoresParser.ExtrairValorLiquido(nfse.XmlNfse);
+                }
+
+                _nfseEventoWriter.Registrar(nfse.Id, NfseEventoTipo.Autorizada, mensagem: nfse.ChaveAcesso);
             }
             else
             {
@@ -162,6 +196,8 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
                 nfse.Status = NfseStatus.Rejeitada;
                 nfse.CodigoErro = primeiroErro?.Codigo;
                 nfse.MensagemErro = primeiroErro?.Descricao;
+
+                _nfseEventoWriter.Registrar(nfse.Id, NfseEventoTipo.Rejeitada, primeiroErro?.Codigo, primeiroErro?.Descricao);
             }
 
             _auditLogWriter.Registrar("EmitirNfse", "Nfse", nfse.Id, new { nfse.Status, nfse.ChaveAcesso, nfse.ValorServico });
@@ -177,6 +213,7 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
             nfse.Status = NfseStatus.Rejeitada;
             nfse.MensagemErro = ex.Message;
 
+            _nfseEventoWriter.Registrar(nfse.Id, NfseEventoTipo.FalhaComunicacao, mensagem: ex.Message);
             _auditLogWriter.Registrar("EmitirNfse", "Nfse", nfse.Id, new { nfse.Status, Erro = ex.Message });
 
             await _db.SaveChangesAsync(cancellationToken);

@@ -24,12 +24,18 @@ public sealed class CancelarNfseUseCase : ICancelarNfseUseCase
     private readonly AppDbContext _db;
     private readonly INfseNacionalService _nfseNacionalService;
     private readonly IAuditLogWriter _auditLogWriter;
+    private readonly INfseEventoWriter _nfseEventoWriter;
 
-    public CancelarNfseUseCase(AppDbContext db, INfseNacionalService nfseNacionalService, IAuditLogWriter auditLogWriter)
+    public CancelarNfseUseCase(
+        AppDbContext db,
+        INfseNacionalService nfseNacionalService,
+        IAuditLogWriter auditLogWriter,
+        INfseEventoWriter nfseEventoWriter)
     {
         _db = db;
         _nfseNacionalService = nfseNacionalService;
         _auditLogWriter = auditLogWriter;
+        _nfseEventoWriter = nfseEventoWriter;
     }
 
     public async Task<CancelarNfseResult> ExecutarAsync(Guid nfseId, CancelarNfseRequest request, CancellationToken cancellationToken)
@@ -58,6 +64,7 @@ public sealed class CancelarNfseUseCase : ICancelarNfseUseCase
         {
             nfse.Status = NfseStatus.Cancelada;
 
+            _nfseEventoWriter.Registrar(nfse.Id, NfseEventoTipo.Cancelada, mensagem: request.Motivo);
             _auditLogWriter.Registrar("CancelarNfse", "Nfse", nfse.Id, new { Sucesso = true, request.CodigoMotivo, request.Motivo });
 
             await _db.SaveChangesAsync(cancellationToken);
@@ -67,6 +74,7 @@ public sealed class CancelarNfseUseCase : ICancelarNfseUseCase
 
         // Cancelamento rejeitado pela SEFIN — Nfse continua Autorizada,
         // mas a tentativa é registrada no AuditLog.
+        _nfseEventoWriter.Registrar(nfse.Id, NfseEventoTipo.CancelamentoRejeitado, resposta.Erro?.Codigo, resposta.Erro?.Descricao);
         _auditLogWriter.Registrar("CancelarNfse", "Nfse", nfse.Id, new
         {
             Sucesso = false,

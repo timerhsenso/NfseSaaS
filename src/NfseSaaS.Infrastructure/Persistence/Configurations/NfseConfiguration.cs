@@ -60,6 +60,12 @@ public sealed class NfseConfiguration : IEntityTypeConfiguration<Nfse>
         builder.Property(n => n.IdempotencyKey)
             .HasMaxLength(100);
 
+        builder.Property(n => n.ValorLiquido)
+            .HasColumnType("numeric(18,2)");
+
+        builder.Property(n => n.SnapshotFiscalJson)
+            .HasColumnType("jsonb");
+
         builder.Property(n => n.Status)
             .HasConversion<string>()
             .HasMaxLength(20);

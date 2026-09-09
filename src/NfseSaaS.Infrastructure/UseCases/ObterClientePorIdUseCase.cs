@@ -23,7 +23,7 @@ public sealed class ObterClientePorIdUseCase : IObterClientePorIdUseCase
 
         return new ClienteResponse(
             cliente.Id, cliente.EmpresaId, cliente.CpfCnpj, cliente.Nome, cliente.Email, cliente.Telefone,
-            cliente.CodigoMunicipio, cliente.Cep, cliente.Logradouro, cliente.Numero, cliente.Bairro,
-            cliente.Ativo, cliente.CreatedAt, cliente.UpdatedAt);
+            cliente.CodigoMunicipio, cliente.Cep, cliente.Logradouro, cliente.Numero, cliente.Complemento,
+            cliente.Bairro, cliente.Uf, cliente.Ativo, cliente.CreatedAt, cliente.UpdatedAt);
     }
 }

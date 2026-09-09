@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NfseSaaS.Application.Authorization;
 using NfseSaaS.Application.UseCases.Clientes;
 
 namespace NfseSaaS.Web.Controllers.Api;
@@ -35,6 +36,7 @@ public sealed class ClientesController : ControllerBase
         _excluirCliente = excluirCliente;
     }
 
+    [Authorize(Roles = Papeis.Administrador)]
     [HttpPost]
     public async Task<IActionResult> Cadastrar([FromBody] CadastrarClienteRequest request, CancellationToken cancellationToken)
     {
@@ -63,6 +65,7 @@ public sealed class ClientesController : ControllerBase
         return Ok(cliente);
     }
 
+    [Authorize(Roles = Papeis.Administrador)]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Atualizar(Guid id, [FromBody] AtualizarClienteRequest request, CancellationToken cancellationToken)
     {
@@ -71,6 +74,7 @@ public sealed class ClientesController : ControllerBase
     }
 
     /// <summary>Soft delete (Ativo=false) — reversível via /reativar. Use quando o Cliente já tem histórico (Nfse).</summary>
+    [Authorize(Roles = Papeis.Administrador)]
     [HttpPost("{id:guid}/desativar")]
     public async Task<IActionResult> Desativar(Guid id, CancellationToken cancellationToken)
     {
@@ -78,6 +82,7 @@ public sealed class ClientesController : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Roles = Papeis.Administrador)]
     [HttpPost("{id:guid}/reativar")]
     public async Task<IActionResult> Reativar(Guid id, CancellationToken cancellationToken)
     {
@@ -86,6 +91,7 @@ public sealed class ClientesController : ControllerBase
     }
 
     /// <summary>Exclusão REAL — só funciona se o Cliente não tiver Nfse vinculada (422 caso contrário).</summary>
+    [Authorize(Roles = Papeis.Administrador)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Excluir(Guid id, CancellationToken cancellationToken)
     {

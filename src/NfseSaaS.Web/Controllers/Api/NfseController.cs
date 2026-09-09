@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NfseSaaS.Application.Authorization;
 using NfseSaaS.Application.UseCases.Nfse;
+using NfseSaaS.Application.UseCases.NfseEventos;
 using NfseSaaS.Domain.Enums;
 
 namespace NfseSaaS.Web.Controllers.Api;
@@ -14,19 +16,26 @@ public sealed class NfseController : ControllerBase
     private readonly IListarNfseUseCase _listarNfse;
     private readonly IObterNfsePorIdUseCase _obterNfsePorId;
     private readonly ICancelarNfseUseCase _cancelarNfse;
+    private readonly IListarEventosDaNfseUseCase _listarEventosDaNfse;
+    private readonly IObterSnapshotFiscalDaNfseUseCase _obterSnapshotFiscalDaNfse;
 
     public NfseController(
         IEmitirNfseUseCase emitirNfse,
         IListarNfseUseCase listarNfse,
         IObterNfsePorIdUseCase obterNfsePorId,
-        ICancelarNfseUseCase cancelarNfse)
+        ICancelarNfseUseCase cancelarNfse,
+        IListarEventosDaNfseUseCase listarEventosDaNfse,
+        IObterSnapshotFiscalDaNfseUseCase obterSnapshotFiscalDaNfse)
     {
         _emitirNfse = emitirNfse;
         _listarNfse = listarNfse;
         _obterNfsePorId = obterNfsePorId;
         _cancelarNfse = cancelarNfse;
+        _listarEventosDaNfse = listarEventosDaNfse;
+        _obterSnapshotFiscalDaNfse = obterSnapshotFiscalDaNfse;
     }
 
+    [Authorize(Roles = Papeis.PodeEmitir)]
     [HttpPost("emitir")]
     public async Task<IActionResult> Emitir([FromBody] EmitirNfseRequest request, CancellationToken cancellationToken)
     {
@@ -54,10 +63,25 @@ public sealed class NfseController : ControllerBase
         return Ok(nfse);
     }
 
+    [Authorize(Roles = Papeis.Administrador)]
     [HttpPost("{id:guid}/cancelar")]
     public async Task<IActionResult> Cancelar(Guid id, [FromBody] CancelarNfseRequest request, CancellationToken cancellationToken)
     {
         var resultado = await _cancelarNfse.ExecutarAsync(id, request, cancellationToken);
         return Ok(resultado);
+    }
+
+    [HttpGet("{id:guid}/eventos")]
+    public async Task<IActionResult> ListarEventos(Guid id, CancellationToken cancellationToken)
+    {
+        var eventos = await _listarEventosDaNfse.ExecutarAsync(id, cancellationToken);
+        return Ok(eventos);
+    }
+
+    [HttpGet("{id:guid}/snapshot-fiscal")]
+    public async Task<IActionResult> ObterSnapshotFiscal(Guid id, CancellationToken cancellationToken)
+    {
+        var snapshot = await _obterSnapshotFiscalDaNfse.ExecutarAsync(id, cancellationToken);
+        return Ok(snapshot);
     }
 }

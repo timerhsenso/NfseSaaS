@@ -68,6 +68,34 @@ public sealed class Nfse : BaseEntity, ITenantEntity
     /// </summary>
     public string? IdempotencyKey { get; set; }
 
+    /// <summary>
+    /// Valor líquido da NFS-e (tag vLiq, caminho NFSe/infNFSe/valores/vLiq
+    /// no XML retornado pela SEFIN após autorização) — extraído do XML na
+    /// emissão, nunca calculado localmente. É o único valor monetário do
+    /// bloco "valores" que é simples, estável e sempre presente
+    /// independente do regime tributário do emitente. O detalhamento
+    /// tributário completo (retenções federais, base de cálculo do
+    /// ISSQN, e os grupos de IBS/CBS da Reforma Tributária a partir de
+    /// 2026) tem uma estrutura aninhada e ainda em evolução (NT 002/004)
+    /// que não se presta a colunas fixas — fica reservado para o
+    /// snapshot fiscal em jsonb (P1), não modelado aqui como colunas
+    /// planas de ValorIss/ValorPis/etc.
+    /// </summary>
+    public decimal? ValorLiquido { get; set; }
+
+    /// <summary>
+    /// Snapshot fiscal (jsonb) do contexto de Empresa/Cliente/Servico no
+    /// momento da emissão — ver NfseSaaS.Domain.Snapshots.NfseSnapshotFiscal
+    /// pro formato exato. Complementa os campos colunares acima
+    /// (CodigoTributacaoNacional, TribIssqn etc.): aqui fica o que não
+    /// tem coluna própria (razão social, endereços, descrição do serviço
+    /// no catálogo) mas que também precisa sobreviver a uma edição
+    /// futura do cadastro sem alterar retroativamente o que esta nota
+    /// representa. Serializado/desserializado pela camada Infrastructure
+    /// (o Domain não depende de biblioteca de serialização).
+    /// </summary>
+    public string? SnapshotFiscalJson { get; set; }
+
     public NfseStatus Status { get; set; } = NfseStatus.Rascunho;
 
     /// <summary>XML da DPS gerada e assinada, enviada à SEFIN.</summary>

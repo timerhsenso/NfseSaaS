@@ -18,6 +18,7 @@ public sealed record NfseResponse(
     DateOnly DataCompetencia,
     DateTimeOffset? DataEmissao,
     decimal ValorServico,
+    decimal? ValorLiquido,
     string DescricaoServico,
     NfseStatus Status,
     string? CodigoErro,

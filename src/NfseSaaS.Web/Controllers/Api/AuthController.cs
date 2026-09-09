@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NfseSaaS.Application.Abstractions;
+using NfseSaaS.Application.Authorization;
 using NfseSaaS.Domain.Entities;
 using NfseSaaS.Infrastructure.Email;
 using NfseSaaS.Infrastructure.Identity;
@@ -17,7 +18,7 @@ public sealed record RegistrarRequest(string Email, string Senha, string RazaoSo
 
 public sealed record LoginRequest(string Email, string Senha);
 
-public sealed record ConvidarRequest(string Email);
+public sealed record ConvidarRequest(string Email, string Papel);
 
 public sealed record AceitarConviteRequest(string Email, string Token, string NovaSenha);
 
@@ -85,6 +86,10 @@ public sealed class AuthController : ControllerBase
         if (!resultado.Succeeded)
             return BadRequest(resultado.Errors.Select(e => e.Description));
 
+        // O primeiro usuário de um Tenant é sempre Administrador — não há
+        // ninguém ainda pra convidá-lo com outro papel.
+        await _userManager.AddToRoleAsync(user, Papeis.Administrador);
+
         await _signInManager.SignInAsync(user, isPersistent: false);
 
         return Ok(new { tenantId = tenant.Id, userId = user.Id });
@@ -113,12 +118,15 @@ public sealed class AuthController : ControllerBase
     /// Development), o token também volta na resposta da API — nunca
     /// deixamos o convite sem nenhuma forma de ser completado.
     /// </summary>
-    [Authorize]
+    [Authorize(Roles = Papeis.Administrador)]
     [HttpPost("convidar")]
     public async Task<IActionResult> Convidar([FromBody] ConvidarRequest request, CancellationToken cancellationToken)
     {
         if (_currentTenant.TenantId is not { } tenantId)
             return Unauthorized();
+
+        if (!Papeis.Todos.Contains(request.Papel))
+            return BadRequest(new { erro = $"Papel inválido. Valores aceitos: {string.Join(", ", Papeis.Todos)}." });
 
         var usuarioExistente = await _userManager.FindByEmailAsync(request.Email);
         if (usuarioExistente is not null)
@@ -139,6 +147,8 @@ public sealed class AuthController : ControllerBase
 
         if (!resultado.Succeeded)
             return BadRequest(resultado.Errors.Select(e => e.Description));
+
+        await _userManager.AddToRoleAsync(novoUsuario, request.Papel);
 
         var token = await _userManager.GeneratePasswordResetTokenAsync(novoUsuario);
 

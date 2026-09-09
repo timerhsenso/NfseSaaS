@@ -9,4 +9,6 @@ public sealed record AtualizarClienteRequest(
     string Cep,
     string Logradouro,
     string Numero,
-    string Bairro);
+    string? Complemento,
+    string Bairro,
+    string Uf);

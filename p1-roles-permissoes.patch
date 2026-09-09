@@ -1,0 +1,348 @@
+diff --git a/src/NfseSaaS.Application/Authorization/Papeis.cs b/src/NfseSaaS.Application/Authorization/Papeis.cs
+new file mode 100644
+index 0000000..da6ce94
+--- /dev/null
++++ b/src/NfseSaaS.Application/Authorization/Papeis.cs
+@@ -0,0 +1,35 @@
++namespace NfseSaaS.Application.Authorization;
++
++/// <summary>
++/// Papéis (roles) de usuário dentro de um Tenant. Usa os IdentityRole
++/// padrão do ASP.NET Core Identity (sem entidade própria) — só
++/// centraliza os nomes aqui pra Web/Infrastructure nunca decidirem uma
++/// string de papel cada um por conta própria.
++///
++/// Perfis conforme o levantamento original do produto:
++/// - Administrador: acesso completo, inclusive convidar usuários e
++///   cancelar Nfse.
++/// - Emissor: pode emitir Nfse, mas não cancelar nem gerenciar cadastros.
++/// - Financeiro: leitura de Nfse/AuditLog para conciliação (hoje sem
++///   permissão de escrita distinta de Consulta — evolução futura).
++/// - Consulta: só leitura.
++/// - Contador: leitura de Nfse/AuditLog para fins fiscais/contábeis
++///   (hoje sem permissão de escrita distinta de Consulta — evolução
++///   futura).
++/// </summary>
++public static class Papeis
++{
++    public const string Administrador = "Administrador";
++    public const string Emissor = "Emissor";
++    public const string Financeiro = "Financeiro";
++    public const string Consulta = "Consulta";
++    public const string Contador = "Contador";
++
++    public static readonly string[] Todos =
++    {
++        Administrador, Emissor, Financeiro, Consulta, Contador
++    };
++
++    /// <summary>Papéis autorizados a emitir Nfse — ver NfseController.Emitir.</summary>
++    public const string PodeEmitir = $"{Administrador},{Emissor}";
++}
+diff --git a/src/NfseSaaS.Infrastructure/Identity/IdentitySeeder.cs b/src/NfseSaaS.Infrastructure/Identity/IdentitySeeder.cs
+new file mode 100644
+index 0000000..41e77d8
+--- /dev/null
++++ b/src/NfseSaaS.Infrastructure/Identity/IdentitySeeder.cs
+@@ -0,0 +1,24 @@
++using Microsoft.AspNetCore.Identity;
++using NfseSaaS.Application.Authorization;
++
++namespace NfseSaaS.Infrastructure.Identity;
++
++/// <summary>
++/// Garante que os IdentityRole padrão do produto (ver Papeis) existem no
++/// banco. Roda uma vez no startup (ver Program.cs) — idempotente: só cria
++/// o que ainda não existe, seguro de rodar em todo boot da aplicação.
++/// </summary>
++public static class IdentitySeeder
++{
++    public static async Task SeedRolesAsync(IServiceProvider services)
++    {
++        using var scope = services.CreateScope();
++        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
++
++        foreach (var papel in Papeis.Todos)
++        {
++            if (!await roleManager.RoleExistsAsync(papel))
++                await roleManager.CreateAsync(new IdentityRole<Guid>(papel));
++        }
++    }
++}
+diff --git a/src/NfseSaaS.Web/Controllers/Api/AuditLogsController.cs b/src/NfseSaaS.Web/Controllers/Api/AuditLogsController.cs
+index 51866c4..861055b 100644
+--- a/src/NfseSaaS.Web/Controllers/Api/AuditLogsController.cs
++++ b/src/NfseSaaS.Web/Controllers/Api/AuditLogsController.cs
+@@ -1,5 +1,6 @@
+ using Microsoft.AspNetCore.Authorization;
+ using Microsoft.AspNetCore.Mvc;
++using NfseSaaS.Application.Authorization;
+ using NfseSaaS.Application.UseCases.AuditLogs;
+ 
+ namespace NfseSaaS.Web.Controllers.Api;
+@@ -9,10 +10,11 @@ namespace NfseSaaS.Web.Controllers.Api;
+ /// deve existir) POST/PUT/DELETE aqui. AuditLog só é escrito internamente
+ /// por IAuditLogWriter, como efeito colateral de outras operações; expor
+ /// escrita por API tornaria o log adulterável, o que anula o propósito
+-/// dele.
++/// dele. Leitura restrita a Administrador — é dado de compliance sobre
++/// TODAS as operações do Tenant, não só as do próprio usuário.
+ /// </summary>
+ [ApiController]
+-[Authorize]
++[Authorize(Roles = Papeis.Administrador)]
+ [Route("api/auditlogs")]
+ public sealed class AuditLogsController : ControllerBase
+ {
+diff --git a/src/NfseSaaS.Web/Controllers/Api/AuthController.cs b/src/NfseSaaS.Web/Controllers/Api/AuthController.cs
+index 45f289d..c368d76 100644
+--- a/src/NfseSaaS.Web/Controllers/Api/AuthController.cs
++++ b/src/NfseSaaS.Web/Controllers/Api/AuthController.cs
+@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
+ using Microsoft.Extensions.Hosting;
+ using Microsoft.Extensions.Options;
+ using NfseSaaS.Application.Abstractions;
++using NfseSaaS.Application.Authorization;
+ using NfseSaaS.Domain.Entities;
+ using NfseSaaS.Infrastructure.Email;
+ using NfseSaaS.Infrastructure.Identity;
+@@ -17,7 +18,7 @@ public sealed record RegistrarRequest(string Email, string Senha, string RazaoSo
+ 
+ public sealed record LoginRequest(string Email, string Senha);
+ 
+-public sealed record ConvidarRequest(string Email);
++public sealed record ConvidarRequest(string Email, string Papel);
+ 
+ public sealed record AceitarConviteRequest(string Email, string Token, string NovaSenha);
+ 
+@@ -85,6 +86,10 @@ public sealed class AuthController : ControllerBase
+         if (!resultado.Succeeded)
+             return BadRequest(resultado.Errors.Select(e => e.Description));
+ 
++        // O primeiro usuário de um Tenant é sempre Administrador — não há
++        // ninguém ainda pra convidá-lo com outro papel.
++        await _userManager.AddToRoleAsync(user, Papeis.Administrador);
++
+         await _signInManager.SignInAsync(user, isPersistent: false);
+ 
+         return Ok(new { tenantId = tenant.Id, userId = user.Id });
+@@ -113,13 +118,16 @@ public sealed class AuthController : ControllerBase
+     /// Development), o token também volta na resposta da API — nunca
+     /// deixamos o convite sem nenhuma forma de ser completado.
+     /// </summary>
+-    [Authorize]
++    [Authorize(Roles = Papeis.Administrador)]
+     [HttpPost("convidar")]
+     public async Task<IActionResult> Convidar([FromBody] ConvidarRequest request, CancellationToken cancellationToken)
+     {
+         if (_currentTenant.TenantId is not { } tenantId)
+             return Unauthorized();
+ 
++        if (!Papeis.Todos.Contains(request.Papel))
++            return BadRequest(new { erro = $"Papel inválido. Valores aceitos: {string.Join(", ", Papeis.Todos)}." });
++
+         var usuarioExistente = await _userManager.FindByEmailAsync(request.Email);
+         if (usuarioExistente is not null)
+             return Conflict(new { erro = "Já existe um usuário com este e-mail." });
+@@ -140,6 +148,8 @@ public sealed class AuthController : ControllerBase
+         if (!resultado.Succeeded)
+             return BadRequest(resultado.Errors.Select(e => e.Description));
+ 
++        await _userManager.AddToRoleAsync(novoUsuario, request.Papel);
++
+         var token = await _userManager.GeneratePasswordResetTokenAsync(novoUsuario);
+ 
+         var tenant = await _db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
+diff --git a/src/NfseSaaS.Web/Controllers/Api/ClientesController.cs b/src/NfseSaaS.Web/Controllers/Api/ClientesController.cs
+index 1f37251..dfdf284 100644
+--- a/src/NfseSaaS.Web/Controllers/Api/ClientesController.cs
++++ b/src/NfseSaaS.Web/Controllers/Api/ClientesController.cs
+@@ -1,5 +1,6 @@
+ using Microsoft.AspNetCore.Authorization;
+ using Microsoft.AspNetCore.Mvc;
++using NfseSaaS.Application.Authorization;
+ using NfseSaaS.Application.UseCases.Clientes;
+ 
+ namespace NfseSaaS.Web.Controllers.Api;
+@@ -35,6 +36,7 @@ public sealed class ClientesController : ControllerBase
+         _excluirCliente = excluirCliente;
+     }
+ 
++    [Authorize(Roles = Papeis.Administrador)]
+     [HttpPost]
+     public async Task<IActionResult> Cadastrar([FromBody] CadastrarClienteRequest request, CancellationToken cancellationToken)
+     {
+@@ -63,6 +65,7 @@ public sealed class ClientesController : ControllerBase
+         return Ok(cliente);
+     }
+ 
++    [Authorize(Roles = Papeis.Administrador)]
+     [HttpPut("{id:guid}")]
+     public async Task<IActionResult> Atualizar(Guid id, [FromBody] AtualizarClienteRequest request, CancellationToken cancellationToken)
+     {
+@@ -71,6 +74,7 @@ public sealed class ClientesController : ControllerBase
+     }
+ 
+     /// <summary>Soft delete (Ativo=false) — reversível via /reativar. Use quando o Cliente já tem histórico (Nfse).</summary>
++    [Authorize(Roles = Papeis.Administrador)]
+     [HttpPost("{id:guid}/desativar")]
+     public async Task<IActionResult> Desativar(Guid id, CancellationToken cancellationToken)
+     {
+@@ -78,6 +82,7 @@ public sealed class ClientesController : ControllerBase
+         return NoContent();
+     }
+ 
++    [Authorize(Roles = Papeis.Administrador)]
+     [HttpPost("{id:guid}/reativar")]
+     public async Task<IActionResult> Reativar(Guid id, CancellationToken cancellationToken)
+     {
+@@ -86,6 +91,7 @@ public sealed class ClientesController : ControllerBase
+     }
+ 
+     /// <summary>Exclusão REAL — só funciona se o Cliente não tiver Nfse vinculada (422 caso contrário).</summary>
++    [Authorize(Roles = Papeis.Administrador)]
+     [HttpDelete("{id:guid}")]
+     public async Task<IActionResult> Excluir(Guid id, CancellationToken cancellationToken)
+     {
+diff --git a/src/NfseSaaS.Web/Controllers/Api/EmpresasController.cs b/src/NfseSaaS.Web/Controllers/Api/EmpresasController.cs
+index 22c8709..c0f5073 100644
+--- a/src/NfseSaaS.Web/Controllers/Api/EmpresasController.cs
++++ b/src/NfseSaaS.Web/Controllers/Api/EmpresasController.cs
+@@ -1,5 +1,6 @@
+ using Microsoft.AspNetCore.Authorization;
+ using Microsoft.AspNetCore.Mvc;
++using NfseSaaS.Application.Authorization;
+ using NfseSaaS.Application.UseCases.Empresas;
+ 
+ namespace NfseSaaS.Web.Controllers.Api;
+@@ -35,6 +36,7 @@ public sealed class EmpresasController : ControllerBase
+         _excluirEmpresa = excluirEmpresa;
+     }
+ 
++    [Authorize(Roles = Papeis.Administrador)]
+     [HttpPost]
+     public async Task<IActionResult> Cadastrar([FromBody] CadastrarEmpresaRequest request, CancellationToken cancellationToken)
+     {
+@@ -62,6 +64,7 @@ public sealed class EmpresasController : ControllerBase
+         return Ok(empresa);
+     }
+ 
++    [Authorize(Roles = Papeis.Administrador)]
+     [HttpPut("{id:guid}")]
+     public async Task<IActionResult> Atualizar(Guid id, [FromBody] AtualizarEmpresaRequest request, CancellationToken cancellationToken)
+     {
+@@ -70,6 +73,7 @@ public sealed class EmpresasController : ControllerBase
+     }
+ 
+     /// <summary>Soft delete (Ativo=false) — reversível via /reativar. Use quando a Empresa já tem histórico.</summary>
++    [Authorize(Roles = Papeis.Administrador)]
+     [HttpPost("{id:guid}/desativar")]
+     public async Task<IActionResult> Desativar(Guid id, CancellationToken cancellationToken)
+     {
+@@ -77,6 +81,7 @@ public sealed class EmpresasController : ControllerBase
+         return NoContent();
+     }
+ 
++    [Authorize(Roles = Papeis.Administrador)]
+     [HttpPost("{id:guid}/reativar")]
+     public async Task<IActionResult> Reativar(Guid id, CancellationToken cancellationToken)
+     {
+@@ -85,6 +90,7 @@ public sealed class EmpresasController : ControllerBase
+     }
+ 
+     /// <summary>Exclusão REAL — só funciona se a Empresa não tiver Cliente, Servico nem Nfse vinculados (422 caso contrário).</summary>
++    [Authorize(Roles = Papeis.Administrador)]
+     [HttpDelete("{id:guid}")]
+     public async Task<IActionResult> Excluir(Guid id, CancellationToken cancellationToken)
+     {
+diff --git a/src/NfseSaaS.Web/Controllers/Api/NfseController.cs b/src/NfseSaaS.Web/Controllers/Api/NfseController.cs
+index 9cd8328..eabbd9c 100644
+--- a/src/NfseSaaS.Web/Controllers/Api/NfseController.cs
++++ b/src/NfseSaaS.Web/Controllers/Api/NfseController.cs
+@@ -1,5 +1,6 @@
+ using Microsoft.AspNetCore.Authorization;
+ using Microsoft.AspNetCore.Mvc;
++using NfseSaaS.Application.Authorization;
+ using NfseSaaS.Application.UseCases.Nfse;
+ using NfseSaaS.Application.UseCases.NfseEventos;
+ using NfseSaaS.Domain.Enums;
+@@ -34,6 +35,7 @@ public sealed class NfseController : ControllerBase
+         _obterSnapshotFiscalDaNfse = obterSnapshotFiscalDaNfse;
+     }
+ 
++    [Authorize(Roles = Papeis.PodeEmitir)]
+     [HttpPost("emitir")]
+     public async Task<IActionResult> Emitir([FromBody] EmitirNfseRequest request, CancellationToken cancellationToken)
+     {
+@@ -61,6 +63,7 @@ public sealed class NfseController : ControllerBase
+         return Ok(nfse);
+     }
+ 
++    [Authorize(Roles = Papeis.Administrador)]
+     [HttpPost("{id:guid}/cancelar")]
+     public async Task<IActionResult> Cancelar(Guid id, [FromBody] CancelarNfseRequest request, CancellationToken cancellationToken)
+     {
+diff --git a/src/NfseSaaS.Web/Controllers/Api/ServicosController.cs b/src/NfseSaaS.Web/Controllers/Api/ServicosController.cs
+index 0cfc1a1..d8cb95f 100644
+--- a/src/NfseSaaS.Web/Controllers/Api/ServicosController.cs
++++ b/src/NfseSaaS.Web/Controllers/Api/ServicosController.cs
+@@ -1,5 +1,6 @@
+ using Microsoft.AspNetCore.Authorization;
+ using Microsoft.AspNetCore.Mvc;
++using NfseSaaS.Application.Authorization;
+ using NfseSaaS.Application.UseCases.Servicos;
+ 
+ namespace NfseSaaS.Web.Controllers.Api;
+@@ -35,6 +36,7 @@ public sealed class ServicosController : ControllerBase
+         _excluirServico = excluirServico;
+     }
+ 
++    [Authorize(Roles = Papeis.Administrador)]
+     [HttpPost]
+     public async Task<IActionResult> Cadastrar([FromBody] CadastrarServicoRequest request, CancellationToken cancellationToken)
+     {
+@@ -63,6 +65,7 @@ public sealed class ServicosController : ControllerBase
+         return Ok(servico);
+     }
+ 
++    [Authorize(Roles = Papeis.Administrador)]
+     [HttpPut("{id:guid}")]
+     public async Task<IActionResult> Atualizar(Guid id, [FromBody] AtualizarServicoRequest request, CancellationToken cancellationToken)
+     {
+@@ -71,6 +74,7 @@ public sealed class ServicosController : ControllerBase
+     }
+ 
+     /// <summary>Soft delete (Ativo=false) — reversível via /reativar.</summary>
++    [Authorize(Roles = Papeis.Administrador)]
+     [HttpPost("{id:guid}/desativar")]
+     public async Task<IActionResult> Desativar(Guid id, CancellationToken cancellationToken)
+     {
+@@ -78,6 +82,7 @@ public sealed class ServicosController : ControllerBase
+         return NoContent();
+     }
+ 
++    [Authorize(Roles = Papeis.Administrador)]
+     [HttpPost("{id:guid}/reativar")]
+     public async Task<IActionResult> Reativar(Guid id, CancellationToken cancellationToken)
+     {
+@@ -86,6 +91,7 @@ public sealed class ServicosController : ControllerBase
+     }
+ 
+     /// <summary>Exclusão REAL — sempre permitida (Nfse não referencia ServicoId, ver ExcluirServicoUseCase).</summary>
++    [Authorize(Roles = Papeis.Administrador)]
+     [HttpDelete("{id:guid}")]
+     public async Task<IActionResult> Excluir(Guid id, CancellationToken cancellationToken)
+     {
+diff --git a/src/NfseSaaS.Web/Program.cs b/src/NfseSaaS.Web/Program.cs
+index b0eaacf..1eadaea 100644
+--- a/src/NfseSaaS.Web/Program.cs
++++ b/src/NfseSaaS.Web/Program.cs
+@@ -46,6 +46,8 @@ try
+ 
+     var app = builder.Build();
+ 
++    await NfseSaaS.Infrastructure.Identity.IdentitySeeder.SeedRolesAsync(app.Services);
++
+     app.UseMiddleware<CorrelationIdMiddleware>();
+     app.UseMiddleware<ExceptionHandlingMiddleware>();
+ 

@@ -11,7 +11,9 @@ public sealed record ClienteResponse(
     string Cep,
     string Logradouro,
     string Numero,
+    string? Complemento,
     string Bairro,
+    string Uf,
     bool Ativo,
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt);

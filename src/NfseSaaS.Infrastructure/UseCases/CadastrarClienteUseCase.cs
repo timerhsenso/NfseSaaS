@@ -41,7 +41,9 @@ public sealed class CadastrarClienteUseCase : ICadastrarClienteUseCase
             Cep = request.Cep,
             Logradouro = request.Logradouro,
             Numero = request.Numero,
-            Bairro = request.Bairro
+            Complemento = request.Complemento,
+            Bairro = request.Bairro,
+            Uf = request.Uf
         };
 
         _db.Clientes.Add(cliente);
