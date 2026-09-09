@@ -1,9 +1,64 @@
 @{
-    ViewData["Title"] = "NfseSaaS";
+    ViewData["Title"] = "Dashboard";
 }
 
-<div class="text-center py-5">
-    <h1 class="display-6">NfseSaaS</h1>
-    <p class="lead">Fundação da Fase 1 em pé. Emissão real de NFS-e chega na Fase 2.</p>
-    <p><a class="btn btn-outline-primary" href="/health">Ver /health</a></p>
+<div class="stats">
+    <a href="/Empresas" class="stat">
+        <div class="stat-top">
+            <span class="stat-label">Empresas ativas</span>
+            <div class="stat-icon"><i class="bi bi-building"></i></div>
+        </div>
+        <strong id="contagem-empresas">-</strong>
+        <small>Ver empresas cadastradas</small>
+    </a>
+    <a href="/Clientes" class="stat">
+        <div class="stat-top">
+            <span class="stat-label">Clientes ativos</span>
+            <div class="stat-icon"><i class="bi bi-people"></i></div>
+        </div>
+        <strong id="contagem-clientes">—</strong>
+        <small>Escopado por Empresa</small>
+    </a>
+    <a href="/Servicos" class="stat">
+        <div class="stat-top">
+            <span class="stat-label">Serviços cadastrados</span>
+            <div class="stat-icon"><i class="bi bi-list-check"></i></div>
+        </div>
+        <strong id="contagem-servicos">—</strong>
+        <small>Escopado por Empresa</small>
+    </a>
+    <a href="/Nfse" class="stat">
+        <div class="stat-top">
+            <span class="stat-label">Notas fiscais emitidas</span>
+            <div class="stat-icon"><i class="bi bi-file-earmark-text"></i></div>
+        </div>
+        <strong id="contagem-nfse">-</strong>
+        <small>Ver notas fiscais</small>
+    </a>
 </div>
+
+@section Scripts {
+    <script>
+        // Empresas e Nfse são listados por Tenant inteiro — cada widget só
+        // precisa do totalCount da própria listagem paginada (pageSize=1
+        // pra não trazer dados desnecessários).
+        //
+        // Clientes/Serviços NÃO têm contagem global aqui de propósito: a
+        // API de listagem deles exige empresaId (são escopados por
+        // Empresa, não por Tenant inteiro — um Tenant pode ter várias
+        // Empresas). Somar isso corretamente exigiria buscar a lista de
+        // Empresas primeiro e agregar uma chamada por Empresa; não faz
+        // sentido nesse widget de resumo por agora.
+        async function carregarContagem(url, elementId) {
+            try {
+                const resultado = await apiFetch(url);
+                document.getElementById(elementId).textContent = resultado?.totalCount ?? '0';
+            } catch (err) {
+                document.getElementById(elementId).textContent = '—';
+            }
+        }
+
+        carregarContagem('/api/empresas?pageSize=1', 'contagem-empresas');
+        carregarContagem('/api/nfse?pageSize=1', 'contagem-nfse');
+    </script>
+}

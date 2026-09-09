@@ -1,0 +1,813 @@
+diff --git a/src/NfseSaaS.Infrastructure/Danfse/CodigosNfse.cs b/src/NfseSaaS.Infrastructure/Danfse/CodigosNfse.cs
+new file mode 100644
+index 0000000..ab92958
+--- /dev/null
++++ b/src/NfseSaaS.Infrastructure/Danfse/CodigosNfse.cs
+@@ -0,0 +1,109 @@
++namespace NfseSaaS.Infrastructure.Danfse;
++
++/// <summary>
++/// A NT 008/2026 exige que campos codificados (opSimpNac, tribISSQN etc.)
++/// sejam impressos por EXTENSO ("Utilizar a descrição destas opções"), não
++/// pelo código numérico crú. As descrições abaixo seguem a nomenclatura
++/// já usada nos manuais/leiaute da NFS-e Nacional — ainda assim, ESTA É
++/// A PARTE DESTE ARQUIVO MAIS SUJEITA A REVISÃO: o texto exato de cada
++/// enumeração está definido no XSD/dicionário de dados oficial da NFS-e
++/// Nacional, que não foi lido campo a campo na implementação deste
++/// gerador. Antes de usar em produção, confira as descrições abaixo
++/// contra a Documentação Técnica (Portal da NFS-e Nacional) — ver
++/// comentário completo em <see cref="DanfsePdfGenerator"/>.
++/// </summary>
++internal static class CodigosNfse
++{
++    public static string DescricaoOpSimpNac(string? codigo) => codigo switch
++    {
++        "1" => "Não Optante",
++        "2" => "Optante - Microempreendedor Individual (MEI)",
++        "3" => "Optante - Simples Nacional",
++        _ => "-"
++    };
++
++    public static string DescricaoRegApTribSN(string? codigo) => codigo switch
++    {
++        "1" => "Regime de apuração dos tributos federais e municipal pelo Simples Nacional",
++        "2" => "Regime de apuração dos tributos federais pelo Simples Nacional e municipal fora do Simples Nacional",
++        "3" => "Regime de apuração dos tributos federais e municipal fora do Simples Nacional",
++        _ => "-"
++    };
++
++    public static string DescricaoRegEspTrib(string? codigo) => codigo switch
++    {
++        "0" => "Nenhum",
++        "1" => "Estimativa",
++        "2" => "Sociedade de Profissionais",
++        "3" => "Cooperativa",
++        "4" => "Microempresário Individual (MEI)",
++        "5" => "Microempresário e Empresa de Pequeno Porte (ME/EPP)",
++        "6" => "Profissional Autônomo",
++        "9" => "Outros",
++        _ => "-"
++    };
++
++    public static string DescricaoTribIssqn(string? codigo) => codigo switch
++    {
++        "1" => "Operação Tributável",
++        "2" => "Imune",
++        "3" => "Exportação de Serviço",
++        "4" => "Não Incidência",
++        _ => "-"
++    };
++
++    public static string DescricaoTpRetIssqn(string? codigo) => codigo switch
++    {
++        "1" => "Não Retido",
++        "2" => "Retido pelo Tomador",
++        "3" => "Retido pelo Intermediário",
++        _ => "-"
++    };
++
++    public static string DescricaoTpRetPisCofins(string? codigo) => codigo switch
++    {
++        "1" => "PIS/COFINS/CSLL Não Retido",
++        "2" => "PIS/COFINS/CSLL Retido",
++        _ => "-"
++    };
++
++    public static string DescricaoTpEmit(string? codigo) => codigo switch
++    {
++        "1" => "Prestador",
++        "2" => "Tomador",
++        "3" => "Intermediário",
++        _ => "-"
++    };
++
++    /// <summary>cStat — situação da NFS-e. Descrição truncada em 37 caracteres, conforme item 2.4.5.</summary>
++    public static string DescricaoCStat(string? codigo)
++    {
++        var descricao = codigo switch
++        {
++            "100" => "NFS-e Autorizada",
++            "101" => "NFS-e Cancelada",
++            "102" => "NFS-e Substituída",
++            _ => codigo ?? "-"
++        };
++        return Truncar(descricao, 37);
++    }
++
++    public static string DescricaoFinNfse(string? codigo)
++    {
++        var descricao = codigo switch
++        {
++            "0" => "NFS-e regular",
++            "1" => "NFS-e de ajuste",
++            _ => "NFS-e regular"
++        };
++        return Truncar(descricao, 37);
++    }
++
++    public static string Truncar(string? valor, int tamanhoMaximo)
++    {
++        if (string.IsNullOrEmpty(valor))
++            return "-";
++
++        return valor.Length > tamanhoMaximo ? valor[..tamanhoMaximo] + "..." : valor;
++    }
++}
+diff --git a/src/NfseSaaS.Infrastructure/Danfse/DanfseDocument.cs b/src/NfseSaaS.Infrastructure/Danfse/DanfseDocument.cs
+new file mode 100644
+index 0000000..d146583
+--- /dev/null
++++ b/src/NfseSaaS.Infrastructure/Danfse/DanfseDocument.cs
+@@ -0,0 +1,327 @@
++using QRCoder;
++using QuestPDF.Fluent;
++using QuestPDF.Helpers;
++using QuestPDF.Infrastructure;
++
++namespace NfseSaaS.Infrastructure.Danfse;
++
++/// <summary>
++/// Layout do DANFSe v2.0 conforme NT 008/2026 (item 2.2 a 2.5).
++///
++/// LIMITAÇÃO DELIBERADA E DOCUMENTADA: a NT 008 especifica coordenadas
++/// absolutas (X/Y/altura/largura em cm) pra cada campo — um layout de
++/// posicionamento fixo. Este documento usa o DSL de FLUXO do QuestPDF
++/// (Column/Row, não Canvas com coordenadas absolutas), na MESMA ordem,
++/// coloca os MESMOS blocos, títulos e tamanhos de fonte da nota técnica,
++/// mas não reproduz o posicionamento milimétrico exato de cada campo.
++/// Ou seja: fidelidade de CONTEÚDO e ESTRUTURA, não fidelidade
++/// pixel-a-pixel de coordenada. Se isso vier a ser auditado/certificado
++/// contra o Anexo I literal, vai precisar de ajuste posicional fino
++/// (Canvas do QuestPDF, ou outra biblioteca com posicionamento absoluto).
++///
++/// Cabeçalho, QR Code, blocos de identificação/prestador/tomador/serviço/
++/// tributação/valores — todos presentes, nesta ordem, com sombreamento
++/// nos campos exigidos (item 2.2.3) e marca d'água de cancelamento/
++/// homologação (itens 2.4.3 e 2.5.1).
++/// </summary>
++internal sealed class DanfseDocument : IDocument
++{
++    private const string CorSombreamento = "#F2F2F2"; // cinza claro 5%, item 2.2.3
++
++    private readonly DanfseXmlDados _d;
++    private readonly bool _cancelada;
++    private readonly string? _caminhoLogo;
++
++    public DanfseDocument(DanfseXmlDados dados, bool cancelada, string? caminhoLogo)
++    {
++        _d = dados;
++        _cancelada = cancelada;
++        _caminhoLogo = caminhoLogo;
++    }
++
++    public DocumentMetadata GetMetadata() => DocumentMetadata.Default;
++    public DocumentSettings GetSettings() => DocumentSettings.Default;
++
++    public void Compose(IDocumentContainer container)
++    {
++        container.Page(page =>
++        {
++            page.Size(PageSizes.A4);
++            page.Margin(0.4f, Unit.Centimetre);
++            page.DefaultTextStyle(x => x.FontFamily("Arial").FontSize(7));
++
++            page.Content().Column(coluna =>
++            {
++                coluna.Item().Element(Cabecalho);
++                coluna.Item().PaddingTop(4).Element(DadosIdentificacao);
++                coluna.Item().PaddingTop(4).Element(BlocoPrestador);
++                coluna.Item().PaddingTop(4).Element(BlocoTomador);
++                coluna.Item().PaddingTop(4).Element(BlocoDestinatario);
++                coluna.Item().PaddingTop(4).Element(BlocoServico);
++                coluna.Item().PaddingTop(4).Element(BlocoIssqn);
++                coluna.Item().PaddingTop(4).Element(BlocoFederal);
++                coluna.Item().PaddingTop(4).Element(BlocoValorTotal);
++                coluna.Item().PaddingTop(4).Element(BlocoInformacoesComplementares);
++                coluna.Item().PaddingTop(4).Element(Canhoto);
++            });
++
++            if (_cancelada)
++                page.Foreground().AlignCenter().AlignMiddle().Rotate(-30)
++                    .Text("CANCELADA").FontSize(50).FontColor(Colors.Grey.Medium).Bold();
++        });
++    }
++
++    private void Cabecalho(IContainer container)
++    {
++        container.Border(1).Padding(4).Row(row =>
++        {
++            row.ConstantItem(120).AlignMiddle().Element(c =>
++            {
++                if (_caminhoLogo is not null && File.Exists(_caminhoLogo))
++                    c.Image(_caminhoLogo).FitArea();
++                else
++                    c.Text("NFS-e").Bold().FontSize(14);
++            });
++
++            row.RelativeItem().AlignCenter().AlignMiddle().Column(col =>
++            {
++                col.Item().AlignCenter().Text("DANFSe v2.0").Bold().FontSize(9).FontFamily("Arial");
++                col.Item().AlignCenter().Text("Documento Auxiliar da NFS-e").Bold().FontSize(9).FontFamily("Arial");
++                if (_d.AmbienteDeHomologacao())
++                    col.Item().AlignCenter().Text("NFS-e SEM VALIDADE JURÍDICA").Bold().FontSize(9).FontColor(Colors.Red.Medium);
++            });
++
++            row.ConstantItem(140).AlignMiddle().Column(col =>
++            {
++                col.Item().AlignRight().Text(_d.MunicipioEmitenteUf()).FontSize(8).FontFamily("Microsoft Sans Serif");
++                col.Item().AlignRight().Text(_d.AmbienteGerador()).FontSize(6).FontFamily("Microsoft Sans Serif");
++            });
++
++            row.ConstantItem(70).AlignMiddle().AlignCenter().Element(GerarQrCode);
++        });
++    }
++
++    private void GerarQrCode(IContainer container)
++    {
++        var url = $"https://www.nfse.gov.br/ConsultaPublica/?tpc=1&chave={_d.ChaveAcesso()}";
++        using var qrGenerator = new QRCodeGenerator();
++        using var qrCodeData = qrGenerator.CreateQrCode(url, QRCodeGenerator.ECCLevel.M);
++        var pngBytes = new PngByteQRCode(qrCodeData).GetGraphic(6);
++
++        container.Column(col =>
++        {
++            col.Item().Height(55).Width(55).Image(pngBytes).FitArea();
++            col.Item().PaddingTop(2).Text(
++                "A autenticidade desta NFS-e pode ser verificada pela leitura deste código QR ou pela consulta da chave de acesso no portal nacional da NFS-e")
++                .FontSize(5).FontFamily("Microsoft Sans Serif");
++        });
++    }
++
++    private void DadosIdentificacao(IContainer container)
++    {
++        BlocoComTitulo(container, "DADOS DA NFS-e", corpo =>
++        {
++            LinhaCampos(corpo, ("Chave de Acesso da NFS-e", _d.ChaveAcesso()));
++            LinhaCampos(corpo,
++                ("Número da NFS-e", _d.NumeroNfse()),
++                ("Competência da NFS-e", _d.Competencia()),
++                ("Data e Hora da Emissão da NFS-e", _d.DataHoraProcessamento()));
++            LinhaCampos(corpo,
++                ("Número da DPS", _d.NumeroDps()),
++                ("Série da DPS", _d.SerieDps()),
++                ("Data e Hora da Emissão da DPS", _d.DataHoraEmissaoDps()));
++            LinhaCampos(corpo,
++                ("Emitente da NFS-e", _d.TipoEmitente()),
++                ("Situação da NFS-e", _d.Situacao()),
++                ("Finalidade", _d.Finalidade()));
++        });
++    }
++
++    private void BlocoPrestador(IContainer container)
++    {
++        BlocoComTitulo(container, "PRESTADOR / FORNECEDOR", corpo =>
++        {
++            LinhaCampos(corpo,
++                ("CNPJ / CPF / NIF", _d.PrestadorDocumento()),
++                ("Indicador Municipal (Inscrição)", _d.PrestadorInscricaoMunicipal()),
++                ("Telefone", _d.PrestadorTelefone()));
++            LinhaCampos(corpo,
++                ("Nome / Nome Empresarial", _d.PrestadorNome()),
++                ("Município / Sigla UF", _d.PrestadorMunicipioUf()));
++            LinhaCampos(corpo,
++                ("Endereço", _d.PrestadorEndereco()),
++                ("Email", _d.PrestadorEmail()));
++            LinhaCampos(corpo,
++                ("Simples Nacional na Data de Competência", _d.PrestadorOpSimpNac()),
++                ("Regime de Apuração Tributária pelo SN", _d.PrestadorRegApTribSN()));
++        });
++    }
++
++    private void BlocoTomador(IContainer container)
++    {
++        BlocoComTitulo(container, "TOMADOR / ADQUIRENTE", corpo =>
++        {
++            // Nota 2 da NT 008: bloco pode ser suprimido, informando só a frase abaixo.
++            if (!_d.TomadorExiste())
++            {
++                corpo.Item().Text("TOMADOR/ADQUIRENTE DA OPERAÇÃO NÃO IDENTIFICADO NA NFS-e").FontSize(7);
++                return;
++            }
++
++            LinhaCampos(corpo,
++                ("CNPJ / CPF / NIF", _d.TomadorDocumento()),
++                ("Indicador Municipal (Inscrição)", _d.TomadorInscricaoMunicipal()),
++                ("Telefone", _d.TomadorTelefone()));
++            LinhaCampos(corpo,
++                ("Nome / Nome Empresarial", _d.TomadorNome()),
++                ("Município / Sigla UF", _d.TomadorMunicipioUf()));
++            LinhaCampos(corpo,
++                ("Endereço", _d.TomadorEndereco()),
++                ("E-mail", _d.TomadorEmail()));
++        });
++    }
++
++    /// <summary>
++    /// Este SaaS não coleta um "destinatário da operação" distinto do
++    /// tomador — não há esse conceito na tela de emissão. Nota 3 da NT 008
++    /// cobre exatamente esse caso: informar a frase padrão em vez de
++    /// duplicar os dados do tomador.
++    /// </summary>
++    private void BlocoDestinatario(IContainer container)
++    {
++        BlocoComTitulo(container, "DESTINATÁRIO DA OPERAÇÃO", corpo =>
++            corpo.Item().Text("O DESTINATÁRIO É O PRÓPRIO TOMADOR/ADQUIRENTE DA OPERAÇÃO").FontSize(7));
++    }
++
++    private void BlocoServico(IContainer container)
++    {
++        BlocoComTitulo(container, "SERVIÇO PRESTADO", corpo =>
++        {
++            LinhaCampos(corpo,
++                ("Código de Tributação Nacional / Municipal", _d.CodigoTributacaoNacionalMunicipal()),
++                ("Código da NBS", _d.CodigoNbs()),
++                ("Local da Prestação / Sigla UF / País", _d.LocalPrestacao()));
++            corpo.Item().Text(_d.DescricaoTribNacionalMunicipal()).FontSize(7);
++            corpo.Item().PaddingTop(2).Column(col =>
++            {
++                col.Item().Text("Descrição do Serviço").FontSize(6).Bold();
++                col.Item().Text(_d.DescricaoServico()).FontSize(7);
++            });
++        });
++    }
++
++    private void BlocoIssqn(IContainer container)
++    {
++        BlocoComTitulo(container, "TRIBUTAÇÃO MUNICIPAL (ISSQN)", corpo =>
++        {
++            // Nota 4 da NT 008: operação não sujeita ao ISSQN.
++            if (!_d.IssqnAplicavel())
++            {
++                corpo.Item().Text("TRIBUTAÇÃO MUNICIPAL (ISSQN) - OPERAÇÃO NÃO SUJEITA AO ISSQN").FontSize(7);
++                return;
++            }
++
++            LinhaCampos(corpo,
++                ("Tipo de Tributação do ISSQN", _d.TipoTributacaoIssqn()),
++                ("Município / Sigla UF / País da Incidência do ISSQN", _d.MunicipioIncidenciaIssqn()));
++            LinhaCampos(corpo,
++                ("BC ISSQN", _d.BaseCalculoIssqn()),
++                ("Alíquota Aplicada", _d.AliquotaIssqn()),
++                ("Retenção do ISSQN", _d.RetencaoIssqn()),
++                ("ISSQN Apurado", _d.IssqnApurado()));
++        });
++    }
++
++    private void BlocoFederal(IContainer container)
++    {
++        // Bloco de tributação IBS/CBS deliberadamente OMITIDO — ver
++        // Nota 6 da NT 008: a linha de tributação federal (exceto CBS)
++        // abaixo se aplica a NFS-e emitidas até o fim do ano-calendário
++        // de 2026, e este projeto/DPS ainda não coleta os campos do
++        // grupo IBSCBS (Reforma Tributária). Reavaliar quando esse
++        // grupo passar a ser preenchido na emissão.
++        BlocoComTitulo(container, "TRIBUTAÇÃO FEDERAL (EXCETO CBS)", corpo =>
++        {
++            LinhaCampos(corpo,
++                ("IRRF", _d.Irrf()),
++                ("Contribuição Previdenciária - Retida", _d.ContribuicaoPrevidenciariaRetida()),
++                ("Contribuições Sociais - Retidas", _d.ContribuicoesSociaisRetidas()));
++            LinhaCampos(corpo,
++                ("PIS - Débito Apuração Própria", _d.PisDebitoApuracaoPropria()),
++                ("COFINS - Débito Apuração Própria", _d.CofinsDebitoApuracaoPropria()),
++                ("Descrição Contrib. Sociais - Retidas", _d.DescricaoContribSociaisRetidas()));
++        });
++    }
++
++    private void BlocoValorTotal(IContainer container)
++    {
++        container.Border(1).Padding(3).Background(CorSombreamento).Row(row =>
++        {
++            void Campo(string rotulo, string valor) => row.RelativeItem().Column(col =>
++            {
++                col.Item().Text(rotulo).FontSize(6).Bold();
++                col.Item().Text(valor).FontSize(7);
++            });
++
++            Campo("Valor da Operação / Serviço", _d.ValorOperacaoServico());
++            Campo("Desconto Incondicionado", _d.DescontoIncondicionado());
++            Campo("Desconto Condicionado", _d.DescontoCondicionado());
++            Campo("Total das Retenções (ISSQN / Federais)", _d.TotalRetencoes());
++            Campo("Valor Líquido da NFS-e", _d.ValorLiquido());
++        });
++    }
++
++    private void BlocoInformacoesComplementares(IContainer container)
++    {
++        BlocoComTitulo(container, "INFORMAÇÕES COMPLEMENTARES", corpo =>
++        {
++            var partes = new List<string>();
++
++            if (!string.IsNullOrWhiteSpace(_d.ChaveNfseSubstituida()))
++                partes.Add($"NFS-e Subst.: {_d.ChaveNfseSubstituida()}");
++
++            // Totais Aproximados dos Tributos é obrigatório (nota 10).
++            partes.Add(_d.TotaisAproximadosTributos());
++
++            corpo.Item().Text(string.Join(" | ", partes)).FontSize(7);
++        });
++    }
++
++    private void Canhoto(IContainer container)
++    {
++        BlocoComTitulo(container, "CANHOTO", corpo =>
++        {
++            LinhaCampos(corpo,
++                ("Data Cientificação", "-"),
++                ("Identificação e Assinatura", "-"),
++                ("Nº NFS-e / Chave NFS-e", $"{_d.NumeroNfse()} / {_d.ChaveAcesso()}"));
++        });
++    }
++
++    // ---- Helpers de layout ----
++
++    private static void BlocoComTitulo(IContainer container, string titulo, Action<ColumnDescriptor> corpo)
++    {
++        container.Border(1).Column(col =>
++        {
++            col.Item().Background(CorSombreamento).Padding(2)
++                .Text(titulo).Bold().FontSize(7);
++            col.Item().Padding(3).Column(corpo);
++        });
++    }
++
++    private static void LinhaCampos(ColumnDescriptor coluna, params (string Rotulo, string Valor)[] campos)
++    {
++        coluna.Item().PaddingBottom(2).Row(row =>
++        {
++            foreach (var (rotulo, valor) in campos)
++            {
++                row.RelativeItem().Column(col =>
++                {
++                    col.Item().Text(rotulo).FontSize(6).Bold().FontColor(Colors.Grey.Darken1);
++                    col.Item().Text(valor).FontSize(7).FontFamily("Microsoft Sans Serif");
++                });
++            }
++        });
++    }
++}
+diff --git a/src/NfseSaaS.Infrastructure/Danfse/DanfsePdfGenerator.cs b/src/NfseSaaS.Infrastructure/Danfse/DanfsePdfGenerator.cs
+new file mode 100644
+index 0000000..c1cd3c9
+--- /dev/null
++++ b/src/NfseSaaS.Infrastructure/Danfse/DanfsePdfGenerator.cs
+@@ -0,0 +1,19 @@
++using QuestPDF.Fluent;
++
++namespace NfseSaaS.Infrastructure.Danfse;
++
++/// <summary>
++/// Gera o DANFSe (PDF) localmente a partir do XML da NFS-e já autorizada
++/// — substitui a antiga API de geração de PDF da SEFIN Nacional,
++/// descontinuada em 03/08/2026 (NT 008/2026). Ver DanfseDocument pro
++/// layout e suas limitações documentadas.
++/// </summary>
++public static class DanfsePdfGenerator
++{
++    public static byte[] Gerar(string xmlNfse, bool cancelada, string? caminhoLogo = null)
++    {
++        var dados = new DanfseXmlDados(xmlNfse);
++        var documento = new DanfseDocument(dados, cancelada, caminhoLogo);
++        return documento.GeneratePdf();
++    }
++}
+diff --git a/src/NfseSaaS.Infrastructure/Danfse/DanfseXmlDados.cs b/src/NfseSaaS.Infrastructure/Danfse/DanfseXmlDados.cs
+new file mode 100644
+index 0000000..8fc3915
+--- /dev/null
++++ b/src/NfseSaaS.Infrastructure/Danfse/DanfseXmlDados.cs
+@@ -0,0 +1,211 @@
++using System.Globalization;
++using System.Xml;
++
++namespace NfseSaaS.Infrastructure.Danfse;
++
++/// <summary>
++/// Lê o XML da NFS-e autorizada e extrai, campo a campo, exatamente os
++/// caminhos exigidos pela NT 008/2026 (item 2.4.5). Nunca lança por nó
++/// ausente — DANFSe é gerado só a partir do que existe no XML (item 2.1:
++/// "Não poderão ser impressas informações que não constem do arquivo da
++/// NFS-e"), então ausência de nó é "campo vazio", não erro.
++/// </summary>
++internal sealed class DanfseXmlDados
++{
++    private const string Ns = "http://www.sped.fazenda.gov.br/nfse";
++    private readonly XmlDocument _doc;
++    private readonly XmlNamespaceManager _ns;
++
++    public DanfseXmlDados(string xmlNfse)
++    {
++        _doc = new XmlDocument();
++        _doc.LoadXml(xmlNfse);
++        _ns = new XmlNamespaceManager(_doc.NameTable);
++        _ns.AddNamespace("n", Ns);
++    }
++
++    private string? Texto(string caminho) => _doc.SelectSingleNode(caminho, _ns)?.InnerText;
++
++    private bool Existe(string caminho) => _doc.SelectSingleNode(caminho, _ns) is not null;
++
++    // ---- Cabeçalho / identificação do documento ----
++
++    /// <summary>Chave de acesso SEM o prefixo "NFS" (item 2.1.1 / nota do item 2.4.5: "Informar o id da NFS-e sem o prefixo 'NFS'").</summary>
++    public string ChaveAcesso()
++    {
++        var id = Texto("//n:NFSe/n:infNFSe/@Id") ?? Texto("//n:NFSe/n:infNFSe/n:id") ?? string.Empty;
++        return id.StartsWith("NFS", StringComparison.OrdinalIgnoreCase) ? id[3..] : id;
++    }
++
++    public string MunicipioEmitenteUf() => Texto("//n:NFSe/n:infNFSe/n:xLocEmi") ?? "-";
++
++    public string AmbienteGerador() => Texto("//n:NFSe/n:infNFSe/n:ambGer") switch
++    {
++        "1" => "Prefeitura Municipal",
++        "2" => "Sistema Nacional (ADN)",
++        _ => "-"
++    };
++
++    /// <summary>tpAmb=2 (Homologação) ⇒ exibir "NFS-e SEM VALIDADE JURÍDICA" no cabeçalho (item 2.4.3).</summary>
++    public bool AmbienteDeHomologacao() =>
++        Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:tpAmb") == "2";
++
++    public string NumeroNfse() => Texto("//n:NFSe/n:infNFSe/n:nNFSe") ?? "-";
++
++    public string DataHoraProcessamento() => FormatarDataHora(Texto("//n:NFSe/n:infNFSe/n:dhProc"));
++
++    public string Competencia() => FormatarData(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:dCompet"));
++
++    public string NumeroDps() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:nDPS") ?? "-";
++
++    public string SerieDps() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:serie") ?? "-";
++
++    public string DataHoraEmissaoDps() => FormatarDataHora(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:dhEmi"));
++
++    public string TipoEmitente() => CodigosNfse.DescricaoTpEmit(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:tpEmit"));
++
++    public string Situacao() => CodigosNfse.DescricaoCStat(Texto("//n:NFSe/n:infNFSe/n:cStat"));
++
++    public string Finalidade() => CodigosNfse.DescricaoFinNfse(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:IBSCBS/n:finNFSe"));
++
++    // ---- Prestador ----
++
++    public string PrestadorDocumento() => FormatarDocumento(
++        Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:prest/n:CNPJ"),
++        Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:prest/n:CPF"),
++        Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:prest/n:NIF"));
++
++    public string PrestadorInscricaoMunicipal() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:prest/n:IM") ?? "-";
++    public string PrestadorTelefone() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:prest/n:fone") ?? "-";
++    public string PrestadorNome() => CodigosNfse.Truncar(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:prest/n:xNome"), 77);
++    public string PrestadorMunicipioUf() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:prest/n:end/n:endNac/n:cMun") ?? "-";
++    public string PrestadorCodigoIbgeCep() => $"{Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:prest/n:end/n:endNac/n:cMun") ?? "-"} / {Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:prest/n:end/n:endNac/n:CEP") ?? "-"}";
++    public string PrestadorEndereco() => CodigosNfse.Truncar(ConcatenarEndereco("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:prest/n:end"), 77);
++    public string PrestadorEmail() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:prest/n:email") ?? "-";
++    public string PrestadorOpSimpNac() => CodigosNfse.DescricaoOpSimpNac(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:prest/n:regTrib/n:opSimpNac"));
++    public string PrestadorRegApTribSN() => CodigosNfse.DescricaoRegApTribSN(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:prest/n:regTrib/n:regApTribSN"));
++    public string PrestadorRegEspTrib() => CodigosNfse.DescricaoRegEspTrib(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:prest/n:regTrib/n:regEspTrib"));
++
++    // ---- Tomador (Nota 2: bloco pode não existir) ----
++
++    public bool TomadorExiste() => Existe("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:toma");
++    public string TomadorDocumento() => FormatarDocumento(
++        Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:toma/n:CNPJ"),
++        Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:toma/n:CPF"),
++        Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:toma/n:NIF"));
++    public string TomadorInscricaoMunicipal() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:toma/n:IM") ?? "-";
++    public string TomadorTelefone() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:toma/n:fone") ?? "-";
++    public string TomadorNome() => CodigosNfse.Truncar(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:toma/n:xNome"), 77);
++    public string TomadorMunicipioUf() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:toma/n:end/n:endNac/n:cMun") ?? "-";
++    public string TomadorCodigoIbgeCep() => $"{Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:toma/n:end/n:endNac/n:cMun") ?? "-"} / {Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:toma/n:end/n:endNac/n:CEP") ?? "-"}";
++    public string TomadorEndereco() => CodigosNfse.Truncar(ConcatenarEndereco("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:toma/n:end"), 77);
++    public string TomadorEmail() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:toma/n:email") ?? "-";
++
++    // ---- Serviço prestado ----
++
++    public string CodigoTributacaoNacionalMunicipal()
++    {
++        var nacional = Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:serv/n:cServ/n:cTribNac") ?? "-";
++        var municipal = Texto("//n:NFSe/n:infNFSe/n:cTribMun");
++        return string.IsNullOrWhiteSpace(municipal) ? nacional : $"{nacional} / {municipal}";
++    }
++
++    public string CodigoNbs() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:serv/n:cServ/n:cNBS") ?? "-";
++
++    public string LocalPrestacao()
++    {
++        var municipio = Texto("//n:NFSe/n:infNFSe/n:xLocPrestacao");
++        var pais = Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:serv/n:locPrest/n:cPaisPrestacao");
++        return CodigosNfse.Truncar($"{municipio ?? "-"} / {pais ?? "BR"}", 42);
++    }
++
++    public string DescricaoTribNacionalMunicipal()
++    {
++        var municipal = Texto("//n:NFSe/n:infNFSe/n:xTribMun");
++        var nacional = Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:serv/n:cServ/n:xTribNac");
++        return CodigosNfse.Truncar(string.IsNullOrWhiteSpace(municipal) ? nacional : municipal, 167);
++    }
++
++    public string DescricaoServico() => CodigosNfse.Truncar(
++        Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:serv/n:cServ/n:xDescServ"), 1297);
++
++    // ---- Tributação Municipal (ISSQN) ----
++
++    public bool IssqnAplicavel() => Existe("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:valores/n:trib/n:tribMun/n:tribISSQN");
++    public string TipoTributacaoIssqn() => CodigosNfse.DescricaoTribIssqn(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:valores/n:trib/n:tribMun/n:tribISSQN"));
++    public string MunicipioIncidenciaIssqn() => Texto("//n:NFSe/n:infNFSe/n:xLocIncid") ?? PrestadorMunicipioUf();
++    public string BaseCalculoIssqn() => FormatarMoeda(Texto("//n:NFSe/n:infNFSe/n:valores/n:vBC"));
++    public string AliquotaIssqn() => FormatarPercentual(Texto("//n:NFSe/n:infNFSe/n:valores/n:pAliqAplic"));
++    public string RetencaoIssqn() => CodigosNfse.DescricaoTpRetIssqn(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:valores/n:trib/n:tribMun/n:tpRetISSQN"));
++    public string IssqnApurado() => FormatarMoeda(Texto("//n:NFSe/n:infNFSe/n:valores/n:vISSQN"));
++
++    // ---- Tributação Federal (exceto CBS) ----
++
++    public string Irrf() => FormatarMoeda(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:valores/n:trib/n:tribFed/n:vRetIRRF"));
++    public string ContribuicaoPrevidenciariaRetida() => FormatarMoeda(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:valores/n:trib/n:tribFed/n:vRetCP"));
++    public string ContribuicoesSociaisRetidas() => FormatarMoeda(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:valores/n:trib/n:tribFed/n:vRetCSLL"));
++    public string PisDebitoApuracaoPropria() => FormatarMoeda(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:valores/n:trib/n:tribFed/n:piscofins/n:vPis"));
++    public string CofinsDebitoApuracaoPropria() => FormatarMoeda(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:valores/n:trib/n:tribFed/n:piscofins/n:vCofins"));
++    public string DescricaoContribSociaisRetidas() => CodigosNfse.DescricaoTpRetPisCofins(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:valores/n:trib/n:tribFed/n:piscofins/n:tpRetPisCofins"));
++
++    // ---- Valor total ----
++
++    public string ValorOperacaoServico() => FormatarMoeda(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:valores/n:vServPrest/n:vServ"));
++    public string DescontoIncondicionado() => FormatarMoeda(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:valores/n:vDescCondIncond/n:vDescIncond"));
++    public string DescontoCondicionado() => FormatarMoeda(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:valores/n:vDescCondIncond/n:vDescCond"));
++    public string TotalRetencoes() => FormatarMoeda(Texto("//n:NFSe/n:infNFSe/n:valores/n:vTotalRet"));
++    public string ValorLiquido() => FormatarMoeda(Texto("//n:NFSe/n:infNFSe/n:valores/n:vLiq"));
++
++    // ---- Totais aproximados de tributos (Lei 12.741/2012) — obrigatório, item 2.1.12/nota 10 ----
++
++    public string TotaisAproximadosTributos()
++    {
++        var percentual = Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:valores/n:trib/n:totTrib/n:pTotTribSN");
++        if (!string.IsNullOrWhiteSpace(percentual))
++            return $"Totais Aproximados dos Tributos cfe. Lei nº 12.741/2012: {percentual}% (Simples Nacional)";
++
++        return "Totais Aproximados dos Tributos cfe. Lei nº 12.741/2012: não informado";
++    }
++
++    public string? ChaveNfseSubstituida() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:subst/n:chSubstda");
++
++    // ---- Helpers de formatação ----
++
++    private static string FormatarDocumento(string? cnpj, string? cpf, string? nif)
++    {
++        if (!string.IsNullOrWhiteSpace(cnpj) && cnpj.Length == 14)
++            return $"{cnpj[..2]}.{cnpj[2..5]}.{cnpj[5..8]}/{cnpj[8..12]}-{cnpj[12..14]}";
++        if (!string.IsNullOrWhiteSpace(cpf) && cpf.Length == 11)
++            return $"{cpf[..3]}.{cpf[3..6]}.{cpf[6..9]}-{cpf[9..11]}";
++        return nif ?? "-";
++    }
++
++    private string ConcatenarEndereco(string caminhoEnd)
++    {
++        var lgr = Texto($"{caminhoEnd}/n:xLgr");
++        var nro = Texto($"{caminhoEnd}/n:nro");
++        var cpl = Texto($"{caminhoEnd}/n:xCpl");
++        var bairro = Texto($"{caminhoEnd}/n:xBairro");
++        return string.Join(", ", new[] { lgr, nro, cpl, bairro }.Where(v => !string.IsNullOrWhiteSpace(v)));
++    }
++
++    private static string FormatarData(string? valor) =>
++        DateTime.TryParse(valor, CultureInfo.InvariantCulture, DateTimeStyles.None, out var data)
++            ? data.ToString("dd/MM/yyyy")
++            : "-";
++
++    private static string FormatarDataHora(string? valor) =>
++        DateTimeOffset.TryParse(valor, CultureInfo.InvariantCulture, DateTimeStyles.None, out var data)
++            ? data.ToString("dd/MM/yyyy HH:mm:ss")
++            : "-";
++
++    private static string FormatarMoeda(string? valor) =>
++        decimal.TryParse(valor, NumberStyles.Number, CultureInfo.InvariantCulture, out var numero) && numero != 0
++            ? numero.ToString("N2", new CultureInfo("pt-BR"))
++            : "-";
++
++    private static string FormatarPercentual(string? valor) =>
++        decimal.TryParse(valor, NumberStyles.Number, CultureInfo.InvariantCulture, out var numero) && numero != 0
++            ? numero.ToString("N2", new CultureInfo("pt-BR")) + "%"
++            : "-";
++}
+diff --git a/src/NfseSaaS.Infrastructure/DependencyInjection.cs b/src/NfseSaaS.Infrastructure/DependencyInjection.cs
+index 61e50d1..1df012d 100644
+--- a/src/NfseSaaS.Infrastructure/DependencyInjection.cs
++++ b/src/NfseSaaS.Infrastructure/DependencyInjection.cs
+@@ -31,6 +31,13 @@ public static class DependencyInjection
+ {
+     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+     {
++        // Licença Community: gratuita só se a receita anual de QUEM USA
++        // este software for menor que USD 1 milhão — confirme se aplica
++        // ao seu caso antes de ir pra produção
++        // (https://www.questpdf.com/license/). Se não aplicar, é preciso
++        // licença comercial da QuestPDF ou trocar de biblioteca de PDF.
++        QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
++
+         var connectionString = configuration.GetConnectionString("DefaultConnection")
+             ?? throw new InvalidOperationException(
+                 "ConnectionStrings:DefaultConnection não configurada. " +
+diff --git a/src/NfseSaaS.Infrastructure/NfseSaaS.Infrastructure.csproj b/src/NfseSaaS.Infrastructure/NfseSaaS.Infrastructure.csproj
+index c03c4a6..f834731 100644
+--- a/src/NfseSaaS.Infrastructure/NfseSaaS.Infrastructure.csproj
++++ b/src/NfseSaaS.Infrastructure/NfseSaaS.Infrastructure.csproj
+@@ -32,6 +32,17 @@
+     </PackageReference>
+     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
+     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.10" />
++
++    <!--
++      DANFSe local (NT 008/2026) — QuestPDF pra renderizar o layout fixo
++      em cm exigido pela nota técnica, QRCoder pro QR Code de consulta
++      pública. QuestPDF Community License é gratuita só até USD 1
++      milhão de receita anual da empresa que USA o software — confirme
++      se aplica antes de ir pra produção (ver QuestPdfLicenseConfig no
++      DependencyInjection deste projeto).
++    -->
++    <PackageReference Include="QuestPDF" Version="2025.7.1" />
++    <PackageReference Include="QRCoder" Version="1.6.0" />
+   </ItemGroup>
+ 
+ </Project>
+diff --git a/src/NfseSaaS.Infrastructure/UseCases/ObterDanfsePdfUseCase.cs b/src/NfseSaaS.Infrastructure/UseCases/ObterDanfsePdfUseCase.cs
+index b3ea9f6..0cdf60f 100644
+--- a/src/NfseSaaS.Infrastructure/UseCases/ObterDanfsePdfUseCase.cs
++++ b/src/NfseSaaS.Infrastructure/UseCases/ObterDanfsePdfUseCase.cs
+@@ -1,22 +1,33 @@
++using Microsoft.AspNetCore.Hosting;
+ using Microsoft.EntityFrameworkCore;
+ using NfseSaaS.Application.Exceptions;
+ using NfseSaaS.Application.UseCases.Nfse;
+ using NfseSaaS.Domain.Enums;
++using NfseSaaS.Infrastructure.Danfse;
+ using NfseSaaS.Infrastructure.Persistence;
+ using NfseSaaS.Nacional.Clients;
+ using NfseSaaS.Nacional.Exceptions;
+ 
+ namespace NfseSaaS.Infrastructure.UseCases;
+ 
++/// <summary>
++/// Tenta o endpoint de PDF da SEFIN Nacional primeiro (caso algum
++/// ambiente ainda o mantenha funcionando) e, em qualquer falha, cai pra
++/// geração local (DanfsePdfGenerator) a partir do XmlNfse já persistido —
++/// necessário desde a descontinuação do endpoint remoto (HTTP 501
++/// confirmado em 09/09/2026, NT 008/2026).
++/// </summary>
+ public sealed class ObterDanfsePdfUseCase : IObterDanfsePdfUseCase
+ {
+     private readonly AppDbContext _db;
+     private readonly INfseApiClient _apiClient;
++    private readonly IWebHostEnvironment _webHostEnvironment;
+ 
+-    public ObterDanfsePdfUseCase(AppDbContext db, INfseApiClient apiClient)
++    public ObterDanfsePdfUseCase(AppDbContext db, INfseApiClient apiClient, IWebHostEnvironment webHostEnvironment)
+     {
+         _db = db;
+         _apiClient = apiClient;
++        _webHostEnvironment = webHostEnvironment;
+     }
+ 
+     public async Task<DanfsePdfResponse> ExecutarAsync(Guid nfseId, CancellationToken cancellationToken)
+@@ -28,17 +39,35 @@ public sealed class ObterDanfsePdfUseCase : IObterDanfsePdfUseCase
+             throw new RegraNegocioException(
+                 $"Só é possível obter o DANFSe de uma Nfse Autorizada ou Cancelada com ChaveAcesso (status atual: {nfse.Status}).");
+ 
+-        var (statusCode, bytes, contentType) = await _apiClient.ObterDanfsePdfAsync(nfse.EmpresaId, nfse.ChaveAcesso, cancellationToken);
++        try
++        {
++            var (statusCode, bytesRemoto, contentType) = await _apiClient.ObterDanfsePdfAsync(nfse.EmpresaId, nfse.ChaveAcesso, cancellationToken);
+ 
+-        if (statusCode is < 200 or >= 300 || bytes.Length == 0)
+-            throw new NfseApiException(
+-                $"A SEFIN Nacional não retornou o DANFSe (HTTP {statusCode}). O endpoint de PDF do ambiente nacional pode ter sido " +
+-                "descontinuado (ver NT 008/2026) — se isso se confirmar, o PDF passa a exigir geração local a partir do XML, o que " +
+-                "ainda não está implementado.");
++            if (statusCode is >= 200 and < 300 && bytesRemoto.Length > 0)
++            {
++                return new DanfsePdfResponse(
++                    Bytes: bytesRemoto,
++                    ContentType: string.IsNullOrWhiteSpace(contentType) ? "application/pdf" : contentType,
++                    NomeArquivo: $"DANFSe-{nfse.ChaveAcesso}.pdf");
++            }
++        }
++        catch (NfseApiException)
++        {
++            // Cai pra geração local abaixo — não é um erro fatal aqui.
++        }
++
++        if (string.IsNullOrWhiteSpace(nfse.XmlNfse))
++            throw new RegraNegocioException(
++                "Não há XML da NFS-e persistido para gerar o DANFSe localmente (nota emitida antes deste recurso existir?).");
++
++        var bytesLocal = DanfsePdfGenerator.Gerar(
++            nfse.XmlNfse,
++            cancelada: nfse.Status == NfseStatus.Cancelada,
++            caminhoLogo: Path.Combine(_webHostEnvironment.WebRootPath, "img", "logo-nfse-horizontal.png"));
+ 
+         return new DanfsePdfResponse(
+-            Bytes: bytes,
+-            ContentType: string.IsNullOrWhiteSpace(contentType) ? "application/pdf" : contentType,
++            Bytes: bytesLocal,
++            ContentType: "application/pdf",
+             NomeArquivo: $"DANFSe-{nfse.ChaveAcesso}.pdf");
+     }
+ }

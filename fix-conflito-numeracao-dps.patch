@@ -1,0 +1,92 @@
+diff --git a/src/NfseSaaS.Application/UseCases/SincronizacaoSefin/SincronizacaoSefinResponse.cs b/src/NfseSaaS.Application/UseCases/SincronizacaoSefin/SincronizacaoSefinResponse.cs
+index 16b224d..6a1086d 100644
+--- a/src/NfseSaaS.Application/UseCases/SincronizacaoSefin/SincronizacaoSefinResponse.cs
++++ b/src/NfseSaaS.Application/UseCases/SincronizacaoSefin/SincronizacaoSefinResponse.cs
+@@ -3,5 +3,6 @@ namespace NfseSaaS.Application.UseCases.SincronizacaoSefin;
+ public sealed record SincronizacaoSefinResponse(
+     int NotasImportadas,
+     int NotasJaExistentes,
++    int NotasIgnoradasPorConflitoNumeracao,
+     int ClientesCriados,
+     long UltimoNsuProcessado);
+diff --git a/src/NfseSaaS.Infrastructure/UseCases/SincronizarNotasDaSefinUseCase.cs b/src/NfseSaaS.Infrastructure/UseCases/SincronizarNotasDaSefinUseCase.cs
+index f775589..bceb398 100644
+--- a/src/NfseSaaS.Infrastructure/UseCases/SincronizarNotasDaSefinUseCase.cs
++++ b/src/NfseSaaS.Infrastructure/UseCases/SincronizarNotasDaSefinUseCase.cs
+@@ -52,7 +52,7 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
+         var ultimoNsu = empresa.UltimoNsuDistribuicao ?? 0;
+         var lote = await _adnClient.ConsultarPorNsuAsync(empresaId, ultimoNsu, cancellationToken);
+ 
+-        int importadas = 0, jaExistentes = 0, clientesCriados = 0;
++        int importadas = 0, jaExistentes = 0, ignoradasPorConflito = 0, clientesCriados = 0;
+         var maiorNsu = ultimoNsu;
+ 
+         // Cache em memória dos Clientes criados NESTA execução — sem
+@@ -63,6 +63,20 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
+         // CpfCnpj) — confirmado no log real de erro.
+         var clientesNestaExecucao = new Dictionary<string, Guid>();
+ 
++        // Mesmo raciocínio pra NumeroDps+SerieDps: a constraint única
++        // (TenantId, EmpresaId, NumeroDps, SerieDps) foi desenhada pra
++        // garantir que NOSSA própria numeração sequencial (ContadorDps)
++        // nunca duplique — mas notas importadas de OUTRO emissor (ex.:
++        // Emissor Web oficial, com sua própria numeração) podem colidir
++        // com essa constraint sem serem, de fato, a mesma nota (a
++        // identidade real e única de uma nota é a ChaveAcesso, já
++        // checada acima). Isso é confirmado: aconteceu de verdade num
++        // lote real de homologação. Em vez de deixar o SaveChanges
++        // final estourar e perder o lote inteiro, cada conflito é
++        // detectado e a nota correspondente é pulada (contada
++        // separadamente), preservando as demais.
++        var numeracaoJaVista = new HashSet<(int NumeroDps, string SerieDps)>();
++
+         foreach (var item in lote.LoteDFe.Where(d => d.TipoDocumento == "NFSE").OrderBy(d => d.NSU))
+         {
+             if (item.NSU > maiorNsu)
+@@ -80,6 +94,19 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
+             var xml = GZipHelper.DescomprimirDeBase64(item.ArquivoXml);
+             var dados = new NfseXmlImportDados(xml);
+ 
++            var numeroDps = dados.NumeroDps();
++            var serieDps = dados.SerieDps();
++
++            var conflitaNoLote = !numeracaoJaVista.Add((numeroDps, serieDps));
++            var conflitaNoBanco = !conflitaNoLote && await _db.NotasFiscais.AsNoTracking()
++                .AnyAsync(n => n.EmpresaId == empresaId && n.NumeroDps == numeroDps && n.SerieDps == serieDps, cancellationToken);
++
++            if (conflitaNoLote || conflitaNoBanco)
++            {
++                ignoradasPorConflito++;
++                continue;
++            }
++
+             var (clienteId, clienteFoiCriado) = await ObterOuCriarClienteAsync(empresaId, dados, clientesNestaExecucao, cancellationToken);
+             if (clienteFoiCriado)
+                 clientesCriados++;
+@@ -142,11 +169,12 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
+ 
+         empresa.UltimoNsuDistribuicao = maiorNsu;
+ 
+-        _auditLogWriter.Registrar("SincronizarNotasDaSefin", "Empresa", empresaId, new { importadas, jaExistentes, clientesCriados, ultimoNsu = maiorNsu });
++        _auditLogWriter.Registrar("SincronizarNotasDaSefin", "Empresa", empresaId,
++            new { importadas, jaExistentes, ignoradasPorConflito, clientesCriados, ultimoNsu = maiorNsu });
+ 
+         await _db.SaveChangesAsync(cancellationToken);
+ 
+-        return new SincronizacaoSefinResponse(importadas, jaExistentes, clientesCriados, maiorNsu);
++        return new SincronizacaoSefinResponse(importadas, jaExistentes, ignoradasPorConflito, clientesCriados, maiorNsu);
+     }
+ 
+     private async Task<(Guid ClienteId, bool Criado)> ObterOuCriarClienteAsync(
+diff --git a/src/NfseSaaS.Web/wwwroot/js/paginas/nfse.js b/src/NfseSaaS.Web/wwwroot/js/paginas/nfse.js
+index 507874b..6468342 100644
+--- a/src/NfseSaaS.Web/wwwroot/js/paginas/nfse.js
++++ b/src/NfseSaaS.Web/wwwroot/js/paginas/nfse.js
+@@ -265,6 +265,7 @@ async function sincronizarComSefin() {
+             `Sincronização concluída.\n` +
+             `Notas importadas: ${resultado.notasImportadas}\n` +
+             `Já existentes (ignoradas): ${resultado.notasJaExistentes}\n` +
++            `Ignoradas por conflito de numeração (NumeroDps/SerieDps de outro emissor): ${resultado.notasIgnoradasPorConflitoNumeracao}\n` +
+             `Clientes criados automaticamente: ${resultado.clientesCriados}`
+         );
+     } catch (err) {

@@ -26,6 +26,7 @@ public static class DependencyInjection
     public static IServiceCollection AddNfseNacional(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<NfseNacionalOptions>(configuration.GetSection(NfseNacionalOptions.SectionName));
+        services.Configure<AdnOptions>(configuration.GetSection(AdnOptions.SectionName));
 
         // Registra a infraestrutura do IHttpClientFactory. Não usamos um
         // nome fixo de client aqui — os clients são criados dinamicamente
@@ -40,6 +41,7 @@ public static class DependencyInjection
         services.AddScoped<IDpsSigner, DpsSigner>();
         services.AddScoped<IEventoCancelamentoBuilder, EventoCancelamentoBuilder>();
         services.AddScoped<INfseApiClient, NfseApiClient>();
+        services.AddScoped<IAdnDistribuicaoClient, AdnDistribuicaoClient>();
         services.AddScoped<INfseNacionalService, NfseNacionalService>();
 
         return services;

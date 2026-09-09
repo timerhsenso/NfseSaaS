@@ -417,6 +417,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasMaxLength(2)
                         .HasColumnType("character varying(2)");
 
+                    b.Property<long?>("UltimoNsuDistribuicao")
+                        .HasColumnType("bigint");
+
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 

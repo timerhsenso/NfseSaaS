@@ -1,0 +1,56 @@
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Aceitar convite";
+}
+
+<h5 class="card-title mb-4">Definir sua senha</h5>
+
+<div id="erro-convite" class="alert alert-danger d-none"></div>
+
+<form id="form-convite">
+    <div class="mb-3">
+        <label class="form-label" for="email">E-mail</label>
+        <input type="email" class="form-control" id="email" value="@ViewData["Email"]" required />
+    </div>
+    <input type="hidden" id="token" value="@ViewData["Token"]" />
+    <div class="mb-3">
+        <label class="form-label" for="novaSenha">Nova senha</label>
+        <input type="password" class="form-control" id="novaSenha" required minlength="8" />
+    </div>
+    <button type="submit" class="btn btn-primary w-100">Definir senha e entrar</button>
+</form>
+
+@section Scripts {
+    <script>
+        document.getElementById('form-convite').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const erroDiv = document.getElementById('erro-convite');
+            erroDiv.classList.add('d-none');
+
+            try {
+                const resposta = await fetch('/api/auth/aceitar-convite', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: document.getElementById('email').value,
+                        token: document.getElementById('token').value,
+                        novaSenha: document.getElementById('novaSenha').value
+                    })
+                });
+
+                if (!resposta.ok) {
+                    const corpo = await resposta.json().catch(() => null);
+                    erroDiv.textContent = extrairMensagemDeErro(corpo) ?? 'Não foi possível aceitar o convite.';
+                    erroDiv.classList.remove('d-none');
+                    return;
+                }
+
+                window.location.href = '/';
+            } catch (err) {
+                erroDiv.textContent = 'Não foi possível aceitar o convite. Tente novamente.';
+                erroDiv.classList.remove('d-none');
+            }
+        });
+    </script>
+}

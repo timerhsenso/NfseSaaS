@@ -95,6 +95,27 @@ public sealed class NfseApiClient : INfseApiClient
         }
     }
 
+    public async Task<(int StatusCode, byte[] Bytes, string? ContentType)> ObterDanfsePdfAsync(Guid empresaId, string chaveAcesso, CancellationToken cancellationToken)
+    {
+        var client = ObterClient(empresaId);
+        using var timeoutCts = CriarTokenComTimeout(cancellationToken);
+
+        try
+        {
+            using var response = await client.GetAsync(MontarUrl($"danfse/{chaveAcesso}"), timeoutCts.Token);
+            var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+            return ((int)response.StatusCode, bytes, response.Content.Headers.ContentType?.MediaType);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new NfseApiException($"Falha de comunicação com a SEFIN Nacional ao obter o DANFSe da chave {chaveAcesso}.", ex);
+        }
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new NfseApiException($"Tempo limite ({_options.TimeoutSeconds}s) excedido ao obter o DANFSe da chave {chaveAcesso}.", ex);
+        }
+    }
+
     private HttpClient ObterClient(Guid empresaId) =>
         _httpClientFactory.CreateClient(SefinNacionalClientNames.ParaEmpresa(empresaId));
 

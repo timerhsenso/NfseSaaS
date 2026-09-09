@@ -1,0 +1,69 @@
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Criar conta";
+}
+
+<h5 class="card-title mb-4">Criar conta</h5>
+<p class="text-muted small">Cria sua empresa (Tenant) e o primeiro usuário, com papel Administrador.</p>
+
+<div id="erro-registrar" class="alert alert-danger d-none"></div>
+
+<form id="form-registrar">
+    <div class="mb-3">
+        <label class="form-label" for="razaoSocialTenant">Razão social</label>
+        <input type="text" class="form-control" id="razaoSocialTenant" required />
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="cnpjTenant">CNPJ</label>
+        <input type="text" class="form-control" id="cnpjTenant" required maxlength="14" placeholder="Somente números" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="email">E-mail</label>
+        <input type="email" class="form-control" id="email" required />
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="senha">Senha</label>
+        <input type="password" class="form-control" id="senha" required minlength="8" />
+    </div>
+    <button type="submit" class="btn btn-primary w-100">Criar conta</button>
+</form>
+
+<div class="text-center mt-3">
+    <a href="/Account/Login">Já tenho uma conta</a>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('form-registrar').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const erroDiv = document.getElementById('erro-registrar');
+            erroDiv.classList.add('d-none');
+
+            try {
+                const resposta = await fetch('/api/auth/registrar', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        razaoSocialTenant: document.getElementById('razaoSocialTenant').value,
+                        cnpjTenant: document.getElementById('cnpjTenant').value,
+                        email: document.getElementById('email').value,
+                        senha: document.getElementById('senha').value
+                    })
+                });
+
+                if (!resposta.ok) {
+                    const corpo = await resposta.json().catch(() => null);
+                    erroDiv.textContent = extrairMensagemDeErro(corpo) ?? 'Não foi possível criar a conta.';
+                    erroDiv.classList.remove('d-none');
+                    return;
+                }
+
+                window.location.href = '/';
+            } catch (err) {
+                erroDiv.textContent = 'Não foi possível criar a conta. Tente novamente.';
+                erroDiv.classList.remove('d-none');
+            }
+        });
+    </script>
+}

@@ -1,0 +1,59 @@
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Entrar";
+}
+
+<h5 class="card-title mb-4">Entrar</h5>
+
+<div id="erro-login" class="alert alert-danger d-none"></div>
+
+<form id="form-login">
+    <div class="mb-3">
+        <label class="form-label" for="email">E-mail</label>
+        <input type="email" class="form-control" id="email" required autofocus />
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="senha">Senha</label>
+        <input type="password" class="form-control" id="senha" required />
+    </div>
+    <button type="submit" class="btn btn-primary w-100">Entrar</button>
+</form>
+
+<div class="text-center mt-3">
+    <a href="/Account/Registrar">Criar uma conta nova</a>
+</div>
+
+@section Scripts {
+    <script>
+        const returnUrl = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewData["ReturnUrl"] as string ?? "/"));
+
+        document.getElementById('form-login').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const erroDiv = document.getElementById('erro-login');
+            erroDiv.classList.add('d-none');
+
+            try {
+                const resposta = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: document.getElementById('email').value,
+                        senha: document.getElementById('senha').value
+                    })
+                });
+
+                if (!resposta.ok) {
+                    erroDiv.textContent = 'E-mail ou senha inválidos.';
+                    erroDiv.classList.remove('d-none');
+                    return;
+                }
+
+                window.location.href = returnUrl || '/';
+            } catch (err) {
+                erroDiv.textContent = 'Não foi possível entrar. Tente novamente.';
+                erroDiv.classList.remove('d-none');
+            }
+        });
+    </script>
+}

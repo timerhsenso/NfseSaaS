@@ -1,0 +1,222 @@
+@{
+    ViewData["Title"] = "Empresas";
+    var podeEditar = User.IsInRole("Administrador");
+}
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Empresas cadastradas</span>
+        <div class="d-flex align-items-center gap-2">
+            <div id="botoes-exportacao-tabela-empresas"></div>
+            @if (podeEditar)
+            {
+                <button type="button" class="btn btn-primary btn-sm" id="btn-nova-empresa">
+                    <i class="bi bi-plus-lg"></i> Nova empresa
+                </button>
+            }
+        </div>
+    </div>
+    <div class="card-body">
+        <table id="tabela-empresas" class="table table-striped table-bordered w-100">
+            <thead>
+                <tr>
+                    <th>Razão social</th>
+                    <th>CNPJ</th>
+                    <th>Inscrição municipal</th>
+                    <th>Município (IBGE)</th>
+                    <th>Situação</th>
+                    @if (podeEditar)
+                    {
+                        <th>Ações</th>
+                    }
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>
+
+@if (podeEditar)
+{
+    <!-- Modal de criar/editar — mesma modal serve pra ambos: Cnpj fica
+         readonly em modo edição (a API nem aceita alterá-lo). -->
+    <div class="modal fade" id="modal-empresa" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form id="form-empresa">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="titulo-modal-empresa">Nova empresa</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="erro-empresa" class="alert alert-danger d-none"></div>
+                        <input type="hidden" id="empresaId" />
+
+                        <h6 class="text-muted">Dados gerais</h6>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">CNPJ</label>
+                                <input type="text" class="form-control" id="cnpj" maxlength="14" required />
+                            </div>
+                            <div class="col-md-8 mb-3">
+                                <label class="form-label">Razão social</label>
+                                <input type="text" class="form-control" id="razaoSocial" maxlength="200" required />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Nome fantasia</label>
+                                <input type="text" class="form-control" id="nomeFantasia" maxlength="200" />
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Inscrição municipal</label>
+                                <input type="text" class="form-control" id="inscricaoMunicipal" maxlength="30" required />
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Município (código IBGE)</label>
+                                <input type="text" class="form-control" id="codigoMunicipio" maxlength="7" required />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Telefone</label>
+                                <input type="text" class="form-control" id="telefone" maxlength="20" required />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">E-mail</label>
+                                <input type="email" class="form-control" id="email" required />
+                            </div>
+                        </div>
+
+                        <h6 class="text-muted mt-3">Endereço</h6>
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">CEP</label>
+                                <input type="text" class="form-control" id="cep" maxlength="8" required placeholder="Somente números" />
+                            </div>
+                            <div class="col-md-7 mb-3">
+                                <label class="form-label">Logradouro</label>
+                                <input type="text" class="form-control" id="logradouro" maxlength="200" required />
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <label class="form-label">Número</label>
+                                <input type="text" class="form-control" id="numero" maxlength="20" required />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-5 mb-3">
+                                <label class="form-label">Complemento</label>
+                                <input type="text" class="form-control" id="complemento" maxlength="100" />
+                            </div>
+                            <div class="col-md-5 mb-3">
+                                <label class="form-label">Bairro</label>
+                                <input type="text" class="form-control" id="bairro" maxlength="100" required />
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <label class="form-label">UF</label>
+                                <input type="text" class="form-control" id="uf" maxlength="2" required placeholder="BA" />
+                            </div>
+                        </div>
+
+                        <h6 class="text-muted mt-3">Regime tributário</h6>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Opção pelo Simples Nacional</label>
+                                <select class="form-select" id="opSimpNac" required>
+                                    <option value="1">Não optante</option>
+                                    <option value="2">Optante MEI</option>
+                                    <option value="3">Optante Simples Nacional (exceto MEI)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Regime de apuração (Simples)</label>
+                                <input type="text" class="form-control" id="regApTribSN" maxlength="1" required />
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Regime especial de tributação</label>
+                                <input type="text" class="form-control" id="regEspTrib" maxlength="1" required />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Tributação ISSQN</label>
+                                <input type="text" class="form-control" id="tribIssqn" maxlength="1" required />
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Retenção ISSQN</label>
+                                <input type="text" class="form-control" id="tpRetIssqn" maxlength="1" required />
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">CST PIS/COFINS</label>
+                                <input type="text" class="form-control" id="cstPisCofins" maxlength="2" required />
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Retenção PIS/COFINS</label>
+                                <input type="text" class="form-control" id="tpRetPisCofins" maxlength="1" required />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">% total tributos (Simples Nacional)</label>
+                                <input type="text" class="form-control" id="percentualTotalTributosSimplesNacional" placeholder="ex.: 3.00" />
+                                <div class="form-text">Obrigatório só se "Optante Simples Nacional (exceto MEI)".</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@if (podeEditar)
+{
+    <!-- Modal de gerenciamento do certificado digital (.pfx) -->
+    <div class="modal fade" id="modal-certificado" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="titulo-modal-certificado">Certificado digital</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <h6 class="text-muted">Status atual</h6>
+                    <div id="status-certificado" class="mb-3"></div>
+
+                    <button type="button" class="btn btn-outline-secondary btn-sm mb-3" id="btn-testar-conexao" disabled>
+                        Testar conexão
+                    </button>
+                    <div id="resultado-teste-conexao" class="alert d-none"></div>
+
+                    <hr />
+
+                    <h6 class="text-muted">Enviar novo certificado</h6>
+                    <div id="erro-certificado" class="alert alert-danger d-none"></div>
+
+                    <form id="form-certificado">
+                        <div class="mb-3">
+                            <label class="form-label">Arquivo (.pfx / .p12)</label>
+                            <input type="file" class="form-control" id="certificado-arquivo" accept=".pfx,.p12" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Senha do certificado</label>
+                            <input type="password" class="form-control" id="certificado-senha" required />
+                        </div>
+                        <div class="form-text mb-3">
+                            O arquivo é validado (senha, chave privada, validade) antes de ser
+                            criptografado e gravado — a senha nunca fica salva em texto puro.
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Enviar certificado</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/paginas/empresas.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,1335 @@
+diff --git a/src/NfseSaaS.Web/Controllers/AuditLogsController.cs b/src/NfseSaaS.Web/Controllers/AuditLogsController.cs
+new file mode 100644
+index 0000000..e04e25f
+--- /dev/null
++++ b/src/NfseSaaS.Web/Controllers/AuditLogsController.cs
+@@ -0,0 +1,16 @@
++using Microsoft.AspNetCore.Authorization;
++using Microsoft.AspNetCore.Mvc;
++using NfseSaaS.Application.Authorization;
++
++namespace NfseSaaS.Web.Controllers;
++
++/// <summary>
++/// Só serve a view — dados vêm via fetch do api/auditlogs já existente.
++/// Restrito a Administrador, mesma regra da API (é dado de compliance
++/// sobre TODAS as operações do Tenant).
++/// </summary>
++[Authorize(Roles = Papeis.Administrador)]
++public sealed class AuditLogsController : Controller
++{
++    public IActionResult Index() => View();
++}
+diff --git a/src/NfseSaaS.Web/Controllers/ClientesController.cs b/src/NfseSaaS.Web/Controllers/ClientesController.cs
+new file mode 100644
+index 0000000..d677797
+--- /dev/null
++++ b/src/NfseSaaS.Web/Controllers/ClientesController.cs
+@@ -0,0 +1,11 @@
++using Microsoft.AspNetCore.Authorization;
++using Microsoft.AspNetCore.Mvc;
++
++namespace NfseSaaS.Web.Controllers;
++
++/// <summary>Só serve a view — dados vêm via fetch do api/clientes já existente.</summary>
++[Authorize]
++public sealed class ClientesController : Controller
++{
++    public IActionResult Index() => View();
++}
+diff --git a/src/NfseSaaS.Web/Controllers/NfseController.cs b/src/NfseSaaS.Web/Controllers/NfseController.cs
+new file mode 100644
+index 0000000..b07a89c
+--- /dev/null
++++ b/src/NfseSaaS.Web/Controllers/NfseController.cs
+@@ -0,0 +1,11 @@
++using Microsoft.AspNetCore.Authorization;
++using Microsoft.AspNetCore.Mvc;
++
++namespace NfseSaaS.Web.Controllers;
++
++/// <summary>Só serve a view — dados vêm via fetch do api/nfse já existente.</summary>
++[Authorize]
++public sealed class NfseController : Controller
++{
++    public IActionResult Index() => View();
++}
+diff --git a/src/NfseSaaS.Web/Controllers/ServicosController.cs b/src/NfseSaaS.Web/Controllers/ServicosController.cs
+new file mode 100644
+index 0000000..c21484b
+--- /dev/null
++++ b/src/NfseSaaS.Web/Controllers/ServicosController.cs
+@@ -0,0 +1,11 @@
++using Microsoft.AspNetCore.Authorization;
++using Microsoft.AspNetCore.Mvc;
++
++namespace NfseSaaS.Web.Controllers;
++
++/// <summary>Só serve a view — dados vêm via fetch do api/servicos já existente.</summary>
++[Authorize]
++public sealed class ServicosController : Controller
++{
++    public IActionResult Index() => View();
++}
+diff --git a/src/NfseSaaS.Web/Controllers/UsuariosController.cs b/src/NfseSaaS.Web/Controllers/UsuariosController.cs
+new file mode 100644
+index 0000000..7a89e18
+--- /dev/null
++++ b/src/NfseSaaS.Web/Controllers/UsuariosController.cs
+@@ -0,0 +1,16 @@
++using Microsoft.AspNetCore.Authorization;
++using Microsoft.AspNetCore.Mvc;
++using NfseSaaS.Application.Authorization;
++
++namespace NfseSaaS.Web.Controllers;
++
++/// <summary>
++/// Só a tela de convite — não existe (ainda) endpoint de LISTAGEM de
++/// usuários na API (api/auth só tem Registrar/Login/Convidar/AceitarConvite),
++/// então esta tela não lista quem já foi convidado. Ver nota na própria view.
++/// </summary>
++[Authorize(Roles = Papeis.Administrador)]
++public sealed class UsuariosController : Controller
++{
++    public IActionResult Index() => View();
++}
+diff --git a/src/NfseSaaS.Web/Views/AuditLogs/Index.cshtml b/src/NfseSaaS.Web/Views/AuditLogs/Index.cshtml
+new file mode 100644
+index 0000000..25169f2
+--- /dev/null
++++ b/src/NfseSaaS.Web/Views/AuditLogs/Index.cshtml
+@@ -0,0 +1,60 @@
++@{
++    ViewData["Title"] = "Auditoria";
++}
++
++<div class="card mb-3">
++    <div class="card-body">
++        <form id="form-filtros-auditoria" class="row g-2 align-items-end">
++            <div class="col-md-3">
++                <label class="form-label">Operação</label>
++                <input type="text" class="form-control" id="filtro-operacao" placeholder="ex.: EmitirNfse" />
++            </div>
++            <div class="col-md-3">
++                <label class="form-label">Entidade</label>
++                <input type="text" class="form-control" id="filtro-entidade" placeholder="ex.: Nfse" />
++            </div>
++            <div class="col-md-3">
++                <label class="form-label">De</label>
++                <input type="date" class="form-control" id="filtro-data-inicio" />
++            </div>
++            <div class="col-md-3">
++                <label class="form-label">Até</label>
++                <input type="date" class="form-control" id="filtro-data-fim" />
++            </div>
++            <div class="col-12">
++                <button type="submit" class="btn btn-primary btn-sm">Filtrar</button>
++                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-limpar-filtros-auditoria">Limpar</button>
++            </div>
++        </form>
++    </div>
++</div>
++
++<div class="card">
++    <div class="card-body">
++        <table class="table table-striped table-bordered">
++            <thead>
++                <tr>
++                    <th>Data/hora</th>
++                    <th>Operação</th>
++                    <th>Entidade</th>
++                    <th>Entidade ID</th>
++                    <th>IP</th>
++                    <th>Dados</th>
++                </tr>
++            </thead>
++            <tbody id="corpo-tabela-auditoria"></tbody>
++        </table>
++
++        <div class="d-flex justify-content-between align-items-center">
++            <span class="text-muted small" id="resumo-paginacao-auditoria"></span>
++            <div>
++                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-pagina-anterior-auditoria">Anterior</button>
++                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-proxima-pagina-auditoria">Próxima</button>
++            </div>
++        </div>
++    </div>
++</div>
++
++@section Scripts {
++    <script src="~/js/paginas/auditlogs.js"></script>
++}
+diff --git a/src/NfseSaaS.Web/Views/Clientes/Index.cshtml b/src/NfseSaaS.Web/Views/Clientes/Index.cshtml
+new file mode 100644
+index 0000000..636726e
+--- /dev/null
++++ b/src/NfseSaaS.Web/Views/Clientes/Index.cshtml
+@@ -0,0 +1,123 @@
++@{
++    ViewData["Title"] = "Clientes";
++    var podeEditar = User.IsInRole("Administrador");
++}
++
++<div class="card mb-3">
++    <div class="card-body">
++        <label class="form-label">Empresa</label>
++        <select id="seletor-empresa" class="form-select"></select>
++    </div>
++</div>
++
++<div class="card">
++    <div class="card-header d-flex justify-content-between align-items-center">
++        <span>Clientes cadastrados</span>
++        @if (podeEditar)
++        {
++            <button type="button" class="btn btn-primary btn-sm" id="btn-novo-cliente">
++                <i class="bi bi-plus-lg"></i> Novo cliente
++            </button>
++        }
++    </div>
++    <div class="card-body">
++        <table id="tabela-clientes" class="table table-striped table-bordered w-100">
++            <thead>
++                <tr>
++                    <th>Nome</th>
++                    <th>CPF/CNPJ</th>
++                    <th>Município (IBGE)</th>
++                    <th>Situação</th>
++                    @if (podeEditar)
++                    {
++                        <th>Ações</th>
++                    }
++                </tr>
++            </thead>
++        </table>
++    </div>
++</div>
++
++@if (podeEditar)
++{
++    <div class="modal fade" id="modal-cliente" tabindex="-1">
++        <div class="modal-dialog modal-lg">
++            <div class="modal-content">
++                <form id="form-cliente">
++                    <div class="modal-header">
++                        <h5 class="modal-title" id="titulo-modal-cliente">Novo cliente</h5>
++                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
++                    </div>
++                    <div class="modal-body">
++                        <div id="erro-cliente" class="alert alert-danger d-none"></div>
++                        <input type="hidden" id="clienteId" />
++
++                        <div class="row">
++                            <div class="col-md-4 mb-3">
++                                <label class="form-label">CPF/CNPJ</label>
++                                <input type="text" class="form-control" id="cpfCnpj" maxlength="14" required placeholder="Somente números" />
++                            </div>
++                            <div class="col-md-8 mb-3">
++                                <label class="form-label">Nome</label>
++                                <input type="text" class="form-control" id="nome" maxlength="200" required />
++                            </div>
++                        </div>
++                        <div class="row">
++                            <div class="col-md-6 mb-3">
++                                <label class="form-label">E-mail</label>
++                                <input type="email" class="form-control" id="email" />
++                            </div>
++                            <div class="col-md-6 mb-3">
++                                <label class="form-label">Telefone</label>
++                                <input type="text" class="form-control" id="telefone" maxlength="20" />
++                            </div>
++                        </div>
++
++                        <h6 class="text-muted">Endereço</h6>
++                        <div class="row">
++                            <div class="col-md-3 mb-3">
++                                <label class="form-label">Município (código IBGE)</label>
++                                <input type="text" class="form-control" id="codigoMunicipio" maxlength="7" required />
++                            </div>
++                            <div class="col-md-3 mb-3">
++                                <label class="form-label">CEP</label>
++                                <input type="text" class="form-control" id="cep" maxlength="8" required placeholder="Somente números" />
++                            </div>
++                            <div class="col-md-4 mb-3">
++                                <label class="form-label">Logradouro</label>
++                                <input type="text" class="form-control" id="logradouro" maxlength="200" required />
++                            </div>
++                            <div class="col-md-2 mb-3">
++                                <label class="form-label">Número</label>
++                                <input type="text" class="form-control" id="numero" maxlength="20" required />
++                            </div>
++                        </div>
++                        <div class="row">
++                            <div class="col-md-5 mb-3">
++                                <label class="form-label">Complemento</label>
++                                <input type="text" class="form-control" id="complemento" maxlength="100" />
++                            </div>
++                            <div class="col-md-5 mb-3">
++                                <label class="form-label">Bairro</label>
++                                <input type="text" class="form-control" id="bairro" maxlength="100" required />
++                            </div>
++                            <div class="col-md-2 mb-3">
++                                <label class="form-label">UF</label>
++                                <input type="text" class="form-control" id="uf" maxlength="2" required placeholder="BA" />
++                            </div>
++                        </div>
++                    </div>
++                    <div class="modal-footer">
++                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
++                        <button type="submit" class="btn btn-primary">Salvar</button>
++                    </div>
++                </form>
++            </div>
++        </div>
++    </div>
++}
++
++@section Scripts {
++    <script src="~/js/empresa-seletor.js"></script>
++    <script src="~/js/paginas/clientes.js"></script>
++}
+diff --git a/src/NfseSaaS.Web/Views/Nfse/Index.cshtml b/src/NfseSaaS.Web/Views/Nfse/Index.cshtml
+new file mode 100644
+index 0000000..82bd067
+--- /dev/null
++++ b/src/NfseSaaS.Web/Views/Nfse/Index.cshtml
+@@ -0,0 +1,150 @@
++@{
++    ViewData["Title"] = "Notas Fiscais";
++    var podeEmitir = User.IsInRole("Administrador") || User.IsInRole("Emissor");
++    var podeCancelar = User.IsInRole("Administrador");
++}
++
++<div class="card mb-3">
++    <div class="card-body">
++        <label class="form-label">Empresa</label>
++        <select id="seletor-empresa" class="form-select"></select>
++    </div>
++</div>
++
++<div class="card">
++    <div class="card-header d-flex justify-content-between align-items-center">
++        <span>Notas fiscais emitidas</span>
++        @if (podeEmitir)
++        {
++            <button type="button" class="btn btn-primary btn-sm" id="btn-emitir-nfse">
++                <i class="bi bi-plus-lg"></i> Emitir nota
++            </button>
++        }
++    </div>
++    <div class="card-body">
++        <table id="tabela-nfse" class="table table-striped table-bordered w-100">
++            <thead>
++                <tr>
++                    <th>Número/Série</th>
++                    <th>Cliente</th>
++                    <th>Valor</th>
++                    <th>Valor líquido</th>
++                    <th>Status</th>
++                    <th>Emissão</th>
++                    <th>Ações</th>
++                </tr>
++            </thead>
++        </table>
++    </div>
++</div>
++
++@if (podeEmitir)
++{
++    <!-- Modal de emissão -->
++    <div class="modal fade" id="modal-emitir-nfse" tabindex="-1">
++        <div class="modal-dialog">
++            <div class="modal-content">
++                <form id="form-emitir-nfse">
++                    <div class="modal-header">
++                        <h5 class="modal-title">Emitir nota fiscal</h5>
++                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
++                    </div>
++                    <div class="modal-body">
++                        <div id="erro-emitir-nfse" class="alert alert-danger d-none"></div>
++
++                        <div class="mb-3">
++                            <label class="form-label">Cliente</label>
++                            <select class="form-select" id="emitir-clienteId" required></select>
++                        </div>
++                        <div class="mb-3">
++                            <label class="form-label">Serviço</label>
++                            <select class="form-select" id="emitir-servicoId" required></select>
++                        </div>
++                        <div class="mb-3">
++                            <label class="form-label">Descrição do serviço nesta nota</label>
++                            <input type="text" class="form-control" id="emitir-descricaoServico" maxlength="2000" required />
++                        </div>
++                        <div class="row">
++                            <div class="col-md-6 mb-3">
++                                <label class="form-label">Valor do serviço</label>
++                                <input type="number" step="0.01" min="0.01" class="form-control" id="emitir-valorServico" required />
++                            </div>
++                            <div class="col-md-6 mb-3">
++                                <label class="form-label">Competência</label>
++                                <input type="date" class="form-control" id="emitir-dataCompetencia" required />
++                            </div>
++                        </div>
++                    </div>
++                    <div class="modal-footer">
++                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
++                        <button type="submit" class="btn btn-primary" id="btn-confirmar-emissao">Emitir</button>
++                    </div>
++                </form>
++            </div>
++        </div>
++    </div>
++}
++
++<!-- Modal de detalhe: status, eventos (NfseEvento) e snapshot fiscal -->
++<div class="modal fade" id="modal-detalhe-nfse" tabindex="-1">
++    <div class="modal-dialog modal-lg">
++        <div class="modal-content">
++            <div class="modal-header">
++                <h5 class="modal-title">Detalhe da nota</h5>
++                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
++            </div>
++            <div class="modal-body">
++                <dl class="row" id="detalhe-nfse-dados"></dl>
++
++                <h6 class="text-muted mt-3">Histórico de eventos</h6>
++                <ul class="list-group mb-3" id="detalhe-nfse-eventos"></ul>
++
++                <h6 class="text-muted">Snapshot fiscal (contexto da emissão)</h6>
++                <pre id="detalhe-nfse-snapshot" class="bg-body-tertiary p-2 rounded small"></pre>
++            </div>
++            <div class="modal-footer">
++                @if (podeCancelar)
++                {
++                    <button type="button" class="btn btn-outline-danger" id="btn-cancelar-nfse">Cancelar nota</button>
++                }
++                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
++            </div>
++        </div>
++    </div>
++</div>
++
++@if (podeCancelar)
++{
++    <div class="modal fade" id="modal-motivo-cancelamento" tabindex="-1">
++        <div class="modal-dialog">
++            <div class="modal-content">
++                <form id="form-cancelar-nfse">
++                    <div class="modal-header">
++                        <h5 class="modal-title">Cancelar nota fiscal</h5>
++                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
++                    </div>
++                    <div class="modal-body">
++                        <div id="erro-cancelar-nfse" class="alert alert-danger d-none"></div>
++                        <div class="mb-3">
++                            <label class="form-label">Código do motivo (tabela oficial da SEFIN)</label>
++                            <input type="number" class="form-control" id="codigoMotivoCancelamento" required />
++                        </div>
++                        <div class="mb-3">
++                            <label class="form-label">Motivo</label>
++                            <textarea class="form-control" id="motivoCancelamento" maxlength="255" required></textarea>
++                        </div>
++                    </div>
++                    <div class="modal-footer">
++                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Voltar</button>
++                        <button type="submit" class="btn btn-danger">Confirmar cancelamento</button>
++                    </div>
++                </form>
++            </div>
++        </div>
++    </div>
++}
++
++@section Scripts {
++    <script src="~/js/empresa-seletor.js"></script>
++    <script src="~/js/paginas/nfse.js"></script>
++}
+diff --git a/src/NfseSaaS.Web/Views/Servicos/Index.cshtml b/src/NfseSaaS.Web/Views/Servicos/Index.cshtml
+new file mode 100644
+index 0000000..4b7be6c
+--- /dev/null
++++ b/src/NfseSaaS.Web/Views/Servicos/Index.cshtml
+@@ -0,0 +1,86 @@
++@{
++    ViewData["Title"] = "Serviços";
++    var podeEditar = User.IsInRole("Administrador");
++}
++
++<div class="card mb-3">
++    <div class="card-body">
++        <label class="form-label">Empresa</label>
++        <select id="seletor-empresa" class="form-select"></select>
++    </div>
++</div>
++
++<div class="card">
++    <div class="card-header d-flex justify-content-between align-items-center">
++        <span>Serviços cadastrados</span>
++        @if (podeEditar)
++        {
++            <button type="button" class="btn btn-primary btn-sm" id="btn-novo-servico">
++                <i class="bi bi-plus-lg"></i> Novo serviço
++            </button>
++        }
++    </div>
++    <div class="card-body">
++        <table id="tabela-servicos" class="table table-striped table-bordered w-100">
++            <thead>
++                <tr>
++                    <th>Descrição</th>
++                    <th>Código tributação nacional</th>
++                    <th>Código NBS</th>
++                    <th>Valor padrão</th>
++                    <th>Situação</th>
++                    @if (podeEditar)
++                    {
++                        <th>Ações</th>
++                    }
++                </tr>
++            </thead>
++        </table>
++    </div>
++</div>
++
++@if (podeEditar)
++{
++    <div class="modal fade" id="modal-servico" tabindex="-1">
++        <div class="modal-dialog">
++            <div class="modal-content">
++                <form id="form-servico">
++                    <div class="modal-header">
++                        <h5 class="modal-title" id="titulo-modal-servico">Novo serviço</h5>
++                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
++                    </div>
++                    <div class="modal-body">
++                        <div id="erro-servico" class="alert alert-danger d-none"></div>
++                        <input type="hidden" id="servicoId" />
++
++                        <div class="mb-3">
++                            <label class="form-label">Descrição</label>
++                            <input type="text" class="form-control" id="descricao" maxlength="500" required />
++                        </div>
++                        <div class="mb-3">
++                            <label class="form-label">Código de tributação nacional (cTribNac)</label>
++                            <input type="text" class="form-control" id="codigoTributacaoNacional" maxlength="10" required />
++                        </div>
++                        <div class="mb-3">
++                            <label class="form-label">Código NBS</label>
++                            <input type="text" class="form-control" id="codigoNbs" maxlength="10" required />
++                        </div>
++                        <div class="mb-3">
++                            <label class="form-label">Valor padrão</label>
++                            <input type="number" step="0.01" min="0" class="form-control" id="valorPadrao" required />
++                        </div>
++                    </div>
++                    <div class="modal-footer">
++                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
++                        <button type="submit" class="btn btn-primary">Salvar</button>
++                    </div>
++                </form>
++            </div>
++        </div>
++    </div>
++}
++
++@section Scripts {
++    <script src="~/js/empresa-seletor.js"></script>
++    <script src="~/js/paginas/servicos.js"></script>
++}
+diff --git a/src/NfseSaaS.Web/Views/Usuarios/Index.cshtml b/src/NfseSaaS.Web/Views/Usuarios/Index.cshtml
+new file mode 100644
+index 0000000..81a268b
+--- /dev/null
++++ b/src/NfseSaaS.Web/Views/Usuarios/Index.cshtml
+@@ -0,0 +1,72 @@
++@{
++    ViewData["Title"] = "Usuários";
++}
++
++<div class="alert alert-info">
++    <i class="bi bi-info-circle"></i>
++    Esta tela convida um novo usuário pro seu Tenant. A API ainda não tem
++    um endpoint de <strong>listagem</strong> de usuários — por isso não há
++    uma tabela de "usuários já convidados" aqui ainda.
++</div>
++
++<div class="card">
++    <div class="card-header">Convidar usuário</div>
++    <div class="card-body">
++        <div id="erro-convite" class="alert alert-danger d-none"></div>
++        <div id="sucesso-convite" class="alert alert-success d-none"></div>
++
++        <form id="form-convite" class="row g-3">
++            <div class="col-md-6">
++                <label class="form-label">E-mail</label>
++                <input type="email" class="form-control" id="email" required />
++            </div>
++            <div class="col-md-4">
++                <label class="form-label">Papel</label>
++                <select class="form-select" id="papel" required>
++                    <option value="Administrador">Administrador</option>
++                    <option value="Emissor" selected>Emissor</option>
++                    <option value="Financeiro">Financeiro</option>
++                    <option value="Consulta">Consulta</option>
++                    <option value="Contador">Contador</option>
++                </select>
++            </div>
++            <div class="col-md-2 d-flex align-items-end">
++                <button type="submit" class="btn btn-primary w-100">Convidar</button>
++            </div>
++        </form>
++    </div>
++</div>
++
++@section Scripts {
++    <script>
++        document.getElementById('form-convite').addEventListener('submit', async function (e) {
++            e.preventDefault();
++            const erroDiv = document.getElementById('erro-convite');
++            const sucessoDiv = document.getElementById('sucesso-convite');
++            erroDiv.classList.add('d-none');
++            sucessoDiv.classList.add('d-none');
++
++            try {
++                const resultado = await apiFetch('/api/auth/convidar', {
++                    method: 'POST',
++                    body: JSON.stringify({
++                        email: document.getElementById('email').value,
++                        papel: document.getElementById('papel').value
++                    })
++                });
++
++                let mensagem = `Convite enviado para ${resultado.email}.`;
++                if (!resultado.emailEnviado) {
++                    mensagem += ` O e-mail não pôde ser enviado — token de aceite: ${resultado.token}`;
++                }
++
++                sucessoDiv.textContent = mensagem;
++                sucessoDiv.classList.remove('d-none');
++                document.getElementById('form-convite').reset();
++            } catch (err) {
++                erroDiv.textContent = err.message;
++                erroDiv.classList.remove('d-none');
++            }
++        });
++    </script>
++}
+diff --git a/src/NfseSaaS.Web/wwwroot/js/empresa-seletor.js b/src/NfseSaaS.Web/wwwroot/js/empresa-seletor.js
+new file mode 100644
+index 0000000..ebd3a70
+--- /dev/null
++++ b/src/NfseSaaS.Web/wwwroot/js/empresa-seletor.js
+@@ -0,0 +1,40 @@
++/**
++ * Clientes, Serviços e Nfse são todos escopados por Empresa na API
++ * (um Tenant pode ter várias Empresas emissoras). Este helper povoa um
++ * <select id="seletor-empresa"> com as Empresas do Tenant e lembra a
++ * última escolhida em sessionStorage, pra não pedir de novo a cada
++ * troca de tela dentro da mesma sessão do navegador.
++ */
++async function inicializarSeletorEmpresa(aoTrocarEmpresa) {
++    const select = document.getElementById('seletor-empresa');
++
++    try {
++        const resultado = await apiFetch('/api/empresas?pageSize=200');
++        select.innerHTML = '';
++
++        if (!resultado.items.length) {
++            select.innerHTML = '<option value="">Nenhuma empresa cadastrada</option>';
++            return;
++        }
++
++        for (const empresa of resultado.items) {
++            const option = document.createElement('option');
++            option.value = empresa.id;
++            option.textContent = `${empresa.razaoSocial} (${empresa.cnpj})`;
++            select.appendChild(option);
++        }
++
++        const salvaId = sessionStorage.getItem('empresaSelecionadaId');
++        const existeNaLista = salvaId && resultado.items.some(e => e.id === salvaId);
++        select.value = existeNaLista ? salvaId : resultado.items[0].id;
++
++        select.addEventListener('change', function () {
++            sessionStorage.setItem('empresaSelecionadaId', select.value);
++            aoTrocarEmpresa(select.value);
++        });
++
++        aoTrocarEmpresa(select.value);
++    } catch (err) {
++        mostrarErro(err.message);
++    }
++}
+diff --git a/src/NfseSaaS.Web/wwwroot/js/paginas/auditlogs.js b/src/NfseSaaS.Web/wwwroot/js/paginas/auditlogs.js
+new file mode 100644
+index 0000000..e2dca4a
+--- /dev/null
++++ b/src/NfseSaaS.Web/wwwroot/js/paginas/auditlogs.js
+@@ -0,0 +1,74 @@
++let paginaAtualAuditoria = 1;
++const tamanhoPaginaAuditoria = 20;
++
++document.addEventListener('DOMContentLoaded', function () {
++    document.getElementById('form-filtros-auditoria').addEventListener('submit', function (e) {
++        e.preventDefault();
++        paginaAtualAuditoria = 1;
++        carregarAuditoria();
++    });
++
++    document.getElementById('btn-limpar-filtros-auditoria').addEventListener('click', function () {
++        document.getElementById('form-filtros-auditoria').reset();
++        paginaAtualAuditoria = 1;
++        carregarAuditoria();
++    });
++
++    document.getElementById('btn-pagina-anterior-auditoria').addEventListener('click', function () {
++        if (paginaAtualAuditoria > 1) {
++            paginaAtualAuditoria--;
++            carregarAuditoria();
++        }
++    });
++
++    document.getElementById('btn-proxima-pagina-auditoria').addEventListener('click', function () {
++        paginaAtualAuditoria++;
++        carregarAuditoria();
++    });
++
++    carregarAuditoria();
++});
++
++async function carregarAuditoria() {
++    const parametros = new URLSearchParams({
++        page: paginaAtualAuditoria,
++        pageSize: tamanhoPaginaAuditoria
++    });
++
++    const operacao = document.getElementById('filtro-operacao').value.trim();
++    const entidade = document.getElementById('filtro-entidade').value.trim();
++    const dataInicio = document.getElementById('filtro-data-inicio').value;
++    const dataFim = document.getElementById('filtro-data-fim').value;
++
++    if (operacao) parametros.set('operacao', operacao);
++    if (entidade) parametros.set('entidade', entidade);
++    if (dataInicio) parametros.set('dataInicio', dataInicio);
++    if (dataFim) parametros.set('dataFim', dataFim);
++
++    try {
++        const resultado = await apiFetch(`/api/auditlogs?${parametros.toString()}`);
++
++        const corpo = document.getElementById('corpo-tabela-auditoria');
++        corpo.innerHTML = resultado.items.length
++            ? resultado.items.map(log => `
++                <tr>
++                    <td>${new Date(log.dataHora).toLocaleString('pt-BR')}</td>
++                    <td>${log.operacao}</td>
++                    <td>${log.entidade}</td>
++                    <td><small>${log.entidadeId ?? '—'}</small></td>
++                    <td>${log.ipAddress ?? '—'}</td>
++                    <td><small class="text-muted">${log.dados ?? '—'}</small></td>
++                </tr>
++            `).join('')
++            : '<tr><td colspan="6" class="text-center text-muted">Nenhum registro encontrado.</td></tr>';
++
++        const totalPaginas = Math.max(1, Math.ceil(resultado.totalCount / tamanhoPaginaAuditoria));
++        document.getElementById('resumo-paginacao-auditoria').textContent =
++            `Página ${resultado.page} de ${totalPaginas} — ${resultado.totalCount} registro(s)`;
++
++        document.getElementById('btn-pagina-anterior-auditoria').disabled = paginaAtualAuditoria <= 1;
++        document.getElementById('btn-proxima-pagina-auditoria').disabled = paginaAtualAuditoria >= totalPaginas;
++    } catch (err) {
++        mostrarErro(err.message);
++    }
++}
+diff --git a/src/NfseSaaS.Web/wwwroot/js/paginas/clientes.js b/src/NfseSaaS.Web/wwwroot/js/paginas/clientes.js
+new file mode 100644
+index 0000000..ce326d8
+--- /dev/null
++++ b/src/NfseSaaS.Web/wwwroot/js/paginas/clientes.js
+@@ -0,0 +1,177 @@
++const podeEditarCliente = document.getElementById('btn-novo-cliente') !== null;
++
++let tabelaClientes;
++let modalCliente;
++let empresaAtualId;
++
++document.addEventListener('DOMContentLoaded', function () {
++    const colunas = [
++        { data: 'nome' },
++        { data: 'cpfCnpj' },
++        { data: 'codigoMunicipio' },
++        {
++            data: 'ativo',
++            render: v => v
++                ? '<span class="badge text-bg-success">Ativo</span>'
++                : '<span class="badge text-bg-secondary">Inativo</span>'
++        }
++    ];
++
++    if (podeEditarCliente) {
++        colunas.push({
++            data: null,
++            orderable: false,
++            render: (data, type, cliente) => `
++                <button type="button" class="btn btn-sm btn-outline-primary btn-editar" data-id="${cliente.id}">
++                    <i class="bi bi-pencil"></i>
++                </button>
++                <button type="button" class="btn btn-sm btn-outline-warning btn-alternar-ativo" data-id="${cliente.id}" data-ativo="${cliente.ativo}">
++                    <i class="bi ${cliente.ativo ? 'bi-toggle-on' : 'bi-toggle-off'}"></i>
++                </button>
++                <button type="button" class="btn btn-sm btn-outline-danger btn-excluir" data-id="${cliente.id}">
++                    <i class="bi bi-trash"></i>
++                </button>
++            `
++        });
++    }
++
++    tabelaClientes = new DataTable('#tabela-clientes', {
++        columns: colunas,
++        language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/pt-BR.json' }
++    });
++
++    if (podeEditarCliente) {
++        modalCliente = new bootstrap.Modal(document.getElementById('modal-cliente'));
++        document.getElementById('btn-novo-cliente').addEventListener('click', abrirModalNovoCliente);
++        document.getElementById('form-cliente').addEventListener('submit', salvarCliente);
++
++        document.getElementById('tabela-clientes').addEventListener('click', async function (e) {
++            const botao = e.target.closest('button');
++            if (!botao) return;
++            const id = botao.dataset.id;
++
++            if (botao.classList.contains('btn-editar')) await abrirModalEditarCliente(id);
++            else if (botao.classList.contains('btn-alternar-ativo')) await alternarAtivoCliente(id, botao.dataset.ativo === 'true');
++            else if (botao.classList.contains('btn-excluir')) await excluirCliente(id);
++        });
++    }
++
++    inicializarSeletorEmpresa(function (empresaId) {
++        empresaAtualId = empresaId;
++        carregarClientes();
++    });
++});
++
++async function carregarClientes() {
++    if (!empresaAtualId) return;
++
++    try {
++        const resultado = await apiFetch(`/api/clientes?empresaId=${empresaAtualId}&pageSize=200&incluirInativos=true`);
++        tabelaClientes.clear();
++        tabelaClientes.rows.add(resultado.items);
++        tabelaClientes.draw();
++    } catch (err) {
++        mostrarErro(err.message);
++    }
++}
++
++function limparFormularioCliente() {
++    document.getElementById('form-cliente').reset();
++    document.getElementById('clienteId').value = '';
++    document.getElementById('erro-cliente').classList.add('d-none');
++}
++
++function abrirModalNovoCliente() {
++    limparFormularioCliente();
++    document.getElementById('titulo-modal-cliente').textContent = 'Novo cliente';
++    document.getElementById('cpfCnpj').disabled = false;
++    modalCliente.show();
++}
++
++async function abrirModalEditarCliente(id) {
++    limparFormularioCliente();
++    document.getElementById('titulo-modal-cliente').textContent = 'Editar cliente';
++
++    try {
++        const cliente = await apiFetch(`/api/clientes/${id}`);
++
++        document.getElementById('clienteId').value = cliente.id;
++        document.getElementById('cpfCnpj').value = cliente.cpfCnpj;
++        document.getElementById('cpfCnpj').disabled = true; // não editável, mesma regra da API
++        document.getElementById('nome').value = cliente.nome;
++        document.getElementById('email').value = cliente.email ?? '';
++        document.getElementById('telefone').value = cliente.telefone ?? '';
++        document.getElementById('codigoMunicipio').value = cliente.codigoMunicipio;
++        document.getElementById('cep').value = cliente.cep;
++        document.getElementById('logradouro').value = cliente.logradouro;
++        document.getElementById('numero').value = cliente.numero;
++        document.getElementById('complemento').value = cliente.complemento ?? '';
++        document.getElementById('bairro').value = cliente.bairro;
++        document.getElementById('uf').value = cliente.uf;
++
++        modalCliente.show();
++    } catch (err) {
++        mostrarErro(err.message);
++    }
++}
++
++function montarPayloadCliente() {
++    return {
++        empresaId: empresaAtualId,
++        nome: document.getElementById('nome').value,
++        email: document.getElementById('email').value || null,
++        telefone: document.getElementById('telefone').value || null,
++        codigoMunicipio: document.getElementById('codigoMunicipio').value,
++        cep: document.getElementById('cep').value,
++        logradouro: document.getElementById('logradouro').value,
++        numero: document.getElementById('numero').value,
++        complemento: document.getElementById('complemento').value || null,
++        bairro: document.getElementById('bairro').value,
++        uf: document.getElementById('uf').value.toUpperCase()
++    };
++}
++
++async function salvarCliente(e) {
++    e.preventDefault();
++    const erroDiv = document.getElementById('erro-cliente');
++    erroDiv.classList.add('d-none');
++
++    const id = document.getElementById('clienteId').value;
++    const payload = montarPayloadCliente();
++
++    try {
++        if (id) {
++            await apiFetch(`/api/clientes/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
++        } else {
++            payload.cpfCnpj = document.getElementById('cpfCnpj').value;
++            await apiFetch('/api/clientes', { method: 'POST', body: JSON.stringify(payload) });
++        }
++
++        modalCliente.hide();
++        await carregarClientes();
++    } catch (err) {
++        erroDiv.textContent = err.message;
++        erroDiv.classList.remove('d-none');
++    }
++}
++
++async function alternarAtivoCliente(id, ativoAtualmente) {
++    const acao = ativoAtualmente ? 'desativar' : 'reativar';
++    try {
++        await apiFetch(`/api/clientes/${id}/${acao}`, { method: 'POST' });
++        await carregarClientes();
++    } catch (err) {
++        mostrarErro(err.message);
++    }
++}
++
++async function excluirCliente(id) {
++    if (!confirm('Excluir este cliente? Só funciona se ele não tiver Nfse vinculada.')) return;
++
++    try {
++        await apiFetch(`/api/clientes/${id}`, { method: 'DELETE' });
++        await carregarClientes();
++    } catch (err) {
++        mostrarErro(err.message);
++    }
++}
+diff --git a/src/NfseSaaS.Web/wwwroot/js/paginas/nfse.js b/src/NfseSaaS.Web/wwwroot/js/paginas/nfse.js
+new file mode 100644
+index 0000000..c0f25b7
+--- /dev/null
++++ b/src/NfseSaaS.Web/wwwroot/js/paginas/nfse.js
+@@ -0,0 +1,240 @@
++const podeEmitirNfse = document.getElementById('btn-emitir-nfse') !== null;
++const podeCancelarNfse = document.getElementById('btn-cancelar-nfse') !== null;
++
++// NfseStatus (Domain.Enums) é serializado como número pela API — mapeado
++// aqui pro rótulo/cor exibidos. Manter em sincronia se o enum mudar.
++const ROTULOS_STATUS = {
++    0: { texto: 'Rascunho', cor: 'secondary' },
++    1: { texto: 'Processando', cor: 'info' },
++    2: { texto: 'Autorizada', cor: 'success' },
++    3: { texto: 'Rejeitada', cor: 'danger' },
++    4: { texto: 'Cancelada', cor: 'dark' },
++    5: { texto: 'Substituída', cor: 'secondary' }
++};
++const STATUS_AUTORIZADA = 2;
++
++let tabelaNfse;
++let modalEmitirNfse;
++let modalDetalheNfse;
++let modalMotivoCancelamento;
++let empresaAtualIdNfse;
++let clientesPorId = {};
++let nfseDetalheAtualId;
++
++document.addEventListener('DOMContentLoaded', function () {
++    tabelaNfse = new DataTable('#tabela-nfse', {
++        columns: [
++            { data: null, render: (d, t, n) => `${n.numeroDps}/${n.serieDps}` },
++            { data: 'clienteId', render: id => clientesPorId[id] ?? id },
++            { data: 'valorServico', render: v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) },
++            { data: 'valorLiquido', render: v => v == null ? '—' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) },
++            {
++                data: 'status',
++                render: v => {
++                    const r = ROTULOS_STATUS[v] ?? { texto: 'Desconhecido', cor: 'secondary' };
++                    return `<span class="badge text-bg-${r.cor}">${r.texto}</span>`;
++                }
++            },
++            { data: 'dataEmissao', render: v => v ? new Date(v).toLocaleString('pt-BR') : '—' },
++            {
++                data: null,
++                orderable: false,
++                render: (d, t, n) => `<button type="button" class="btn btn-sm btn-outline-secondary btn-ver-detalhe" data-id="${n.id}"><i class="bi bi-eye"></i> Detalhes</button>`
++            }
++        ],
++        language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/pt-BR.json' }
++    });
++
++    document.getElementById('tabela-nfse').addEventListener('click', async function (e) {
++        const botao = e.target.closest('.btn-ver-detalhe');
++        if (botao) await abrirDetalheNfse(botao.dataset.id);
++    });
++
++    modalDetalheNfse = new bootstrap.Modal(document.getElementById('modal-detalhe-nfse'));
++
++    if (podeEmitirNfse) {
++        modalEmitirNfse = new bootstrap.Modal(document.getElementById('modal-emitir-nfse'));
++        document.getElementById('btn-emitir-nfse').addEventListener('click', abrirModalEmitirNfse);
++        document.getElementById('form-emitir-nfse').addEventListener('submit', emitirNfse);
++    }
++
++    if (podeCancelarNfse) {
++        modalMotivoCancelamento = new bootstrap.Modal(document.getElementById('modal-motivo-cancelamento'));
++        document.getElementById('btn-cancelar-nfse').addEventListener('click', function () {
++            modalDetalheNfse.hide();
++            document.getElementById('erro-cancelar-nfse').classList.add('d-none');
++            document.getElementById('form-cancelar-nfse').reset();
++            modalMotivoCancelamento.show();
++        });
++        document.getElementById('form-cancelar-nfse').addEventListener('submit', confirmarCancelamentoNfse);
++    }
++
++    inicializarSeletorEmpresa(async function (empresaId) {
++        empresaAtualIdNfse = empresaId;
++        await carregarClientesParaMapa();
++        await carregarNfse();
++    });
++});
++
++async function carregarClientesParaMapa() {
++    if (!empresaAtualIdNfse) return;
++    try {
++        const resultado = await apiFetch(`/api/clientes?empresaId=${empresaAtualIdNfse}&pageSize=200&incluirInativos=true`);
++        clientesPorId = {};
++        for (const c of resultado.items) clientesPorId[c.id] = c.nome;
++    } catch (err) {
++        mostrarErro(err.message);
++    }
++}
++
++async function carregarNfse() {
++    if (!empresaAtualIdNfse) return;
++    try {
++        const resultado = await apiFetch(`/api/nfse?empresaId=${empresaAtualIdNfse}&pageSize=200`);
++        tabelaNfse.clear();
++        tabelaNfse.rows.add(resultado.items);
++        tabelaNfse.draw();
++    } catch (err) {
++        mostrarErro(err.message);
++    }
++}
++
++async function abrirModalEmitirNfse() {
++    document.getElementById('form-emitir-nfse').reset();
++    document.getElementById('erro-emitir-nfse').classList.add('d-none');
++    document.getElementById('emitir-dataCompetencia').value = new Date().toISOString().slice(0, 10);
++
++    try {
++        const [clientes, servicos] = await Promise.all([
++            apiFetch(`/api/clientes?empresaId=${empresaAtualIdNfse}&pageSize=200`),
++            apiFetch(`/api/servicos?empresaId=${empresaAtualIdNfse}&pageSize=200`)
++        ]);
++
++        const selectCliente = document.getElementById('emitir-clienteId');
++        selectCliente.innerHTML = clientes.items.map(c => `<option value="${c.id}">${c.nome} (${c.cpfCnpj})</option>`).join('');
++
++        const selectServico = document.getElementById('emitir-servicoId');
++        selectServico.innerHTML = servicos.items.map(s => `<option value="${s.id}" data-descricao="${s.descricao}" data-valor="${s.valorPadrao}">${s.descricao}</option>`).join('');
++
++        // Ao trocar o serviço, pré-preenche descrição/valor com o padrão
++        // do catálogo — o usuário ainda pode ajustar antes de emitir.
++        selectServico.onchange = function () {
++            const opcao = selectServico.selectedOptions[0];
++            document.getElementById('emitir-descricaoServico').value = opcao?.dataset.descricao ?? '';
++            document.getElementById('emitir-valorServico').value = opcao?.dataset.valor ?? '';
++        };
++        selectServico.onchange();
++
++        modalEmitirNfse.show();
++    } catch (err) {
++        mostrarErro(err.message);
++    }
++}
++
++async function emitirNfse(e) {
++    e.preventDefault();
++    const erroDiv = document.getElementById('erro-emitir-nfse');
++    erroDiv.classList.add('d-none');
++
++    const botaoConfirmar = document.getElementById('btn-confirmar-emissao');
++    botaoConfirmar.disabled = true; // emissão bate na SEFIN — evita duplo clique
++
++    const payload = {
++        empresaId: empresaAtualIdNfse,
++        clienteId: document.getElementById('emitir-clienteId').value,
++        servicoId: document.getElementById('emitir-servicoId').value,
++        valorServico: parseFloat(document.getElementById('emitir-valorServico').value),
++        descricaoServico: document.getElementById('emitir-descricaoServico').value,
++        dataCompetencia: document.getElementById('emitir-dataCompetencia').value,
++        // Chave de idempotência própria desta tentativa de clique — se o
++        // usuário reenviar (ex.: timeout + segundo clique acidental), a
++        // API reconhece a mesma tentativa e não duplica a nota.
++        idempotencyKey: crypto.randomUUID()
++    };
++
++    try {
++        const resultado = await apiFetch('/api/nfse/emitir', { method: 'POST', body: JSON.stringify(payload) });
++
++        modalEmitirNfse.hide();
++        await carregarNfse();
++
++        if (!resultado.sucesso) {
++            mostrarErro(`Nota rejeitada pela SEFIN: ${resultado.mensagemErro ?? resultado.codigoErro ?? 'motivo não informado'}.`);
++        }
++    } catch (err) {
++        erroDiv.textContent = err.message;
++        erroDiv.classList.remove('d-none');
++    } finally {
++        botaoConfirmar.disabled = false;
++    }
++}
++
++async function abrirDetalheNfse(id) {
++    nfseDetalheAtualId = id;
++
++    try {
++        const [nfse, eventos, snapshot] = await Promise.all([
++            apiFetch(`/api/nfse/${id}`),
++            apiFetch(`/api/nfse/${id}/eventos`),
++            apiFetch(`/api/nfse/${id}/snapshot-fiscal`)
++        ]);
++
++        const rotulo = ROTULOS_STATUS[nfse.status] ?? { texto: 'Desconhecido', cor: 'secondary' };
++
++        document.getElementById('detalhe-nfse-dados').innerHTML = `
++            <dt class="col-sm-4">Número/Série</dt><dd class="col-sm-8">${nfse.numeroDps}/${nfse.serieDps}</dd>
++            <dt class="col-sm-4">Status</dt><dd class="col-sm-8"><span class="badge text-bg-${rotulo.cor}">${rotulo.texto}</span></dd>
++            <dt class="col-sm-4">Chave de acesso</dt><dd class="col-sm-8">${nfse.chaveAcesso ?? '—'}</dd>
++            <dt class="col-sm-4">Valor / Líquido</dt><dd class="col-sm-8">
++                ${Number(nfse.valorServico).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} /
++                ${nfse.valorLiquido == null ? '—' : Number(nfse.valorLiquido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
++            </dd>
++            <dt class="col-sm-4">Erro</dt><dd class="col-sm-8">${nfse.mensagemErro ? `${nfse.codigoErro ?? ''} — ${nfse.mensagemErro}` : '—'}</dd>
++        `;
++
++        document.getElementById('detalhe-nfse-eventos').innerHTML = eventos.length
++            ? eventos.map(ev => `
++                <li class="list-group-item d-flex justify-content-between">
++                    <span>${ev.tipo}${ev.mensagem ? ' — ' + ev.mensagem : ''}</span>
++                    <small class="text-muted">${new Date(ev.dataHora).toLocaleString('pt-BR')}</small>
++                </li>
++            `).join('')
++            : '<li class="list-group-item text-muted">Nenhum evento registrado.</li>';
++
++        document.getElementById('detalhe-nfse-snapshot').textContent = snapshot
++            ? JSON.stringify(snapshot, null, 2)
++            : 'Sem snapshot (nota emitida antes deste recurso existir).';
++
++        const btnCancelar = document.getElementById('btn-cancelar-nfse');
++        if (btnCancelar) btnCancelar.classList.toggle('d-none', nfse.status !== STATUS_AUTORIZADA);
++
++        modalDetalheNfse.show();
++    } catch (err) {
++        mostrarErro(err.message);
++    }
++}
++
++async function confirmarCancelamentoNfse(e) {
++    e.preventDefault();
++    const erroDiv = document.getElementById('erro-cancelar-nfse');
++    erroDiv.classList.add('d-none');
++
++    const payload = {
++        codigoMotivo: parseInt(document.getElementById('codigoMotivoCancelamento').value, 10),
++        motivo: document.getElementById('motivoCancelamento').value
++    };
++
++    try {
++        const resultado = await apiFetch(`/api/nfse/${nfseDetalheAtualId}/cancelar`, { method: 'POST', body: JSON.stringify(payload) });
++
++        modalMotivoCancelamento.hide();
++        await carregarNfse();
++
++        if (!resultado.sucesso) {
++            mostrarErro(`Cancelamento rejeitado pela SEFIN: ${resultado.mensagemErro ?? resultado.codigoErro ?? 'motivo não informado'}.`);
++        }
++    } catch (err) {
++        erroDiv.textContent = err.message;
++        erroDiv.classList.remove('d-none');
++    }
++}
+diff --git a/src/NfseSaaS.Web/wwwroot/js/paginas/servicos.js b/src/NfseSaaS.Web/wwwroot/js/paginas/servicos.js
+new file mode 100644
+index 0000000..58ad397
+--- /dev/null
++++ b/src/NfseSaaS.Web/wwwroot/js/paginas/servicos.js
+@@ -0,0 +1,158 @@
++const podeEditarServico = document.getElementById('btn-novo-servico') !== null;
++
++let tabelaServicos;
++let modalServico;
++let empresaAtualIdServicos;
++
++document.addEventListener('DOMContentLoaded', function () {
++    const colunas = [
++        { data: 'descricao' },
++        { data: 'codigoTributacaoNacional' },
++        { data: 'codigoNbs' },
++        { data: 'valorPadrao', render: v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) },
++        {
++            data: 'ativo',
++            render: v => v
++                ? '<span class="badge text-bg-success">Ativo</span>'
++                : '<span class="badge text-bg-secondary">Inativo</span>'
++        }
++    ];
++
++    if (podeEditarServico) {
++        colunas.push({
++            data: null,
++            orderable: false,
++            render: (data, type, servico) => `
++                <button type="button" class="btn btn-sm btn-outline-primary btn-editar" data-id="${servico.id}">
++                    <i class="bi bi-pencil"></i>
++                </button>
++                <button type="button" class="btn btn-sm btn-outline-warning btn-alternar-ativo" data-id="${servico.id}" data-ativo="${servico.ativo}">
++                    <i class="bi ${servico.ativo ? 'bi-toggle-on' : 'bi-toggle-off'}"></i>
++                </button>
++                <button type="button" class="btn btn-sm btn-outline-danger btn-excluir" data-id="${servico.id}">
++                    <i class="bi bi-trash"></i>
++                </button>
++            `
++        });
++    }
++
++    tabelaServicos = new DataTable('#tabela-servicos', {
++        columns: colunas,
++        language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/pt-BR.json' }
++    });
++
++    if (podeEditarServico) {
++        modalServico = new bootstrap.Modal(document.getElementById('modal-servico'));
++        document.getElementById('btn-novo-servico').addEventListener('click', abrirModalNovoServico);
++        document.getElementById('form-servico').addEventListener('submit', salvarServico);
++
++        document.getElementById('tabela-servicos').addEventListener('click', async function (e) {
++            const botao = e.target.closest('button');
++            if (!botao) return;
++            const id = botao.dataset.id;
++
++            if (botao.classList.contains('btn-editar')) await abrirModalEditarServico(id);
++            else if (botao.classList.contains('btn-alternar-ativo')) await alternarAtivoServico(id, botao.dataset.ativo === 'true');
++            else if (botao.classList.contains('btn-excluir')) await excluirServico(id);
++        });
++    }
++
++    inicializarSeletorEmpresa(function (empresaId) {
++        empresaAtualIdServicos = empresaId;
++        carregarServicos();
++    });
++});
++
++async function carregarServicos() {
++    if (!empresaAtualIdServicos) return;
++
++    try {
++        const resultado = await apiFetch(`/api/servicos?empresaId=${empresaAtualIdServicos}&pageSize=200&incluirInativos=true`);
++        tabelaServicos.clear();
++        tabelaServicos.rows.add(resultado.items);
++        tabelaServicos.draw();
++    } catch (err) {
++        mostrarErro(err.message);
++    }
++}
++
++function limparFormularioServico() {
++    document.getElementById('form-servico').reset();
++    document.getElementById('servicoId').value = '';
++    document.getElementById('erro-servico').classList.add('d-none');
++}
++
++function abrirModalNovoServico() {
++    limparFormularioServico();
++    document.getElementById('titulo-modal-servico').textContent = 'Novo serviço';
++    modalServico.show();
++}
++
++async function abrirModalEditarServico(id) {
++    limparFormularioServico();
++    document.getElementById('titulo-modal-servico').textContent = 'Editar serviço';
++
++    try {
++        const servico = await apiFetch(`/api/servicos/${id}`);
++
++        document.getElementById('servicoId').value = servico.id;
++        document.getElementById('descricao').value = servico.descricao;
++        document.getElementById('codigoTributacaoNacional').value = servico.codigoTributacaoNacional;
++        document.getElementById('codigoNbs').value = servico.codigoNbs;
++        document.getElementById('valorPadrao').value = servico.valorPadrao;
++
++        modalServico.show();
++    } catch (err) {
++        mostrarErro(err.message);
++    }
++}
++
++async function salvarServico(e) {
++    e.preventDefault();
++    const erroDiv = document.getElementById('erro-servico');
++    erroDiv.classList.add('d-none');
++
++    const id = document.getElementById('servicoId').value;
++    const payload = {
++        empresaId: empresaAtualIdServicos,
++        descricao: document.getElementById('descricao').value,
++        codigoTributacaoNacional: document.getElementById('codigoTributacaoNacional').value,
++        codigoNbs: document.getElementById('codigoNbs').value,
++        valorPadrao: parseFloat(document.getElementById('valorPadrao').value)
++    };
++
++    try {
++        if (id) {
++            await apiFetch(`/api/servicos/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
++        } else {
++            await apiFetch('/api/servicos', { method: 'POST', body: JSON.stringify(payload) });
++        }
++
++        modalServico.hide();
++        await carregarServicos();
++    } catch (err) {
++        erroDiv.textContent = err.message;
++        erroDiv.classList.remove('d-none');
++    }
++}
++
++async function alternarAtivoServico(id, ativoAtualmente) {
++    const acao = ativoAtualmente ? 'desativar' : 'reativar';
++    try {
++        await apiFetch(`/api/servicos/${id}/${acao}`, { method: 'POST' });
++        await carregarServicos();
++    } catch (err) {
++        mostrarErro(err.message);
++    }
++}
++
++async function excluirServico(id) {
++    if (!confirm('Excluir este serviço?')) return;
++
++    try {
++        await apiFetch(`/api/servicos/${id}`, { method: 'DELETE' });
++        await carregarServicos();
++    } catch (err) {
++        mostrarErro(err.message);
++    }
++}

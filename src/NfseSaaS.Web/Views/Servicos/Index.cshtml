@@ -1,0 +1,89 @@
+@{
+    ViewData["Title"] = "Serviços";
+    var podeEditar = User.IsInRole("Administrador");
+}
+
+<div class="card mb-3">
+    <div class="card-body">
+        <label class="form-label">Empresa</label>
+        <select id="seletor-empresa" class="form-select"></select>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Serviços cadastrados</span>
+        <div class="d-flex align-items-center gap-2">
+            <div id="botoes-exportacao-tabela-servicos"></div>
+            @if (podeEditar)
+            {
+                <button type="button" class="btn btn-primary btn-sm" id="btn-novo-servico">
+                    <i class="bi bi-plus-lg"></i> Novo serviço
+                </button>
+            }
+        </div>
+    </div>
+    <div class="card-body">
+        <table id="tabela-servicos" class="table table-striped table-bordered w-100">
+            <thead>
+                <tr>
+                    <th>Descrição</th>
+                    <th>Código tributação nacional</th>
+                    <th>Código NBS</th>
+                    <th>Valor padrão</th>
+                    <th>Situação</th>
+                    @if (podeEditar)
+                    {
+                        <th>Ações</th>
+                    }
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>
+
+@if (podeEditar)
+{
+    <div class="modal fade" id="modal-servico" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="form-servico">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="titulo-modal-servico">Novo serviço</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="erro-servico" class="alert alert-danger d-none"></div>
+                        <input type="hidden" id="servicoId" />
+
+                        <div class="mb-3">
+                            <label class="form-label">Descrição</label>
+                            <input type="text" class="form-control" id="descricao" maxlength="500" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Código de tributação nacional (cTribNac)</label>
+                            <input type="text" class="form-control" id="codigoTributacaoNacional" maxlength="10" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Código NBS</label>
+                            <input type="text" class="form-control" id="codigoNbs" maxlength="10" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Valor padrão</label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="valorPadrao" required />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/empresa-seletor.js"></script>
+    <script src="~/js/paginas/servicos.js" asp-append-version="true"></script>
+}

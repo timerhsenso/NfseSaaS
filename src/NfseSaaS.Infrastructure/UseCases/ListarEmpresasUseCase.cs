@@ -37,7 +37,8 @@ public sealed class ListarEmpresasUseCase : IListarEmpresasUseCase
             .Take(pageSize)
             .Select(e => new EmpresaResponse(
                 e.Id, e.Cnpj, e.RazaoSocial, e.NomeFantasia, e.InscricaoMunicipal, e.CodigoMunicipio,
-                e.Telefone, e.Email, e.OpSimpNac, e.RegApTribSN, e.RegEspTrib, e.TribIssqn, e.TpRetIssqn,
+                e.Telefone, e.Email, e.Cep, e.Logradouro, e.Numero, e.Complemento, e.Bairro, e.Uf,
+                e.OpSimpNac, e.RegApTribSN, e.RegEspTrib, e.TribIssqn, e.TpRetIssqn,
                 e.CstPisCofins, e.TpRetPisCofins, e.PercentualTotalTributosSimplesNacional, e.Ativo,
                 e.CreatedAt, e.UpdatedAt))
             .ToListAsync(cancellationToken);

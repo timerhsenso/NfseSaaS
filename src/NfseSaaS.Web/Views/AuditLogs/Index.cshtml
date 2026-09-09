@@ -1,0 +1,60 @@
+@{
+    ViewData["Title"] = "Auditoria";
+}
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form id="form-filtros-auditoria" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Operação</label>
+                <input type="text" class="form-control" id="filtro-operacao" placeholder="ex.: EmitirNfse" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Entidade</label>
+                <input type="text" class="form-control" id="filtro-entidade" placeholder="ex.: Nfse" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">De</label>
+                <input type="date" class="form-control" id="filtro-data-inicio" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Até</label>
+                <input type="date" class="form-control" id="filtro-data-fim" />
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary btn-sm">Filtrar</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-limpar-filtros-auditoria">Limpar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>Data/hora</th>
+                    <th>Operação</th>
+                    <th>Entidade</th>
+                    <th>Entidade ID</th>
+                    <th>IP</th>
+                    <th>Dados</th>
+                </tr>
+            </thead>
+            <tbody id="corpo-tabela-auditoria"></tbody>
+        </table>
+
+        <div class="d-flex justify-content-between align-items-center">
+            <span class="text-muted small" id="resumo-paginacao-auditoria"></span>
+            <div>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-pagina-anterior-auditoria">Anterior</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-proxima-pagina-auditoria">Próxima</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/paginas/auditlogs.js" asp-append-version="true"></script>
+}

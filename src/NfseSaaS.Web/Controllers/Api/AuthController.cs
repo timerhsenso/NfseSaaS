@@ -196,7 +196,7 @@ public sealed class AuthController : ControllerBase
 
         var linkAceite = string.IsNullOrWhiteSpace(_emailOptions.AppBaseUrl)
             ? null
-            : $"{_emailOptions.AppBaseUrl.TrimEnd('/')}/aceitar-convite?email={Uri.EscapeDataString(destinatarioEmail)}&token={Uri.EscapeDataString(token)}";
+            : $"{_emailOptions.AppBaseUrl.TrimEnd('/')}/Account/AceitarConvite?email={Uri.EscapeDataString(destinatarioEmail)}&token={Uri.EscapeDataString(token)}";
 
         var corpoHtml = $"""
             <p>Você foi convidado para acessar o <strong>{WebUtility.HtmlEncode(nomeExibicao)}</strong> no NfseSaaS.</p>

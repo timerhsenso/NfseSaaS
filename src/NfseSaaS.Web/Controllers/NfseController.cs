@@ -1,0 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace NfseSaaS.Web.Controllers;
+
+/// <summary>Só serve a view — dados vêm via fetch do api/nfse já existente.</summary>
+[Authorize]
+public sealed class NfseController : Controller
+{
+    public IActionResult Index() => View();
+}

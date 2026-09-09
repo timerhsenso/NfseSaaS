@@ -1,0 +1,65 @@
+diff --git a/src/NfseSaaS.Infrastructure/UseCases/SincronizarNotasDaSefinUseCase.cs b/src/NfseSaaS.Infrastructure/UseCases/SincronizarNotasDaSefinUseCase.cs
+index 55a8001..f775589 100644
+--- a/src/NfseSaaS.Infrastructure/UseCases/SincronizarNotasDaSefinUseCase.cs
++++ b/src/NfseSaaS.Infrastructure/UseCases/SincronizarNotasDaSefinUseCase.cs
+@@ -55,6 +55,14 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
+         int importadas = 0, jaExistentes = 0, clientesCriados = 0;
+         var maiorNsu = ultimoNsu;
+ 
++        // Cache em memória dos Clientes criados NESTA execução — sem
++        // isso, duas notas do mesmo lote com o mesmo tomador (ainda não
++        // existente no banco) cairiam na mesma consulta "não existe",
++        // cada uma criaria seu próprio Cliente, e o SaveChanges no final
++        // do laço bateria na constraint única (TenantId, EmpresaId,
++        // CpfCnpj) — confirmado no log real de erro.
++        var clientesNestaExecucao = new Dictionary<string, Guid>();
++
+         foreach (var item in lote.LoteDFe.Where(d => d.TipoDocumento == "NFSE").OrderBy(d => d.NSU))
+         {
+             if (item.NSU > maiorNsu)
+@@ -72,7 +80,7 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
+             var xml = GZipHelper.DescomprimirDeBase64(item.ArquivoXml);
+             var dados = new NfseXmlImportDados(xml);
+ 
+-            var (clienteId, clienteFoiCriado) = await ObterOuCriarClienteAsync(empresaId, dados, cancellationToken);
++            var (clienteId, clienteFoiCriado) = await ObterOuCriarClienteAsync(empresaId, dados, clientesNestaExecucao, cancellationToken);
+             if (clienteFoiCriado)
+                 clientesCriados++;
+ 
+@@ -141,16 +149,27 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
+         return new SincronizacaoSefinResponse(importadas, jaExistentes, clientesCriados, maiorNsu);
+     }
+ 
+-    private async Task<(Guid ClienteId, bool Criado)> ObterOuCriarClienteAsync(Guid empresaId, NfseXmlImportDados dados, CancellationToken cancellationToken)
++    private async Task<(Guid ClienteId, bool Criado)> ObterOuCriarClienteAsync(
++        Guid empresaId, NfseXmlImportDados dados, Dictionary<string, Guid> clientesNestaExecucao, CancellationToken cancellationToken)
+     {
+         var cpfCnpj = dados.TomadorCpfCnpj();
+ 
++        // 1) já criado nesta mesma execução (ainda não salvo no banco) —
++        // ver comentário completo no chamador.
++        if (clientesNestaExecucao.TryGetValue(cpfCnpj, out var clienteIdEmMemoria))
++            return (clienteIdEmMemoria, false);
++
++        // 2) já existe no banco, de uma sincronização/cadastro anterior.
+         var clienteExistente = await _db.Clientes
+             .FirstOrDefaultAsync(c => c.EmpresaId == empresaId && c.CpfCnpj == cpfCnpj, cancellationToken);
+ 
+         if (clienteExistente is not null)
++        {
++            clientesNestaExecucao[cpfCnpj] = clienteExistente.Id;
+             return (clienteExistente.Id, false);
++        }
+ 
++        // 3) realmente novo.
+         var novoCliente = new Cliente
+         {
+             EmpresaId = empresaId,
+@@ -168,6 +187,7 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
+         };
+ 
+         _db.Clientes.Add(novoCliente);
++        clientesNestaExecucao[cpfCnpj] = novoCliente.Id;
+         return (novoCliente.Id, true);
+     }
+ }

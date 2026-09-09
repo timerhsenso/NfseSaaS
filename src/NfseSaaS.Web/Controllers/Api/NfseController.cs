@@ -18,6 +18,7 @@ public sealed class NfseController : ControllerBase
     private readonly ICancelarNfseUseCase _cancelarNfse;
     private readonly IListarEventosDaNfseUseCase _listarEventosDaNfse;
     private readonly IObterSnapshotFiscalDaNfseUseCase _obterSnapshotFiscalDaNfse;
+    private readonly IObterDanfsePdfUseCase _obterDanfsePdf;
 
     public NfseController(
         IEmitirNfseUseCase emitirNfse,
@@ -25,7 +26,8 @@ public sealed class NfseController : ControllerBase
         IObterNfsePorIdUseCase obterNfsePorId,
         ICancelarNfseUseCase cancelarNfse,
         IListarEventosDaNfseUseCase listarEventosDaNfse,
-        IObterSnapshotFiscalDaNfseUseCase obterSnapshotFiscalDaNfse)
+        IObterSnapshotFiscalDaNfseUseCase obterSnapshotFiscalDaNfse,
+        IObterDanfsePdfUseCase obterDanfsePdf)
     {
         _emitirNfse = emitirNfse;
         _listarNfse = listarNfse;
@@ -33,6 +35,7 @@ public sealed class NfseController : ControllerBase
         _cancelarNfse = cancelarNfse;
         _listarEventosDaNfse = listarEventosDaNfse;
         _obterSnapshotFiscalDaNfse = obterSnapshotFiscalDaNfse;
+        _obterDanfsePdf = obterDanfsePdf;
     }
 
     [Authorize(Roles = Papeis.PodeEmitir)]
@@ -83,5 +86,12 @@ public sealed class NfseController : ControllerBase
     {
         var snapshot = await _obterSnapshotFiscalDaNfse.ExecutarAsync(id, cancellationToken);
         return Ok(snapshot);
+    }
+
+    [HttpGet("{id:guid}/danfse-pdf")]
+    public async Task<IActionResult> ObterDanfsePdf(Guid id, CancellationToken cancellationToken)
+    {
+        var danfse = await _obterDanfsePdf.ExecutarAsync(id, cancellationToken);
+        return File(danfse.Bytes, danfse.ContentType, danfse.NomeArquivo);
     }
 }

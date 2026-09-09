@@ -1,0 +1,101 @@
+diff --git a/src/NfseSaaS.Web/Views/AuditLogs/Index.cshtml b/src/NfseSaaS.Web/Views/AuditLogs/Index.cshtml
+index 25169f2..1588530 100644
+--- a/src/NfseSaaS.Web/Views/AuditLogs/Index.cshtml
++++ b/src/NfseSaaS.Web/Views/AuditLogs/Index.cshtml
+@@ -56,5 +56,5 @@
+ </div>
+ 
+ @section Scripts {
+-    <script src="~/js/paginas/auditlogs.js"></script>
++    <script src="~/js/paginas/auditlogs.js" asp-append-version="true"></script>
+ }
+diff --git a/src/NfseSaaS.Web/Views/Clientes/Index.cshtml b/src/NfseSaaS.Web/Views/Clientes/Index.cshtml
+index fc6fe26..1590a68 100644
+--- a/src/NfseSaaS.Web/Views/Clientes/Index.cshtml
++++ b/src/NfseSaaS.Web/Views/Clientes/Index.cshtml
+@@ -122,5 +122,5 @@
+ 
+ @section Scripts {
+     <script src="~/js/empresa-seletor.js"></script>
+-    <script src="~/js/paginas/clientes.js"></script>
++    <script src="~/js/paginas/clientes.js" asp-append-version="true"></script>
+ }
+diff --git a/src/NfseSaaS.Web/Views/Empresas/Index.cshtml b/src/NfseSaaS.Web/Views/Empresas/Index.cshtml
+index d47d31f..657dec7 100644
+--- a/src/NfseSaaS.Web/Views/Empresas/Index.cshtml
++++ b/src/NfseSaaS.Web/Views/Empresas/Index.cshtml
+@@ -218,5 +218,5 @@
+ }
+ 
+ @section Scripts {
+-    <script src="~/js/paginas/empresas.js"></script>
++    <script src="~/js/paginas/empresas.js" asp-append-version="true"></script>
+ }
+diff --git a/src/NfseSaaS.Web/Views/Nfse/Index.cshtml b/src/NfseSaaS.Web/Views/Nfse/Index.cshtml
+index 2a89bda..bb80a7a 100644
+--- a/src/NfseSaaS.Web/Views/Nfse/Index.cshtml
++++ b/src/NfseSaaS.Web/Views/Nfse/Index.cshtml
+@@ -155,5 +155,5 @@
+ 
+ @section Scripts {
+     <script src="~/js/empresa-seletor.js"></script>
+-    <script src="~/js/paginas/nfse.js"></script>
++    <script src="~/js/paginas/nfse.js" asp-append-version="true"></script>
+ }
+diff --git a/src/NfseSaaS.Web/Views/Servicos/Index.cshtml b/src/NfseSaaS.Web/Views/Servicos/Index.cshtml
+index 1026114..1355669 100644
+--- a/src/NfseSaaS.Web/Views/Servicos/Index.cshtml
++++ b/src/NfseSaaS.Web/Views/Servicos/Index.cshtml
+@@ -85,5 +85,5 @@
+ 
+ @section Scripts {
+     <script src="~/js/empresa-seletor.js"></script>
+-    <script src="~/js/paginas/servicos.js"></script>
++    <script src="~/js/paginas/servicos.js" asp-append-version="true"></script>
+ }
+diff --git a/src/NfseSaaS.Web/Views/Shared/_AuthLayout.cshtml b/src/NfseSaaS.Web/Views/Shared/_AuthLayout.cshtml
+index fc021b2..96c2f6a 100644
+--- a/src/NfseSaaS.Web/Views/Shared/_AuthLayout.cshtml
++++ b/src/NfseSaaS.Web/Views/Shared/_AuthLayout.cshtml
+@@ -7,7 +7,7 @@
+     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" />
+     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" />
+     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+-    <link rel="stylesheet" href="~/css/site.css" />
++    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+ </head>
+ <body class="auth-page d-flex align-items-center" style="min-height: 100vh;">
+     <div class="container">
+@@ -28,7 +28,7 @@
+ 
+     <script src="https://cdn.jsdelivr.net/npm/@@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
+     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js"></script>
+-    <script src="~/js/site.js"></script>
++    <script src="~/js/site.js" asp-append-version="true"></script>
+ 
+     @await RenderSectionAsync("Scripts", required: false)
+ </body>
+diff --git a/src/NfseSaaS.Web/Views/Shared/_Layout.cshtml b/src/NfseSaaS.Web/Views/Shared/_Layout.cshtml
+index 129acd9..e42f162 100644
+--- a/src/NfseSaaS.Web/Views/Shared/_Layout.cshtml
++++ b/src/NfseSaaS.Web/Views/Shared/_Layout.cshtml
+@@ -20,7 +20,7 @@
+     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" />
+     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/datatables.net-bs5@2/css/dataTables.bootstrap5.min.css" />
+     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.2.5/css/buttons.bootstrap5.min.css" />
+-    <link rel="stylesheet" href="~/css/site.css" />
++    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+ </head>
+ <body>
+     <div class="app">
+@@ -106,8 +106,8 @@
+     <script src="https://cdn.datatables.net/buttons/3.2.5/js/buttons.html5.min.js"></script>
+     <script src="https://cdn.datatables.net/buttons/3.2.5/js/buttons.print.min.js"></script>
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+-    <script src="~/js/site.js"></script>
+-    <script src="~/js/exportacao.js"></script>
++    <script src="~/js/site.js" asp-append-version="true"></script>
++    <script src="~/js/exportacao.js" asp-append-version="true"></script>
+ 
+     <script>
+         window.usuarioAtual = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(nomeUsuario));

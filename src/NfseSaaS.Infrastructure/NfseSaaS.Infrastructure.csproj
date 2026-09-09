@@ -32,6 +32,17 @@
     </PackageReference>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.10" />
+
+    <!--
+      DANFSe local (NT 008/2026) — QuestPDF pra renderizar o layout fixo
+      em cm exigido pela nota técnica, QRCoder pro QR Code de consulta
+      pública. QuestPDF Community License é gratuita só até USD 1
+      milhão de receita anual da empresa que USA o software — confirme
+      se aplica antes de ir pra produção (ver QuestPdfLicenseConfig no
+      DependencyInjection deste projeto).
+    -->
+    <PackageReference Include="QuestPDF" Version="2025.7.1" />
+    <PackageReference Include="QRCoder" Version="1.6.0" />
   </ItemGroup>
 
 </Project>

@@ -25,5 +25,13 @@ public enum NfseEventoTipo
     Cancelada = 4,
 
     /// <summary>Tentativa de cancelamento rejeitada pela SEFIN Nacional — a Nfse permanece Autorizada.</summary>
-    CancelamentoRejeitado = 5
+    CancelamentoRejeitado = 5,
+
+    /// <summary>
+    /// Nfse importada via Distribuição de DF-e (ADN) — emitida por OUTRO
+    /// canal (portal web Emissor Nacional, outro sistema) e trazida pra
+    /// este SaaS depois. Distingue de DpsEnviada/Autorizada, que só se
+    /// aplicam a notas emitidas através deste próprio sistema.
+    /// </summary>
+    ImportadaDaSefin = 6
 }

@@ -6,11 +6,14 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.UseCases.AuditLogs;
+using NfseSaaS.Application.UseCases.Certificados;
 using NfseSaaS.Application.UseCases.Clientes;
 using NfseSaaS.Application.UseCases.Empresas;
+using NfseSaaS.Application.UseCases.Exportacoes;
 using NfseSaaS.Application.UseCases.Nfse;
 using NfseSaaS.Application.UseCases.NfseEventos;
 using NfseSaaS.Application.UseCases.Servicos;
+using NfseSaaS.Application.UseCases.SincronizacaoSefin;
 using NfseSaaS.Infrastructure.Auditing;
 using NfseSaaS.Infrastructure.Certificates;
 using NfseSaaS.Infrastructure.Email;
@@ -30,6 +33,13 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
+        // Licença Community: gratuita só se a receita anual de QUEM USA
+        // este software for menor que USD 1 milhão — confirme se aplica
+        // ao seu caso antes de ir pra produção
+        // (https://www.questpdf.com/license/). Se não aplicar, é preciso
+        // licença comercial da QuestPDF ou trocar de biblioteca de PDF.
+        QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException(
                 "ConnectionStrings:DefaultConnection não configurada. " +
@@ -125,9 +135,16 @@ public static class DependencyInjection
         services.AddScoped<ICancelarNfseUseCase, CancelarNfseUseCase>();
         services.AddScoped<IListarEventosDaNfseUseCase, ListarEventosDaNfseUseCase>();
         services.AddScoped<IObterSnapshotFiscalDaNfseUseCase, ObterSnapshotFiscalDaNfseUseCase>();
+        services.AddScoped<IObterDanfsePdfUseCase, ObterDanfsePdfUseCase>();
+        services.AddScoped<ISincronizarNotasDaSefinUseCase, SincronizarNotasDaSefinUseCase>();
+        services.AddScoped<IRegistrarExportacaoUseCase, RegistrarExportacaoUseCase>();
 
         services.AddScoped<IListarAuditLogsUseCase, ListarAuditLogsUseCase>();
         services.AddScoped<IObterAuditLogPorIdUseCase, ObterAuditLogPorIdUseCase>();
+
+        services.AddScoped<IEnviarCertificadoUseCase, EnviarCertificadoUseCase>();
+        services.AddScoped<IObterStatusCertificadoUseCase, ObterStatusCertificadoUseCase>();
+        services.AddScoped<ITestarConexaoCertificadoUseCase, TestarConexaoCertificadoUseCase>();
 
         return services;
     }

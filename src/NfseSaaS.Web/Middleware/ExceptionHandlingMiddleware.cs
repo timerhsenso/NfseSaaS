@@ -34,6 +34,13 @@ public sealed class ExceptionHandlingMiddleware
         {
             _logger.LogError(ex, "Erro não tratado ao processar {Method} {Path}", context.Request.Method, context.Request.Path);
 
+            if (ex is NfseValidationException nfseValidationException && nfseValidationException.Codigos.Count > 0)
+            {
+                _logger.LogWarning(
+                    "DPS reprovada em validação local: {Erros}",
+                    string.Join(" | ", nfseValidationException.Codigos));
+            }
+
             var statusCode = ex switch
             {
                 ValidacaoException => HttpStatusCode.UnprocessableEntity,
@@ -48,16 +55,22 @@ public sealed class ExceptionHandlingMiddleware
             context.Response.StatusCode = (int)statusCode;
             context.Response.ContentType = "application/json";
 
-            // ValidacaoException sempre inclui os erros por campo — não é
-            // segredo de infraestrutura, é informação que o próprio cliente
-            // da API precisa para corrigir a requisição, então vai em
-            // qualquer ambiente (não só Development).
+            // ValidacaoException e NfseValidationException sempre incluem os
+            // erros específicos (por campo ou por regra de validação da
+            // DPS) — não é segredo de infraestrutura, é informação que o
+            // próprio cliente da API precisa para corrigir a requisição,
+            // então vai em qualquer ambiente (não só Development).
             object payload = ex switch
             {
                 ValidacaoException validacaoException => new
                 {
                     erro = validacaoException.Message,
                     erros = validacaoException.Erros
+                },
+                NfseValidationException erroValidacaoDps => new
+                {
+                    erro = erroValidacaoDps.Message,
+                    erros = erroValidacaoDps.Codigos
                 },
                 _ when _environment.IsDevelopment() => new { erro = ex.Message, detalhe = ex.ToString() },
                 _ => new { erro = "Ocorreu um erro ao processar a solicitação.", detalhe = (string?)null }

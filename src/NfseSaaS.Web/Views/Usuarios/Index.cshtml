@@ -1,0 +1,72 @@
+@{
+    ViewData["Title"] = "Usuários";
+}
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i>
+    Esta tela convida um novo usuário pro seu Tenant. A API ainda não tem
+    um endpoint de <strong>listagem</strong> de usuários — por isso não há
+    uma tabela de "usuários já convidados" aqui ainda.
+</div>
+
+<div class="card">
+    <div class="card-header">Convidar usuário</div>
+    <div class="card-body">
+        <div id="erro-convite" class="alert alert-danger d-none"></div>
+        <div id="sucesso-convite" class="alert alert-success d-none"></div>
+
+        <form id="form-convite" class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">E-mail</label>
+                <input type="email" class="form-control" id="email" required />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Papel</label>
+                <select class="form-select" id="papel" required>
+                    <option value="Administrador">Administrador</option>
+                    <option value="Emissor" selected>Emissor</option>
+                    <option value="Financeiro">Financeiro</option>
+                    <option value="Consulta">Consulta</option>
+                    <option value="Contador">Contador</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Convidar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('form-convite').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const erroDiv = document.getElementById('erro-convite');
+            const sucessoDiv = document.getElementById('sucesso-convite');
+            erroDiv.classList.add('d-none');
+            sucessoDiv.classList.add('d-none');
+
+            try {
+                const resultado = await apiFetch('/api/auth/convidar', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        email: document.getElementById('email').value,
+                        papel: document.getElementById('papel').value
+                    })
+                });
+
+                let mensagem = `Convite enviado para ${resultado.email}.`;
+                if (!resultado.emailEnviado) {
+                    mensagem += ` O e-mail não pôde ser enviado — token de aceite: ${resultado.token}`;
+                }
+
+                sucessoDiv.textContent = mensagem;
+                sucessoDiv.classList.remove('d-none');
+                document.getElementById('form-convite').reset();
+            } catch (err) {
+                erroDiv.textContent = err.message;
+                erroDiv.classList.remove('d-none');
+            }
+        });
+    </script>
+}

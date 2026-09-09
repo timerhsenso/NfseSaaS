@@ -65,4 +65,11 @@ public sealed class Empresa : BaseEntity, ITenantEntity
     public string PercentualTotalTributosSimplesNacional { get; set; } = string.Empty;
 
     public bool Ativo { get; set; } = true;
+
+    /// <summary>
+    /// Último NSU (Número Sequencial Único) já processado na sincronização
+    /// com o ADN (Distribuição de DF-e) — ver SincronizarNotasDaSefinUseCase.
+    /// Null/0 = nunca sincronizado, próxima chamada começa do zero.
+    /// </summary>
+    public long? UltimoNsuDistribuicao { get; set; }
 }

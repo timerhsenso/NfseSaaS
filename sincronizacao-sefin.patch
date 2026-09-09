@@ -1,0 +1,670 @@
+diff --git a/src/NfseSaaS.Application/UseCases/SincronizacaoSefin/ISincronizarNotasDaSefinUseCase.cs b/src/NfseSaaS.Application/UseCases/SincronizacaoSefin/ISincronizarNotasDaSefinUseCase.cs
+new file mode 100644
+index 0000000..8463889
+--- /dev/null
++++ b/src/NfseSaaS.Application/UseCases/SincronizacaoSefin/ISincronizarNotasDaSefinUseCase.cs
+@@ -0,0 +1,11 @@
++namespace NfseSaaS.Application.UseCases.SincronizacaoSefin;
++
++/// <summary>
++/// Puxa, via Distribuição de DF-e (ADN), as NFS-e emitidas por QUALQUER
++/// canal (portal web Emissor Nacional, outro sistema) em que o CNPJ da
++/// Empresa figure como emitente — e que ainda não existem neste SaaS.
++/// </summary>
++public interface ISincronizarNotasDaSefinUseCase
++{
++    Task<SincronizacaoSefinResponse> ExecutarAsync(Guid empresaId, CancellationToken cancellationToken);
++}
+diff --git a/src/NfseSaaS.Application/UseCases/SincronizacaoSefin/SincronizacaoSefinResponse.cs b/src/NfseSaaS.Application/UseCases/SincronizacaoSefin/SincronizacaoSefinResponse.cs
+new file mode 100644
+index 0000000..16b224d
+--- /dev/null
++++ b/src/NfseSaaS.Application/UseCases/SincronizacaoSefin/SincronizacaoSefinResponse.cs
+@@ -0,0 +1,7 @@
++namespace NfseSaaS.Application.UseCases.SincronizacaoSefin;
++
++public sealed record SincronizacaoSefinResponse(
++    int NotasImportadas,
++    int NotasJaExistentes,
++    int ClientesCriados,
++    long UltimoNsuProcessado);
+diff --git a/src/NfseSaaS.Domain/Entities/Empresa.cs b/src/NfseSaaS.Domain/Entities/Empresa.cs
+index 16ac47d..3c9f7c1 100644
+--- a/src/NfseSaaS.Domain/Entities/Empresa.cs
++++ b/src/NfseSaaS.Domain/Entities/Empresa.cs
+@@ -65,4 +65,11 @@ public sealed class Empresa : BaseEntity, ITenantEntity
+     public string PercentualTotalTributosSimplesNacional { get; set; } = string.Empty;
+ 
+     public bool Ativo { get; set; } = true;
++
++    /// <summary>
++    /// Último NSU (Número Sequencial Único) já processado na sincronização
++    /// com o ADN (Distribuição de DF-e) — ver SincronizarNotasDaSefinUseCase.
++    /// Null/0 = nunca sincronizado, próxima chamada começa do zero.
++    /// </summary>
++    public long? UltimoNsuDistribuicao { get; set; }
+ }
+diff --git a/src/NfseSaaS.Domain/Enums/NfseEventoTipo.cs b/src/NfseSaaS.Domain/Enums/NfseEventoTipo.cs
+index 3bf1207..78fd597 100644
+--- a/src/NfseSaaS.Domain/Enums/NfseEventoTipo.cs
++++ b/src/NfseSaaS.Domain/Enums/NfseEventoTipo.cs
+@@ -25,5 +25,13 @@ public enum NfseEventoTipo
+     Cancelada = 4,
+ 
+     /// <summary>Tentativa de cancelamento rejeitada pela SEFIN Nacional — a Nfse permanece Autorizada.</summary>
+-    CancelamentoRejeitado = 5
++    CancelamentoRejeitado = 5,
++
++    /// <summary>
++    /// Nfse importada via Distribuição de DF-e (ADN) — emitida por OUTRO
++    /// canal (portal web Emissor Nacional, outro sistema) e trazida pra
++    /// este SaaS depois. Distingue de DpsEnviada/Autorizada, que só se
++    /// aplicam a notas emitidas através deste próprio sistema.
++    /// </summary>
++    ImportadaDaSefin = 6
+ }
+diff --git a/src/NfseSaaS.Infrastructure/DependencyInjection.cs b/src/NfseSaaS.Infrastructure/DependencyInjection.cs
+index 1df012d..9683b68 100644
+--- a/src/NfseSaaS.Infrastructure/DependencyInjection.cs
++++ b/src/NfseSaaS.Infrastructure/DependencyInjection.cs
+@@ -12,6 +12,7 @@ using NfseSaaS.Application.UseCases.Empresas;
+ using NfseSaaS.Application.UseCases.Nfse;
+ using NfseSaaS.Application.UseCases.NfseEventos;
+ using NfseSaaS.Application.UseCases.Servicos;
++using NfseSaaS.Application.UseCases.SincronizacaoSefin;
+ using NfseSaaS.Infrastructure.Auditing;
+ using NfseSaaS.Infrastructure.Certificates;
+ using NfseSaaS.Infrastructure.Email;
+@@ -134,6 +135,7 @@ public static class DependencyInjection
+         services.AddScoped<IListarEventosDaNfseUseCase, ListarEventosDaNfseUseCase>();
+         services.AddScoped<IObterSnapshotFiscalDaNfseUseCase, ObterSnapshotFiscalDaNfseUseCase>();
+         services.AddScoped<IObterDanfsePdfUseCase, ObterDanfsePdfUseCase>();
++        services.AddScoped<ISincronizarNotasDaSefinUseCase, SincronizarNotasDaSefinUseCase>();
+ 
+         services.AddScoped<IListarAuditLogsUseCase, ListarAuditLogsUseCase>();
+         services.AddScoped<IObterAuditLogPorIdUseCase, ObterAuditLogPorIdUseCase>();
+diff --git a/src/NfseSaaS.Infrastructure/SincronizacaoSefin/NfseXmlImportDados.cs b/src/NfseSaaS.Infrastructure/SincronizacaoSefin/NfseXmlImportDados.cs
+new file mode 100644
+index 0000000..2e0a7f9
+--- /dev/null
++++ b/src/NfseSaaS.Infrastructure/SincronizacaoSefin/NfseXmlImportDados.cs
+@@ -0,0 +1,93 @@
++using System.Globalization;
++using System.Xml;
++
++namespace NfseSaaS.Infrastructure.SincronizacaoSefin;
++
++/// <summary>
++/// Extrai os campos do XML de uma NFS-e em formato BRUTO (sem máscara,
++/// sem decodificação de texto) — usado pra gravar no banco ao importar
++/// uma nota vinda de outro canal (Distribuição de DF-e/ADN). Complementa
++/// DanfseXmlDados (Infrastructure.Danfse), que existe pro caso oposto:
++/// formatar pra exibição num PDF. Os dois leem o mesmo XML, mas com
++/// propósitos e formatos de saída diferentes — não foi reaproveitado de
++/// propósito, pra não acoplar "dado pra gravar" a "dado pra mostrar".
++/// </summary>
++internal sealed class NfseXmlImportDados
++{
++    private const string Ns = "http://www.sped.fazenda.gov.br/nfse";
++    private readonly XmlDocument _doc;
++    private readonly XmlNamespaceManager _ns;
++
++    public NfseXmlImportDados(string xmlNfse)
++    {
++        _doc = new XmlDocument();
++        _doc.LoadXml(xmlNfse);
++        _ns = new XmlNamespaceManager(_doc.NameTable);
++        _ns.AddNamespace("n", Ns);
++    }
++
++    private string? Texto(string caminho) => _doc.SelectSingleNode(caminho, _ns)?.InnerText;
++
++    public string CStat() => Texto("//n:NFSe/n:infNFSe/n:cStat") ?? string.Empty;
++
++    public int NumeroDps() => int.TryParse(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:nDPS"), out var n) ? n : 0;
++
++    public string SerieDps() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:serie") ?? string.Empty;
++
++    public string? NumeroNfse() => Texto("//n:NFSe/n:infNFSe/n:nNFSe");
++
++    public DateOnly DataCompetencia() =>
++        DateOnly.TryParse(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:dCompet"), CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
++            ? d
++            : DateOnly.FromDateTime(DateTime.UtcNow);
++
++    public DateTimeOffset? DataEmissao() =>
++        DateTimeOffset.TryParse(Texto("//n:NFSe/n:infNFSe/n:dhProc"), CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
++            ? d
++            : null;
++
++    public decimal ValorServico() =>
++        decimal.TryParse(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:valores/n:vServPrest/n:vServ"), NumberStyles.Number, CultureInfo.InvariantCulture, out var v)
++            ? v
++            : 0m;
++
++    public decimal? ValorLiquido() =>
++        decimal.TryParse(Texto("//n:NFSe/n:infNFSe/n:valores/n:vLiq"), NumberStyles.Number, CultureInfo.InvariantCulture, out var v)
++            ? v
++            : null;
++
++    public string DescricaoServico() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:serv/n:cServ/n:xDescServ") ?? string.Empty;
++
++    public string CodigoTributacaoNacional() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:serv/n:cServ/n:cTribNac") ?? string.Empty;
++
++    public string CodigoNbs() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:serv/n:cServ/n:cNBS") ?? string.Empty;
++
++    public string TribIssqn() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:valores/n:trib/n:tribMun/n:tribISSQN") ?? string.Empty;
++
++    public string TpRetIssqn() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:valores/n:trib/n:tribMun/n:tpRetISSQN") ?? string.Empty;
++
++    public string CstPisCofins() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:valores/n:trib/n:tribFed/n:piscofins/n:CST") ?? string.Empty;
++
++    public string TpRetPisCofins() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:valores/n:trib/n:tribFed/n:piscofins/n:tpRetPisCofins") ?? string.Empty;
++
++    public string PercentualTotalTributosSimplesNacional() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:valores/n:trib/n:totTrib/n:pTotTribSN") ?? string.Empty;
++
++    // ---- Tomador (pra find-or-create de Cliente) ----
++
++    public string TomadorCpfCnpj()
++    {
++        var cnpj = Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:toma/n:CNPJ");
++        if (!string.IsNullOrWhiteSpace(cnpj)) return cnpj;
++        return Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:toma/n:CPF") ?? string.Empty;
++    }
++
++    public string TomadorNome() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:toma/n:xNome") ?? string.Empty;
++    public string? TomadorEmail() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:toma/n:email");
++    public string? TomadorTelefone() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:toma/n:fone");
++    public string TomadorCodigoMunicipio() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:toma/n:end/n:endNac/n:cMun") ?? string.Empty;
++    public string TomadorCep() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:toma/n:end/n:endNac/n:CEP") ?? string.Empty;
++    public string TomadorLogradouro() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:toma/n:end/n:xLgr") ?? string.Empty;
++    public string TomadorNumero() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:toma/n:end/n:nro") ?? string.Empty;
++    public string? TomadorComplemento() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:toma/n:end/n:xCpl");
++    public string TomadorBairro() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:toma/n:end/n:xBairro") ?? string.Empty;
++}
+diff --git a/src/NfseSaaS.Infrastructure/UseCases/SincronizarNotasDaSefinUseCase.cs b/src/NfseSaaS.Infrastructure/UseCases/SincronizarNotasDaSefinUseCase.cs
+new file mode 100644
+index 0000000..55a8001
+--- /dev/null
++++ b/src/NfseSaaS.Infrastructure/UseCases/SincronizarNotasDaSefinUseCase.cs
+@@ -0,0 +1,173 @@
++using System.Text.Json;
++using Microsoft.EntityFrameworkCore;
++using NfseSaaS.Application.Abstractions;
++using NfseSaaS.Application.Exceptions;
++using NfseSaaS.Application.UseCases.SincronizacaoSefin;
++using NfseSaaS.Domain.Entities;
++using NfseSaaS.Domain.Enums;
++using NfseSaaS.Domain.Snapshots;
++using NfseSaaS.Infrastructure.Danfse;
++using NfseSaaS.Infrastructure.Persistence;
++using NfseSaaS.Infrastructure.SincronizacaoSefin;
++using NfseSaaS.Nacional.Clients;
++using NfseSaaS.Nacional.Helpers;
++
++namespace NfseSaaS.Infrastructure.UseCases;
++
++/// <summary>
++/// Importa, via ADN (Distribuição de DF-e), notas emitidas por outro
++/// canal — ver ISincronizarNotasDaSefinUseCase. Decisão de arquitetura:
++/// Nfse.ClienteId é uma FK obrigatória (não-nula) neste SaaS — uma nota
++/// importada cujo tomador não existe ainda como Cliente precisa de um
++/// Cliente novo, criado automaticamente a partir dos dados do próprio
++/// XML (find-or-create por CpfCnpj, escopado à Empresa). A alternativa
++/// (tornar ClienteId anulável pra "notas externas") espalharia essa
++/// exceção por toda a UI/relatórios que hoje assumem Cliente sempre
++/// presente — o find-or-create é a opção de menor ondulação.
++/// </summary>
++public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUseCase
++{
++    private readonly AppDbContext _db;
++    private readonly IAdnDistribuicaoClient _adnClient;
++    private readonly IAuditLogWriter _auditLogWriter;
++    private readonly INfseEventoWriter _nfseEventoWriter;
++
++    public SincronizarNotasDaSefinUseCase(
++        AppDbContext db,
++        IAdnDistribuicaoClient adnClient,
++        IAuditLogWriter auditLogWriter,
++        INfseEventoWriter nfseEventoWriter)
++    {
++        _db = db;
++        _adnClient = adnClient;
++        _auditLogWriter = auditLogWriter;
++        _nfseEventoWriter = nfseEventoWriter;
++    }
++
++    public async Task<SincronizacaoSefinResponse> ExecutarAsync(Guid empresaId, CancellationToken cancellationToken)
++    {
++        var empresa = await _db.Empresas.FirstOrDefaultAsync(e => e.Id == empresaId, cancellationToken)
++            ?? throw new RecursoNaoEncontradoException($"Empresa {empresaId} não encontrada.");
++
++        var ultimoNsu = empresa.UltimoNsuDistribuicao ?? 0;
++        var lote = await _adnClient.ConsultarPorNsuAsync(empresaId, ultimoNsu, cancellationToken);
++
++        int importadas = 0, jaExistentes = 0, clientesCriados = 0;
++        var maiorNsu = ultimoNsu;
++
++        foreach (var item in lote.LoteDFe.Where(d => d.TipoDocumento == "NFSE").OrderBy(d => d.NSU))
++        {
++            if (item.NSU > maiorNsu)
++                maiorNsu = item.NSU;
++
++            var jaExiste = await _db.NotasFiscais.AsNoTracking()
++                .AnyAsync(n => n.EmpresaId == empresaId && n.ChaveAcesso == item.ChaveAcesso, cancellationToken);
++
++            if (jaExiste)
++            {
++                jaExistentes++;
++                continue;
++            }
++
++            var xml = GZipHelper.DescomprimirDeBase64(item.ArquivoXml);
++            var dados = new NfseXmlImportDados(xml);
++
++            var (clienteId, clienteFoiCriado) = await ObterOuCriarClienteAsync(empresaId, dados, cancellationToken);
++            if (clienteFoiCriado)
++                clientesCriados++;
++
++            var status = dados.CStat() switch
++            {
++                "101" => NfseStatus.Cancelada,
++                "102" => NfseStatus.Substituida,
++                _ => NfseStatus.Autorizada
++            };
++
++            var snapshot = new NfseSnapshotFiscal(
++                Versao: 1,
++                Empresa: new NfseSnapshotEmpresa(
++                    RazaoSocial: empresa.RazaoSocial,
++                    NomeFantasia: empresa.NomeFantasia,
++                    Cnpj: empresa.Cnpj,
++                    InscricaoMunicipal: empresa.InscricaoMunicipal,
++                    OpSimpNac: empresa.OpSimpNac,
++                    RegApTribSN: empresa.RegApTribSN,
++                    RegEspTrib: empresa.RegEspTrib,
++                    Endereco: new NfseSnapshotEndereco(empresa.Cep, empresa.Logradouro, empresa.Numero, empresa.Complemento, empresa.Bairro, empresa.Uf)),
++                Cliente: new NfseSnapshotCliente(
++                    Nome: dados.TomadorNome(),
++                    CpfCnpj: dados.TomadorCpfCnpj(),
++                    Endereco: new NfseSnapshotEndereco(dados.TomadorCep(), dados.TomadorLogradouro(), dados.TomadorNumero(), dados.TomadorComplemento(), dados.TomadorBairro(), CodigosNfse.UfPorCodigoIbge(dados.TomadorCodigoMunicipio()))),
++                Servico: new NfseSnapshotServico(
++                    DescricaoCadastro: dados.DescricaoServico(),
++                    ValorPadraoCadastro: dados.ValorServico()));
++
++            var nfse = new Nfse
++            {
++                EmpresaId = empresaId,
++                ClienteId = clienteId,
++                NumeroDps = dados.NumeroDps(),
++                SerieDps = dados.SerieDps(),
++                NumeroNfse = dados.NumeroNfse(),
++                ChaveAcesso = item.ChaveAcesso,
++                DataCompetencia = dados.DataCompetencia(),
++                DataEmissao = dados.DataEmissao(),
++                ValorServico = dados.ValorServico(),
++                DescricaoServico = dados.DescricaoServico(),
++                CodigoTributacaoNacional = dados.CodigoTributacaoNacional(),
++                CodigoNbs = dados.CodigoNbs(),
++                TribIssqn = dados.TribIssqn(),
++                TpRetIssqn = dados.TpRetIssqn(),
++                CstPisCofins = dados.CstPisCofins(),
++                TpRetPisCofins = dados.TpRetPisCofins(),
++                PercentualTotalTributosSimplesNacional = dados.PercentualTotalTributosSimplesNacional(),
++                ValorLiquido = dados.ValorLiquido(),
++                XmlNfse = xml,
++                SnapshotFiscalJson = JsonSerializer.Serialize(snapshot),
++                Status = status
++            };
++
++            _db.NotasFiscais.Add(nfse);
++            _nfseEventoWriter.Registrar(nfse.Id, NfseEventoTipo.ImportadaDaSefin, mensagem: $"NSU {item.NSU}, via Distribuição de DF-e (ADN).");
++            importadas++;
++        }
++
++        empresa.UltimoNsuDistribuicao = maiorNsu;
++
++        _auditLogWriter.Registrar("SincronizarNotasDaSefin", "Empresa", empresaId, new { importadas, jaExistentes, clientesCriados, ultimoNsu = maiorNsu });
++
++        await _db.SaveChangesAsync(cancellationToken);
++
++        return new SincronizacaoSefinResponse(importadas, jaExistentes, clientesCriados, maiorNsu);
++    }
++
++    private async Task<(Guid ClienteId, bool Criado)> ObterOuCriarClienteAsync(Guid empresaId, NfseXmlImportDados dados, CancellationToken cancellationToken)
++    {
++        var cpfCnpj = dados.TomadorCpfCnpj();
++
++        var clienteExistente = await _db.Clientes
++            .FirstOrDefaultAsync(c => c.EmpresaId == empresaId && c.CpfCnpj == cpfCnpj, cancellationToken);
++
++        if (clienteExistente is not null)
++            return (clienteExistente.Id, false);
++
++        var novoCliente = new Cliente
++        {
++            EmpresaId = empresaId,
++            CpfCnpj = cpfCnpj,
++            Nome = dados.TomadorNome(),
++            Email = dados.TomadorEmail(),
++            Telefone = dados.TomadorTelefone(),
++            CodigoMunicipio = dados.TomadorCodigoMunicipio(),
++            Cep = dados.TomadorCep(),
++            Logradouro = dados.TomadorLogradouro(),
++            Numero = dados.TomadorNumero(),
++            Complemento = dados.TomadorComplemento(),
++            Bairro = dados.TomadorBairro(),
++            Uf = CodigosNfse.UfPorCodigoIbge(dados.TomadorCodigoMunicipio())
++        };
++
++        _db.Clientes.Add(novoCliente);
++        return (novoCliente.Id, true);
++    }
++}
+diff --git a/src/NfseSaaS.Nacional/Clients/AdnDistribuicaoClient.cs b/src/NfseSaaS.Nacional/Clients/AdnDistribuicaoClient.cs
+new file mode 100644
+index 0000000..63d689b
+--- /dev/null
++++ b/src/NfseSaaS.Nacional/Clients/AdnDistribuicaoClient.cs
+@@ -0,0 +1,64 @@
++using System.Net.Http.Json;
++using Microsoft.Extensions.Options;
++using NfseSaaS.Nacional.Exceptions;
++using NfseSaaS.Nacional.Models;
++using NfseSaaS.Nacional.Options;
++
++namespace NfseSaaS.Nacional.Clients;
++
++/// <summary>
++/// Reaproveita deliberadamente o MESMO client HTTP nomeado por Empresa
++/// (SefinNacionalClientNames.ParaEmpresa) que o SEFIN de emissão usa — o
++/// filtro que anexa o certificado mTLS (CertificateHttpMessageHandlerBuilderFilter)
++/// só olha o NOME do client, não a URL chamada nele. Como o certificado é
++/// o mesmo (por Empresa) tanto pra emissão quanto pra distribuição de
++/// DF-e, não há necessidade de uma convenção de nome de client separada —
++/// só aponta pra uma URL absoluta diferente (host do ADN) na mesma
++/// chamada GetAsync.
++/// </summary>
++public sealed class AdnDistribuicaoClient : IAdnDistribuicaoClient
++{
++    private readonly IHttpClientFactory _httpClientFactory;
++    private readonly AdnOptions _options;
++
++    public AdnDistribuicaoClient(IHttpClientFactory httpClientFactory, IOptions<AdnOptions> options)
++    {
++        _httpClientFactory = httpClientFactory;
++        _options = options.Value;
++    }
++
++    public async Task<DfeLoteResponse> ConsultarPorNsuAsync(Guid empresaId, long ultimoNsuProcessado, CancellationToken cancellationToken)
++    {
++        if (string.IsNullOrWhiteSpace(_options.BaseUrl))
++            throw new NfseApiException("Adn:BaseUrl não configurada.");
++
++        var client = _httpClientFactory.CreateClient(SefinNacionalClientNames.ParaEmpresa(empresaId));
++        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
++        timeoutCts.CancelAfter(TimeSpan.FromSeconds(_options.TimeoutSeconds));
++
++        var baseUrl = _options.BaseUrl.EndsWith('/') ? _options.BaseUrl : _options.BaseUrl + "/";
++        var url = new Uri(new Uri(baseUrl), $"DFe/{ultimoNsuProcessado}");
++
++        try
++        {
++            using var response = await client.GetAsync(url, timeoutCts.Token);
++            var body = await response.Content.ReadAsStringAsync(cancellationToken);
++
++            if (!response.IsSuccessStatusCode)
++                throw new NfseApiException($"ADN retornou HTTP {(int)response.StatusCode} ao consultar NSU {ultimoNsuProcessado}: {body}");
++
++            var resultado = System.Text.Json.JsonSerializer.Deserialize<DfeLoteResponse>(body,
++                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
++
++            return resultado ?? throw new NfseApiException("ADN retornou corpo vazio/inválido.");
++        }
++        catch (HttpRequestException ex)
++        {
++            throw new NfseApiException($"Falha de comunicação com o ADN ao consultar NSU {ultimoNsuProcessado}.", ex);
++        }
++        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
++        {
++            throw new NfseApiException($"Tempo limite ({_options.TimeoutSeconds}s) excedido ao consultar o ADN.", ex);
++        }
++    }
++}
+diff --git a/src/NfseSaaS.Nacional/Clients/IAdnDistribuicaoClient.cs b/src/NfseSaaS.Nacional/Clients/IAdnDistribuicaoClient.cs
+new file mode 100644
+index 0000000..2129ae9
+--- /dev/null
++++ b/src/NfseSaaS.Nacional/Clients/IAdnDistribuicaoClient.cs
+@@ -0,0 +1,13 @@
++using NfseSaaS.Nacional.Models;
++
++namespace NfseSaaS.Nacional.Clients;
++
++/// <summary>
++/// Consulta o ADN (Ambiente de Dados Nacional) por NSU — distribuição de
++/// DF-e, ver comentário completo em AdnOptions.
++/// </summary>
++public interface IAdnDistribuicaoClient
++{
++    /// <summary>Retorna todos os documentos disponíveis com NSU maior que o informado.</summary>
++    Task<DfeLoteResponse> ConsultarPorNsuAsync(Guid empresaId, long ultimoNsuProcessado, CancellationToken cancellationToken);
++}
+diff --git a/src/NfseSaaS.Nacional/DependencyInjection.cs b/src/NfseSaaS.Nacional/DependencyInjection.cs
+index e234606..7d654b6 100644
+--- a/src/NfseSaaS.Nacional/DependencyInjection.cs
++++ b/src/NfseSaaS.Nacional/DependencyInjection.cs
+@@ -26,6 +26,7 @@ public static class DependencyInjection
+     public static IServiceCollection AddNfseNacional(this IServiceCollection services, IConfiguration configuration)
+     {
+         services.Configure<NfseNacionalOptions>(configuration.GetSection(NfseNacionalOptions.SectionName));
++        services.Configure<AdnOptions>(configuration.GetSection(AdnOptions.SectionName));
+ 
+         // Registra a infraestrutura do IHttpClientFactory. Não usamos um
+         // nome fixo de client aqui — os clients são criados dinamicamente
+@@ -40,6 +41,7 @@ public static class DependencyInjection
+         services.AddScoped<IDpsSigner, DpsSigner>();
+         services.AddScoped<IEventoCancelamentoBuilder, EventoCancelamentoBuilder>();
+         services.AddScoped<INfseApiClient, NfseApiClient>();
++        services.AddScoped<IAdnDistribuicaoClient, AdnDistribuicaoClient>();
+         services.AddScoped<INfseNacionalService, NfseNacionalService>();
+ 
+         return services;
+diff --git a/src/NfseSaaS.Nacional/Models/DfeLoteResponse.cs b/src/NfseSaaS.Nacional/Models/DfeLoteResponse.cs
+new file mode 100644
+index 0000000..20c72e5
+--- /dev/null
++++ b/src/NfseSaaS.Nacional/Models/DfeLoteResponse.cs
+@@ -0,0 +1,25 @@
++namespace NfseSaaS.Nacional.Models;
++
++/// <summary>
++/// Resposta real de GET {baseUrl}/DFe/{nsu} — confirmada contra uma
++/// chamada real ao ambiente de produção restrita em 09/09/2026. Nomes de
++/// propriedade em PascalCase batem exatamente com o JSON retornado (o
++/// serializador padrão do ASP.NET Core já lida com isso via
++/// case-insensitive binding, mas os nomes aqui documentam o contrato real
++/// pra quem for ler o código, não uma suposição).
++/// </summary>
++public sealed record DfeLoteResponse(
++    string StatusProcessamento,
++    List<DfeItem> LoteDFe,
++    List<string> Alertas,
++    List<string> Erros,
++    string TipoAmbiente,
++    string VersaoAplicativo,
++    DateTimeOffset DataHoraProcessamento);
++
++public sealed record DfeItem(
++    long NSU,
++    string ChaveAcesso,
++    string TipoDocumento,
++    string ArquivoXml,
++    DateTimeOffset DataHoraGeracao);
+diff --git a/src/NfseSaaS.Nacional/Options/AdnOptions.cs b/src/NfseSaaS.Nacional/Options/AdnOptions.cs
+new file mode 100644
+index 0000000..26be4a6
+--- /dev/null
++++ b/src/NfseSaaS.Nacional/Options/AdnOptions.cs
+@@ -0,0 +1,20 @@
++namespace NfseSaaS.Nacional.Options;
++
++/// <summary>
++/// O ADN (Ambiente de Dados Nacional) é um serviço da NFS-e Nacional
++/// DIFERENTE do SEFIN de emissão (NfseNacionalOptions) — host próprio
++/// (adn.nfse.gov.br / adn.producaorestrita.nfse.gov.br), mas usa o MESMO
++/// certificado mTLS por Empresa. Serve pra "puxar de volta" documentos
++/// fiscais emitidos por QUALQUER canal (API, portal web Emissor Nacional,
++/// outro sistema) em que o CNPJ da Empresa figure como emitente, tomador
++/// ou intermediário — mecanismo oficial de "Distribuição de DF-e por NSU".
++/// </summary>
++public sealed class AdnOptions
++{
++    public const string SectionName = "Adn";
++
++    /// <summary>Ex.: https://adn.producaorestrita.nfse.gov.br/contribuintes (homologação) ou https://adn.nfse.gov.br/contribuintes (produção).</summary>
++    public string BaseUrl { get; set; } = string.Empty;
++
++    public int TimeoutSeconds { get; set; } = 60;
++}
+diff --git a/src/NfseSaaS.Web/Controllers/Api/EmpresasController.cs b/src/NfseSaaS.Web/Controllers/Api/EmpresasController.cs
+index d9e6fe5..40f7003 100644
+--- a/src/NfseSaaS.Web/Controllers/Api/EmpresasController.cs
++++ b/src/NfseSaaS.Web/Controllers/Api/EmpresasController.cs
+@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
+ using NfseSaaS.Application.Authorization;
+ using NfseSaaS.Application.UseCases.Certificados;
+ using NfseSaaS.Application.UseCases.Empresas;
++using NfseSaaS.Application.UseCases.SincronizacaoSefin;
+ 
+ namespace NfseSaaS.Web.Controllers.Api;
+ 
+@@ -21,6 +22,7 @@ public sealed class EmpresasController : ControllerBase
+     private readonly IEnviarCertificadoUseCase _enviarCertificado;
+     private readonly IObterStatusCertificadoUseCase _obterStatusCertificado;
+     private readonly ITestarConexaoCertificadoUseCase _testarConexaoCertificado;
++    private readonly ISincronizarNotasDaSefinUseCase _sincronizarNotasDaSefin;
+ 
+     public EmpresasController(
+         ICadastrarEmpresaUseCase cadastrarEmpresa,
+@@ -32,7 +34,8 @@ public sealed class EmpresasController : ControllerBase
+         IExcluirEmpresaUseCase excluirEmpresa,
+         IEnviarCertificadoUseCase enviarCertificado,
+         IObterStatusCertificadoUseCase obterStatusCertificado,
+-        ITestarConexaoCertificadoUseCase testarConexaoCertificado)
++        ITestarConexaoCertificadoUseCase testarConexaoCertificado,
++        ISincronizarNotasDaSefinUseCase sincronizarNotasDaSefin)
+     {
+         _cadastrarEmpresa = cadastrarEmpresa;
+         _listarEmpresas = listarEmpresas;
+@@ -44,6 +47,7 @@ public sealed class EmpresasController : ControllerBase
+         _enviarCertificado = enviarCertificado;
+         _obterStatusCertificado = obterStatusCertificado;
+         _testarConexaoCertificado = testarConexaoCertificado;
++        _sincronizarNotasDaSefin = sincronizarNotasDaSefin;
+     }
+ 
+     [Authorize(Roles = Papeis.Administrador)]
+@@ -143,4 +147,17 @@ public sealed class EmpresasController : ControllerBase
+         var resultado = await _testarConexaoCertificado.ExecutarAsync(id, cancellationToken);
+         return Ok(resultado);
+     }
++
++    /// <summary>
++    /// Puxa, via Distribuição de DF-e (ADN), notas emitidas por outro
++    /// canal (portal web Emissor Nacional, outro sistema) que ainda não
++    /// existem neste SaaS — ver SincronizarNotasDaSefinUseCase.
++    /// </summary>
++    [Authorize(Roles = Papeis.PodeEmitir)]
++    [HttpPost("{id:guid}/sincronizar-sefin")]
++    public async Task<IActionResult> SincronizarComSefin(Guid id, CancellationToken cancellationToken)
++    {
++        var resultado = await _sincronizarNotasDaSefin.ExecutarAsync(id, cancellationToken);
++        return Ok(resultado);
++    }
+ }
+diff --git a/src/NfseSaaS.Web/Views/Nfse/Index.cshtml b/src/NfseSaaS.Web/Views/Nfse/Index.cshtml
+index 2b6e1ad..d4fed2e 100644
+--- a/src/NfseSaaS.Web/Views/Nfse/Index.cshtml
++++ b/src/NfseSaaS.Web/Views/Nfse/Index.cshtml
+@@ -16,6 +16,9 @@
+         <span>Notas fiscais emitidas</span>
+         @if (podeEmitir)
+         {
++            <button type="button" class="btn btn-outline-secondary btn-sm me-2" id="btn-sincronizar-sefin">
++                <i class="bi bi-cloud-download"></i> Buscar notas da SEFIN
++            </button>
+             <button type="button" class="btn btn-primary btn-sm" id="btn-emitir-nfse">
+                 <i class="bi bi-plus-lg"></i> Emitir nota
+             </button>
+diff --git a/src/NfseSaaS.Web/appsettings.Development.json b/src/NfseSaaS.Web/appsettings.Development.json
+index 29dd751..617b2fa 100644
+--- a/src/NfseSaaS.Web/appsettings.Development.json
++++ b/src/NfseSaaS.Web/appsettings.Development.json
+@@ -8,6 +8,9 @@
+     "BaseUrl": "https://sefin.producaorestrita.nfse.gov.br/SefinNacional/",
+     "Ambiente": "ProducaoRestrita"
+   },
++  "Adn": {
++    "BaseUrl": "https://adn.producaorestrita.nfse.gov.br/contribuintes"
++  },
+   "CertificateStorage": {
+     "BasePath": "C:\\NfseSaaS-Secrets\\certificados"
+   }
+diff --git a/src/NfseSaaS.Web/appsettings.json b/src/NfseSaaS.Web/appsettings.json
+index 9fc8fae..fc6189d 100644
+--- a/src/NfseSaaS.Web/appsettings.json
++++ b/src/NfseSaaS.Web/appsettings.json
+@@ -13,6 +13,10 @@
+     "Ambiente": "Homologacao",
+     "TimeoutSeconds": 60
+   },
++  "Adn": {
++    "BaseUrl": "",
++    "TimeoutSeconds": 60
++  },
+   "CertificateStorage": {
+     "BasePath": ""
+   },
+diff --git a/src/NfseSaaS.Web/wwwroot/js/paginas/nfse.js b/src/NfseSaaS.Web/wwwroot/js/paginas/nfse.js
+index 4794f4a..507874b 100644
+--- a/src/NfseSaaS.Web/wwwroot/js/paginas/nfse.js
++++ b/src/NfseSaaS.Web/wwwroot/js/paginas/nfse.js
+@@ -57,6 +57,7 @@ document.addEventListener('DOMContentLoaded', function () {
+         modalEmitirNfse = new bootstrap.Modal(document.getElementById('modal-emitir-nfse'));
+         document.getElementById('btn-emitir-nfse').addEventListener('click', abrirModalEmitirNfse);
+         document.getElementById('form-emitir-nfse').addEventListener('submit', emitirNfse);
++        document.getElementById('btn-sincronizar-sefin').addEventListener('click', sincronizarComSefin);
+     }
+ 
+     if (podeCancelarNfse) {
+@@ -247,3 +248,29 @@ async function confirmarCancelamentoNfse(e) {
+         erroDiv.classList.remove('d-none');
+     }
+ }
++
++async function sincronizarComSefin() {
++    if (!empresaAtualIdNfse) return;
++
++    const botao = document.getElementById('btn-sincronizar-sefin');
++    botao.disabled = true;
++    botao.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Buscando...';
++
++    try {
++        const resultado = await apiFetch(`/api/empresas/${empresaAtualIdNfse}/sincronizar-sefin`, { method: 'POST' });
++        await carregarClientesParaMapa();
++        await carregarNfse();
++
++        alert(
++            `Sincronização concluída.\n` +
++            `Notas importadas: ${resultado.notasImportadas}\n` +
++            `Já existentes (ignoradas): ${resultado.notasJaExistentes}\n` +
++            `Clientes criados automaticamente: ${resultado.clientesCriados}`
++        );
++    } catch (err) {
++        mostrarErro(err.message);
++    } finally {
++        botao.disabled = false;
++        botao.innerHTML = '<i class="bi bi-cloud-download"></i> Buscar notas da SEFIN';
++    }
++}

@@ -48,8 +48,17 @@ public sealed class CertificateFileStore
         await File.WriteAllTextAsync(CaminhoArquivo(empresaId), json, cancellationToken);
     }
 
-    /// <summary>Lê, descriptografa e carrega o certificado da Empresa informada, já validando chave privada e período de validade.</summary>
-    public async Task<X509Certificate2> CarregarAsync(Guid empresaId, CancellationToken cancellationToken)
+    /// <summary>
+    /// Lê, descriptografa e carrega o certificado da Empresa informada.
+    /// Por padrão (<paramref name="validarPeriodoDeValidade"/> = true, uso
+    /// normal para mTLS/assinatura) valida chave privada e período de
+    /// vigência, lançando se algo estiver errado. Chamadores que só
+    /// querem EXIBIR o status do certificado (ex.: tela de configuração)
+    /// devem passar false — assim um certificado vencido ainda é
+    /// carregado (pra mostrar "vencido em tal data" ao usuário) em vez de
+    /// lançar uma exceção que impediria a própria checagem de status.
+    /// </summary>
+    public async Task<X509Certificate2> CarregarAsync(Guid empresaId, CancellationToken cancellationToken, bool validarPeriodoDeValidade = true)
     {
         var caminho = CaminhoArquivo(empresaId);
 
@@ -109,7 +118,7 @@ public sealed class CertificateFileStore
         if (!certificado.HasPrivateKey)
             throw new NfseCertificateException($"O certificado da empresa {empresaId} não possui chave privada.");
 
-        if (DateTime.Now < certificado.NotBefore || DateTime.Now > certificado.NotAfter)
+        if (validarPeriodoDeValidade && (DateTime.Now < certificado.NotBefore || DateTime.Now > certificado.NotAfter))
             throw new NfseCertificateException(
                 $"O certificado da empresa {empresaId} está fora do período de validade ({certificado.NotBefore:dd/MM/yyyy} a {certificado.NotAfter:dd/MM/yyyy}).");
 
