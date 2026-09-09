@@ -35,6 +35,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
     public DbSet<Servico> Servicos => Set<Servico>();
     public DbSet<Nfse> NotasFiscais => Set<Nfse>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<ContadorDps> ContadoresDps => Set<ContadorDps>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

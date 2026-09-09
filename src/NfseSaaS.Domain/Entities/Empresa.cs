@@ -27,6 +27,23 @@ public sealed class Empresa : BaseEntity, ITenantEntity
 
     public string Email { get; set; } = string.Empty;
 
+    // --- Endereço (cadastral — não é exigido no bloco <prest> da DPS, mas
+    // é necessário para correspondência, DANFSe/relatórios e para manter o
+    // cadastro da Empresa completo) ---
+
+    public string Cep { get; set; } = string.Empty;
+
+    public string Logradouro { get; set; } = string.Empty;
+
+    public string Numero { get; set; } = string.Empty;
+
+    public string? Complemento { get; set; }
+
+    public string Bairro { get; set; } = string.Empty;
+
+    /// <summary>UF (sigla, 2 letras) do endereço — CodigoMunicipio já identifica o município, mas a UF é útil para exibição sem precisar resolver a tabela IBGE.</summary>
+    public string Uf { get; set; } = string.Empty;
+
     // --- Regime tributário (necessário para montar a DPS — ver <regTrib> e <trib> no layout da NFS-e Nacional) ---
 
     /// <summary>Opção pelo Simples Nacional ("1" Não optante, "2" Optante MEI, "3" Optante Simples Nacional exceto MEI).</summary>

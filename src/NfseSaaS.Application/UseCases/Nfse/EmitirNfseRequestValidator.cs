@@ -18,5 +18,9 @@ public sealed class EmitirNfseRequestValidator : AbstractValidator<EmitirNfseReq
             .NotEqual(default(DateOnly)).WithMessage("DataCompetencia é obrigatória.")
             .LessThanOrEqualTo(DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)))
             .WithMessage("DataCompetencia não pode estar no futuro.");
+
+        RuleFor(x => x.IdempotencyKey)
+            .MaximumLength(100)
+            .When(x => x.IdempotencyKey is not null);
     }
 }

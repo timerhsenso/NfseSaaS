@@ -34,6 +34,29 @@ public sealed class EmpresaConfiguration : IEntityTypeConfiguration<Empresa>
         builder.Property(e => e.Email)
             .HasMaxLength(200);
 
+        builder.Property(e => e.Cep)
+            .HasMaxLength(8)
+            .IsRequired();
+
+        builder.Property(e => e.Logradouro)
+            .HasMaxLength(200)
+            .IsRequired();
+
+        builder.Property(e => e.Numero)
+            .HasMaxLength(20)
+            .IsRequired();
+
+        builder.Property(e => e.Complemento)
+            .HasMaxLength(100);
+
+        builder.Property(e => e.Bairro)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        builder.Property(e => e.Uf)
+            .HasMaxLength(2)
+            .IsRequired();
+
         builder.Property(e => e.OpSimpNac)
             .HasMaxLength(1);
 

@@ -36,6 +36,29 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
 
     public async Task<EmitirNfseResult> ExecutarAsync(EmitirNfseRequest request, CancellationToken cancellationToken)
     {
+        // Idempotência: se o chamador informou uma chave e já existe uma
+        // Nfse com ela para esta Empresa, é um retry da MESMA tentativa —
+        // devolve o resultado já existente em vez de emitir de novo (e,
+        // consequentemente, sem gastar um NumeroDps novo à toa). Não gera
+        // novo evento de auditoria: nada de fato aconteceu nesta chamada.
+        if (!string.IsNullOrWhiteSpace(request.IdempotencyKey))
+        {
+            var existente = await _db.NotasFiscais.FirstOrDefaultAsync(
+                n => n.EmpresaId == request.EmpresaId && n.IdempotencyKey == request.IdempotencyKey,
+                cancellationToken);
+
+            if (existente is not null)
+            {
+                return new EmitirNfseResult(
+                    existente.Id,
+                    existente.Status == NfseStatus.Autorizada,
+                    existente.NumeroNfse,
+                    existente.ChaveAcesso,
+                    existente.CodigoErro,
+                    existente.MensagemErro);
+            }
+        }
+
         var empresa = await _db.Empresas.FirstOrDefaultAsync(e => e.Id == request.EmpresaId, cancellationToken)
             ?? throw new RecursoNaoEncontradoException($"Empresa {request.EmpresaId} não encontrada.");
 
@@ -51,6 +74,12 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
         // falhar (rede, timeout), já existe um registro rastreável em vez
         // de perder silenciosamente a tentativa. (Auditoria fica só no
         // desfecho final, não neste insert intermediário — ver abaixo.)
+        //
+        // Os campos fiscais abaixo (CodigoTributacaoNacional em diante)
+        // são um SNAPSHOT do que será de fato enviado na DPS — copiados
+        // agora e nunca mais lidos de Servico/Empresa depois, para que uma
+        // edição futura no cadastro não altere retroativamente o que já
+        // foi declarado nesta nota.
         var nfse = new Domain.Entities.Nfse
         {
             EmpresaId = empresa.Id,
@@ -60,6 +89,14 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
             DataCompetencia = request.DataCompetencia,
             ValorServico = request.ValorServico,
             DescricaoServico = request.DescricaoServico,
+            CodigoTributacaoNacional = servico.CodigoTributacaoNacional,
+            CodigoNbs = servico.CodigoNbs,
+            TribIssqn = empresa.TribIssqn,
+            TpRetIssqn = empresa.TpRetIssqn,
+            CstPisCofins = empresa.CstPisCofins,
+            TpRetPisCofins = empresa.TpRetPisCofins,
+            PercentualTotalTributosSimplesNacional = empresa.PercentualTotalTributosSimplesNacional,
+            IdempotencyKey = request.IdempotencyKey,
             Status = NfseStatus.Processando
         };
 
@@ -84,18 +121,21 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
                 Logradouro: cliente.Logradouro,
                 Numero: cliente.Numero,
                 Bairro: cliente.Bairro),
+            // Os valores da DPS de fato enviada vêm do snapshot recém-gravado
+            // na Nfse (nfse.CodigoTributacaoNacional etc.), não mais lidos
+            // de novo de servico/empresa — mesma fonte que fica no banco.
             Tributacao: new TributacaoDps(
-                TribIssqn: empresa.TribIssqn,
-                TpRetIssqn: empresa.TpRetIssqn,
-                CstPisCofins: empresa.CstPisCofins,
-                TpRetPisCofins: empresa.TpRetPisCofins,
-                PercentualTotalTributosSimplesNacional: empresa.PercentualTotalTributosSimplesNacional),
+                TribIssqn: nfse.TribIssqn,
+                TpRetIssqn: nfse.TpRetIssqn,
+                CstPisCofins: nfse.CstPisCofins,
+                TpRetPisCofins: nfse.TpRetPisCofins,
+                PercentualTotalTributosSimplesNacional: nfse.PercentualTotalTributosSimplesNacional),
             NumeroDps: numeroDps,
             SerieDps: SerieDps,
             DataCompetencia: request.DataCompetencia,
             Valor: request.ValorServico,
-            CodigoTributacaoNacional: servico.CodigoTributacaoNacional,
-            CodigoNbs: servico.CodigoNbs,
+            CodigoTributacaoNacional: nfse.CodigoTributacaoNacional,
+            CodigoNbs: nfse.CodigoNbs,
             DescricaoServico: request.DescricaoServico);
 
         try
@@ -145,19 +185,29 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
     }
 
     /// <summary>
-    /// Próximo número de DPS para a Empresa/Série informada. Simples e
-    /// suficiente para este estágio — não há ainda concorrência real de
-    /// múltiplas emissões simultâneas para a mesma Empresa; se isso vier a
-    /// acontecer, precisará de um lock/sequência transacional.
+    /// Próximo número de DPS para a Empresa/Série informada, obtido de
+    /// forma atômica no Postgres: UPSERT com ON CONFLICT ... DO UPDATE ...
+    /// RETURNING. Substitui o antigo cálculo em C# (MAX(NumeroDps) + 1),
+    /// que tinha uma corrida real — duas emissões simultâneas para a
+    /// mesma Empresa podiam ler o mesmo "último número" antes de qualquer
+    /// uma delas gravar, gerando DPS com NumeroDps duplicado.
+    ///
+    /// Esta operação é uma instrução SQL isolada, fora da transação do
+    /// SaveChangesAsync que grava a Nfse logo em seguida — de propósito:
+    /// se o restante da emissão falhar depois, o número já incrementado
+    /// NÃO é revertido. Isso é o comportamento correto para numeração
+    /// fiscal sequencial: pode haver buracos na sequência, mas NUNCA pode
+    /// haver dois NumeroDps iguais para a mesma Empresa/Série.
     /// </summary>
     private async Task<int> ProximoNumeroDpsAsync(Guid empresaId, CancellationToken cancellationToken)
     {
-        var ultimo = await _db.NotasFiscais
-            .Where(n => n.EmpresaId == empresaId && n.SerieDps == SerieDps)
-            .OrderByDescending(n => n.NumeroDps)
-            .Select(n => (int?)n.NumeroDps)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        return (ultimo ?? 0) + 1;
+        return await _db.Database.SqlQuery<int>(
+            $"""
+            INSERT INTO contadores_dps ("EmpresaId", "SerieDps", "UltimoNumero")
+            VALUES ({empresaId}, {SerieDps}, 1)
+            ON CONFLICT ("EmpresaId", "SerieDps")
+            DO UPDATE SET "UltimoNumero" = contadores_dps."UltimoNumero" + 1
+            RETURNING "UltimoNumero"
+            """).SingleAsync(cancellationToken);
     }
 }

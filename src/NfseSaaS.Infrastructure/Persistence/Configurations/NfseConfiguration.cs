@@ -29,6 +29,37 @@ public sealed class NfseConfiguration : IEntityTypeConfiguration<Nfse>
             .HasMaxLength(2000)
             .IsRequired();
 
+        builder.Property(n => n.CodigoTributacaoNacional)
+            .HasMaxLength(20)
+            .IsRequired();
+
+        builder.Property(n => n.CodigoNbs)
+            .HasMaxLength(10)
+            .IsRequired();
+
+        builder.Property(n => n.TribIssqn)
+            .HasMaxLength(1)
+            .IsRequired();
+
+        builder.Property(n => n.TpRetIssqn)
+            .HasMaxLength(1)
+            .IsRequired();
+
+        builder.Property(n => n.CstPisCofins)
+            .HasMaxLength(2)
+            .IsRequired();
+
+        builder.Property(n => n.TpRetPisCofins)
+            .HasMaxLength(1)
+            .IsRequired();
+
+        builder.Property(n => n.PercentualTotalTributosSimplesNacional)
+            .HasMaxLength(10)
+            .IsRequired();
+
+        builder.Property(n => n.IdempotencyKey)
+            .HasMaxLength(100);
+
         builder.Property(n => n.Status)
             .HasConversion<string>()
             .HasMaxLength(20);
@@ -46,6 +77,14 @@ public sealed class NfseConfiguration : IEntityTypeConfiguration<Nfse>
         builder.HasIndex(n => n.ChaveAcesso)
             .IsUnique()
             .HasFilter("\"ChaveAcesso\" IS NOT NULL");
+
+        // Duas emissões com a mesma IdempotencyKey, para a mesma
+        // Empresa/Tenant, são a MESMA tentativa lógica (retry) — nunca
+        // duas notas distintas. Filtrado porque a maioria das emissões
+        // não informa chave (comportamento antigo continua permitido).
+        builder.HasIndex(n => new { n.TenantId, n.EmpresaId, n.IdempotencyKey })
+            .IsUnique()
+            .HasFilter("\"IdempotencyKey\" IS NOT NULL");
 
         // FKs reais — ver comentário completo em ClienteConfiguration.
         // Restrict nos dois: uma Nfse (documento fiscal, mesmo Rejeitada)

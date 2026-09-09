@@ -30,6 +30,12 @@ public sealed class AtualizarEmpresaUseCase : IAtualizarEmpresaUseCase
         empresa.CodigoMunicipio = request.CodigoMunicipio;
         empresa.Telefone = request.Telefone;
         empresa.Email = request.Email;
+        empresa.Cep = request.Cep;
+        empresa.Logradouro = request.Logradouro;
+        empresa.Numero = request.Numero;
+        empresa.Complemento = request.Complemento;
+        empresa.Bairro = request.Bairro;
+        empresa.Uf = request.Uf;
         empresa.OpSimpNac = request.OpSimpNac;
         empresa.RegApTribSN = request.RegApTribSN;
         empresa.RegEspTrib = request.RegEspTrib;
