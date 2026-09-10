@@ -1,0 +1,34 @@
+diff --git a/src/NfseSaaS.Application/UseCases/Nfse/CancelarNfseRequestValidator.cs b/src/NfseSaaS.Application/UseCases/Nfse/CancelarNfseRequestValidator.cs
+index 8b54b54..da77605 100644
+--- a/src/NfseSaaS.Application/UseCases/Nfse/CancelarNfseRequestValidator.cs
++++ b/src/NfseSaaS.Application/UseCases/Nfse/CancelarNfseRequestValidator.cs
+@@ -8,6 +8,14 @@ public sealed class CancelarNfseRequestValidator : AbstractValidator<CancelarNfs
+     {
+         // Não validamos contra uma lista fechada de códigos — ver comentário em CancelarNfseRequest.
+         RuleFor(x => x.CodigoMotivo).GreaterThan(0);
+-        RuleFor(x => x.Motivo).NotEmpty().MaximumLength(500);
++
++        // TSMotivo (leiaute da SEFIN Nacional): 15 a 255 caracteres.
++        // Confirmado contra uma rejeição real (E1235, "actual length is
++        // less than the MinLength value") em 09/09/2026 — o máximo de
++        // 500 que estava aqui também estava errado, o real é 255.
++        RuleFor(x => x.Motivo)
++            .NotEmpty()
++            .MinimumLength(15).WithMessage("O motivo precisa ter pelo menos 15 caracteres (exigência da SEFIN Nacional).")
++            .MaximumLength(255);
+     }
+ }
+diff --git a/src/NfseSaaS.Web/Views/Nfse/Index.cshtml b/src/NfseSaaS.Web/Views/Nfse/Index.cshtml
+index 1ce7415..b7ff474 100644
+--- a/src/NfseSaaS.Web/Views/Nfse/Index.cshtml
++++ b/src/NfseSaaS.Web/Views/Nfse/Index.cshtml
+@@ -144,7 +144,8 @@
+                         </div>
+                         <div class="mb-3">
+                             <label class="form-label">Motivo</label>
+-                            <textarea class="form-control" id="motivoCancelamento" maxlength="255" required></textarea>
++                            <textarea class="form-control" id="motivoCancelamento" minlength="15" maxlength="255" required></textarea>
++                            <div class="form-text">Mínimo de 15 caracteres (exigência da SEFIN Nacional).</div>
+                         </div>
+                     </div>
+                     <div class="modal-footer">

@@ -52,6 +52,7 @@ document.addEventListener('DOMContentLoaded', function () {
         modalCertificado = new bootstrap.Modal(document.getElementById('modal-certificado'));
 
         document.getElementById('btn-nova-empresa').addEventListener('click', abrirModalNovaEmpresa);
+        document.getElementById('btn-consultar-cnpj').addEventListener('click', consultarCnpj);
         document.getElementById('form-empresa').addEventListener('submit', salvarEmpresa);
         document.getElementById('form-certificado').addEventListener('submit', enviarCertificado);
         document.getElementById('btn-testar-conexao').addEventListener('click', testarConexaoCertificado);
@@ -161,8 +162,7 @@ function montarPayloadEmpresa() {
 
 async function salvarEmpresa(e) {
     e.preventDefault();
-    const erroDiv = document.getElementById('erro-empresa');
-    erroDiv.classList.add('d-none');
+    ocultarErroFormulario('erro-empresa');
 
     const id = document.getElementById('empresaId').value;
     const payload = montarPayloadEmpresa();
@@ -177,9 +177,9 @@ async function salvarEmpresa(e) {
 
         modalEmpresa.hide();
         await carregarEmpresas();
+        mostrarToast('Empresa salva com sucesso.');
     } catch (err) {
-        erroDiv.textContent = err.message;
-        erroDiv.classList.remove('d-none');
+        mostrarErroFormulario('erro-empresa', err.message);
     }
 }
 
@@ -194,11 +194,16 @@ async function alternarAtivo(id, ativoAtualmente) {
 }
 
 async function excluirEmpresa(id) {
-    if (!confirm('Excluir esta empresa? Só funciona se ela não tiver Cliente, Serviço ou Nfse vinculados.')) return;
+    const confirmado = await confirmarAcao(
+        'Excluir esta empresa? Só funciona se ela não tiver Cliente, Serviço ou Nfse vinculados.',
+        { titulo: 'Excluir empresa', textoBotao: 'Excluir', variante: 'perigo' }
+    );
+    if (!confirmado) return;
 
     try {
         await apiFetch(`/api/empresas/${id}`, { method: 'DELETE' });
         await carregarEmpresas();
+        mostrarToast('Empresa excluída.');
     } catch (err) {
         mostrarErro(err.message);
     }
@@ -209,8 +214,8 @@ async function abrirModalCertificado(id, nomeEmpresa) {
 
     document.getElementById('titulo-modal-certificado').textContent = `Certificado — ${nomeEmpresa}`;
     document.getElementById('form-certificado').reset();
-    document.getElementById('erro-certificado').classList.add('d-none');
-    document.getElementById('resultado-teste-conexao').classList.add('d-none');
+    ocultarErroFormulario('erro-certificado');
+    ocultarResultado('resultado-teste-conexao');
     document.getElementById('status-certificado').innerHTML = '<span class="text-muted">Carregando status...</span>';
     document.getElementById('btn-testar-conexao').disabled = true;
 
@@ -248,16 +253,14 @@ async function carregarStatusCertificado() {
 
 async function enviarCertificado(e) {
     e.preventDefault();
-    const erroDiv = document.getElementById('erro-certificado');
-    erroDiv.classList.add('d-none');
-    document.getElementById('resultado-teste-conexao').classList.add('d-none');
+    ocultarErroFormulario('erro-certificado');
+    ocultarResultado('resultado-teste-conexao');
 
     const arquivo = document.getElementById('certificado-arquivo').files[0];
     const senha = document.getElementById('certificado-senha').value;
 
     if (!arquivo) {
-        erroDiv.textContent = 'Selecione o arquivo .pfx.';
-        erroDiv.classList.remove('d-none');
+        mostrarErroFormulario('erro-certificado', 'Selecione o arquivo .pfx.');
         return;
     }
 
@@ -285,34 +288,69 @@ async function enviarCertificado(e) {
 
         document.getElementById('form-certificado').reset();
         await carregarStatusCertificado();
+        mostrarToast('Certificado enviado com sucesso.');
     } catch (err) {
-        erroDiv.textContent = err.message;
-        erroDiv.classList.remove('d-none');
+        mostrarErroFormulario('erro-certificado', err.message);
     } finally {
         botaoEnviar.disabled = false;
     }
 }
 
 async function testarConexaoCertificado() {
-    const resultadoDiv = document.getElementById('resultado-teste-conexao');
     const botao = document.getElementById('btn-testar-conexao');
 
-    resultadoDiv.classList.add('d-none');
+    ocultarResultado('resultado-teste-conexao');
     botao.disabled = true;
     botao.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Testando...';
 
     try {
         const resultado = await apiFetch(`/api/empresas/${empresaCertificadoAtualId}/certificado/testar-conexao`, { method: 'POST' });
-
-        resultadoDiv.className = `alert ${resultado.sucesso ? 'alert-success' : 'alert-danger'} mt-3`;
-        resultadoDiv.textContent = resultado.mensagem;
-        resultadoDiv.classList.remove('d-none');
+        mostrarResultado('resultado-teste-conexao', resultado.sucesso, resultado.mensagem);
     } catch (err) {
-        resultadoDiv.className = 'alert alert-danger mt-3';
-        resultadoDiv.textContent = err.message;
-        resultadoDiv.classList.remove('d-none');
+        mostrarResultado('resultado-teste-conexao', false, err.message);
     } finally {
         botao.disabled = false;
         botao.innerHTML = 'Testar conexão';
+    }
+}
+
+async function consultarCnpj() {
+    const campoCnpj = document.getElementById('cnpj');
+    const botao = document.getElementById('btn-consultar-cnpj');
+    const cnpj = campoCnpj.value.replace(/\D/g, '');
+
+    if (cnpj.length !== 14) {
+        mostrarToast('Informe os 14 dígitos do CNPJ antes de consultar.', 'erro');
+        return;
+    }
+
+    botao.disabled = true;
+    const iconeOriginal = botao.innerHTML;
+    botao.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+    try {
+        const dados = await apiFetch(`/api/consultas/cnpj/${cnpj}`);
+
+        document.getElementById('razaoSocial').value = dados.razaoSocial ?? '';
+        document.getElementById('nomeFantasia').value = dados.nomeFantasia ?? '';
+        if (dados.codigoMunicipio) document.getElementById('codigoMunicipio').value = dados.codigoMunicipio;
+        if (dados.telefone) document.getElementById('telefone').value = dados.telefone;
+        if (dados.email) document.getElementById('email').value = dados.email;
+        if (dados.cep) document.getElementById('cep').value = dados.cep;
+        document.getElementById('logradouro').value = dados.logradouro ?? '';
+        document.getElementById('numero').value = dados.numero ?? '';
+        document.getElementById('complemento').value = dados.complemento ?? '';
+        document.getElementById('bairro').value = dados.bairro ?? '';
+        if (dados.uf) document.getElementById('uf').value = dados.uf;
+
+        mostrarToast(
+            `Dados preenchidos a partir da Receita Federal${dados.situacaoCadastral ? ' — situação: ' + dados.situacaoCadastral : ''}. ` +
+            `Confira a Inscrição Municipal e o regime tributário manualmente (a Receita não informa isso).`
+        );
+    } catch (err) {
+        mostrarErro(err.message);
+    } finally {
+        botao.disabled = false;
+        botao.innerHTML = iconeOriginal;
     }
 }

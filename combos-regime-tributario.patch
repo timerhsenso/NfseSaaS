@@ -1,0 +1,82 @@
+diff --git a/src/NfseSaaS.Web/Views/Empresas/Index.cshtml b/src/NfseSaaS.Web/Views/Empresas/Index.cshtml
+index f24feb8..75a39ff 100644
+--- a/src/NfseSaaS.Web/Views/Empresas/Index.cshtml
++++ b/src/NfseSaaS.Web/Views/Empresas/Index.cshtml
+@@ -127,36 +127,68 @@
+                             <div class="col-md-4 mb-3">
+                                 <label class="form-label">Opção pelo Simples Nacional</label>
+                                 <select class="form-select" id="opSimpNac" required>
+-                                    <option value="1">Não optante</option>
+-                                    <option value="2">Optante MEI</option>
+-                                    <option value="3">Optante Simples Nacional (exceto MEI)</option>
++                                    <option value="1">Não Optante</option>
++                                    <option value="2">Optante - Microempreendedor Individual (MEI)</option>
++                                    <option value="3">Optante - Microempresa ou Empresa de Pequeno Porte (Simples Nacional)</option>
+                                 </select>
+                             </div>
+                             <div class="col-md-4 mb-3">
+                                 <label class="form-label">Regime de apuração (Simples)</label>
+-                                <input type="text" class="form-control" id="regApTribSN" maxlength="1" required />
++                                <select class="form-select" id="regApTribSN" required>
++                                    <option value="1">Regime de apuração dos tributos federais e municipal pelo Simples Nacional</option>
++                                    <option value="2">Regime de apuração dos tributos federais pelo Simples Nacional e municipal fora do Simples Nacional</option>
++                                    <option value="3">Regime de apuração dos tributos federais e municipal fora do Simples Nacional</option>
++                                </select>
+                             </div>
+                             <div class="col-md-4 mb-3">
+                                 <label class="form-label">Regime especial de tributação</label>
+-                                <input type="text" class="form-control" id="regEspTrib" maxlength="1" required />
++                                <select class="form-select" id="regEspTrib" required>
++                                    <option value="0">Nenhum</option>
++                                    <option value="1">Estimativa</option>
++                                    <option value="2">Sociedade de Profissionais</option>
++                                    <option value="3">Cooperativa</option>
++                                    <option value="4">Microempresário Individual (MEI)</option>
++                                    <option value="5">Microempresário e Empresa de Pequeno Porte (ME/EPP)</option>
++                                    <option value="6">Profissional Autônomo</option>
++                                    <option value="9">Outros</option>
++                                </select>
++                                <div class="form-text text-warning">
++                                    <i class="bi bi-exclamation-triangle"></i> Lista não confirmada contra o Emissor Web oficial — achei uma fonte municipal que diz o contrário (4=cartório, 5=autônomo, 6=ISS Fixo). Confira o valor certo pro seu caso antes de emitir.
++                                </div>
+                             </div>
+                         </div>
+                         <div class="row">
+                             <div class="col-md-3 mb-3">
+                                 <label class="form-label">Tributação ISSQN</label>
+-                                <input type="text" class="form-control" id="tribIssqn" maxlength="1" required />
++                                <select class="form-select" id="tribIssqn" required>
++                                    <option value="1">Operação Tributável</option>
++                                    <option value="2">Imune</option>
++                                    <option value="3">Exportação de Serviço</option>
++                                    <option value="4">Não Incidência</option>
++                                </select>
+                             </div>
+                             <div class="col-md-3 mb-3">
+                                 <label class="form-label">Retenção ISSQN</label>
+-                                <input type="text" class="form-control" id="tpRetIssqn" maxlength="1" required />
++                                <select class="form-select" id="tpRetIssqn" required>
++                                    <option value="1">Não Retido</option>
++                                    <option value="2">Retido pelo Tomador</option>
++                                    <option value="3">Retido pelo Intermediário</option>
++                                </select>
+                             </div>
+                             <div class="col-md-3 mb-3">
+                                 <label class="form-label">CST PIS/COFINS</label>
+-                                <input type="text" class="form-control" id="cstPisCofins" maxlength="2" required />
++                                <input type="text" class="form-control" id="cstPisCofins" maxlength="2" required placeholder="ex.: 00" />
++                                <div class="form-text">Tabela oficial da Receita Federal — muitas opções, dependem do seu regime; não converti isso pra combo sem confirmar com você. Consulte seu contador ou o Emissor Web.</div>
+                             </div>
+                             <div class="col-md-3 mb-3">
+                                 <label class="form-label">Retenção PIS/COFINS</label>
+-                                <input type="text" class="form-control" id="tpRetPisCofins" maxlength="1" required />
++                                <select class="form-select" id="tpRetPisCofins" required>
++                                    <option value="0">Não Retido</option>
++                                    <option value="1">Retido</option>
++                                </select>
++                                <div class="form-text text-warning">
++                                    <i class="bi bi-exclamation-triangle"></i> "0"/"1" confirmados contra uma nota real sua — mas achei outra fonte dizendo "1"/"2". Confira antes de emitir.
++                                </div>
+                             </div>
+                         </div>
+                         <div class="row">

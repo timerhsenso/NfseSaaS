@@ -11,16 +11,16 @@ namespace NfseSaaS.Nacional.Builders;
 /// (e101101), leiaute pedRegEvento/infPedReg (schema 1.00) da SEFIN
 /// Nacional.
 ///
-/// ATENÇÃO — diferença em relação a DpsBuilder: a estrutura abaixo foi
-/// reconstruída a partir do Swagger oficial (endpoint/JSON de transporte,
-/// esses sim 100% confirmados: POST /nfse/{chaveAcesso}/eventos, body
-/// { pedidoRegistroEventoXmlGZipB64 }) combinado com exemplos reais de
-/// XML publicados por terceiros — NÃO foi validada com uma emissão real
-/// deste projeto (ao contrário de DpsBuilder/DpsSigner, que já têm uma
-/// emissão real aceita pela SEFIN em produção restrita).
-/// TESTAR EM HOMOLOGAÇÃO e comparar contra o XSD oficial antes de usar em
-/// produção — se a SEFIN devolver erro de schema (campo faltando/a mais),
-/// é aqui que ajusta.
+/// Testado contra uma rejeição real (E1235, "Falha no esquema XML do
+/// DF-e") em 09/09/2026 — a primeira versão deste builder usava um
+/// leiaute de Id/campos DESATUALIZADO. A SEFIN Nacional mudou esse
+/// leiaute em 27/12/2025 (NT dos Eventos Anexo II): o campo
+/// nPedRegEvento foi removido por completo do XML, e o atributo Id de
+/// infPedReg encurtou de 62 para 59 caracteres (deixou de incluir
+/// nPedRegEvento na composição). Também faltava o campo dhEvento
+/// (obrigatório). Corrigido abaixo; ainda assim, TESTAR de novo em
+/// homologação antes de confiar — o log da SEFIN (via NfseApiClient)
+/// mostra o corpo bruto de qualquer rejeição nova.
 /// </summary>
 public sealed class EventoCancelamentoBuilder : IEventoCancelamentoBuilder
 {
@@ -42,11 +42,14 @@ public sealed class EventoCancelamentoBuilder : IEventoCancelamentoBuilder
 
     public (string XmlEvento, string InfPedRegId) Construir(EventoCancelamentoRequest request)
     {
-        var numeroPedido = request.NumeroPedidoRegistroEvento.ToString("D3");
+        // Id = "PRE" + chNFSe (50) + tipoEvento (6) = 59 caracteres.
+        // NÃO inclui mais nPedRegEvento (removido do leiaute em
+        // 27/12/2025) — confirmado contra o padrão oficial
+        // "PRE[0-9]{56}" (TSIdPedRegEvt) e contra a rejeição real E1235
+        // que apontou exatamente esse Id como inválido.
+        var infPedRegId = "PRE" + request.ChaveAcesso + TipoEvento;
 
-        // Id = "PRE" + chNFSe + tipoEvento + nPedRegEvento (3 dígitos),
-        // conforme exemplo oficial de integração.
-        var infPedRegId = "PRE" + request.ChaveAcesso + TipoEvento + numeroPedido;
+        var agora = DateTimeOffset.Now;
 
         var doc = new XmlDocument { PreserveWhitespace = true };
 
@@ -58,11 +61,14 @@ public sealed class EventoCancelamentoBuilder : IEventoCancelamentoBuilder
         infPedReg.SetAttribute("Id", infPedRegId);
         pedRegEvento.AppendChild(infPedReg);
 
+        // Ordem dos campos importa — infPedReg é um "sequence" no XSD,
+        // e enviar fora de ordem já causou rejeição em outros sistemas
+        // (mesma NT de 27/12/2025).
         Add(doc, infPedReg, "tpAmb", MapearTpAmb(_options.Ambiente));
         Add(doc, infPedReg, "verAplic", "NfseSaaS_1.0");
+        Add(doc, infPedReg, "dhEvento", agora.ToString("yyyy-MM-ddTHH:mm:sszzz"));
         Add(doc, infPedReg, "CNPJAutor", request.CnpjAutor);
         Add(doc, infPedReg, "chNFSe", request.ChaveAcesso);
-        Add(doc, infPedReg, "nPedRegEvento", numeroPedido);
 
         var e101101 = AddNode(doc, infPedReg, "e101101");
         Add(doc, e101101, "xDesc", "Cancelamento de NFS-e");

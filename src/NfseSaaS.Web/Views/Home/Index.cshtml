@@ -16,16 +16,16 @@
             <span class="stat-label">Clientes ativos</span>
             <div class="stat-icon"><i class="bi bi-people"></i></div>
         </div>
-        <strong id="contagem-clientes">—</strong>
-        <small>Escopado por Empresa</small>
+        <strong id="contagem-clientes">-</strong>
+        <small>Somado entre todas as empresas</small>
     </a>
     <a href="/Servicos" class="stat">
         <div class="stat-top">
             <span class="stat-label">Serviços cadastrados</span>
             <div class="stat-icon"><i class="bi bi-list-check"></i></div>
         </div>
-        <strong id="contagem-servicos">—</strong>
-        <small>Escopado por Empresa</small>
+        <strong id="contagem-servicos">-</strong>
+        <small>Somado entre todas as empresas</small>
     </a>
     <a href="/Nfse" class="stat">
         <div class="stat-top">
@@ -37,28 +37,164 @@
     </a>
 </div>
 
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Notas fiscais recentes</span>
+                <a href="/Nfse" class="btn btn-sm btn-outline-secondary">Ver todas</a>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-striped mb-0" id="tabela-nfse-recentes">
+                    <thead>
+                        <tr>
+                            <th>Número/Série</th>
+                            <th>Empresa</th>
+                            <th>Valor</th>
+                            <th>Status</th>
+                            <th>Emissão</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="5" class="text-center text-muted py-4">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">Notas por situação</div>
+            <div class="card-body">
+                <div id="resumo-status-nfse" class="d-flex flex-column gap-2">
+                    <span class="text-muted">Carregando...</span>
+                </div>
+                <div class="form-text mt-2">Baseado nas últimas 100 notas emitidas.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
-        // Empresas e Nfse são listados por Tenant inteiro — cada widget só
-        // precisa do totalCount da própria listagem paginada (pageSize=1
-        // pra não trazer dados desnecessários).
-        //
-        // Clientes/Serviços NÃO têm contagem global aqui de propósito: a
-        // API de listagem deles exige empresaId (são escopados por
-        // Empresa, não por Tenant inteiro — um Tenant pode ter várias
-        // Empresas). Somar isso corretamente exigiria buscar a lista de
-        // Empresas primeiro e agregar uma chamada por Empresa; não faz
-        // sentido nesse widget de resumo por agora.
-        async function carregarContagem(url, elementId) {
+        // NfseStatus (Domain.Enums) serializado como número pela API —
+        // mesmo mapeamento usado em wwwroot/js/paginas/nfse.js, mantido
+        // em sincronia manualmente (os dois arquivos leem o mesmo enum
+        // do backend, mas não há um jeito de compartilhar essa tabela
+        // entre C# e JS sem gerar código — replicar é o custo aceito).
+        const ROTULOS_STATUS_DASHBOARD = {
+            0: { texto: 'Rascunho', cor: 'secondary' },
+            1: { texto: 'Processando', cor: 'info' },
+            2: { texto: 'Autorizada', cor: 'success' },
+            3: { texto: 'Rejeitada', cor: 'danger' },
+            4: { texto: 'Cancelada', cor: 'dark' },
+            5: { texto: 'Substituída', cor: 'secondary' }
+        };
+
+        async function carregarDashboard() {
+            // Empresas: usado tanto pro card de contagem quanto pra
+            // resolver o nome da empresa na lista de notas recentes (e
+            // como base pra agregar Clientes/Serviços, que são
+            // escopados por Empresa, não por Tenant inteiro).
+            let empresas = [];
             try {
-                const resultado = await apiFetch(url);
-                document.getElementById(elementId).textContent = resultado?.totalCount ?? '0';
+                const respostaEmpresas = await apiFetch('/api/empresas?pageSize=100');
+                empresas = respostaEmpresas?.items ?? [];
+                document.getElementById('contagem-empresas').textContent = respostaEmpresas?.totalCount ?? empresas.length;
             } catch (err) {
-                document.getElementById(elementId).textContent = '—';
+                document.getElementById('contagem-empresas').textContent = '—';
+            }
+
+            const empresasPorId = {};
+            empresas.forEach(e => { empresasPorId[e.id] = e.razaoSocial; });
+
+            carregarAgregadoPorEmpresa(empresas, '/api/clientes', 'contagem-clientes');
+            carregarAgregadoPorEmpresa(empresas, '/api/servicos', 'contagem-servicos');
+
+            try {
+                const respostaNfse = await apiFetch('/api/nfse?pageSize=100');
+                const notas = respostaNfse?.items ?? [];
+
+                document.getElementById('contagem-nfse').textContent = respostaNfse?.totalCount ?? notas.length;
+                renderizarNotasRecentes(notas.slice(0, 8), empresasPorId);
+                renderizarResumoStatus(notas);
+            } catch (err) {
+                document.getElementById('contagem-nfse').textContent = '—';
+                document.querySelector('#tabela-nfse-recentes tbody').innerHTML =
+                    '<tr><td colspan="5" class="text-center text-danger py-4">Não foi possível carregar as notas.</td></tr>';
+                document.getElementById('resumo-status-nfse').innerHTML = '<span class="text-danger">Não foi possível carregar.</span>';
             }
         }
 
-        carregarContagem('/api/empresas?pageSize=1', 'contagem-empresas');
-        carregarContagem('/api/nfse?pageSize=1', 'contagem-nfse');
+        // Clientes/Serviços não têm listagem por Tenant inteiro (a API
+        // exige empresaId — um Tenant pode ter várias Empresas). Agrega
+        // aqui somando o totalCount de cada Empresa, uma chamada por
+        // Empresa (pageSize=1 pra não trazer dado desnecessário).
+        async function carregarAgregadoPorEmpresa(empresas, endpoint, elementId) {
+            const elemento = document.getElementById(elementId);
+            if (empresas.length === 0) {
+                elemento.textContent = '0';
+                return;
+            }
+
+            try {
+                const respostas = await Promise.all(
+                    empresas.map(e => apiFetch(`${endpoint}?empresaId=${e.id}&pageSize=1`).catch(() => null))
+                );
+                const total = respostas.reduce((soma, r) => soma + (r?.totalCount ?? 0), 0);
+                elemento.textContent = total;
+            } catch (err) {
+                elemento.textContent = '—';
+            }
+        }
+
+        function renderizarNotasRecentes(notas, empresasPorId) {
+            const corpo = document.querySelector('#tabela-nfse-recentes tbody');
+
+            if (notas.length === 0) {
+                corpo.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Nenhuma nota fiscal emitida ainda.</td></tr>';
+                return;
+            }
+
+            corpo.innerHTML = notas.map(n => {
+                const rotulo = ROTULOS_STATUS_DASHBOARD[n.status] ?? { texto: 'Desconhecido', cor: 'secondary' };
+                const valor = Number(n.valorServico).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                const emissao = n.dataEmissao ? new Date(n.dataEmissao).toLocaleDateString('pt-BR') : '—';
+                const empresa = empresasPorId[n.empresaId] ?? '—';
+
+                return `<tr>
+                    <td>${n.numeroDps}/${n.serieDps}</td>
+                    <td>${empresa}</td>
+                    <td>${valor}</td>
+                    <td><span class="badge text-bg-${rotulo.cor}">${rotulo.texto}</span></td>
+                    <td>${emissao}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderizarResumoStatus(notas) {
+            const container = document.getElementById('resumo-status-nfse');
+
+            if (notas.length === 0) {
+                container.innerHTML = '<span class="text-muted">Nenhuma nota fiscal emitida ainda.</span>';
+                return;
+            }
+
+            const contagemPorStatus = {};
+            notas.forEach(n => { contagemPorStatus[n.status] = (contagemPorStatus[n.status] ?? 0) + 1; });
+
+            container.innerHTML = Object.entries(contagemPorStatus)
+                .sort((a, b) => b[1] - a[1])
+                .map(([status, quantidade]) => {
+                    const rotulo = ROTULOS_STATUS_DASHBOARD[status] ?? { texto: 'Desconhecido', cor: 'secondary' };
+                    return `<div class="d-flex justify-content-between align-items-center">
+                        <span class="badge text-bg-${rotulo.cor}">${rotulo.texto}</span>
+                        <strong>${quantidade}</strong>
+                    </div>`;
+                }).join('');
+        }
+
+        carregarDashboard();
     </script>
 }

@@ -9,5 +9,4 @@ public sealed record EventoCancelamentoRequest(
     string ChaveAcesso,
     string CnpjAutor,
     int CodigoMotivo,
-    string Motivo,
-    int NumeroPedidoRegistroEvento = 1);
+    string Motivo);

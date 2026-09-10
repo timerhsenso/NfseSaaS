@@ -10,6 +10,8 @@ using NfseSaaS.Application.UseCases.Certificados;
 using NfseSaaS.Application.UseCases.Clientes;
 using NfseSaaS.Application.UseCases.Empresas;
 using NfseSaaS.Application.UseCases.Exportacoes;
+using NfseSaaS.Application.UseCases.Consultas;
+using NfseSaaS.Infrastructure.Consultas;
 using NfseSaaS.Application.UseCases.Nfse;
 using NfseSaaS.Application.UseCases.NfseEventos;
 using NfseSaaS.Application.UseCases.Servicos;
@@ -138,6 +140,8 @@ public static class DependencyInjection
         services.AddScoped<IObterDanfsePdfUseCase, ObterDanfsePdfUseCase>();
         services.AddScoped<ISincronizarNotasDaSefinUseCase, SincronizarNotasDaSefinUseCase>();
         services.AddScoped<IRegistrarExportacaoUseCase, RegistrarExportacaoUseCase>();
+        services.AddHttpClient("BrasilApi");
+        services.AddScoped<IConsultarCnpjUseCase, BrasilApiCnpjClient>();
 
         services.AddScoped<IListarAuditLogsUseCase, ListarAuditLogsUseCase>();
         services.AddScoped<IObterAuditLogPorIdUseCase, ObterAuditLogPorIdUseCase>();

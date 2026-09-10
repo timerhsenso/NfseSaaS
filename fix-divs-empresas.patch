@@ -1,0 +1,13 @@
+diff --git a/src/NfseSaaS.Web/Views/Empresas/Index.cshtml b/src/NfseSaaS.Web/Views/Empresas/Index.cshtml
+index af240f2..ca58b2a 100644
+--- a/src/NfseSaaS.Web/Views/Empresas/Index.cshtml
++++ b/src/NfseSaaS.Web/Views/Empresas/Index.cshtml
+@@ -201,8 +201,6 @@
+                                     <option value="9">9 - COFINS Não Retido, PIS/CSLL Retidos</option>
+                                 </select>
+                             </div>
+-                                </div>
+-                            </div>
+                         </div>
+                         <div class="row">
+                             <div class="col-md-4 mb-3">

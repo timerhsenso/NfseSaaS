@@ -73,3 +73,89 @@ function mostrarToast(mensagem, tipo) {
     clearTimeout(window.__toastTimer);
     window.__toastTimer = setTimeout(() => toast.classList.remove('show'), tipo === 'erro' ? 4000 : 2500);
 }
+
+/**
+ * ---- Padrão único de feedback do projeto ----
+ *
+ * 3 categorias, cada uma com um motivo pra existir separada — não dá
+ * pra jogar tudo num toast só porque "padronizar" não é a mesma coisa
+ * que "usar 1 componente pra tudo":
+ *
+ * 1. mostrarToast() — mensagem rápida e solta (sucesso de uma ação,
+ *    resultado de uma consulta). Não trava nada, desaparece só.
+ * 2. mostrarErroFormulario()/ocultarErroFormulario() — erro de
+ *    validação/regra de negócio ao SALVAR um formulário dentro de um
+ *    modal aberto. Fica fixo dentro do próprio modal, de propósito: se
+ *    fosse toast, o usuário podia nem ver (o modal cobre a tela) e
+ *    perderia a referência de qual campo revisar.
+ * 3. mostrarResultado()/ocultarResultado() — resultado persistente
+ *    associado a uma ação dentro de um modal (ex.: teste de conexão de
+ *    certificado). Mesma lógica do item 2: fica ali, associado ao
+ *    botão que o usuário apertou.
+ * 4. confirmarAcao() — substitui o confirm() nativo do navegador (que
+ *    não combina com o resto da tela) por um modal Bootstrap
+ *    consistente. Retorna uma Promise<boolean>.
+ */
+
+function mostrarErroFormulario(idDiv, mensagem) {
+    const div = document.getElementById(idDiv);
+    if (!div) return;
+    div.textContent = mensagem;
+    div.classList.remove('d-none');
+}
+
+function ocultarErroFormulario(idDiv) {
+    const div = document.getElementById(idDiv);
+    if (!div) return;
+    div.classList.add('d-none');
+}
+
+function mostrarResultado(idDiv, sucesso, mensagem) {
+    const div = document.getElementById(idDiv);
+    if (!div) return;
+    div.className = `alert ${sucesso ? 'alert-success' : 'alert-danger'} mt-3`;
+    div.textContent = mensagem;
+    div.classList.remove('d-none');
+}
+
+function ocultarResultado(idDiv) {
+    const div = document.getElementById(idDiv);
+    if (!div) return;
+    div.classList.add('d-none');
+}
+
+function confirmarAcao(mensagem, opcoes) {
+    opcoes = opcoes || {};
+    return new Promise(function (resolve) {
+        const modalEl = document.getElementById('modalConfirmacao');
+        if (!modalEl || typeof bootstrap === 'undefined') {
+            // Fallback pras páginas que ainda não usam o _Layout novo.
+            resolve(confirm(mensagem));
+            return;
+        }
+
+        document.getElementById('modalConfirmacaoTitulo').textContent = opcoes.titulo || 'Confirmar ação';
+        document.getElementById('modalConfirmacaoMensagem').textContent = mensagem;
+
+        const botaoConfirmar = document.getElementById('modalConfirmacaoBotaoConfirmar');
+        botaoConfirmar.textContent = opcoes.textoBotao || 'Confirmar';
+        botaoConfirmar.className = 'btn ' + (opcoes.variante === 'perigo' ? 'btn-danger' : 'btn-primary');
+
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        let confirmado = false;
+
+        function aoConfirmar() {
+            confirmado = true;
+            modal.hide();
+        }
+        function aoFechar() {
+            botaoConfirmar.removeEventListener('click', aoConfirmar);
+            modalEl.removeEventListener('hidden.bs.modal', aoFechar);
+            resolve(confirmado);
+        }
+
+        botaoConfirmar.addEventListener('click', aoConfirmar);
+        modalEl.addEventListener('hidden.bs.modal', aoFechar, { once: true });
+        modal.show();
+    });
+}

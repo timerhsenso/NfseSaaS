@@ -135,12 +135,17 @@
                     <div class="modal-body">
                         <div id="erro-cancelar-nfse" class="alert alert-danger d-none"></div>
                         <div class="mb-3">
-                            <label class="form-label">Código do motivo (tabela oficial da SEFIN)</label>
-                            <input type="number" class="form-control" id="codigoMotivoCancelamento" required />
+                            <label class="form-label">Motivo do cancelamento</label>
+                            <select class="form-select" id="codigoMotivoCancelamento" required>
+                                <option value="1">Erro na emissão</option>
+                                <option value="2">Serviço não prestado</option>
+                                <option value="9">Outros</option>
+                            </select>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Motivo</label>
-                            <textarea class="form-control" id="motivoCancelamento" maxlength="255" required></textarea>
+                            <textarea class="form-control" id="motivoCancelamento" minlength="15" maxlength="255" required></textarea>
+                            <div class="form-text">Mínimo de 15 caracteres (exigência da SEFIN Nacional).</div>
                         </div>
                     </div>
                     <div class="modal-footer">

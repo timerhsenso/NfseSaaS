@@ -135,8 +135,7 @@ function montarPayloadCliente() {
 
 async function salvarCliente(e) {
     e.preventDefault();
-    const erroDiv = document.getElementById('erro-cliente');
-    erroDiv.classList.add('d-none');
+    ocultarErroFormulario('erro-cliente');
 
     const id = document.getElementById('clienteId').value;
     const payload = montarPayloadCliente();
@@ -151,9 +150,9 @@ async function salvarCliente(e) {
 
         modalCliente.hide();
         await carregarClientes();
+        mostrarToast('Cliente salvo com sucesso.');
     } catch (err) {
-        erroDiv.textContent = err.message;
-        erroDiv.classList.remove('d-none');
+        mostrarErroFormulario('erro-cliente', err.message);
     }
 }
 
@@ -168,11 +167,16 @@ async function alternarAtivoCliente(id, ativoAtualmente) {
 }
 
 async function excluirCliente(id) {
-    if (!confirm('Excluir este cliente? Só funciona se ele não tiver Nfse vinculada.')) return;
+    const confirmado = await confirmarAcao(
+        'Excluir este cliente? Só funciona se ele não tiver Nfse vinculada.',
+        { titulo: 'Excluir cliente', textoBotao: 'Excluir', variante: 'perigo' }
+    );
+    if (!confirmado) return;
 
     try {
         await apiFetch(`/api/clientes/${id}`, { method: 'DELETE' });
         await carregarClientes();
+        mostrarToast('Cliente excluído.');
     } catch (err) {
         mostrarErro(err.message);
     }

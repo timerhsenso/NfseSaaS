@@ -137,8 +137,7 @@ async function abrirModalEmitirNfse() {
 
 async function emitirNfse(e) {
     e.preventDefault();
-    const erroDiv = document.getElementById('erro-emitir-nfse');
-    erroDiv.classList.add('d-none');
+    ocultarErroFormulario('erro-emitir-nfse');
 
     const botaoConfirmar = document.getElementById('btn-confirmar-emissao');
     botaoConfirmar.disabled = true; // emissão bate na SEFIN — evita duplo clique
@@ -162,12 +161,13 @@ async function emitirNfse(e) {
         modalEmitirNfse.hide();
         await carregarNfse();
 
-        if (!resultado.sucesso) {
+        if (resultado.sucesso) {
+            mostrarToast('Nota fiscal emitida com sucesso.');
+        } else {
             mostrarErro(`Nota rejeitada pela SEFIN: ${resultado.mensagemErro ?? resultado.codigoErro ?? 'motivo não informado'}.`);
         }
     } catch (err) {
-        erroDiv.textContent = err.message;
-        erroDiv.classList.remove('d-none');
+        mostrarErroFormulario('erro-emitir-nfse', err.message);
     } finally {
         botaoConfirmar.disabled = false;
     }
@@ -228,8 +228,7 @@ async function abrirDetalheNfse(id) {
 
 async function confirmarCancelamentoNfse(e) {
     e.preventDefault();
-    const erroDiv = document.getElementById('erro-cancelar-nfse');
-    erroDiv.classList.add('d-none');
+    ocultarErroFormulario('erro-cancelar-nfse');
 
     const payload = {
         codigoMotivo: parseInt(document.getElementById('codigoMotivoCancelamento').value, 10),
@@ -242,12 +241,13 @@ async function confirmarCancelamentoNfse(e) {
         modalMotivoCancelamento.hide();
         await carregarNfse();
 
-        if (!resultado.sucesso) {
+        if (resultado.sucesso) {
+            mostrarToast('Nota fiscal cancelada com sucesso.');
+        } else {
             mostrarErro(`Cancelamento rejeitado pela SEFIN: ${resultado.mensagemErro ?? resultado.codigoErro ?? 'motivo não informado'}.`);
         }
     } catch (err) {
-        erroDiv.textContent = err.message;
-        erroDiv.classList.remove('d-none');
+        mostrarErroFormulario('erro-cancelar-nfse', err.message);
     }
 }
 

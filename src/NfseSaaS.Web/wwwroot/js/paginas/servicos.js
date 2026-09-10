@@ -111,8 +111,7 @@ async function abrirModalEditarServico(id) {
 
 async function salvarServico(e) {
     e.preventDefault();
-    const erroDiv = document.getElementById('erro-servico');
-    erroDiv.classList.add('d-none');
+    ocultarErroFormulario('erro-servico');
 
     const id = document.getElementById('servicoId').value;
     const payload = {
@@ -132,9 +131,9 @@ async function salvarServico(e) {
 
         modalServico.hide();
         await carregarServicos();
+        mostrarToast('Serviço salvo com sucesso.');
     } catch (err) {
-        erroDiv.textContent = err.message;
-        erroDiv.classList.remove('d-none');
+        mostrarErroFormulario('erro-servico', err.message);
     }
 }
 
@@ -149,11 +148,13 @@ async function alternarAtivoServico(id, ativoAtualmente) {
 }
 
 async function excluirServico(id) {
-    if (!confirm('Excluir este serviço?')) return;
+    const confirmado = await confirmarAcao('Excluir este serviço?', { titulo: 'Excluir serviço', textoBotao: 'Excluir', variante: 'perigo' });
+    if (!confirmado) return;
 
     try {
         await apiFetch(`/api/servicos/${id}`, { method: 'DELETE' });
         await carregarServicos();
+        mostrarToast('Serviço excluído.');
     } catch (err) {
         mostrarErro(err.message);
     }

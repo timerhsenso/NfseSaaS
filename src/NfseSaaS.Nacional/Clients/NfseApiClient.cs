@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NfseSaaS.Nacional.Exceptions;
 using NfseSaaS.Nacional.Options;
@@ -21,11 +22,13 @@ public sealed class NfseApiClient : INfseApiClient
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly NfseNacionalOptions _options;
+    private readonly ILogger<NfseApiClient> _logger;
 
-    public NfseApiClient(IHttpClientFactory httpClientFactory, IOptions<NfseNacionalOptions> options)
+    public NfseApiClient(IHttpClientFactory httpClientFactory, IOptions<NfseNacionalOptions> options, ILogger<NfseApiClient> logger)
     {
         _httpClientFactory = httpClientFactory;
         _options = options.Value;
+        _logger = logger;
     }
 
     public async Task<(int StatusCode, string Body)> EnviarDpsAsync(Guid empresaId, string dpsXmlGZipBase64, CancellationToken cancellationToken)
@@ -83,6 +86,19 @@ public sealed class NfseApiClient : INfseApiClient
             var payload = new { pedidoRegistroEventoXmlGZipB64 = eventoXmlGZipBase64 };
             using var response = await client.PostAsJsonAsync(MontarUrl($"nfse/{chaveAcesso}/eventos"), payload, timeoutCts.Token);
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                // Este endpoint ainda não tinha sido exercitado contra uma
+                // rejeição real quando foi implementado — logar o corpo
+                // bruto aqui é o que permite confirmar/corrigir o formato
+                // de erro assumido em EventoResponseParser, em vez de
+                // ficar só com "motivo não informado" na tela.
+                _logger.LogWarning(
+                    "SEFIN Nacional retornou HTTP {StatusCode} ao registrar evento da chave {ChaveAcesso}. Corpo bruto: {Body}",
+                    (int)response.StatusCode, chaveAcesso, body);
+            }
+
             return ((int)response.StatusCode, body);
         }
         catch (HttpRequestException ex)
