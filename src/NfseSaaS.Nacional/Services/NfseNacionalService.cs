@@ -59,7 +59,7 @@ public sealed class NfseNacionalService : INfseNacionalService
         var xmlAssinado = _signer.Assinar(xmlDps, infDpsId, certificado);
         var gzipBase64 = GZipHelper.ComprimirParaBase64(xmlAssinado);
 
-        var (statusCode, body) = await _apiClient.EnviarDpsAsync(empresaId, gzipBase64, cancellationToken);
+        var (statusCode, body) = await _apiClient.EnviarDpsAsync(empresaId, request.TpAmb, gzipBase64, cancellationToken);
 
         return NfseResponseParser.Parse(statusCode, body);
     }
@@ -72,7 +72,7 @@ public sealed class NfseNacionalService : INfseNacionalService
         var xmlAssinado = _signer.Assinar(xmlEvento, infPedRegId, certificado);
         var gzipBase64 = GZipHelper.ComprimirParaBase64(xmlAssinado);
 
-        var (statusCode, body) = await _apiClient.EnviarEventoAsync(empresaId, request.ChaveAcesso, gzipBase64, cancellationToken);
+        var (statusCode, body) = await _apiClient.EnviarEventoAsync(empresaId, request.TpAmb, request.ChaveAcesso, gzipBase64, cancellationToken);
 
         return EventoResponseParser.Parse(statusCode, body);
     }

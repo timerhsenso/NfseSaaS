@@ -1,4 +1,5 @@
 using NfseSaaS.Domain.Common;
+using NfseSaaS.Domain.Enums;
 
 namespace NfseSaaS.Domain.Entities;
 
@@ -65,6 +66,15 @@ public sealed class Empresa : BaseEntity, ITenantEntity
     public string PercentualTotalTributosSimplesNacional { get; set; } = string.Empty;
 
     public bool Ativo { get; set; } = true;
+
+    /// <summary>
+    /// Em que ambiente do SEFIN Nacional as notas desta Empresa são
+    /// emitidas (vira o tpAmb da DPS — ver DpsBuilder). Toda Empresa
+    /// nasce em Homologacao; a troca de ambiente é deliberada e
+    /// auditada nos dois sentidos (ver IAlterarAmbienteEmpresaUseCase),
+    /// nunca o valor default.
+    /// </summary>
+    public TipoAmbiente TipoAmbiente { get; set; } = TipoAmbiente.Homologacao;
 
     /// <summary>
     /// Último NSU (Número Sequencial Único) já processado na sincronização

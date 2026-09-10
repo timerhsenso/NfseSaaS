@@ -9,5 +9,6 @@ namespace NfseSaaS.Nacional.Clients;
 public interface IAdnDistribuicaoClient
 {
     /// <summary>Retorna todos os documentos disponíveis com NSU maior que o informado.</summary>
-    Task<DfeLoteResponse> ConsultarPorNsuAsync(Guid empresaId, long ultimoNsuProcessado, CancellationToken cancellationToken);
+    /// <param name="tpAmb">"1" = Produção, "2" = Homologação — decide qual das duas URLs (AdnOptions) é chamada.</param>
+    Task<DfeLoteResponse> ConsultarPorNsuAsync(Guid empresaId, string tpAmb, long ultimoNsuProcessado, CancellationToken cancellationToken);
 }

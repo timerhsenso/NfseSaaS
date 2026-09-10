@@ -1,8 +1,6 @@
-﻿using System.Security.Cryptography;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using Microsoft.Extensions.Options;
 using NfseSaaS.Nacional.Builders;
-using NfseSaaS.Nacional.Options;
 using NfseSaaS.Nacional.Signing;
 using NfseSaaS.Tests.TestData;
 using Xunit;
@@ -36,8 +34,7 @@ public class DpsSignerTests
     [Fact]
     public void Assinar_deve_incluir_um_elemento_Signature_referenciando_o_infDpsId()
     {
-        var options = Options.Create(new NfseNacionalOptions { Ambiente = "ProducaoRestrita" });
-        var builder = new DpsBuilder(options);
+        var builder = new DpsBuilder();
         var signer = new DpsSigner();
 
         var request = DpsRequestFactory.CriarRequestDeTeste();
@@ -53,8 +50,7 @@ public class DpsSignerTests
     [Fact]
     public void Assinar_sem_chave_privada_deve_lancar_NfseCertificateException()
     {
-        var options = Options.Create(new NfseNacionalOptions { Ambiente = "ProducaoRestrita" });
-        var builder = new DpsBuilder(options);
+        var builder = new DpsBuilder();
         var signer = new DpsSigner();
 
         var request = DpsRequestFactory.CriarRequestDeTeste();

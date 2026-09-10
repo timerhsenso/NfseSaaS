@@ -35,5 +35,6 @@ internal static class DpsRequestFactory
         Valor: 10.00m,
         CodigoTributacaoNacional: "010701",
         CodigoNbs: "115013000",
-        DescricaoServico: "Teste");
+        DescricaoServico: "Teste",
+        TpAmb: "2");
 }

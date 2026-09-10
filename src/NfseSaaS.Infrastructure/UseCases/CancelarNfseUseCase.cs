@@ -56,7 +56,12 @@ public sealed class CancelarNfseUseCase : ICancelarNfseUseCase
             ChaveAcesso: nfse.ChaveAcesso,
             CnpjAutor: empresa.Cnpj,
             CodigoMotivo: request.CodigoMotivo,
-            Motivo: request.Motivo);
+            Motivo: request.Motivo,
+            // Ambiente da NOTA, não da Empresa hoje — se a Empresa foi
+            // promovida/voltou de ambiente depois desta nota ter sido
+            // emitida, o cancelamento ainda precisa ir pro endpoint onde
+            // a nota realmente existe. Ver comentário em Nfse.TipoAmbiente.
+            TpAmb: nfse.TipoAmbiente.ParaTpAmb());
 
         var resposta = await _nfseNacionalService.CancelarAsync(eventoRequest, empresa.Id, cancellationToken);
 

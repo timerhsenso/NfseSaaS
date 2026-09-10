@@ -59,10 +59,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    inicializarSeletorEmpresa(function (empresaId) {
-        empresaAtualIdServicos = empresaId;
-        carregarServicos();
-    });
+    empresaAtualIdServicos = obterEmpresaAtualId();
+    carregarServicos();
 });
 
 async function carregarServicos() {

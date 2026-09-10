@@ -10,8 +10,22 @@ public class NfseNacionalOptionsTests
     {
         var options = new NfseNacionalOptions();
 
-        Assert.Equal("Homologacao", options.Ambiente);
+        Assert.Equal(string.Empty, options.BaseUrlHomologacao);
+        Assert.Equal(string.Empty, options.BaseUrlProducao);
         Assert.Equal(60, options.TimeoutSeconds);
-        Assert.Equal(string.Empty, options.BaseUrl);
+    }
+
+    [Theory]
+    [InlineData("1", "https://producao.exemplo/")]
+    [InlineData("2", "https://homologacao.exemplo/")]
+    public void ObterBaseUrl_deve_escolher_a_url_certa_pelo_tpAmb(string tpAmb, string urlEsperada)
+    {
+        var options = new NfseNacionalOptions
+        {
+            BaseUrlProducao = "https://producao.exemplo/",
+            BaseUrlHomologacao = "https://homologacao.exemplo/"
+        };
+
+        Assert.Equal(urlEsperada, options.ObterBaseUrl(tpAmb));
     }
 }

@@ -1,3 +1,4 @@
+@inject NfseSaaS.Application.UseCases.Empresas.IObterEmpresaPorIdUseCase ObterEmpresaPorIdUseCase
 @{
     var papelAdministrador = User.IsInRole("Administrador");
     var caminhoAtual = Context.Request.Path.Value?.TrimEnd('/') ?? "";
@@ -5,6 +6,34 @@
     var nomeUsuario = User.Identity?.Name ?? "Usuário";
     var iniciais = string.Concat(nomeUsuario.Split(new[] { '@', '.', ' ' }, StringSplitOptions.RemoveEmptyEntries)
         .Take(2).Select(p => char.ToUpperInvariant(p[0])));
+
+    // Badge de ambiente: vem SEMPRE da Empresa selecionada (cookie
+    // EmpresaAtualId, escrito por empresa-atual.js), nunca de config —
+    // não existe mais "ambiente do sistema". Resolvido aqui, no
+    // servidor, só pra o badge já nascer certo no primeiro render (sem
+    // esperar o JS popular o <select> do topo); o <select> em si
+    // continua sendo montado no cliente (empresa-atual.js), então o
+    // nome/CNPJ das opções não precisa ser buscado de novo aqui.
+    string? rotuloAmbienteEmpresa = null;
+    string corAmbienteEmpresa = "secondary";
+
+    if (Guid.TryParse(Context.Request.Cookies["EmpresaAtualId"], out var empresaAtualId))
+    {
+        try
+        {
+            var empresaAtual = await ObterEmpresaPorIdUseCase.ExecutarAsync(empresaAtualId, Context.RequestAborted);
+            var emProducao = empresaAtual.TipoAmbiente == NfseSaaS.Domain.Enums.TipoAmbiente.Producao;
+            rotuloAmbienteEmpresa = emProducao ? "Produção" : "Homologação";
+            corAmbienteEmpresa = emProducao ? "danger" : "warning";
+        }
+        catch (NfseSaaS.Application.Exceptions.RecursoNaoEncontradoException)
+        {
+            // Cookie aponta pra uma Empresa que não existe mais (Tenant
+            // errado, excluída) — empresa-atual.js detecta isso sozinho
+            // no próximo load (empresa some da lista) e corrige o
+            // cookie. Aqui só deixamos o badge em branco por essa carga.
+        }
+    }
 }
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -83,6 +112,15 @@
                 </div>
 
                 <div class="d-flex align-items-center gap-2">
+                    <select id="seletor-empresa-topo" class="form-select form-select-sm" style="width:auto" title="Empresa selecionada — vale pra todas as telas"></select>
+
+                    @if (rotuloAmbienteEmpresa is not null)
+                    {
+                        <span class="badge text-bg-@corAmbienteEmpresa" id="badge-ambiente-empresa" title="Ambiente da Empresa selecionada no topo">
+                            <i class="bi bi-hdd-network"></i> @rotuloAmbienteEmpresa
+                        </span>
+                    }
+
                     <button class="btn-tema" id="botaoTema" aria-label="Alternar tema claro/escuro" title="Alternar tema">
                         <i class="bi bi-moon-stars" id="iconeTema"></i>
                     </button>
@@ -141,6 +179,7 @@
     <script src="https://cdn.datatables.net/buttons/3.2.5/js/buttons.print.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/empresa-atual.js" asp-append-version="true"></script>
     <script src="~/js/exportacao.js" asp-append-version="true"></script>
 
     <script>

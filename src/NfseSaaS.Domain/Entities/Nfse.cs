@@ -117,4 +117,16 @@ public sealed class Nfse : BaseEntity, ITenantEntity
     public string? CodigoErro { get; set; }
 
     public string? MensagemErro { get; set; }
+
+    /// <summary>
+    /// Ambiente (Homologação/Produção) da Empresa NO MOMENTO em que esta
+    /// nota foi emitida — congelado aqui pelo mesmo motivo que
+    /// CodigoTributacaoNacional/TribIssqn etc. são snapshot: se a Empresa
+    /// mudar de ambiente depois, o histórico fiscal desta nota não pode
+    /// mudar retroativamente. Também é o que decide, daqui pra frente,
+    /// qual URL da SEFIN usar em qualquer operação futura sobre ESTA
+    /// nota (consultar, cancelar, baixar DANFSe) — nunca o ambiente
+    /// atual da Empresa.
+    /// </summary>
+    public TipoAmbiente TipoAmbiente { get; set; }
 }

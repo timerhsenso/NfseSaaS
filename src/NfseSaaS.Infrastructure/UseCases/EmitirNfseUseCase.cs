@@ -142,7 +142,8 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
             PercentualTotalTributosSimplesNacional = empresa.PercentualTotalTributosSimplesNacional,
             IdempotencyKey = request.IdempotencyKey,
             SnapshotFiscalJson = JsonSerializer.Serialize(snapshotFiscal),
-            Status = NfseStatus.Processando
+            Status = NfseStatus.Processando,
+            TipoAmbiente = empresa.TipoAmbiente
         };
 
         _db.NotasFiscais.Add(nfse);
@@ -182,7 +183,14 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
             Valor: request.ValorServico,
             CodigoTributacaoNacional: nfse.CodigoTributacaoNacional,
             CodigoNbs: nfse.CodigoNbs,
-            DescricaoServico: request.DescricaoServico);
+            DescricaoServico: request.DescricaoServico,
+            // Tradução Domain → Nacional acontece só aqui, no único lugar
+            // que conhece os dois lados (ver comentário em DpsRequest.TpAmb
+            // sobre por que o módulo Nacional não pode fazer essa tradução
+            // sozinho). Lê de nfse.TipoAmbiente (já congelado acima), não
+            // de empresa.TipoAmbiente de novo — mesma fonte que vai pro
+            // banco, sem chance de os dois divergirem.
+            TpAmb: nfse.TipoAmbiente.ParaTpAmb());
 
         try
         {

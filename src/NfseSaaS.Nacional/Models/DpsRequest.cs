@@ -45,6 +45,13 @@ public sealed record TributacaoDps(
 /// NfseSaaS.Nacional — deliberadamente não é a entidade Nfse do Domain,
 /// para manter este módulo isolado (ver Requisito 4/5 da especificação).
 /// </summary>
+/// <param name="TpAmb">
+/// tpAmb da DPS: "1" = Produção, "2" = Homologação. Deliberadamente uma
+/// string pronta pro XML, não um enum do Domain — este módulo Nacional
+/// não conhece o Domain (ver arquitetura). Quem decide o valor é o
+/// chamador (EmitirNfseUseCase, a partir de Empresa.TipoAmbiente), nunca
+/// este módulo nem o appsettings.
+/// </param>
 public sealed record DpsRequest(
     PrestadorDps Prestador,
     TomadorDps Tomador,
@@ -55,4 +62,5 @@ public sealed record DpsRequest(
     decimal Valor,
     string CodigoTributacaoNacional,
     string CodigoNbs,
-    string DescricaoServico);
+    string DescricaoServico,
+    string TpAmb);

@@ -13,8 +13,8 @@ namespace NfseSaaS.Nacional.Clients;
 /// só olha o NOME do client, não a URL chamada nele. Como o certificado é
 /// o mesmo (por Empresa) tanto pra emissão quanto pra distribuição de
 /// DF-e, não há necessidade de uma convenção de nome de client separada —
-/// só aponta pra uma URL absoluta diferente (host do ADN) na mesma
-/// chamada GetAsync.
+/// só aponta pra uma URL absoluta diferente (host do ADN, resolvida por
+/// tpAmb via AdnOptions.ObterBaseUrl) na mesma chamada GetAsync.
 /// </summary>
 public sealed class AdnDistribuicaoClient : IAdnDistribuicaoClient
 {
@@ -27,16 +27,21 @@ public sealed class AdnDistribuicaoClient : IAdnDistribuicaoClient
         _options = options.Value;
     }
 
-    public async Task<DfeLoteResponse> ConsultarPorNsuAsync(Guid empresaId, long ultimoNsuProcessado, CancellationToken cancellationToken)
+    public async Task<DfeLoteResponse> ConsultarPorNsuAsync(Guid empresaId, string tpAmb, long ultimoNsuProcessado, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(_options.BaseUrl))
-            throw new NfseApiException("Adn:BaseUrl não configurada.");
+        var baseUrlConfigurada = _options.ObterBaseUrl(tpAmb);
+
+        if (string.IsNullOrWhiteSpace(baseUrlConfigurada))
+        {
+            var nomeCampo = tpAmb == "1" ? "BaseUrlProducao" : "BaseUrlHomologacao";
+            throw new NfseApiException($"Adn:{nomeCampo} não configurada.");
+        }
 
         var client = _httpClientFactory.CreateClient(SefinNacionalClientNames.ParaEmpresa(empresaId));
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCts.CancelAfter(TimeSpan.FromSeconds(_options.TimeoutSeconds));
 
-        var baseUrl = _options.BaseUrl.EndsWith('/') ? _options.BaseUrl : _options.BaseUrl + "/";
+        var baseUrl = baseUrlConfigurada.EndsWith('/') ? baseUrlConfigurada : baseUrlConfigurada + "/";
         var url = new Uri(new Uri(baseUrl), $"DFe/{ultimoNsuProcessado}");
 
         try

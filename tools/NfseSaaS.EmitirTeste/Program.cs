@@ -46,8 +46,12 @@ var ambiente = args.Length > 3 ? args[3] : "ProducaoRestrita";
 var configuration = new ConfigurationBuilder()
     .AddInMemoryCollection(new Dictionary<string, string?>
     {
-        ["NfseNacional:BaseUrl"] = baseUrl,
-        ["NfseNacional:Ambiente"] = ambiente,
+        // Ferramenta manual recebe uma única URL por execução (o
+        // [ambiente] da linha de comando já diz qual é) — preenche as
+        // duas chaves com o mesmo valor de propósito; NfseApiClient só
+        // vai de fato usar a que corresponder ao tpAmb calculado abaixo.
+        ["NfseNacional:BaseUrlHomologacao"] = baseUrl,
+        ["NfseNacional:BaseUrlProducao"] = baseUrl,
         ["NfseNacional:TimeoutSeconds"] = "60"
     })
     .Build();
@@ -111,7 +115,12 @@ var request = new DpsRequest(
     Valor: 10.00m,
     CodigoTributacaoNacional: "010701",
     CodigoNbs: "115013000",
-    DescricaoServico: "TESTE DE EMISSAO NFS-E VIA NFSESAAS - ARQUITETURA DEFINITIVA");
+    DescricaoServico: "TESTE DE EMISSAO NFS-E VIA NFSESAAS - ARQUITETURA DEFINITIVA",
+    // DpsBuilder não lê mais "ambiente" do appsettings/IOptions — quem
+    // decide o tpAmb agora é sempre o chamador. Nesta ferramenta manual,
+    // isso é o argumento de linha de comando [ambiente] (mesma regra que
+    // já era usada: só "Producao" vira tpAmb=1, tudo mais é teste).
+    TpAmb: ambiente == "Producao" ? "1" : "2");
 
 Console.WriteLine("==========================================");
 Console.WriteLine(" NfseSaaS - Emissão de teste (arquitetura definitiva)");

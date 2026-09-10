@@ -4,10 +4,12 @@ namespace NfseSaaS.Nacional.Clients;
 public interface INfseApiClient
 {
     /// <summary>Envia a DPS (já assinada, compactada em GZip+Base64) via POST /nfse, usando o certificado mTLS da Empresa informada.</summary>
-    Task<(int StatusCode, string Body)> EnviarDpsAsync(Guid empresaId, string dpsXmlGZipBase64, CancellationToken cancellationToken);
+    /// <param name="tpAmb">"1" = Produção, "2" = Homologação — decide qual das duas URLs (NfseNacionalOptions) é chamada.</param>
+    Task<(int StatusCode, string Body)> EnviarDpsAsync(Guid empresaId, string tpAmb, string dpsXmlGZipBase64, CancellationToken cancellationToken);
 
     /// <summary>Consulta uma NFS-e já emitida pela chave de acesso via GET /nfse/{chaveAcesso}, usando o certificado mTLS da Empresa informada.</summary>
-    Task<(int StatusCode, string Body)> ConsultarPorChaveAsync(Guid empresaId, string chaveAcesso, CancellationToken cancellationToken);
+    /// <param name="tpAmb">"1" = Produção, "2" = Homologação.</param>
+    Task<(int StatusCode, string Body)> ConsultarPorChaveAsync(Guid empresaId, string tpAmb, string chaveAcesso, CancellationToken cancellationToken);
 
     /// <summary>
     /// Baixa a representação gráfica (DANFSe) em PDF via GET /danfse/{chaveAcesso}.
@@ -18,8 +20,10 @@ public interface INfseApiClient
     /// forma consistente, é sinal de que a geração precisa passar a ser
     /// local (fora do escopo desta implementação).
     /// </summary>
-    Task<(int StatusCode, byte[] Bytes, string? ContentType)> ObterDanfsePdfAsync(Guid empresaId, string chaveAcesso, CancellationToken cancellationToken);
+    /// <param name="tpAmb">"1" = Produção, "2" = Homologação — deve ser o ambiente em que a nota foi emitida, não o ambiente atual da Empresa.</param>
+    Task<(int StatusCode, byte[] Bytes, string? ContentType)> ObterDanfsePdfAsync(Guid empresaId, string tpAmb, string chaveAcesso, CancellationToken cancellationToken);
 
     /// <summary>Envia um evento (já assinado, compactado em GZip+Base64) via POST /nfse/{chaveAcesso}/eventos, usando o certificado mTLS da Empresa informada.</summary>
-    Task<(int StatusCode, string Body)> EnviarEventoAsync(Guid empresaId, string chaveAcesso, string eventoXmlGZipBase64, CancellationToken cancellationToken);
+    /// <param name="tpAmb">"1" = Produção, "2" = Homologação — deve ser o ambiente em que a nota foi emitida, não o ambiente atual da Empresa.</param>
+    Task<(int StatusCode, string Body)> EnviarEventoAsync(Guid empresaId, string tpAmb, string chaveAcesso, string eventoXmlGZipBase64, CancellationToken cancellationToken);
 }

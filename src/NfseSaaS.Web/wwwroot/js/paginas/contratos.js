@@ -83,10 +83,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    inicializarSeletorEmpresa(function (empresaId) {
-        empresaAtualIdContratos = empresaId;
-        carregarContratos();
-    });
+    empresaAtualIdContratos = obterEmpresaAtualId();
+    carregarContratos();
 });
 
 async function carregarContratos() {

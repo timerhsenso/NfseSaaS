@@ -50,7 +50,7 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
             ?? throw new RecursoNaoEncontradoException($"Empresa {empresaId} não encontrada.");
 
         var ultimoNsu = empresa.UltimoNsuDistribuicao ?? 0;
-        var lote = await _adnClient.ConsultarPorNsuAsync(empresaId, ultimoNsu, cancellationToken);
+        var lote = await _adnClient.ConsultarPorNsuAsync(empresaId, empresa.TipoAmbiente.ParaTpAmb(), ultimoNsu, cancellationToken);
 
         int importadas = 0, jaExistentes = 0, ignoradasPorConflito = 0, clientesCriados = 0;
         var maiorNsu = ultimoNsu;
@@ -159,7 +159,16 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
                 ValorLiquido = dados.ValorLiquido(),
                 XmlNfse = xml,
                 SnapshotFiscalJson = JsonSerializer.Serialize(snapshot),
-                Status = status
+                Status = status,
+                // Simplificação conhecida: usa o ambiente ATUAL da
+                // Empresa, não o tpAmb original gravado no XML importado
+                // (NfseXmlImportDados ainda não expõe esse campo). Numa
+                // sincronização normal (mesmo dia/mesmo ambiente) dá no
+                // mesmo; o caso raro que fica errado é importar, via ADN,
+                // uma nota antiga de um ambiente que a Empresa já não
+                // está mais — aceitável por ora, mas documentado aqui pra
+                // não virar surpresa depois.
+                TipoAmbiente = empresa.TipoAmbiente
             };
 
             _db.NotasFiscais.Add(nfse);

@@ -1,8 +1,6 @@
-using Microsoft.Extensions.Options;
 using System.Xml;
 using NfseSaaS.Nacional.Helpers;
 using NfseSaaS.Nacional.Models;
-using NfseSaaS.Nacional.Options;
 
 namespace NfseSaaS.Nacional.Builders;
 
@@ -33,15 +31,11 @@ public sealed class EventoCancelamentoBuilder : IEventoCancelamentoBuilder
     // municipais conveniados — não se aplica a este SaaS.
     private const string TipoEvento = "101101";
 
-    private readonly NfseNacionalOptions _options;
-
-    public EventoCancelamentoBuilder(IOptions<NfseNacionalOptions> options)
-    {
-        _options = options.Value;
-    }
-
     public (string XmlEvento, string InfPedRegId) Construir(EventoCancelamentoRequest request)
     {
+        if (request.TpAmb is not ("1" or "2"))
+            throw new ArgumentException($"TpAmb inválido: '{request.TpAmb}'. Esperado \"1\" (Produção) ou \"2\" (Homologação).", nameof(request));
+
         // Id = "PRE" + chNFSe (50) + tipoEvento (6) = 59 caracteres.
         // NÃO inclui mais nPedRegEvento (removido do leiaute em
         // 27/12/2025) — confirmado contra o padrão oficial
@@ -64,7 +58,7 @@ public sealed class EventoCancelamentoBuilder : IEventoCancelamentoBuilder
         // Ordem dos campos importa — infPedReg é um "sequence" no XSD,
         // e enviar fora de ordem já causou rejeição em outros sistemas
         // (mesma NT de 27/12/2025).
-        Add(doc, infPedReg, "tpAmb", MapearTpAmb(_options.Ambiente));
+        Add(doc, infPedReg, "tpAmb", request.TpAmb);
         Add(doc, infPedReg, "verAplic", "NfseSaaS_1.0");
         Add(doc, infPedReg, "dhEvento", agora.ToString("yyyy-MM-ddTHH:mm:sszzz"));
         Add(doc, infPedReg, "CNPJAutor", request.CnpjAutor);
@@ -78,14 +72,6 @@ public sealed class EventoCancelamentoBuilder : IEventoCancelamentoBuilder
         return (XmlSerializationHelper.ToXmlString(doc), infPedRegId);
     }
 
-    private static string MapearTpAmb(string ambiente) => ambiente switch
-    {
-        "Producao" => "1",
-        "Homologacao" => "2",
-        "ProducaoRestrita" => "2",
-        _ => "2"
-    };
-
     private static XmlElement AddNode(XmlDocument doc, XmlElement parent, string nome)
     {
         var element = doc.CreateElement(nome, Ns);
@@ -96,7 +82,12 @@ public sealed class EventoCancelamentoBuilder : IEventoCancelamentoBuilder
     private static void Add(XmlDocument doc, XmlElement parent, string nome, string valor)
     {
         var element = doc.CreateElement(nome, Ns);
-        element.InnerText = valor;
+        // Espaço em branco sobrando no início/fim quebra o Pattern de
+        // vários tipos do schema da SEFIN Nacional (confirmado contra
+        // uma rejeição real, E1235 "Pattern constraint failed" no
+        // TSMotivo) — mais barato aparar aqui, uma vez, do que confiar
+        // que todo texto que chega até um builder já vem limpo.
+        element.InnerText = valor.Trim();
         parent.AppendChild(element);
     }
 }

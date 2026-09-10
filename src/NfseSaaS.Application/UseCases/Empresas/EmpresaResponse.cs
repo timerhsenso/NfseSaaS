@@ -1,3 +1,5 @@
+using NfseSaaS.Domain.Enums;
+
 namespace NfseSaaS.Application.UseCases.Empresas;
 
 public sealed record EmpresaResponse(
@@ -25,5 +27,9 @@ public sealed record EmpresaResponse(
     string PercentualTotalTributosSimplesNacional,
     int DiasAlertaReajusteContratoPadrao,
     bool Ativo,
+    // Serializa como int (1/2), mesmo padrão já usado por NfseStatus em
+    // NfseResponse — sem JsonStringEnumConverter configurado no projeto.
+    // O front traduz pra rótulo, igual ROTULOS_STATUS já faz em nfse.js.
+    TipoAmbiente TipoAmbiente,
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt);

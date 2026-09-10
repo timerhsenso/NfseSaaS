@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using NfseSaaS.Domain.Entities;
+using NfseSaaS.Domain.Enums;
 
 namespace NfseSaaS.Infrastructure.Persistence.Configurations;
 
@@ -80,6 +81,14 @@ public sealed class EmpresaConfiguration : IEntityTypeConfiguration<Empresa>
 
         builder.Property(e => e.PercentualTotalTributosSimplesNacional)
             .HasMaxLength(10);
+
+        // Grava como int (mesmo valor do tpAmb — ver TipoAmbiente). Default
+        // explícito no banco (não só no C#) por segurança: qualquer INSERT
+        // que por algum motivo não passe pelo EF Core (script manual,
+        // outra ferramenta) ainda cai em Homologacao, nunca em Producao.
+        builder.Property(e => e.TipoAmbiente)
+            .HasConversion<int>()
+            .HasDefaultValue(TipoAmbiente.Homologacao);
 
         // Um mesmo CNPJ não pode se repetir dentro do mesmo tenant.
         builder.HasIndex(e => new { e.TenantId, e.Cnpj })

@@ -22,6 +22,10 @@ public sealed record NfseResponse(
     decimal? ValorLiquido,
     string DescricaoServico,
     NfseStatus Status,
+    // Ambiente em que ESTA nota foi emitida (congelado, ver
+    // Nfse.TipoAmbiente) — não confundir com o ambiente atual da
+    // Empresa, que pode já ter mudado.
+    TipoAmbiente TipoAmbiente,
     string? CodigoErro,
     string? MensagemErro,
     DateTimeOffset CreatedAt,

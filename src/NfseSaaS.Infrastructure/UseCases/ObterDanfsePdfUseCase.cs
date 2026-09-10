@@ -41,7 +41,7 @@ public sealed class ObterDanfsePdfUseCase : IObterDanfsePdfUseCase
 
         try
         {
-            var (statusCode, bytesRemoto, contentType) = await _apiClient.ObterDanfsePdfAsync(nfse.EmpresaId, nfse.ChaveAcesso, cancellationToken);
+            var (statusCode, bytesRemoto, contentType) = await _apiClient.ObterDanfsePdfAsync(nfse.EmpresaId, nfse.TipoAmbiente.ParaTpAmb(), nfse.ChaveAcesso, cancellationToken);
 
             if (statusCode is >= 200 and < 300 && bytesRemoto.Length > 0)
             {

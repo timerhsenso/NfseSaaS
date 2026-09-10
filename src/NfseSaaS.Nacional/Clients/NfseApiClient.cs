@@ -13,10 +13,10 @@ namespace NfseSaaS.Nacional.Clients;
 /// convenção de nome de SefinNacionalClientNames — ver comentário completo
 /// da decisão de arquitetura em CertificateHttpMessageHandlerBuilderFilter.
 ///
-/// A URL base não é configurada via HttpClient.BaseAddress (que exigiria
-/// nomes de client conhecidos em tempo de registro); em vez disso, é
-/// montada a partir de NfseNacionalOptions a cada chamada, o que também
-/// permite trocar o ambiente (homologação/produção) sem recompilar.
+/// A URL base é resolvida A CADA CHAMADA a partir de NfseNacionalOptions
+/// E do tpAmb informado pelo chamador — NfseNacionalOptions.ObterBaseUrl
+/// escolhe entre BaseUrlHomologacao/BaseUrlProducao. Este client não
+/// decide sozinho qual ambiente usar; só executa o que recebeu.
 /// </summary>
 public sealed class NfseApiClient : INfseApiClient
 {
@@ -31,7 +31,7 @@ public sealed class NfseApiClient : INfseApiClient
         _logger = logger;
     }
 
-    public async Task<(int StatusCode, string Body)> EnviarDpsAsync(Guid empresaId, string dpsXmlGZipBase64, CancellationToken cancellationToken)
+    public async Task<(int StatusCode, string Body)> EnviarDpsAsync(Guid empresaId, string tpAmb, string dpsXmlGZipBase64, CancellationToken cancellationToken)
     {
         var client = ObterClient(empresaId);
         using var timeoutCts = CriarTokenComTimeout(cancellationToken);
@@ -39,7 +39,7 @@ public sealed class NfseApiClient : INfseApiClient
         try
         {
             var payload = new { dpsXmlGZipB64 = dpsXmlGZipBase64 };
-            using var response = await client.PostAsJsonAsync(MontarUrl("nfse"), payload, timeoutCts.Token);
+            using var response = await client.PostAsJsonAsync(MontarUrl("nfse", tpAmb), payload, timeoutCts.Token);
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
             return ((int)response.StatusCode, body);
         }
@@ -53,14 +53,14 @@ public sealed class NfseApiClient : INfseApiClient
         }
     }
 
-    public async Task<(int StatusCode, string Body)> ConsultarPorChaveAsync(Guid empresaId, string chaveAcesso, CancellationToken cancellationToken)
+    public async Task<(int StatusCode, string Body)> ConsultarPorChaveAsync(Guid empresaId, string tpAmb, string chaveAcesso, CancellationToken cancellationToken)
     {
         var client = ObterClient(empresaId);
         using var timeoutCts = CriarTokenComTimeout(cancellationToken);
 
         try
         {
-            using var response = await client.GetAsync(MontarUrl($"nfse/{chaveAcesso}"), timeoutCts.Token);
+            using var response = await client.GetAsync(MontarUrl($"nfse/{chaveAcesso}", tpAmb), timeoutCts.Token);
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
             return ((int)response.StatusCode, body);
         }
@@ -74,7 +74,7 @@ public sealed class NfseApiClient : INfseApiClient
         }
     }
 
-    public async Task<(int StatusCode, string Body)> EnviarEventoAsync(Guid empresaId, string chaveAcesso, string eventoXmlGZipBase64, CancellationToken cancellationToken)
+    public async Task<(int StatusCode, string Body)> EnviarEventoAsync(Guid empresaId, string tpAmb, string chaveAcesso, string eventoXmlGZipBase64, CancellationToken cancellationToken)
     {
         var client = ObterClient(empresaId);
         using var timeoutCts = CriarTokenComTimeout(cancellationToken);
@@ -84,7 +84,7 @@ public sealed class NfseApiClient : INfseApiClient
             // Nome do campo confirmado no Swagger oficial da SEFIN Nacional
             // (schema EventosPostRequest): "pedidoRegistroEventoXmlGZipB64".
             var payload = new { pedidoRegistroEventoXmlGZipB64 = eventoXmlGZipBase64 };
-            using var response = await client.PostAsJsonAsync(MontarUrl($"nfse/{chaveAcesso}/eventos"), payload, timeoutCts.Token);
+            using var response = await client.PostAsJsonAsync(MontarUrl($"nfse/{chaveAcesso}/eventos", tpAmb), payload, timeoutCts.Token);
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
 
             if (!response.IsSuccessStatusCode)
@@ -111,14 +111,14 @@ public sealed class NfseApiClient : INfseApiClient
         }
     }
 
-    public async Task<(int StatusCode, byte[] Bytes, string? ContentType)> ObterDanfsePdfAsync(Guid empresaId, string chaveAcesso, CancellationToken cancellationToken)
+    public async Task<(int StatusCode, byte[] Bytes, string? ContentType)> ObterDanfsePdfAsync(Guid empresaId, string tpAmb, string chaveAcesso, CancellationToken cancellationToken)
     {
         var client = ObterClient(empresaId);
         using var timeoutCts = CriarTokenComTimeout(cancellationToken);
 
         try
         {
-            using var response = await client.GetAsync(MontarUrl($"danfse/{chaveAcesso}"), timeoutCts.Token);
+            using var response = await client.GetAsync(MontarUrl($"danfse/{chaveAcesso}", tpAmb), timeoutCts.Token);
             var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
             return ((int)response.StatusCode, bytes, response.Content.Headers.ContentType?.MediaType);
         }
@@ -135,12 +135,17 @@ public sealed class NfseApiClient : INfseApiClient
     private HttpClient ObterClient(Guid empresaId) =>
         _httpClientFactory.CreateClient(SefinNacionalClientNames.ParaEmpresa(empresaId));
 
-    private Uri MontarUrl(string caminhoRelativo)
+    private Uri MontarUrl(string caminhoRelativo, string tpAmb)
     {
-        if (string.IsNullOrWhiteSpace(_options.BaseUrl))
-            throw new NfseApiException("NfseNacional:BaseUrl não configurada.");
+        var baseUrlConfigurada = _options.ObterBaseUrl(tpAmb);
 
-        var baseUrl = _options.BaseUrl.EndsWith('/') ? _options.BaseUrl : _options.BaseUrl + "/";
+        if (string.IsNullOrWhiteSpace(baseUrlConfigurada))
+        {
+            var nomeCampo = tpAmb == "1" ? "BaseUrlProducao" : "BaseUrlHomologacao";
+            throw new NfseApiException($"NfseNacional:{nomeCampo} não configurada.");
+        }
+
+        var baseUrl = baseUrlConfigurada.EndsWith('/') ? baseUrlConfigurada : baseUrlConfigurada + "/";
         return new Uri(new Uri(baseUrl), caminhoRelativo);
     }
 

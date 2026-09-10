@@ -1,9 +1,7 @@
 using System.Globalization;
 using System.Xml;
-using Microsoft.Extensions.Options;
 using NfseSaaS.Nacional.Helpers;
 using NfseSaaS.Nacional.Models;
-using NfseSaaS.Nacional.Options;
 
 namespace NfseSaaS.Nacional.Builders;
 
@@ -17,6 +15,12 @@ namespace NfseSaaS.Nacional.Builders;
 /// tomador e tributação agora vêm de <see cref="DpsRequest"/> — a POC
 /// tinha um único prestador fixo no código, o que não faz sentido num SaaS
 /// multiempresa.
+///
+/// O tpAmb (request.TpAmb) TAMBÉM vem de fora agora — este builder não
+/// lê mais NfseNacionalOptions/appsettings pra decidir isso. Antes era
+/// um valor global (mesmo ambiente fiscal pra toda empresa do sistema);
+/// hoje é decidido por Empresa (Empresa.TipoAmbiente), resolvido em
+/// EmitirNfseUseCase antes de chegar aqui.
 /// </summary>
 public sealed class DpsBuilder : IDpsBuilder
 {
@@ -38,15 +42,11 @@ public sealed class DpsBuilder : IDpsBuilder
     // processamento").
     private static readonly TimeSpan MargemSegurancaDhEmi = TimeSpan.FromSeconds(5);
 
-    private readonly NfseNacionalOptions _options;
-
-    public DpsBuilder(IOptions<NfseNacionalOptions> options)
-    {
-        _options = options.Value;
-    }
-
     public (string XmlDps, string InfDpsId) Construir(DpsRequest request)
     {
+        if (request.TpAmb is not ("1" or "2"))
+            throw new ArgumentException($"TpAmb inválido: '{request.TpAmb}'. Esperado \"1\" (Produção) ou \"2\" (Homologação).", nameof(request));
+
         var agora = DateTimeOffset.Now - MargemSegurancaDhEmi;
 
         var infDpsId =
@@ -67,7 +67,7 @@ public sealed class DpsBuilder : IDpsBuilder
         infDps.SetAttribute("Id", infDpsId);
         dps.AppendChild(infDps);
 
-        Add(doc, infDps, "tpAmb", MapearTpAmb(_options.Ambiente));
+        Add(doc, infDps, "tpAmb", request.TpAmb);
         Add(doc, infDps, "dhEmi", agora.ToString("yyyy-MM-ddTHH:mm:sszzz"));
         Add(doc, infDps, "verAplic", "NfseSaaS_1.0");
         Add(doc, infDps, "serie", request.SerieDps);
@@ -128,19 +128,6 @@ public sealed class DpsBuilder : IDpsBuilder
         return (XmlSerializationHelper.ToXmlString(doc), infDpsId);
     }
 
-    /// <summary>
-    /// tpAmb: 1 = Produção, 2 = Homologação. "ProducaoRestrita" (ambiente
-    /// de testes da SEFIN usado na POC) também mapeia para 2 — foi o valor
-    /// usado na emissão real que obteve HTTP 201.
-    /// </summary>
-    private static string MapearTpAmb(string ambiente) => ambiente switch
-    {
-        "Producao" => "1",
-        "Homologacao" => "2",
-        "ProducaoRestrita" => "2",
-        _ => "2"
-    };
-
     private static XmlElement AddNode(XmlDocument doc, XmlElement parent, string nome)
     {
         var element = doc.CreateElement(nome, Ns);
@@ -151,7 +138,11 @@ public sealed class DpsBuilder : IDpsBuilder
     private static void Add(XmlDocument doc, XmlElement parent, string nome, string valor)
     {
         var element = doc.CreateElement(nome, Ns);
-        element.InnerText = valor;
+        // Mesmo motivo do Add() em EventoCancelamentoBuilder: espaço
+        // sobrando no início/fim quebra o Pattern de vários tipos do
+        // schema da SEFIN — aparado aqui, uma vez, pra qualquer campo de
+        // texto livre da DPS (descrição do serviço, nomes, endereço).
+        element.InnerText = valor.Trim();
         parent.AppendChild(element);
     }
 }

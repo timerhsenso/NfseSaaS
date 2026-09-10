@@ -35,14 +35,16 @@ public sealed class TestarConexaoCertificadoUseCase : ITestarConexaoCertificadoU
     public async Task<TesteConexaoResponse> ExecutarAsync(Guid empresaId, CancellationToken cancellationToken)
     {
         // Ver comentário completo em EnviarCertificadoUseCase — mesma
-        // checagem obrigatória de tenant via _db.Empresas.
-        var empresaExiste = await _db.Empresas.AnyAsync(e => e.Id == empresaId, cancellationToken);
-        if (!empresaExiste)
+        // checagem obrigatória de tenant via _db.Empresas. Carrega a
+        // entidade inteira (não só AnyAsync) porque agora também
+        // precisamos do TipoAmbiente pra saber qual URL da SEFIN chamar.
+        var empresa = await _db.Empresas.FirstOrDefaultAsync(e => e.Id == empresaId, cancellationToken);
+        if (empresa is null)
             throw new RecursoNaoEncontradoException($"Empresa {empresaId} não encontrada.");
 
         try
         {
-            var (statusCode, _) = await _apiClient.ConsultarPorChaveAsync(empresaId, ChaveDeTeste, cancellationToken);
+            var (statusCode, _) = await _apiClient.ConsultarPorChaveAsync(empresaId, empresa.TipoAmbiente.ParaTpAmb(), ChaveDeTeste, cancellationToken);
 
             return new TesteConexaoResponse(
                 Sucesso: true,

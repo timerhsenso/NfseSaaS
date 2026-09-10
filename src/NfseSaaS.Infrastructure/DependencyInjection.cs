@@ -116,6 +116,7 @@ public static class DependencyInjection
         services.AddScoped<IDesativarEmpresaUseCase, DesativarEmpresaUseCase>();
         services.AddScoped<IReativarEmpresaUseCase, ReativarEmpresaUseCase>();
         services.AddScoped<IExcluirEmpresaUseCase, ExcluirEmpresaUseCase>();
+        services.AddScoped<IAlterarAmbienteEmpresaUseCase, AlterarAmbienteEmpresaUseCase>();
 
         services.AddScoped<ICadastrarClienteUseCase, CadastrarClienteUseCase>();
         services.AddScoped<IListarClientesUseCase, ListarClientesUseCase>();

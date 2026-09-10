@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using NfseSaaS.Domain.Entities;
+using NfseSaaS.Domain.Enums;
 
 namespace NfseSaaS.Infrastructure.Persistence.Configurations;
 
@@ -75,6 +76,22 @@ public sealed class NfseConfiguration : IEntityTypeConfiguration<Nfse>
 
         builder.Property(n => n.MensagemErro)
             .HasMaxLength(1000);
+
+        // Mesmo formato (int) usado em EmpresaConfiguration.TipoAmbiente.
+        // TEM que ter default explícito no banco (diferente do que o
+        // comentário anterior dizia): sem isso, a migration que criou
+        // esta coluna preencheu as notas JÁ EXISTENTES com o valor 0 do
+        // CLR — que não corresponde a nenhum TipoAmbiente válido
+        // (Producao=1, Homologacao=2) — e a listagem, que filtra por
+        // TipoAmbiente, parou de mostrar qualquer nota antiga. Corrigido
+        // aqui pra qualquer INSERT futuro fora dos use cases normais
+        // (script manual, outra ferramenta) também cair em Homologacao,
+        // nunca em 0. EmitirNfseUseCase/SincronizarNotasDaSefinUseCase
+        // continuam sempre definindo o valor explicitamente — este
+        // default é rede de segurança, não a fonte normal do valor.
+        builder.Property(n => n.TipoAmbiente)
+            .HasConversion<int>()
+            .HasDefaultValue(TipoAmbiente.Homologacao);
 
         // Não pode existir duas DPS com o mesmo número+série para a mesma empresa/tenant.
         builder.HasIndex(n => new { n.TenantId, n.EmpresaId, n.NumeroDps, n.SerieDps })

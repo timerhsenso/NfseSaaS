@@ -1,5 +1,15 @@
 const podeEditar = document.getElementById('btn-nova-empresa') !== null;
 
+// Mesmos valores numéricos do enum TipoAmbiente no C# (1 = Producao,
+// 2 = Homologacao) — a API não traduz isso pra string, só serializa o
+// int (mesmo padrão de NfseStatus em nfse.js).
+const AMBIENTE_PRODUCAO = 1;
+const AMBIENTE_HOMOLOGACAO = 2;
+const ROTULOS_AMBIENTE = {
+    [AMBIENTE_PRODUCAO]: { texto: 'Produção', cor: 'danger' },
+    [AMBIENTE_HOMOLOGACAO]: { texto: 'Homologação', cor: 'warning' }
+};
+
 let tabela;
 let modalEmpresa;
 let modalCertificado;
@@ -11,6 +21,13 @@ document.addEventListener('DOMContentLoaded', function () {
         { data: 'cnpj' },
         { data: 'inscricaoMunicipal' },
         { data: 'codigoMunicipio' },
+        {
+            data: 'tipoAmbiente',
+            render: v => {
+                const rotulo = ROTULOS_AMBIENTE[v] ?? { texto: 'Desconhecido', cor: 'secondary' };
+                return `<span class="badge text-bg-${rotulo.cor}">${rotulo.texto}</span>`;
+            }
+        },
         {
             data: 'ativo',
             render: v => v
@@ -30,6 +47,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 <button type="button" class="btn btn-sm btn-outline-info btn-certificado" data-id="${empresa.id}" data-nome="${empresa.razaoSocial}">
                     <i class="bi bi-file-earmark-lock"></i>
                 </button>
+                ${empresa.tipoAmbiente === AMBIENTE_HOMOLOGACAO ? `
+                <button type="button" class="btn btn-sm btn-outline-danger btn-alterar-ambiente" data-id="${empresa.id}" data-nome="${empresa.razaoSocial}" data-novo-ambiente="${AMBIENTE_PRODUCAO}" title="Promover para Produção">
+                    <i class="bi bi-rocket-takeoff"></i>
+                </button>` : `
+                <button type="button" class="btn btn-sm btn-outline-secondary btn-alterar-ambiente" data-id="${empresa.id}" data-nome="${empresa.razaoSocial}" data-novo-ambiente="${AMBIENTE_HOMOLOGACAO}" title="Voltar para Homologação">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </button>`}
                 <button type="button" class="btn btn-sm btn-outline-warning btn-alternar-ativo" data-id="${empresa.id}" data-ativo="${empresa.ativo}">
                     <i class="bi ${empresa.ativo ? 'bi-toggle-on' : 'bi-toggle-off'}"></i>
                 </button>
@@ -64,6 +88,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (botao.classList.contains('btn-editar')) await abrirModalEditarEmpresa(id);
             else if (botao.classList.contains('btn-certificado')) await abrirModalCertificado(id, botao.dataset.nome);
+            else if (botao.classList.contains('btn-alterar-ambiente')) await alterarAmbiente(id, botao.dataset.nome, parseInt(botao.dataset.novoAmbiente, 10));
             else if (botao.classList.contains('btn-alternar-ativo')) await alternarAtivo(id, botao.dataset.ativo === 'true');
             else if (botao.classList.contains('btn-excluir')) await excluirEmpresa(id);
         });
@@ -190,6 +215,41 @@ async function alternarAtivo(id, ativoAtualmente) {
     try {
         await apiFetch(`/api/empresas/${id}/${acao}`, { method: 'POST' });
         await carregarEmpresas();
+    } catch (err) {
+        mostrarErro(err.message);
+    }
+}
+
+async function alterarAmbiente(id, nomeEmpresa, novoAmbiente) {
+    const indoPraProducao = novoAmbiente === AMBIENTE_PRODUCAO;
+    const mensagem = indoPraProducao
+        ? `Promover "${nomeEmpresa}" para Produção? A partir de agora, toda nota emitida por ela terá efeito fiscal real.`
+        : `Voltar "${nomeEmpresa}" para Homologação? A partir de agora, as notas emitidas por ela voltam a ser de teste (sem efeito fiscal). Notas já emitidas em Produção continuam valendo — isso só afeta o que for emitido daqui pra frente.`;
+
+    const confirmado = await confirmarAcao(mensagem, {
+        titulo: indoPraProducao ? 'Promover para Produção' : 'Voltar para Homologação',
+        textoBotao: indoPraProducao ? 'Promover' : 'Voltar',
+        variante: 'perigo'
+    });
+    if (!confirmado) return;
+
+    try {
+        await apiFetch(`/api/empresas/${id}/ambiente`, {
+            method: 'PUT',
+            body: JSON.stringify({ tipoAmbiente: novoAmbiente })
+        });
+
+        // Se a empresa alterada é a que está selecionada no topo, o
+        // badge lá em cima também precisa refletir o ambiente novo —
+        // recarregar é o jeito mais simples de manter tudo consistente
+        // (mesmo raciocínio de empresa-atual.js ao trocar a seleção).
+        if (id === obterEmpresaAtualId()) {
+            location.reload();
+            return;
+        }
+
+        await carregarEmpresas();
+        mostrarToast(`"${nomeEmpresa}" agora está em ${indoPraProducao ? 'Produção' : 'Homologação'}.`);
     } catch (err) {
         mostrarErro(err.message);
     }

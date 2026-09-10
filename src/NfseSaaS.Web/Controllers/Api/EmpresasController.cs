@@ -19,6 +19,7 @@ public sealed class EmpresasController : ControllerBase
     private readonly IDesativarEmpresaUseCase _desativarEmpresa;
     private readonly IReativarEmpresaUseCase _reativarEmpresa;
     private readonly IExcluirEmpresaUseCase _excluirEmpresa;
+    private readonly IAlterarAmbienteEmpresaUseCase _alterarAmbiente;
     private readonly IEnviarCertificadoUseCase _enviarCertificado;
     private readonly IObterStatusCertificadoUseCase _obterStatusCertificado;
     private readonly ITestarConexaoCertificadoUseCase _testarConexaoCertificado;
@@ -32,6 +33,7 @@ public sealed class EmpresasController : ControllerBase
         IDesativarEmpresaUseCase desativarEmpresa,
         IReativarEmpresaUseCase reativarEmpresa,
         IExcluirEmpresaUseCase excluirEmpresa,
+        IAlterarAmbienteEmpresaUseCase alterarAmbiente,
         IEnviarCertificadoUseCase enviarCertificado,
         IObterStatusCertificadoUseCase obterStatusCertificado,
         ITestarConexaoCertificadoUseCase testarConexaoCertificado,
@@ -44,6 +46,7 @@ public sealed class EmpresasController : ControllerBase
         _desativarEmpresa = desativarEmpresa;
         _reativarEmpresa = reativarEmpresa;
         _excluirEmpresa = excluirEmpresa;
+        _alterarAmbiente = alterarAmbiente;
         _enviarCertificado = enviarCertificado;
         _obterStatusCertificado = obterStatusCertificado;
         _testarConexaoCertificado = testarConexaoCertificado;
@@ -109,6 +112,21 @@ public sealed class EmpresasController : ControllerBase
     public async Task<IActionResult> Excluir(Guid id, CancellationToken cancellationToken)
     {
         await _excluirEmpresa.ExecutarAsync(id, cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Troca o ambiente (Homologação ⇄ Produção) da Empresa — nos dois
+    /// sentidos. A partir daqui, toda nova Nfse emitida por ela usa o
+    /// ambiente novo; notas já emitidas mantêm o ambiente que tinham na
+    /// hora (ver Nfse.TipoAmbiente). Idempotente: chamar de novo com o
+    /// mesmo ambiente atual não faz nada (204 do mesmo jeito).
+    /// </summary>
+    [Authorize(Roles = Papeis.Administrador)]
+    [HttpPut("{id:guid}/ambiente")]
+    public async Task<IActionResult> AlterarAmbiente(Guid id, [FromBody] AlterarAmbienteEmpresaRequest request, CancellationToken cancellationToken)
+    {
+        await _alterarAmbiente.ExecutarAsync(id, request.TipoAmbiente, cancellationToken);
         return NoContent();
     }
 

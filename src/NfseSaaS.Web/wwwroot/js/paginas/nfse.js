@@ -36,13 +36,31 @@ document.addEventListener('DOMContentLoaded', function () {
                     return `<span class="badge text-bg-${r.cor}">${r.texto}</span>`;
                 }
             },
-            { data: 'dataEmissao', render: v => v ? new Date(v).toLocaleString('pt-BR') : '—' },
+            {
+                data: 'dataEmissao',
+                render: {
+                    // Formato "DD/MM/AAAA, HH:mm:ss" não é ordenável como
+                    // texto (o dia vem primeiro) — sem isso, o DataTable
+                    // comparava a string exibida e misturava meses/anos
+                    // fora de ordem. "display" é só o que aparece na
+                    // tela; "sort" é o valor real (timestamp) usado pra
+                    // ordenar, nunca visto pelo usuário.
+                    display: v => v ? new Date(v).toLocaleString('pt-BR') : '—',
+                    sort: v => v ? new Date(v).getTime() : 0
+                }
+            },
             {
                 data: null,
                 orderable: false,
                 render: (d, t, n) => `<button type="button" class="btn btn-sm btn-outline-secondary btn-ver-detalhe" data-id="${n.id}"><i class="bi bi-eye"></i> Detalhes</button>`
             }
         ],
+        // Sem isso, o DataTables cai no default (1ª coluna, Número/Série,
+        // crescente) — a API já manda mais recente primeiro, mas a
+        // tabela reordenava na tela por cima disso. Índice 5 = coluna
+        // "Emissão" (0-based: número, cliente, valor, valorLíquido,
+        // status, emissão, ações).
+        order: [[5, 'desc']],
         language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/pt-BR.json' }
     });
 
@@ -73,11 +91,11 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('form-cancelar-nfse').addEventListener('submit', confirmarCancelamentoNfse);
     }
 
-    inicializarSeletorEmpresa(async function (empresaId) {
-        empresaAtualIdNfse = empresaId;
+    empresaAtualIdNfse = obterEmpresaAtualId();
+    (async function () {
         await carregarClientesParaMapa();
         await carregarNfse();
-    });
+    })();
 });
 
 async function carregarClientesParaMapa() {
