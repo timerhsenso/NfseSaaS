@@ -8,12 +8,14 @@ using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.UseCases.AuditLogs;
 using NfseSaaS.Application.UseCases.Certificados;
 using NfseSaaS.Application.UseCases.Clientes;
+using NfseSaaS.Application.UseCases.Contratos;
 using NfseSaaS.Application.UseCases.Empresas;
 using NfseSaaS.Application.UseCases.Exportacoes;
 using NfseSaaS.Application.UseCases.Consultas;
 using NfseSaaS.Infrastructure.Consultas;
 using NfseSaaS.Application.UseCases.Nfse;
 using NfseSaaS.Application.UseCases.NfseEventos;
+using NfseSaaS.Application.UseCases.ReajustesContrato;
 using NfseSaaS.Application.UseCases.Servicos;
 using NfseSaaS.Application.UseCases.SincronizacaoSefin;
 using NfseSaaS.Infrastructure.Auditing;
@@ -130,6 +132,17 @@ public static class DependencyInjection
         services.AddScoped<IDesativarServicoUseCase, DesativarServicoUseCase>();
         services.AddScoped<IReativarServicoUseCase, ReativarServicoUseCase>();
         services.AddScoped<IExcluirServicoUseCase, ExcluirServicoUseCase>();
+
+        services.AddScoped<ICadastrarContratoUseCase, CadastrarContratoUseCase>();
+        services.AddScoped<IListarContratosUseCase, ListarContratosUseCase>();
+        services.AddScoped<IObterContratoPorIdUseCase, ObterContratoPorIdUseCase>();
+        services.AddScoped<IAtualizarContratoUseCase, AtualizarContratoUseCase>();
+        services.AddScoped<IDesativarContratoUseCase, DesativarContratoUseCase>();
+        services.AddScoped<IReativarContratoUseCase, ReativarContratoUseCase>();
+        services.AddScoped<IExcluirContratoUseCase, ExcluirContratoUseCase>();
+
+        services.AddScoped<IRegistrarReajusteUseCase, RegistrarReajusteUseCase>();
+        services.AddScoped<IListarReajustesUseCase, ListarReajustesUseCase>();
 
         services.AddScoped<IEmitirNfseUseCase, EmitirNfseUseCase>();
         services.AddScoped<IListarNfseUseCase, ListarNfseUseCase>();

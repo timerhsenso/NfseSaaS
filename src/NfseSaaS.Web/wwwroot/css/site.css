@@ -595,3 +595,122 @@ table.dataTable tbody tr:hover,
     font-size: 0.75rem;
     color: #666;
 }
+
+/* =============== Tema escuro =============== */
+/*
+ * Ativado via atributo data-theme="dark" no <html> (ver _Layout.cshtml
+ * e o botão no topbar). Reaproveita as MESMAS variáveis de :root — a
+ * maior parte dos componentes (card, btn, badge, form-control) já lê
+ * essas variáveis, então só redefini-las aqui já propaga pra quase tudo.
+ * O resto (cores fixas em hex que não passavam por variável — tabelas,
+ * topbar com blur, dropdown) é sobrescrito explicitamente abaixo.
+ */
+html[data-theme="dark"] {
+    --bg: #0f172a;
+    --surface: #1a2436;
+    --surface-2: #16202f;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --line: #2b3852;
+    --primary-soft: rgba(37, 99, 235, .18);
+    --success-soft: rgba(22, 163, 74, .18);
+}
+
+html[data-theme="dark"] .topbar {
+    background: rgba(15, 23, 42, .85);
+    border-bottom-color: var(--line);
+}
+
+html[data-theme="dark"] .user-menu:hover,
+html[data-theme="dark"] .menu-btn:hover {
+    background: rgba(255, 255, 255, .06);
+}
+
+html[data-theme="dark"] table.dataTable thead th,
+html[data-theme="dark"] .table thead th {
+    background: var(--surface-2);
+    color: var(--muted);
+}
+
+html[data-theme="dark"] table.dataTable tbody td,
+html[data-theme="dark"] .table tbody td {
+    background-color: var(--surface);
+    border-bottom-color: var(--line);
+    color: var(--text);
+}
+
+html[data-theme="dark"] table.dataTable tbody tr:hover,
+html[data-theme="dark"] .table tbody tr:hover {
+    background: var(--surface-2);
+}
+
+html[data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) > * {
+    background-color: var(--surface-2);
+    color: var(--text);
+}
+
+html[data-theme="dark"] .form-control,
+html[data-theme="dark"] .form-select {
+    background-color: var(--surface-2);
+    border-color: var(--line);
+    color: var(--text);
+}
+
+html[data-theme="dark"] .form-control:focus,
+html[data-theme="dark"] .form-select:focus {
+    background-color: var(--surface-2);
+    color: var(--text);
+}
+
+html[data-theme="dark"] .modal-content {
+    background-color: var(--surface);
+    color: var(--text);
+}
+
+html[data-theme="dark"] .dropdown-menu {
+    background-color: var(--surface);
+    border-color: var(--line);
+}
+
+html[data-theme="dark"] .dropdown-item {
+    color: var(--text);
+}
+
+html[data-theme="dark"] .dropdown-item:hover {
+    background-color: var(--surface-2);
+    color: var(--text);
+}
+
+html[data-theme="dark"] .btn-outline-secondary,
+html[data-theme="dark"] .btn-secondary {
+    background: var(--surface-2);
+    border-color: var(--line);
+    color: var(--text);
+}
+
+html[data-theme="dark"] .card-footer,
+html[data-theme="dark"] .card-header {
+    background: var(--surface);
+    border-color: var(--line);
+}
+
+/* Botão de alternar tema — sol/lua conforme o tema ativo (ver JS) */
+.btn-tema {
+    border: 0;
+    background: transparent;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 1.1rem;
+    display: grid;
+    place-items: center;
+}
+
+.btn-tema:hover {
+    background: #f1f5f9;
+}
+
+html[data-theme="dark"] .btn-tema:hover {
+    background: rgba(255, 255, 255, .06);
+}

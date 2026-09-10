@@ -300,6 +300,72 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.ToTable("contadores_dps", (string)null);
                 });
 
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.Contrato", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("ClienteId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("DataInicioContrato")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("DataUltimoReajuste")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int?>("DiasAlertaOverride")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("EmpresaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("IndiceReajuste")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<int>("PeriodicidadeReajusteMeses")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ServicoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("ValorAtual")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClienteId");
+
+                    b.HasIndex("EmpresaId");
+
+                    b.HasIndex("ServicoId");
+
+                    b.HasIndex("TenantId", "ClienteId");
+
+                    b.HasIndex("TenantId", "EmpresaId");
+
+                    b.ToTable("contratos", (string)null);
+                });
+
             modelBuilder.Entity("NfseSaaS.Domain.Entities.Empresa", b =>
                 {
                     b.Property<Guid>("Id")
@@ -340,6 +406,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(2)
                         .HasColumnType("character varying(2)");
+
+                    b.Property<int>("DiasAlertaReajusteContratoPadrao")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -458,6 +527,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<Guid?>("ContratoId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -554,6 +626,8 @@ namespace NfseSaaS.Infrastructure.Migrations
 
                     b.HasIndex("ClienteId");
 
+                    b.HasIndex("ContratoId");
+
                     b.HasIndex("EmpresaId");
 
                     b.HasIndex("TenantId", "EmpresaId", "IdempotencyKey")
@@ -604,6 +678,53 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.HasIndex("TenantId", "NfseId", "CreatedAt");
 
                     b.ToTable("nfse_eventos", (string)null);
+                });
+
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.ReajusteContrato", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ContratoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("DataReajuste")
+                        .HasColumnType("date");
+
+                    b.Property<string>("IndiceUsado")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Observacao")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<decimal?>("PercentualAplicado")
+                        .HasColumnType("numeric(9,4)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("ValorAnterior")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("ValorNovo")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContratoId");
+
+                    b.HasIndex("TenantId", "ContratoId");
+
+                    b.ToTable("reajustes_contrato", (string)null);
                 });
 
             modelBuilder.Entity("NfseSaaS.Domain.Entities.Servico", b =>
@@ -819,6 +940,27 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.Contrato", b =>
+                {
+                    b.HasOne("NfseSaaS.Domain.Entities.Cliente", null)
+                        .WithMany()
+                        .HasForeignKey("ClienteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("NfseSaaS.Domain.Entities.Empresa", null)
+                        .WithMany()
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("NfseSaaS.Domain.Entities.Servico", null)
+                        .WithMany()
+                        .HasForeignKey("ServicoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("NfseSaaS.Domain.Entities.Nfse", b =>
                 {
                     b.HasOne("NfseSaaS.Domain.Entities.Cliente", null)
@@ -826,6 +968,11 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasForeignKey("ClienteId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("NfseSaaS.Domain.Entities.Contrato", null)
+                        .WithMany()
+                        .HasForeignKey("ContratoId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("NfseSaaS.Domain.Entities.Empresa", null)
                         .WithMany()
@@ -839,6 +986,15 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.HasOne("NfseSaaS.Domain.Entities.Nfse", null)
                         .WithMany()
                         .HasForeignKey("NfseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.ReajusteContrato", b =>
+                {
+                    b.HasOne("NfseSaaS.Domain.Entities.Contrato", null)
+                        .WithMany()
+                        .HasForeignKey("ContratoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

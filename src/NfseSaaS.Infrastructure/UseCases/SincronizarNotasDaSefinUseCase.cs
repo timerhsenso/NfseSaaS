@@ -174,7 +174,36 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
 
         await _db.SaveChangesAsync(cancellationToken);
 
+        // Notas importadas (de outro emissor, tipicamente o Emissor Web
+        // oficial do gov.br) podem usar a mesma SerieDps que a nossa
+        // própria emissão usa ("00001" — faixa reservada a tpEmit=1,
+        // qualquer aplicativo próprio, não só o nosso). O contador
+        // interno (contadores_dps) nunca fica sabendo desses números,
+        // porque eles chegam por aqui, não por EmitirNfseUseCase — sem
+        // isto, uma emissão nossa post-sincronização podia gerar um
+        // NumeroDps que colide com um já importado (confirmado: erro real
+        // de constraint única em produção restrita). Alinha o contador
+        // pra NUNCA ficar atrás do maior NumeroDps já visto pra cada
+        // SerieDps desta Empresa — inclusive cobrindo sincronizações
+        // anteriores a esta correção, já que reflete o estado atual da
+        // tabela, não só o lote de agora.
+        await AlinharContadorDpsAsync(empresaId, cancellationToken);
+
         return new SincronizacaoSefinResponse(importadas, jaExistentes, ignoradasPorConflito, clientesCriados, maiorNsu);
+    }
+
+    private async Task AlinharContadorDpsAsync(Guid empresaId, CancellationToken cancellationToken)
+    {
+        await _db.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            INSERT INTO contadores_dps ("EmpresaId", "SerieDps", "UltimoNumero")
+            SELECT "EmpresaId", "SerieDps", MAX("NumeroDps")
+            FROM notas_fiscais
+            WHERE "EmpresaId" = {empresaId}
+            GROUP BY "EmpresaId", "SerieDps"
+            ON CONFLICT ("EmpresaId", "SerieDps")
+            DO UPDATE SET "UltimoNumero" = GREATEST(contadores_dps."UltimoNumero", EXCLUDED."UltimoNumero")
+            """, cancellationToken);
     }
 
     private async Task<(Guid ClienteId, bool Criado)> ObterOuCriarClienteAsync(

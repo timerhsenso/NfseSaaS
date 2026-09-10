@@ -76,6 +76,22 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
         var servico = await _db.Servicos.FirstOrDefaultAsync(s => s.Id == request.ServicoId, cancellationToken)
             ?? throw new RecursoNaoEncontradoException($"Serviço {request.ServicoId} não encontrado.");
 
+        // Contrato é opcional (nota pode ser avulsa, fora de qualquer
+        // Contrato) — mas se informado, precisa realmente pertencer a
+        // este Cliente. Não confiamos cegamente no ContratoId que veio da
+        // tela: um Contrato de outro Cliente aqui seria um vínculo de
+        // rastreabilidade errado (mesmo a Nfse em si continuando correta,
+        // já que Servico/Valor/Descrição vêm de request, não do Contrato).
+        if (request.ContratoId.HasValue)
+        {
+            var contratoValido = await _db.Contratos.AnyAsync(
+                c => c.Id == request.ContratoId.Value && c.ClienteId == request.ClienteId && c.EmpresaId == request.EmpresaId,
+                cancellationToken);
+
+            if (!contratoValido)
+                throw new RegraNegocioException($"Contrato {request.ContratoId} não encontrado para este Cliente/Empresa.");
+        }
+
         var numeroDps = await ProximoNumeroDpsAsync(request.EmpresaId, cancellationToken);
 
         // Grava como "Processando" ANTES de chamar a SEFIN — se a chamada
@@ -111,6 +127,7 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
         {
             EmpresaId = empresa.Id,
             ClienteId = cliente.Id,
+            ContratoId = request.ContratoId,
             NumeroDps = numeroDps,
             SerieDps = SerieDps,
             DataCompetencia = request.DataCompetencia,
@@ -200,7 +217,7 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
                 _nfseEventoWriter.Registrar(nfse.Id, NfseEventoTipo.Rejeitada, primeiroErro?.Codigo, primeiroErro?.Descricao);
             }
 
-            _auditLogWriter.Registrar("EmitirNfse", "Nfse", nfse.Id, new { nfse.Status, nfse.ChaveAcesso, nfse.ValorServico });
+            _auditLogWriter.Registrar("EmitirNfse", "Nfse", nfse.Id, new { nfse.Status, nfse.ChaveAcesso, nfse.ValorServico, nfse.CodigoErro, nfse.MensagemErro });
 
             await _db.SaveChangesAsync(cancellationToken);
 

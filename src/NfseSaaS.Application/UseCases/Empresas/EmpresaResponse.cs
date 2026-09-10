@@ -23,6 +23,7 @@ public sealed record EmpresaResponse(
     string CstPisCofins,
     string TpRetPisCofins,
     string PercentualTotalTributosSimplesNacional,
+    int DiasAlertaReajusteContratoPadrao,
     bool Ativo,
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt);

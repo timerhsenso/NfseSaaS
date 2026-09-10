@@ -14,7 +14,7 @@
  */
 function configurarExportacao(tabela, nomeTela) {
     const linhaRodape = () => `Exportado por ${window.usuarioAtual ?? 'desconhecido'} em ${new Date().toLocaleString('pt-BR')}`;
-    const nomeArquivo = () => `${nomeTela}_${new Date().toISOString().slice(0, 10)}`;
+    const nomeArquivo = () => `${nomeTela}_${dataLocalIso()}`;
 
     new $.fn.dataTable.Buttons(tabela, {
         buttons: [

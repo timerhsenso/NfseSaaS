@@ -31,11 +31,12 @@ public sealed class ExcluirClienteUseCase : IExcluirClienteUseCase
             ?? throw new RecursoNaoEncontradoException($"Cliente {id} não encontrado.");
 
         var totalNfse = await _db.NotasFiscais.CountAsync(n => n.ClienteId == id, cancellationToken);
+        var totalContratos = await _db.Contratos.CountAsync(c => c.ClienteId == id, cancellationToken);
 
-        if (totalNfse > 0)
+        if (totalNfse > 0 || totalContratos > 0)
         {
             throw new RegraNegocioException(
-                $"Não é possível excluir o Cliente: existem {totalNfse} nfse(s) vinculadas. Desative o Cliente em vez de excluir.");
+                $"Não é possível excluir o Cliente: existem {totalNfse} nfse(s) e {totalContratos} contrato(s) vinculados. Desative o Cliente em vez de excluir.");
         }
 
         _db.Clientes.Remove(cliente);

@@ -124,6 +124,22 @@ function ocultarResultado(idDiv) {
     div.classList.add('d-none');
 }
 
+/**
+ * Data de HOJE no fuso local, formato YYYY-MM-DD (pra <input type="date">
+ * ou nomes de arquivo). NUNCA usar `new Date().toISOString().slice(0,10)`
+ * pra isso — toISOString() converte pra UTC, e à noite no horário de
+ * Brasília (UTC-3) isso já vira o dia seguinte. Foi exatamente esse bug
+ * que fez uma DataCompetencia de emissão vir como "amanhã" e a SEFIN
+ * rejeitar a nota (a competência não pode ser posterior à emissão).
+ */
+function dataLocalIso(data) {
+    data = data || new Date();
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const dia = String(data.getDate()).padStart(2, '0');
+    return `${ano}-${mes}-${dia}`;
+}
+
 function confirmarAcao(mensagem, opcoes) {
     opcoes = opcoes || {};
     return new Promise(function (resolve) {

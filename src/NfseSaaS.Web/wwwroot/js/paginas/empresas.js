@@ -128,6 +128,7 @@ async function abrirModalEditarEmpresa(id) {
         document.getElementById('cstPisCofins').value = empresa.cstPisCofins;
         document.getElementById('tpRetPisCofins').value = empresa.tpRetPisCofins;
         document.getElementById('percentualTotalTributosSimplesNacional').value = empresa.percentualTotalTributosSimplesNacional ?? '';
+        document.getElementById('diasAlertaReajusteContratoPadrao').value = empresa.diasAlertaReajusteContratoPadrao;
 
         modalEmpresa.show();
     } catch (err) {
@@ -156,7 +157,8 @@ function montarPayloadEmpresa() {
         tpRetIssqn: document.getElementById('tpRetIssqn').value,
         cstPisCofins: document.getElementById('cstPisCofins').value,
         tpRetPisCofins: document.getElementById('tpRetPisCofins').value,
-        percentualTotalTributosSimplesNacional: document.getElementById('percentualTotalTributosSimplesNacional').value || ''
+        percentualTotalTributosSimplesNacional: document.getElementById('percentualTotalTributosSimplesNacional').value || '',
+        diasAlertaReajusteContratoPadrao: parseInt(document.getElementById('diasAlertaReajusteContratoPadrao').value, 10)
     };
 }
 

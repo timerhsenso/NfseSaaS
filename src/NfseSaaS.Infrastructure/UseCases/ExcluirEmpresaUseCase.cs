@@ -43,11 +43,13 @@ public sealed class ExcluirEmpresaUseCase : IExcluirEmpresaUseCase
         var totalClientes = await _db.Clientes.CountAsync(c => c.EmpresaId == id, cancellationToken);
         var totalServicos = await _db.Servicos.CountAsync(s => s.EmpresaId == id, cancellationToken);
         var totalNfse = await _db.NotasFiscais.CountAsync(n => n.EmpresaId == id, cancellationToken);
+        var totalContratos = await _db.Contratos.CountAsync(c => c.EmpresaId == id, cancellationToken);
 
-        if (totalClientes > 0 || totalServicos > 0 || totalNfse > 0)
+        if (totalClientes > 0 || totalServicos > 0 || totalNfse > 0 || totalContratos > 0)
         {
             throw new RegraNegocioException(
-                $"Não é possível excluir a Empresa: existem {totalClientes} cliente(s), {totalServicos} serviço(s) e {totalNfse} nfse(s) vinculados. Desative a Empresa em vez de excluir.");
+                $"Não é possível excluir a Empresa: existem {totalClientes} cliente(s), {totalServicos} serviço(s), " +
+                $"{totalContratos} contrato(s) e {totalNfse} nfse(s) vinculados. Desative a Empresa em vez de excluir.");
         }
 
         _db.Empresas.Remove(empresa);

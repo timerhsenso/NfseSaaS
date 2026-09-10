@@ -13,4 +13,5 @@ public sealed record EmitirNfseRequest(
     decimal ValorServico,
     string DescricaoServico,
     DateOnly DataCompetencia,
+    Guid? ContratoId = null,
     string? IdempotencyKey = null);

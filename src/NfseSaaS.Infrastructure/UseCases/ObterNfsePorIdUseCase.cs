@@ -22,7 +22,7 @@ public sealed class ObterNfsePorIdUseCase : IObterNfsePorIdUseCase
             throw new RecursoNaoEncontradoException($"Nfse {id} não encontrada.");
 
         return new NfseResponse(
-            nfse.Id, nfse.EmpresaId, nfse.ClienteId, nfse.NumeroDps, nfse.SerieDps, nfse.NumeroNfse, nfse.ChaveAcesso,
+            nfse.Id, nfse.EmpresaId, nfse.ClienteId, nfse.ContratoId, nfse.NumeroDps, nfse.SerieDps, nfse.NumeroNfse, nfse.ChaveAcesso,
             nfse.DataCompetencia, nfse.DataEmissao, nfse.ValorServico, nfse.ValorLiquido, nfse.DescricaoServico, nfse.Status,
             nfse.CodigoErro, nfse.MensagemErro, nfse.CreatedAt, nfse.UpdatedAt);
     }

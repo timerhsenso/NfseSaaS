@@ -37,5 +37,7 @@ public sealed class AtualizarEmpresaRequestValidator : AbstractValidator<Atualiz
             .NotEmpty()
             .Matches(@"^\d+(\.\d{1,4})?$").WithMessage("PercentualTotalTributosSimplesNacional deve ser um número decimal (ex.: '3.00').")
             .When(x => x.OpSimpNac == "3");
+
+        RuleFor(x => x.DiasAlertaReajusteContratoPadrao).GreaterThan(0);
     }
 }

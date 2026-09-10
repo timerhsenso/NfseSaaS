@@ -103,10 +103,21 @@ async function carregarNfse() {
     }
 }
 
+// SituacaoContrato (Domain.Enums) serializado como número — mesmo padrão
+// de ROTULOS_STATUS acima, replicado aqui e em contratos.js (custo aceito
+// de não ter como compartilhar entre C# e JS sem gerar código).
+const ROTULOS_SITUACAO_CONTRATO = {
+    0: { texto: 'em dia', classe: 'alert-success' },
+    1: { texto: 'vencendo em breve', classe: 'alert-warning' },
+    2: { texto: 'vencido', classe: 'alert-danger' }
+};
+
+let contratosDoClienteAtual = [];
+
 async function abrirModalEmitirNfse() {
     document.getElementById('form-emitir-nfse').reset();
     document.getElementById('erro-emitir-nfse').classList.add('d-none');
-    document.getElementById('emitir-dataCompetencia').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('emitir-dataCompetencia').value = dataLocalIso();
 
     try {
         const [clientes, servicos] = await Promise.all([
@@ -120,18 +131,95 @@ async function abrirModalEmitirNfse() {
         const selectServico = document.getElementById('emitir-servicoId');
         selectServico.innerHTML = servicos.items.map(s => `<option value="${s.id}" data-descricao="${s.descricao}" data-valor="${s.valorPadrao}">${s.descricao}</option>`).join('');
 
-        // Ao trocar o serviço, pré-preenche descrição/valor com o padrão
-        // do catálogo — o usuário ainda pode ajustar antes de emitir.
+        // Ao trocar o serviço MANUALMENTE, pré-preenche descrição/valor
+        // com o padrão do catálogo — só entra em jogo quando não há
+        // Contrato selecionado (ver selectContrato.onchange abaixo, que
+        // sobrescreve isso quando o usuário escolhe um Contrato).
         selectServico.onchange = function () {
             const opcao = selectServico.selectedOptions[0];
             document.getElementById('emitir-descricaoServico').value = opcao?.dataset.descricao ?? '';
             document.getElementById('emitir-valorServico').value = opcao?.dataset.valor ?? '';
         };
-        selectServico.onchange();
+
+        // Trocar de Cliente busca os Contratos ativos dele — o combo de
+        // Contrato é opcional e some quando o Cliente não tem nenhum
+        // (nada muda pra quem nunca usa Contrato).
+        selectCliente.onchange = () => carregarContratosDoCliente(selectCliente.value);
+        await selectCliente.onchange();
 
         modalEmitirNfse.show();
     } catch (err) {
         mostrarErro(err.message);
+    }
+}
+
+async function carregarContratosDoCliente(clienteId) {
+    const campoContrato = document.getElementById('campo-emitir-contrato');
+    const selectContrato = document.getElementById('emitir-contratoId');
+    const selectServico = document.getElementById('emitir-servicoId');
+
+    try {
+        const resultado = await apiFetch(`/api/contratos?empresaId=${empresaAtualIdNfse}&clienteId=${clienteId}&pageSize=50`);
+        contratosDoClienteAtual = resultado.items;
+
+        if (contratosDoClienteAtual.length === 0) {
+            // Sem Contrato nenhum pra este Cliente — nem mostra a opção,
+            // fluxo continua 100% manual (Serviço + valor), como sempre foi.
+            campoContrato.classList.add('d-none');
+            selectContrato.innerHTML = '';
+            document.getElementById('aviso-reajuste-contrato').classList.add('d-none');
+            selectServico.onchange();
+            return;
+        }
+
+        campoContrato.classList.remove('d-none');
+        selectContrato.innerHTML =
+            '<option value="">Nenhum (nota avulsa)</option>' +
+            contratosDoClienteAtual.map(c => `<option value="${c.id}">${c.descricao} — ${Number(c.valorAtual).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</option>`).join('');
+
+        // Só 1 Contrato ativo pra este Cliente: já vem selecionado (evita
+        // o retrabalho de escolher toda vez), mas continua visível e
+        // trocável — pode ser uma nota avulsa fora do contrato mesmo
+        // assim.
+        selectContrato.value = contratosDoClienteAtual.length === 1 ? contratosDoClienteAtual[0].id : '';
+
+        selectContrato.onchange = aplicarContratoSelecionado;
+        selectContrato.onchange();
+    } catch (err) {
+        mostrarErro(err.message);
+    }
+}
+
+function aplicarContratoSelecionado() {
+    const selectContrato = document.getElementById('emitir-contratoId');
+    const avisoDiv = document.getElementById('aviso-reajuste-contrato');
+    const contratoId = selectContrato.value;
+
+    if (!contratoId) {
+        // "Nenhum (nota avulsa)" — volta pro fluxo manual de Serviço.
+        avisoDiv.classList.add('d-none');
+        document.getElementById('emitir-servicoId').onchange();
+        return;
+    }
+
+    const contrato = contratosDoClienteAtual.find(c => c.id === contratoId);
+    if (!contrato) return;
+
+    document.getElementById('emitir-servicoId').value = contrato.servicoId;
+    document.getElementById('emitir-descricaoServico').value = contrato.descricao;
+    document.getElementById('emitir-valorServico').value = contrato.valorAtual;
+
+    if (contrato.situacao === 0) {
+        avisoDiv.classList.add('d-none');
+    } else {
+        const rotulo = ROTULOS_SITUACAO_CONTRATO[contrato.situacao] ?? { texto: 'com situação desconhecida', classe: 'alert-warning' };
+        const dataFormatada = new Date(contrato.dataProximoReajuste + 'T00:00:00').toLocaleDateString('pt-BR');
+        avisoDiv.className = `alert ${rotulo.classe}`;
+        avisoDiv.innerHTML =
+            `<i class="bi bi-exclamation-triangle"></i> Este contrato está <strong>${rotulo.texto}</strong> ` +
+            `pro reajuste (previsto para ${dataFormatada}${contrato.indiceReajuste ? ', índice ' + contrato.indiceReajuste : ''}). ` +
+            `Confirme se o valor abaixo já está atualizado.`;
+        avisoDiv.classList.remove('d-none');
     }
 }
 
@@ -142,9 +230,12 @@ async function emitirNfse(e) {
     const botaoConfirmar = document.getElementById('btn-confirmar-emissao');
     botaoConfirmar.disabled = true; // emissão bate na SEFIN — evita duplo clique
 
+    const contratoId = document.getElementById('emitir-contratoId').value;
+
     const payload = {
         empresaId: empresaAtualIdNfse,
         clienteId: document.getElementById('emitir-clienteId').value,
+        contratoId: contratoId || null,
         servicoId: document.getElementById('emitir-servicoId').value,
         valorServico: parseFloat(document.getElementById('emitir-valorServico').value),
         descricaoServico: document.getElementById('emitir-descricaoServico').value,
@@ -172,6 +263,7 @@ async function emitirNfse(e) {
         botaoConfirmar.disabled = false;
     }
 }
+
 
 async function abrirDetalheNfse(id) {
     nfseDetalheAtualId = id;

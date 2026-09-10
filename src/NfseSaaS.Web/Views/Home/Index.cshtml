@@ -35,6 +35,14 @@
         <strong id="contagem-nfse">-</strong>
         <small>Ver notas fiscais</small>
     </a>
+    <a href="/Contratos" class="stat" id="card-contratos-reajuste">
+        <div class="stat-top">
+            <span class="stat-label">Contratos com reajuste pendente</span>
+            <div class="stat-icon"><i class="bi bi-clock-history"></i></div>
+        </div>
+        <strong id="contagem-contratos-reajuste">-</strong>
+        <small id="detalhe-contratos-reajuste">Somado entre todas as empresas</small>
+    </a>
 </div>
 
 <div class="row g-3">
@@ -111,6 +119,7 @@
 
             carregarAgregadoPorEmpresa(empresas, '/api/clientes', 'contagem-clientes');
             carregarAgregadoPorEmpresa(empresas, '/api/servicos', 'contagem-servicos');
+            carregarContratosComReajustePendente(empresas);
 
             try {
                 const respostaNfse = await apiFetch('/api/nfse?pageSize=100');
@@ -171,6 +180,44 @@
                     <td>${emissao}</td>
                 </tr>`;
             }).join('');
+        }
+
+        // Contratos, assim como Clientes/Serviços, são escopados por
+        // Empresa — agrega buscando de cada Empresa (só ativos,
+        // pageSize=100 cobre bem o volume esperado) e contando quantos
+        // não estão "Em dia" (situacao 0). Card clicável leva pra tela de
+        // Contratos pra revisar quais são.
+        async function carregarContratosComReajustePendente(empresas) {
+            const elemento = document.getElementById('contagem-contratos-reajuste');
+            const detalhe = document.getElementById('detalhe-contratos-reajuste');
+
+            if (empresas.length === 0) {
+                elemento.textContent = '0';
+                return;
+            }
+
+            try {
+                const respostas = await Promise.all(
+                    empresas.map(e => apiFetch(`/api/contratos?empresaId=${e.id}&pageSize=100`).catch(() => null))
+                );
+
+                let vencendo = 0, vencidos = 0;
+                respostas.forEach(r => {
+                    (r?.items ?? []).forEach(c => {
+                        if (c.situacao === 1) vencendo++;
+                        else if (c.situacao === 2) vencidos++;
+                    });
+                });
+
+                elemento.textContent = vencendo + vencidos;
+                detalhe.textContent = vencidos > 0
+                    ? `${vencidos} vencido(s), ${vencendo} vencendo em breve`
+                    : vencendo > 0
+                        ? `${vencendo} vencendo em breve`
+                        : 'Nenhum — todos em dia';
+            } catch (err) {
+                elemento.textContent = '—';
+            }
         }
 
         function renderizarResumoStatus(notas) {

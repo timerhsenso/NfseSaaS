@@ -11,6 +11,7 @@ public sealed record NfseResponse(
     Guid Id,
     Guid EmpresaId,
     Guid ClienteId,
+    Guid? ContratoId,
     int NumeroDps,
     string SerieDps,
     string? NumeroNfse,

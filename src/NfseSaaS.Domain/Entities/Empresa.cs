@@ -72,4 +72,12 @@ public sealed class Empresa : BaseEntity, ITenantEntity
     /// Null/0 = nunca sincronizado, próxima chamada começa do zero.
     /// </summary>
     public long? UltimoNsuDistribuicao { get; set; }
+
+    /// <summary>
+    /// Com quantos dias de antecedência um Contrato entra em "Vencendo em
+    /// breve" antes da data prevista de reajuste, pra quem não define um
+    /// valor próprio no Contrato (Contrato.DiasAlertaOverride). Padrão de
+    /// mercado razoável: 30.
+    /// </summary>
+    public int DiasAlertaReajusteContratoPadrao { get; set; } = 30;
 }

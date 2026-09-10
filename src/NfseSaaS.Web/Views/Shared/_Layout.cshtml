@@ -13,6 +13,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - NfseSaaS</title>
 
+    <script>
+        // Aplica o tema salvo ANTES do resto da página renderizar — sem
+        // isso, a tela pisca clara por uma fração de segundo antes de
+        // escurecer (o CSS só carrega/aplica depois). localStorage, não
+        // banco — a preferência é só deste navegador, como pedido.
+        (function () {
+            var tema = localStorage.getItem('nfsesaas-tema') || 'light';
+            document.documentElement.setAttribute('data-theme', tema);
+        })();
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
@@ -38,6 +49,7 @@
                 <a href="/" class="@Ativo("")"><span class="nav-icon bi bi-speedometer2"></span>Dashboard</a>
                 <a href="/Empresas" class="@Ativo("/Empresas")"><span class="nav-icon bi bi-building"></span>Empresas</a>
                 <a href="/Clientes" class="@Ativo("/Clientes")"><span class="nav-icon bi bi-people"></span>Clientes</a>
+                <a href="/Contratos" class="@Ativo("/Contratos")"><span class="nav-icon bi bi-file-earmark-ruled"></span>Contratos</a>
                 <a href="/Servicos" class="@Ativo("/Servicos")"><span class="nav-icon bi bi-list-check"></span>Serviços</a>
                 <a href="/Nfse" class="@Ativo("/Nfse")"><span class="nav-icon bi bi-file-earmark-text"></span>Notas fiscais</a>
             </nav>
@@ -70,18 +82,24 @@
                     <div class="breadcrumb"><strong>@ViewData["Title"]</strong></div>
                 </div>
 
-                <div class="dropdown">
-                    <div class="user-menu" data-bs-toggle="dropdown" role="button">
-                        <div class="avatar">@iniciais</div>
-                        <div class="user-meta">
-                            <strong>@nomeUsuario</strong>
-                            <span>@(papelAdministrador ? "Administrador" : "Usuário")</span>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn-tema" id="botaoTema" aria-label="Alternar tema claro/escuro" title="Alternar tema">
+                        <i class="bi bi-moon-stars" id="iconeTema"></i>
+                    </button>
+
+                    <div class="dropdown">
+                        <div class="user-menu" data-bs-toggle="dropdown" role="button">
+                            <div class="avatar">@iniciais</div>
+                            <div class="user-meta">
+                                <strong>@nomeUsuario</strong>
+                                <span>@(papelAdministrador ? "Administrador" : "Usuário")</span>
+                            </div>
+                            <i class="bi bi-chevron-down text-muted small"></i>
                         </div>
-                        <i class="bi bi-chevron-down text-muted small"></i>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#" id="link-sair">Sair</a></li>
+                        </ul>
                     </div>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="#" id="link-sair">Sair</a></li>
-                    </ul>
                 </div>
             </header>
 
@@ -156,6 +174,28 @@
             await fetch('/api/auth/logout', { method: 'POST' });
             window.location.href = '/Account/Login';
         });
+
+        // Tema claro/escuro — preferência só deste navegador (localStorage,
+        // sem banco). O <head> já aplicou o tema salvo antes de renderizar
+        // (evita o "flash" de tela clara); aqui só cuida do clique.
+        (function () {
+            var icone = document.getElementById('iconeTema');
+
+            function atualizarIcone(tema) {
+                icone.className = tema === 'dark' ? 'bi bi-sun' : 'bi bi-moon-stars';
+            }
+
+            atualizarIcone(document.documentElement.getAttribute('data-theme'));
+
+            document.getElementById('botaoTema')?.addEventListener('click', function () {
+                var temaAtual = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+                var novoTema = temaAtual === 'dark' ? 'light' : 'dark';
+
+                document.documentElement.setAttribute('data-theme', novoTema);
+                localStorage.setItem('nfsesaas-tema', novoTema);
+                atualizarIcone(novoTema);
+            });
+        })();
     </script>
 
     @await RenderSectionAsync("Scripts", required: false)

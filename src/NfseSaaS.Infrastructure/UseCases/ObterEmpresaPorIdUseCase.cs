@@ -26,6 +26,7 @@ public sealed class ObterEmpresaPorIdUseCase : IObterEmpresaPorIdUseCase
             empresa.CodigoMunicipio, empresa.Telefone, empresa.Email, empresa.Cep, empresa.Logradouro,
             empresa.Numero, empresa.Complemento, empresa.Bairro, empresa.Uf, empresa.OpSimpNac, empresa.RegApTribSN,
             empresa.RegEspTrib, empresa.TribIssqn, empresa.TpRetIssqn, empresa.CstPisCofins, empresa.TpRetPisCofins,
-            empresa.PercentualTotalTributosSimplesNacional, empresa.Ativo, empresa.CreatedAt, empresa.UpdatedAt);
+            empresa.PercentualTotalTributosSimplesNacional, empresa.DiasAlertaReajusteContratoPadrao,
+            empresa.Ativo, empresa.CreatedAt, empresa.UpdatedAt);
     }
 }

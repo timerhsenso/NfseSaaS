@@ -104,5 +104,10 @@ public sealed class NfseConfiguration : IEntityTypeConfiguration<Nfse>
             .WithMany()
             .HasForeignKey(n => n.ClienteId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<Contrato>()
+            .WithMany()
+            .HasForeignKey(n => n.ContratoId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

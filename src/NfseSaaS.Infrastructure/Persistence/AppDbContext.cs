@@ -33,6 +33,8 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
     public DbSet<Empresa> Empresas => Set<Empresa>();
     public DbSet<Cliente> Clientes => Set<Cliente>();
     public DbSet<Servico> Servicos => Set<Servico>();
+    public DbSet<Contrato> Contratos => Set<Contrato>();
+    public DbSet<ReajusteContrato> ReajustesContrato => Set<ReajusteContrato>();
     public DbSet<Nfse> NotasFiscais => Set<Nfse>();
     public DbSet<NfseEvento> NfseEventos => Set<NfseEvento>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();

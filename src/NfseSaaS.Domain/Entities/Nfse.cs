@@ -15,6 +15,15 @@ public sealed class Nfse : BaseEntity, ITenantEntity
 
     public Guid ClienteId { get; set; }
 
+    /// <summary>
+    /// Contrato de onde a emissão puxou Servico/Descrição/Valor
+    /// (opcional — nulo quando a nota foi emitida "avulsa", sem
+    /// Contrato). Só rastreabilidade: os valores da nota já ficam
+    /// gravados nos campos abaixo (snapshot), então mudar/excluir o
+    /// Contrato depois nunca altera esta Nfse retroativamente.
+    /// </summary>
+    public Guid? ContratoId { get; set; }
+
     public int NumeroDps { get; set; }
 
     public string SerieDps { get; set; } = string.Empty;

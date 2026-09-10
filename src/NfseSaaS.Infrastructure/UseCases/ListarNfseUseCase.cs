@@ -33,7 +33,7 @@ public sealed class ListarNfseUseCase : IListarNfseUseCase
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(n => new NfseResponse(
-                n.Id, n.EmpresaId, n.ClienteId, n.NumeroDps, n.SerieDps, n.NumeroNfse, n.ChaveAcesso,
+                n.Id, n.EmpresaId, n.ClienteId, n.ContratoId, n.NumeroDps, n.SerieDps, n.NumeroNfse, n.ChaveAcesso,
                 n.DataCompetencia, n.DataEmissao, n.ValorServico, n.ValorLiquido, n.DescricaoServico, n.Status,
                 n.CodigoErro, n.MensagemErro, n.CreatedAt, n.UpdatedAt))
             .ToListAsync(cancellationToken);
