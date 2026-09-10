@@ -8,18 +8,41 @@ const ROTULOS_SITUACAO_CONTRATO = {
     2: { texto: 'Vencido', cor: 'danger' }
 };
 
+// StatusContrato e TipoCobrancaContrato (Domain.Enums) serializados como
+// número pela API — Fase 6.
+const ROTULOS_STATUS_CONTRATO = {
+    0: { texto: 'Rascunho', cor: 'secondary' },
+    1: { texto: 'Ativo', cor: 'success' },
+    2: { texto: 'Suspenso', cor: 'warning' },
+    3: { texto: 'Encerrado', cor: 'dark' },
+    4: { texto: 'Cancelado', cor: 'danger' }
+};
+const ROTULOS_TIPO_COBRANCA = { 0: 'Avulso', 1: 'Mensal' };
+
 let tabelaContratos;
 let modalContrato;
 let modalHistoricoReajuste;
 let empresaAtualIdContratos;
 let contratoAtualParaHistorico;
+let catalogoServicosContratos = []; // cache do combo, reaproveitado nas linhas dinâmicas
 
 document.addEventListener('DOMContentLoaded', function () {
     const colunas = [
         { data: 'clienteNome' },
         { data: 'descricao' },
-        { data: 'servicoDescricao' },
+        {
+            data: 'servicos',
+            render: servicos => (servicos ?? []).map(s => s.servicoDescricao).join(', ') || '—'
+        },
         { data: 'valorAtual', render: v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) },
+        { data: 'tipoCobranca', render: v => ROTULOS_TIPO_COBRANCA[v] ?? '—' },
+        {
+            data: 'status',
+            render: v => {
+                const r = ROTULOS_STATUS_CONTRATO[v] ?? { texto: 'Desconhecido', cor: 'secondary' };
+                return `<span class="badge text-bg-${r.cor}">${r.texto}</span>`;
+            }
+        },
         { data: 'dataProximoReajuste', render: v => v ? new Date(v + 'T00:00:00').toLocaleDateString('pt-BR') : '—' },
         {
             data: 'situacao',
@@ -70,6 +93,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('btn-novo-contrato').addEventListener('click', abrirModalNovoContrato);
         document.getElementById('form-contrato').addEventListener('submit', salvarContrato);
         document.getElementById('form-reajuste').addEventListener('submit', registrarReajuste);
+        document.getElementById('btn-add-linha-servico').addEventListener('click', () => adicionarLinhaServico());
 
         document.getElementById('tabela-contratos').addEventListener('click', async function (e) {
             const botao = e.target.closest('button');
@@ -104,14 +128,19 @@ function limparFormularioContrato() {
     document.getElementById('form-contrato').reset();
     document.getElementById('contratoId').value = '';
     document.getElementById('periodicidadeReajusteMeses').value = 12;
+    document.getElementById('linhas-servico-contrato').innerHTML = '';
     ocultarErroFormulario('erro-contrato');
+    recalcularValorAtualCalculado();
 
-    // Cliente e Valor só são editáveis no cadastro — depois de criado, o
-    // valor muda exclusivamente pelo fluxo de Registrar reajuste (com
-    // histórico), então nem faz sentido editar aqui.
+    // Cliente e as linhas de Serviço só são editáveis no cadastro —
+    // depois de criado, o valor muda exclusivamente pelo fluxo de
+    // Registrar reajuste (com histórico) e a composição de serviços fica
+    // pra um endpoint dedicado futuro (Fase 6, mesmo raciocínio já usado
+    // pro ValorAtual antes de existir linhas).
     document.getElementById('clienteId').disabled = false;
-    document.getElementById('valorAtual').disabled = false;
-    document.getElementById('nota-valor-nao-editavel').textContent = '';
+    document.getElementById('bloco-servicos').classList.remove('d-none');
+    document.getElementById('bloco-status').classList.add('d-none');
+    document.getElementById('nota-servicos-nao-editaveis').textContent = '';
 }
 
 async function carregarOpcoesClienteEServico(clienteSelecionadoId) {
@@ -124,8 +153,119 @@ async function carregarOpcoesClienteEServico(clienteSelecionadoId) {
     selectCliente.innerHTML = clientes.items.map(c => `<option value="${c.id}">${c.nome} (${c.cpfCnpj})</option>`).join('');
     if (clienteSelecionadoId) selectCliente.value = clienteSelecionadoId;
 
-    const selectServico = document.getElementById('servicoId');
-    selectServico.innerHTML = servicos.items.map(s => `<option value="${s.id}" data-valor="${s.valorPadrao}">${s.descricao}</option>`).join('');
+    catalogoServicosContratos = servicos.items;
+}
+
+// Fase 6: uma linha = 1 serviço do contrato (ServicoId + Quantidade +
+// ValorUnitario). Sugere o valorPadrao do Serviço escolhido como ponto
+// de partida — o usuário ainda ajusta pro valor real negociado. Mesmo
+// Serviço não pode aparecer em duas linhas (ver
+// atualizarOpcoesServicosDisponiveis) — mesma regra validada no backend
+// (CadastrarContratoRequestValidator), isso aqui é só UX.
+function adicionarLinhaServico(linha) {
+    const corpo = document.getElementById('linhas-servico-contrato');
+
+    const tr = document.createElement('tr');
+    tr.className = 'linha-servico-contrato';
+    tr.innerHTML = `
+        <td><select class="form-select form-select-sm campo-linha-servico"></select></td>
+        <td><input type="number" step="0.01" min="0.01" class="form-control form-control-sm campo-linha-quantidade" value="${linha?.quantidade ?? 1}" /></td>
+        <td><input type="number" step="0.01" min="0.01" class="form-control form-control-sm campo-linha-valor" value="${linha?.valorUnitario ?? ''}" /></td>
+        <td class="text-end campo-linha-total">R$ 0,00</td>
+        <td><button type="button" class="btn btn-sm btn-outline-danger btn-remover-linha-servico"><i class="bi bi-x-lg"></i></button></td>
+    `;
+    tr.dataset.servicoSelecionado = linha?.servicoId ?? '';
+    corpo.appendChild(tr);
+
+    const selectServico = tr.querySelector('.campo-linha-servico');
+    const campoValor = tr.querySelector('.campo-linha-valor');
+
+    selectServico.addEventListener('change', () => {
+        tr.dataset.servicoSelecionado = selectServico.value;
+        if (!linha) {
+            const opcao = selectServico.selectedOptions[0];
+            if (opcao?.dataset.valor) campoValor.value = opcao.dataset.valor;
+        }
+        atualizarOpcoesServicosDisponiveis();
+        recalcularValorAtualCalculado();
+    });
+
+    tr.querySelector('.btn-remover-linha-servico').addEventListener('click', () => {
+        tr.remove();
+        atualizarOpcoesServicosDisponiveis();
+        recalcularValorAtualCalculado();
+    });
+    tr.querySelector('.campo-linha-quantidade').addEventListener('input', recalcularValorAtualCalculado);
+    campoValor.addEventListener('input', recalcularValorAtualCalculado);
+
+    atualizarOpcoesServicosDisponiveis();
+    recalcularValorAtualCalculado();
+}
+
+// Reconstrói as opções de cada <select> de linha: um Serviço já
+// escolhido em OUTRA linha fica desabilitado (visível, pra não confundir
+// sumindo do combo, mas não selecionável) — a própria linha continua
+// podendo manter o Serviço que ela já tem selecionado.
+function atualizarOpcoesServicosDisponiveis() {
+    const linhas = Array.from(document.querySelectorAll('#linhas-servico-contrato .linha-servico-contrato'));
+    const selecionadosPorLinha = linhas.map(tr => tr.dataset.servicoSelecionado || '');
+
+    linhas.forEach((tr, i) => {
+        const select = tr.querySelector('.campo-linha-servico');
+        const atual = selecionadosPorLinha[i];
+        const usadosEmOutrasLinhas = new Set(selecionadosPorLinha.filter((id, j) => id && j !== i));
+
+        select.innerHTML = catalogoServicosContratos.map(s => {
+            const desabilitado = usadosEmOutrasLinhas.has(s.id);
+            const selecionado = s.id === atual;
+            return `<option value="${s.id}" data-valor="${s.valorPadrao}" ${selecionado ? 'selected' : ''} ${desabilitado ? 'disabled' : ''}>${s.descricao}${desabilitado ? ' (já usado noutra linha)' : ''}</option>`;
+        }).join('');
+
+        if (!atual && select.options.length > 0) {
+            // Linha nova sem seleção: escolhe automaticamente o primeiro
+            // serviço ainda disponível, pra não deixar cair num que já
+            // está desabilitado.
+            const primeiraDisponivel = Array.from(select.options).find(o => !o.disabled);
+            if (primeiraDisponivel) {
+                select.value = primeiraDisponivel.value;
+                tr.dataset.servicoSelecionado = primeiraDisponivel.value;
+
+                // Atualiza o snapshot AGORA, dentro do próprio laço — senão
+                // duas linhas novas adicionadas na mesma chamada (ex.:
+                // "Adicionar serviço" clicado 2x seguidas) veem o mesmo
+                // estado "antes de decidir" e acabam escolhendo o mesmo
+                // serviço uma da outra (bug real, reportado pelo usuário).
+                selecionadosPorLinha[i] = primeiraDisponivel.value;
+
+                // Preenche o Valor unit. com o valorPadrao do Serviço
+                // auto-selecionado — só quando o campo está vazio, pra não
+                // sobrescrever um valor que o usuário já tinha digitado.
+                const campoValor = tr.querySelector('.campo-linha-valor');
+                if (campoValor && !campoValor.value) {
+                    campoValor.value = primeiraDisponivel.dataset.valor ?? '';
+                }
+            }
+        }
+    });
+}
+
+function coletarLinhasServico() {
+    return Array.from(document.querySelectorAll('#linhas-servico-contrato .linha-servico-contrato')).map(tr => ({
+        servicoId: tr.querySelector('.campo-linha-servico').value,
+        quantidade: parseFloat(tr.querySelector('.campo-linha-quantidade').value) || 0,
+        valorUnitario: parseFloat(tr.querySelector('.campo-linha-valor').value) || 0
+    }));
+}
+
+function recalcularValorAtualCalculado() {
+    document.querySelectorAll('#linhas-servico-contrato .linha-servico-contrato').forEach(tr => {
+        const quantidade = parseFloat(tr.querySelector('.campo-linha-quantidade').value) || 0;
+        const valorUnitario = parseFloat(tr.querySelector('.campo-linha-valor').value) || 0;
+        tr.querySelector('.campo-linha-total').textContent = (quantidade * valorUnitario).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    });
+
+    const total = coletarLinhasServico().reduce((soma, l) => soma + l.quantidade * l.valorUnitario, 0);
+    document.getElementById('valorAtualCalculado').textContent = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 async function abrirModalNovoContrato() {
@@ -135,17 +275,7 @@ async function abrirModalNovoContrato() {
 
     try {
         await carregarOpcoesClienteEServico();
-
-        // Sugestão de ponto de partida a partir do valor padrão do
-        // Serviço escolhido — o usuário ainda ajusta pro valor real
-        // negociado com o cliente antes de salvar.
-        const selectServico = document.getElementById('servicoId');
-        selectServico.onchange = function () {
-            const opcao = selectServico.selectedOptions[0];
-            if (opcao?.dataset.valor) document.getElementById('valorAtual').value = opcao.dataset.valor;
-        };
-        selectServico.onchange();
-
+        adicionarLinhaServico();
         modalContrato.show();
     } catch (err) {
         mostrarErro(err.message);
@@ -161,18 +291,23 @@ async function abrirModalEditarContrato(id) {
         await carregarOpcoesClienteEServico(contrato.clienteId);
 
         document.getElementById('contratoId').value = contrato.id;
-        document.getElementById('servicoId').value = contrato.servicoId;
         document.getElementById('descricao').value = contrato.descricao;
-        document.getElementById('valorAtual').value = contrato.valorAtual;
         document.getElementById('dataInicioContrato').value = contrato.dataInicioContrato;
+        document.getElementById('dataFim').value = contrato.dataFim ?? '';
+        document.getElementById('tipoCobranca').value = contrato.tipoCobranca;
+        document.getElementById('status').value = contrato.status;
         document.getElementById('periodicidadeReajusteMeses').value = contrato.periodicidadeReajusteMeses;
         document.getElementById('indiceReajuste').value = contrato.indiceReajuste ?? '';
         document.getElementById('diasAlertaOverride').value = contrato.diasAlertaOverride ?? '';
+        document.getElementById('permitirAlterarValorNaEmissao').checked = contrato.permitirAlterarValorNaEmissao;
+
+        (contrato.servicos ?? []).forEach(s => adicionarLinhaServico(s));
 
         document.getElementById('clienteId').disabled = true;
-        document.getElementById('valorAtual').disabled = true;
-        document.getElementById('nota-valor-nao-editavel').textContent =
-            'Cliente e valor não são editáveis aqui — o valor muda pelo fluxo de reajuste (mantém histórico).';
+        document.getElementById('bloco-servicos').classList.add('d-none');
+        document.getElementById('bloco-status').classList.remove('d-none');
+        document.getElementById('nota-servicos-nao-editaveis').textContent =
+            'Cliente e serviços não são editáveis aqui — o valor muda pelo fluxo de reajuste (mantém histórico).';
 
         modalContrato.show();
     } catch (err) {
@@ -188,28 +323,42 @@ async function salvarContrato(e) {
     const indiceReajuste = document.getElementById('indiceReajuste').value.trim();
     const diasAlertaOverride = document.getElementById('diasAlertaOverride').value;
 
+    const linhasServico = coletarLinhasServico();
+    if (!id) {
+        const idsUnicos = new Set(linhasServico.map(l => l.servicoId));
+        if (idsUnicos.size !== linhasServico.length) {
+            mostrarErroFormulario('erro-contrato', 'O mesmo serviço não pode aparecer em mais de uma linha.');
+            return;
+        }
+    }
+
     try {
         if (id) {
             const payload = {
-                servicoId: document.getElementById('servicoId').value,
                 descricao: document.getElementById('descricao').value,
                 dataInicioContrato: document.getElementById('dataInicioContrato').value,
                 periodicidadeReajusteMeses: parseInt(document.getElementById('periodicidadeReajusteMeses').value, 10),
                 indiceReajuste: indiceReajuste || null,
-                diasAlertaOverride: diasAlertaOverride ? parseInt(diasAlertaOverride, 10) : null
+                diasAlertaOverride: diasAlertaOverride ? parseInt(diasAlertaOverride, 10) : null,
+                status: parseInt(document.getElementById('status').value, 10),
+                dataFim: document.getElementById('dataFim').value || null,
+                tipoCobranca: parseInt(document.getElementById('tipoCobranca').value, 10),
+                permitirAlterarValorNaEmissao: document.getElementById('permitirAlterarValorNaEmissao').checked
             };
             await apiFetch(`/api/contratos/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
         } else {
             const payload = {
                 empresaId: empresaAtualIdContratos,
                 clienteId: document.getElementById('clienteId').value,
-                servicoId: document.getElementById('servicoId').value,
                 descricao: document.getElementById('descricao').value,
-                valorAtual: parseFloat(document.getElementById('valorAtual').value),
+                servicos: linhasServico,
                 dataInicioContrato: document.getElementById('dataInicioContrato').value,
                 periodicidadeReajusteMeses: parseInt(document.getElementById('periodicidadeReajusteMeses').value, 10),
                 indiceReajuste: indiceReajuste || null,
-                diasAlertaOverride: diasAlertaOverride ? parseInt(diasAlertaOverride, 10) : null
+                diasAlertaOverride: diasAlertaOverride ? parseInt(diasAlertaOverride, 10) : null,
+                dataFim: document.getElementById('dataFim').value || null,
+                tipoCobranca: parseInt(document.getElementById('tipoCobranca').value, 10),
+                permitirAlterarValorNaEmissao: document.getElementById('permitirAlterarValorNaEmissao').checked
             };
             await apiFetch('/api/contratos', { method: 'POST', body: JSON.stringify(payload) });
         }

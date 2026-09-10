@@ -6,7 +6,6 @@ public sealed class AtualizarContratoRequestValidator : AbstractValidator<Atuali
 {
     public AtualizarContratoRequestValidator()
     {
-        RuleFor(x => x.ServicoId).NotEmpty();
         RuleFor(x => x.Descricao).NotEmpty().MaximumLength(200);
         RuleFor(x => x.PeriodicidadeReajusteMeses).GreaterThan(0).LessThanOrEqualTo(60);
         RuleFor(x => x.IndiceReajuste).MaximumLength(30);

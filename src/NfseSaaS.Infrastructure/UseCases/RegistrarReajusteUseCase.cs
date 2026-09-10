@@ -53,6 +53,20 @@ public sealed class RegistrarReajusteUseCase : IRegistrarReajusteUseCase
         contrato.ValorAtual = request.ValorNovo;
         contrato.DataUltimoReajuste = request.DataReajuste;
 
+        // Fase 6: ValorAtual é a soma das linhas de ContratoServico —
+        // reajuste continua sendo um único percentual pro Contrato
+        // inteiro (fluxo já testado em produção), então escala cada
+        // linha pelo mesmo fator pra manter soma(linhas) == ValorAtual.
+        // Limitação conhecida: arredondamento por linha pode deixar a
+        // soma com centavos de diferença do total — aceitável pro MVP.
+        if (valorAnterior != 0)
+        {
+            var fator = request.ValorNovo / valorAnterior;
+            var linhas = await _db.ContratoServicos.Where(cs => cs.ContratoId == contratoId).ToListAsync(cancellationToken);
+            foreach (var linha in linhas)
+                linha.ValorUnitario = Math.Round(linha.ValorUnitario * fator, 2);
+        }
+
         _db.ReajustesContrato.Add(reajuste);
 
         _auditLogWriter.Registrar("RegistrarReajusteContrato", "Contrato", contrato.Id,

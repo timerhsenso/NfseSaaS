@@ -1,0 +1,26 @@
+diff --git a/src/NfseSaaS.Web/wwwroot/js/paginas/contratos.js b/src/NfseSaaS.Web/wwwroot/js/paginas/contratos.js
+index 1c06127..047776d 100644
+--- a/src/NfseSaaS.Web/wwwroot/js/paginas/contratos.js
++++ b/src/NfseSaaS.Web/wwwroot/js/paginas/contratos.js
+@@ -229,6 +229,21 @@ function atualizarOpcoesServicosDisponiveis() {
+             if (primeiraDisponivel) {
+                 select.value = primeiraDisponivel.value;
+                 tr.dataset.servicoSelecionado = primeiraDisponivel.value;
++
++                // Atualiza o snapshot AGORA, dentro do próprio laço — senão
++                // duas linhas novas adicionadas na mesma chamada (ex.:
++                // "Adicionar serviço" clicado 2x seguidas) veem o mesmo
++                // estado "antes de decidir" e acabam escolhendo o mesmo
++                // serviço uma da outra (bug real, reportado pelo usuário).
++                selecionadosPorLinha[i] = primeiraDisponivel.value;
++
++                // Preenche o Valor unit. com o valorPadrao do Serviço
++                // auto-selecionado — só quando o campo está vazio, pra não
++                // sobrescrever um valor que o usuário já tinha digitado.
++                const campoValor = tr.querySelector('.campo-linha-valor');
++                if (campoValor && !campoValor.value) {
++                    campoValor.value = primeiraDisponivel.dataset.valor ?? '';
++                }
+             }
+         }
+     });

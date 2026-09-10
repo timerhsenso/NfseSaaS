@@ -1,0 +1,237 @@
+diff --git a/src/NfseSaaS.Application/UseCases/Contratos/CadastrarContratoRequestValidator.cs b/src/NfseSaaS.Application/UseCases/Contratos/CadastrarContratoRequestValidator.cs
+index 4a40bdb..475ea21 100644
+--- a/src/NfseSaaS.Application/UseCases/Contratos/CadastrarContratoRequestValidator.cs
++++ b/src/NfseSaaS.Application/UseCases/Contratos/CadastrarContratoRequestValidator.cs
+@@ -20,5 +20,15 @@ public sealed class CadastrarContratoRequestValidator : AbstractValidator<Cadast
+             servico.RuleFor(s => s.Quantidade).GreaterThan(0);
+             servico.RuleFor(s => s.ValorUnitario).GreaterThan(0);
+         });
++
++        // Mesmo Serviço duas vezes no mesmo Contrato não faz sentido —
++        // ajustar Quantidade/ValorUnitario da linha existente resolve o
++        // mesmo caso de uso. Validado aqui pra não depender só do JS
++        // (a UI já impede escolher o mesmo Serviço em duas linhas, isso
++        // é o backstop).
++        RuleFor(x => x.Servicos)
++            .Must(servicos => servicos.Select(s => s.ServicoId).Distinct().Count() == servicos.Count)
++            .WithMessage("O mesmo Serviço não pode aparecer em mais de uma linha do Contrato.")
++            .When(x => x.Servicos is { Count: > 0 });
+     }
+ }
+diff --git a/src/NfseSaaS.Web/Views/Contratos/Index.cshtml b/src/NfseSaaS.Web/Views/Contratos/Index.cshtml
+index 7c60256..1376d3d 100644
+--- a/src/NfseSaaS.Web/Views/Contratos/Index.cshtml
++++ b/src/NfseSaaS.Web/Views/Contratos/Index.cshtml
+@@ -64,7 +64,22 @@
+ 
+                         <div class="mb-3" id="bloco-servicos">
+                             <label class="form-label">Serviços do contrato</label>
+-                            <div id="linhas-servico-contrato"></div>
++                            <table class="table table-sm align-middle mb-1">
++                                <thead>
++                                    <tr>
++                                        <th>Serviço</th>
++                                        <th style="width:70px">Qtd</th>
++                                        <th style="width:110px">Valor unit.</th>
++                                        <th style="width:110px" class="text-end">Total</th>
++                                        <th style="width:36px"></th>
++                                    </tr>
++                                </thead>
++                            </table>
++                            <div style="max-height: 210px; overflow-y: auto;">
++                                <table class="table table-sm align-middle mb-0">
++                                    <tbody id="linhas-servico-contrato"></tbody>
++                                </table>
++                            </div>
+                             <button type="button" class="btn btn-sm btn-outline-secondary mt-1" id="btn-add-linha-servico">
+                                 <i class="bi bi-plus-lg"></i> Adicionar serviço
+                             </button>
+diff --git a/src/NfseSaaS.Web/wwwroot/js/paginas/contratos.js b/src/NfseSaaS.Web/wwwroot/js/paginas/contratos.js
+index 3e7a7ce..1c06127 100644
+--- a/src/NfseSaaS.Web/wwwroot/js/paginas/contratos.js
++++ b/src/NfseSaaS.Web/wwwroot/js/paginas/contratos.js
+@@ -158,63 +158,97 @@ async function carregarOpcoesClienteEServico(clienteSelecionadoId) {
+ 
+ // Fase 6: uma linha = 1 serviço do contrato (ServicoId + Quantidade +
+ // ValorUnitario). Sugere o valorPadrao do Serviço escolhido como ponto
+-// de partida — o usuário ainda ajusta pro valor real negociado.
++// de partida — o usuário ainda ajusta pro valor real negociado. Mesmo
++// Serviço não pode aparecer em duas linhas (ver
++// atualizarOpcoesServicosDisponiveis) — mesma regra validada no backend
++// (CadastrarContratoRequestValidator), isso aqui é só UX.
+ function adicionarLinhaServico(linha) {
+-    const container = document.getElementById('linhas-servico-contrato');
+-    const indice = container.children.length;
+-
+-    const opcoesServico = catalogoServicosContratos
+-        .map(s => `<option value="${s.id}" data-valor="${s.valorPadrao}" ${linha?.servicoId === s.id ? 'selected' : ''}>${s.descricao}</option>`)
+-        .join('');
+-
+-    const div = document.createElement('div');
+-    div.className = 'row align-items-center mb-2 linha-servico-contrato';
+-    div.innerHTML = `
+-        <div class="col-6">
+-            <select class="form-select form-select-sm campo-linha-servico">${opcoesServico}</select>
+-        </div>
+-        <div class="col-2">
+-            <input type="number" step="0.01" min="0.01" class="form-control form-control-sm campo-linha-quantidade" value="${linha?.quantidade ?? 1}" placeholder="Qtd" />
+-        </div>
+-        <div class="col-3">
+-            <input type="number" step="0.01" min="0.01" class="form-control form-control-sm campo-linha-valor" value="${linha?.valorUnitario ?? ''}" placeholder="Valor unit." />
+-        </div>
+-        <div class="col-1">
+-            <button type="button" class="btn btn-sm btn-outline-danger btn-remover-linha-servico"><i class="bi bi-x-lg"></i></button>
+-        </div>
++    const corpo = document.getElementById('linhas-servico-contrato');
++
++    const tr = document.createElement('tr');
++    tr.className = 'linha-servico-contrato';
++    tr.innerHTML = `
++        <td><select class="form-select form-select-sm campo-linha-servico"></select></td>
++        <td><input type="number" step="0.01" min="0.01" class="form-control form-control-sm campo-linha-quantidade" value="${linha?.quantidade ?? 1}" /></td>
++        <td><input type="number" step="0.01" min="0.01" class="form-control form-control-sm campo-linha-valor" value="${linha?.valorUnitario ?? ''}" /></td>
++        <td class="text-end campo-linha-total">R$ 0,00</td>
++        <td><button type="button" class="btn btn-sm btn-outline-danger btn-remover-linha-servico"><i class="bi bi-x-lg"></i></button></td>
+     `;
+-    container.appendChild(div);
++    tr.dataset.servicoSelecionado = linha?.servicoId ?? '';
++    corpo.appendChild(tr);
+ 
+-    const selectServico = div.querySelector('.campo-linha-servico');
+-    const campoValor = div.querySelector('.campo-linha-valor');
+-    if (!linha) {
+-        selectServico.onchange = () => {
++    const selectServico = tr.querySelector('.campo-linha-servico');
++    const campoValor = tr.querySelector('.campo-linha-valor');
++
++    selectServico.addEventListener('change', () => {
++        tr.dataset.servicoSelecionado = selectServico.value;
++        if (!linha) {
+             const opcao = selectServico.selectedOptions[0];
+             if (opcao?.dataset.valor) campoValor.value = opcao.dataset.valor;
+-            recalcularValorAtualCalculado();
+-        };
+-        selectServico.onchange();
+-    }
++        }
++        atualizarOpcoesServicosDisponiveis();
++        recalcularValorAtualCalculado();
++    });
+ 
+-    div.querySelector('.btn-remover-linha-servico').addEventListener('click', () => {
+-        div.remove();
++    tr.querySelector('.btn-remover-linha-servico').addEventListener('click', () => {
++        tr.remove();
++        atualizarOpcoesServicosDisponiveis();
+         recalcularValorAtualCalculado();
+     });
+-    div.querySelector('.campo-linha-quantidade').addEventListener('input', recalcularValorAtualCalculado);
++    tr.querySelector('.campo-linha-quantidade').addEventListener('input', recalcularValorAtualCalculado);
+     campoValor.addEventListener('input', recalcularValorAtualCalculado);
+ 
++    atualizarOpcoesServicosDisponiveis();
+     recalcularValorAtualCalculado();
+ }
+ 
++// Reconstrói as opções de cada <select> de linha: um Serviço já
++// escolhido em OUTRA linha fica desabilitado (visível, pra não confundir
++// sumindo do combo, mas não selecionável) — a própria linha continua
++// podendo manter o Serviço que ela já tem selecionado.
++function atualizarOpcoesServicosDisponiveis() {
++    const linhas = Array.from(document.querySelectorAll('#linhas-servico-contrato .linha-servico-contrato'));
++    const selecionadosPorLinha = linhas.map(tr => tr.dataset.servicoSelecionado || '');
++
++    linhas.forEach((tr, i) => {
++        const select = tr.querySelector('.campo-linha-servico');
++        const atual = selecionadosPorLinha[i];
++        const usadosEmOutrasLinhas = new Set(selecionadosPorLinha.filter((id, j) => id && j !== i));
++
++        select.innerHTML = catalogoServicosContratos.map(s => {
++            const desabilitado = usadosEmOutrasLinhas.has(s.id);
++            const selecionado = s.id === atual;
++            return `<option value="${s.id}" data-valor="${s.valorPadrao}" ${selecionado ? 'selected' : ''} ${desabilitado ? 'disabled' : ''}>${s.descricao}${desabilitado ? ' (já usado noutra linha)' : ''}</option>`;
++        }).join('');
++
++        if (!atual && select.options.length > 0) {
++            // Linha nova sem seleção: escolhe automaticamente o primeiro
++            // serviço ainda disponível, pra não deixar cair num que já
++            // está desabilitado.
++            const primeiraDisponivel = Array.from(select.options).find(o => !o.disabled);
++            if (primeiraDisponivel) {
++                select.value = primeiraDisponivel.value;
++                tr.dataset.servicoSelecionado = primeiraDisponivel.value;
++            }
++        }
++    });
++}
++
+ function coletarLinhasServico() {
+-    return Array.from(document.querySelectorAll('#linhas-servico-contrato .linha-servico-contrato')).map(div => ({
+-        servicoId: div.querySelector('.campo-linha-servico').value,
+-        quantidade: parseFloat(div.querySelector('.campo-linha-quantidade').value) || 0,
+-        valorUnitario: parseFloat(div.querySelector('.campo-linha-valor').value) || 0
++    return Array.from(document.querySelectorAll('#linhas-servico-contrato .linha-servico-contrato')).map(tr => ({
++        servicoId: tr.querySelector('.campo-linha-servico').value,
++        quantidade: parseFloat(tr.querySelector('.campo-linha-quantidade').value) || 0,
++        valorUnitario: parseFloat(tr.querySelector('.campo-linha-valor').value) || 0
+     }));
+ }
+ 
+ function recalcularValorAtualCalculado() {
++    document.querySelectorAll('#linhas-servico-contrato .linha-servico-contrato').forEach(tr => {
++        const quantidade = parseFloat(tr.querySelector('.campo-linha-quantidade').value) || 0;
++        const valorUnitario = parseFloat(tr.querySelector('.campo-linha-valor').value) || 0;
++        tr.querySelector('.campo-linha-total').textContent = (quantidade * valorUnitario).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
++    });
++
+     const total = coletarLinhasServico().reduce((soma, l) => soma + l.quantidade * l.valorUnitario, 0);
+     document.getElementById('valorAtualCalculado').textContent = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+ }
+@@ -274,28 +308,42 @@ async function salvarContrato(e) {
+     const indiceReajuste = document.getElementById('indiceReajuste').value.trim();
+     const diasAlertaOverride = document.getElementById('diasAlertaOverride').value;
+ 
++    const linhasServico = coletarLinhasServico();
++    if (!id) {
++        const idsUnicos = new Set(linhasServico.map(l => l.servicoId));
++        if (idsUnicos.size !== linhasServico.length) {
++            mostrarErroFormulario('erro-contrato', 'O mesmo serviço não pode aparecer em mais de uma linha.');
++            return;
++        }
++    }
++
+     try {
+         if (id) {
+             const payload = {
+-                servicoId: document.getElementById('servicoId').value,
+                 descricao: document.getElementById('descricao').value,
+                 dataInicioContrato: document.getElementById('dataInicioContrato').value,
+                 periodicidadeReajusteMeses: parseInt(document.getElementById('periodicidadeReajusteMeses').value, 10),
+                 indiceReajuste: indiceReajuste || null,
+-                diasAlertaOverride: diasAlertaOverride ? parseInt(diasAlertaOverride, 10) : null
++                diasAlertaOverride: diasAlertaOverride ? parseInt(diasAlertaOverride, 10) : null,
++                status: parseInt(document.getElementById('status').value, 10),
++                dataFim: document.getElementById('dataFim').value || null,
++                tipoCobranca: parseInt(document.getElementById('tipoCobranca').value, 10),
++                permitirAlterarValorNaEmissao: document.getElementById('permitirAlterarValorNaEmissao').checked
+             };
+             await apiFetch(`/api/contratos/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+         } else {
+             const payload = {
+                 empresaId: empresaAtualIdContratos,
+                 clienteId: document.getElementById('clienteId').value,
+-                servicoId: document.getElementById('servicoId').value,
+                 descricao: document.getElementById('descricao').value,
+-                valorAtual: parseFloat(document.getElementById('valorAtual').value),
++                servicos: linhasServico,
+                 dataInicioContrato: document.getElementById('dataInicioContrato').value,
+                 periodicidadeReajusteMeses: parseInt(document.getElementById('periodicidadeReajusteMeses').value, 10),
+                 indiceReajuste: indiceReajuste || null,
+-                diasAlertaOverride: diasAlertaOverride ? parseInt(diasAlertaOverride, 10) : null
++                diasAlertaOverride: diasAlertaOverride ? parseInt(diasAlertaOverride, 10) : null,
++                dataFim: document.getElementById('dataFim').value || null,
++                tipoCobranca: parseInt(document.getElementById('tipoCobranca').value, 10),
++                permitirAlterarValorNaEmissao: document.getElementById('permitirAlterarValorNaEmissao').checked
+             };
+             await apiFetch('/api/contratos', { method: 'POST', body: JSON.stringify(payload) });
+         }

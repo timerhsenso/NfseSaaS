@@ -28,26 +28,42 @@ public sealed class CadastrarContratoUseCase : ICadastrarContratoUseCase
         if (!clienteExiste)
             throw new RecursoNaoEncontradoException($"Cliente {request.ClienteId} não encontrado.");
 
-        var servicoExiste = await _db.Servicos.AnyAsync(s => s.Id == request.ServicoId, cancellationToken);
-        if (!servicoExiste)
-            throw new RecursoNaoEncontradoException($"Serviço {request.ServicoId} não encontrado.");
+        var servicoIds = request.Servicos.Select(s => s.ServicoId).Distinct().ToList();
+        var totalServicosEncontrados = await _db.Servicos.CountAsync(s => servicoIds.Contains(s.Id), cancellationToken);
+        if (totalServicosEncontrados != servicoIds.Count)
+            throw new RecursoNaoEncontradoException("Um ou mais Serviços informados não foram encontrados.");
+
+        var valorAtual = request.Servicos.Sum(s => s.Quantidade * s.ValorUnitario);
 
         var contrato = new Contrato
         {
             EmpresaId = request.EmpresaId,
             ClienteId = request.ClienteId,
-            ServicoId = request.ServicoId,
             Descricao = request.Descricao,
-            ValorAtual = request.ValorAtual,
+            ValorAtual = valorAtual,
             DataInicioContrato = request.DataInicioContrato,
             PeriodicidadeReajusteMeses = request.PeriodicidadeReajusteMeses,
             IndiceReajuste = request.IndiceReajuste,
-            DiasAlertaOverride = request.DiasAlertaOverride
+            DiasAlertaOverride = request.DiasAlertaOverride,
+            DataFim = request.DataFim,
+            TipoCobranca = request.TipoCobranca,
+            PermitirAlterarValorNaEmissao = request.PermitirAlterarValorNaEmissao
         };
 
         _db.Contratos.Add(contrato);
 
-        _auditLogWriter.Registrar("CadastrarContrato", "Contrato", contrato.Id, new { contrato.EmpresaId, contrato.ClienteId, contrato.Descricao, contrato.ValorAtual });
+        foreach (var servico in request.Servicos)
+        {
+            _db.ContratoServicos.Add(new ContratoServico
+            {
+                ContratoId = contrato.Id,
+                ServicoId = servico.ServicoId,
+                Quantidade = servico.Quantidade,
+                ValorUnitario = servico.ValorUnitario
+            });
+        }
+
+        _auditLogWriter.Registrar("CadastrarContrato", "Contrato", contrato.Id, new { contrato.EmpresaId, contrato.ClienteId, contrato.Descricao, contrato.ValorAtual, TotalLinhas = request.Servicos.Count });
 
         await _db.SaveChangesAsync(cancellationToken);
 

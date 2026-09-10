@@ -22,16 +22,15 @@ public sealed class AtualizarContratoUseCase : IAtualizarContratoUseCase
         var contrato = await _db.Contratos.FirstOrDefaultAsync(c => c.Id == id, cancellationToken)
             ?? throw new RecursoNaoEncontradoException($"Contrato {id} não encontrado.");
 
-        var servicoExiste = await _db.Servicos.AnyAsync(s => s.Id == request.ServicoId, cancellationToken);
-        if (!servicoExiste)
-            throw new RecursoNaoEncontradoException($"Serviço {request.ServicoId} não encontrado.");
-
-        contrato.ServicoId = request.ServicoId;
         contrato.Descricao = request.Descricao;
         contrato.DataInicioContrato = request.DataInicioContrato;
         contrato.PeriodicidadeReajusteMeses = request.PeriodicidadeReajusteMeses;
         contrato.IndiceReajuste = request.IndiceReajuste;
         contrato.DiasAlertaOverride = request.DiasAlertaOverride;
+        contrato.Status = request.Status;
+        contrato.DataFim = request.DataFim;
+        contrato.TipoCobranca = request.TipoCobranca;
+        contrato.PermitirAlterarValorNaEmissao = request.PermitirAlterarValorNaEmissao;
 
         _auditLogWriter.Registrar("AtualizarContrato", "Contrato", contrato.Id, new { contrato.Descricao });
 

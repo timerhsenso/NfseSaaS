@@ -1,0 +1,932 @@
+diff --git a/src/NfseSaaS.Application/UseCases/Contratos/AtualizarContratoRequest.cs b/src/NfseSaaS.Application/UseCases/Contratos/AtualizarContratoRequest.cs
+index 5fcaa0f..7545a0b 100644
+--- a/src/NfseSaaS.Application/UseCases/Contratos/AtualizarContratoRequest.cs
++++ b/src/NfseSaaS.Application/UseCases/Contratos/AtualizarContratoRequest.cs
+@@ -1,3 +1,5 @@
++using NfseSaaS.Domain.Enums;
++
+ namespace NfseSaaS.Application.UseCases.Contratos;
+ 
+ /// <summary>
+@@ -6,12 +8,19 @@ namespace NfseSaaS.Application.UseCases.Contratos;
+ /// é outro Contrato). ValorAtual/DataUltimoReajuste também ficam de fora
+ /// DE PROPÓSITO: editar o valor aqui pularia o histórico de reajustes
+ /// (ContratoReajuste, Parte 3) — a única forma prevista de mudar o valor
+-/// é pelo fluxo dedicado de "Registrar reajuste".
++/// é pelo fluxo dedicado de "Registrar reajuste". Pelo mesmo motivo, as
++/// linhas de Servicos (Fase 6) também não entram aqui — recompor quais
++/// serviços um Contrato cobra é uma operação diferente de reajuste
++/// (muda escopo, não preço) e fica pra um endpoint dedicado quando
++/// houver demanda real, mesmo padrão do resto do projeto.
+ /// </summary>
+ public sealed record AtualizarContratoRequest(
+-    Guid ServicoId,
+     string Descricao,
+     DateOnly DataInicioContrato,
+     int PeriodicidadeReajusteMeses,
+     string? IndiceReajuste,
+-    int? DiasAlertaOverride);
++    int? DiasAlertaOverride,
++    StatusContrato Status,
++    DateOnly? DataFim,
++    TipoCobrancaContrato TipoCobranca,
++    bool PermitirAlterarValorNaEmissao);
+diff --git a/src/NfseSaaS.Application/UseCases/Contratos/AtualizarContratoRequestValidator.cs b/src/NfseSaaS.Application/UseCases/Contratos/AtualizarContratoRequestValidator.cs
+index 6c4b79b..3ddbedd 100644
+--- a/src/NfseSaaS.Application/UseCases/Contratos/AtualizarContratoRequestValidator.cs
++++ b/src/NfseSaaS.Application/UseCases/Contratos/AtualizarContratoRequestValidator.cs
+@@ -6,7 +6,6 @@ public sealed class AtualizarContratoRequestValidator : AbstractValidator<Atuali
+ {
+     public AtualizarContratoRequestValidator()
+     {
+-        RuleFor(x => x.ServicoId).NotEmpty();
+         RuleFor(x => x.Descricao).NotEmpty().MaximumLength(200);
+         RuleFor(x => x.PeriodicidadeReajusteMeses).GreaterThan(0).LessThanOrEqualTo(60);
+         RuleFor(x => x.IndiceReajuste).MaximumLength(30);
+diff --git a/src/NfseSaaS.Application/UseCases/Contratos/CadastrarContratoRequest.cs b/src/NfseSaaS.Application/UseCases/Contratos/CadastrarContratoRequest.cs
+index 5f6d6cf..390146b 100644
+--- a/src/NfseSaaS.Application/UseCases/Contratos/CadastrarContratoRequest.cs
++++ b/src/NfseSaaS.Application/UseCases/Contratos/CadastrarContratoRequest.cs
+@@ -1,12 +1,22 @@
++using NfseSaaS.Domain.Enums;
++
+ namespace NfseSaaS.Application.UseCases.Contratos;
+ 
++/// <summary>
++/// ValorAtual não faz mais parte deste DTO — a partir da Fase 6 ele é
++/// sempre calculado como a soma de Servicos[].Quantidade*ValorUnitario
++/// (ver CadastrarContratoUseCase), nunca informado direto, pra não
++/// correr o risco do total divergir das linhas.
++/// </summary>
+ public sealed record CadastrarContratoRequest(
+     Guid EmpresaId,
+     Guid ClienteId,
+-    Guid ServicoId,
+     string Descricao,
+-    decimal ValorAtual,
++    IReadOnlyList<ContratoServicoRequest> Servicos,
+     DateOnly DataInicioContrato,
+     int PeriodicidadeReajusteMeses,
+     string? IndiceReajuste,
+-    int? DiasAlertaOverride);
++    int? DiasAlertaOverride,
++    DateOnly? DataFim,
++    TipoCobrancaContrato TipoCobranca,
++    bool PermitirAlterarValorNaEmissao);
+diff --git a/src/NfseSaaS.Application/UseCases/Contratos/CadastrarContratoRequestValidator.cs b/src/NfseSaaS.Application/UseCases/Contratos/CadastrarContratoRequestValidator.cs
+index 8c0c5fa..4a40bdb 100644
+--- a/src/NfseSaaS.Application/UseCases/Contratos/CadastrarContratoRequestValidator.cs
++++ b/src/NfseSaaS.Application/UseCases/Contratos/CadastrarContratoRequestValidator.cs
+@@ -8,11 +8,17 @@ public sealed class CadastrarContratoRequestValidator : AbstractValidator<Cadast
+     {
+         RuleFor(x => x.EmpresaId).NotEmpty();
+         RuleFor(x => x.ClienteId).NotEmpty();
+-        RuleFor(x => x.ServicoId).NotEmpty();
+         RuleFor(x => x.Descricao).NotEmpty().MaximumLength(200);
+-        RuleFor(x => x.ValorAtual).GreaterThan(0);
+         RuleFor(x => x.PeriodicidadeReajusteMeses).GreaterThan(0).LessThanOrEqualTo(60);
+         RuleFor(x => x.IndiceReajuste).MaximumLength(30);
+         RuleFor(x => x.DiasAlertaOverride).GreaterThan(0).When(x => x.DiasAlertaOverride.HasValue);
++
++        RuleFor(x => x.Servicos).NotEmpty().WithMessage("Informe ao menos um serviço.");
++        RuleForEach(x => x.Servicos).ChildRules(servico =>
++        {
++            servico.RuleFor(s => s.ServicoId).NotEmpty();
++            servico.RuleFor(s => s.Quantidade).GreaterThan(0);
++            servico.RuleFor(s => s.ValorUnitario).GreaterThan(0);
++        });
+     }
+ }
+diff --git a/src/NfseSaaS.Application/UseCases/Contratos/ContratoResponse.cs b/src/NfseSaaS.Application/UseCases/Contratos/ContratoResponse.cs
+index 1315f3e..3db2df9 100644
+--- a/src/NfseSaaS.Application/UseCases/Contratos/ContratoResponse.cs
++++ b/src/NfseSaaS.Application/UseCases/Contratos/ContratoResponse.cs
+@@ -7,9 +7,8 @@ public sealed record ContratoResponse(
+     Guid EmpresaId,
+     Guid ClienteId,
+     string ClienteNome,
+-    Guid ServicoId,
+-    string ServicoDescricao,
+     string Descricao,
++    IReadOnlyList<ContratoServicoResponse> Servicos,
+     decimal ValorAtual,
+     DateOnly DataInicioContrato,
+     int PeriodicidadeReajusteMeses,
+@@ -19,6 +18,10 @@ public sealed record ContratoResponse(
+     int DiasAlertaEfetivo,
+     DateOnly DataProximoReajuste,
+     SituacaoContrato Situacao,
++    StatusContrato Status,
++    DateOnly? DataFim,
++    TipoCobrancaContrato TipoCobranca,
++    bool PermitirAlterarValorNaEmissao,
+     bool Ativo,
+     DateTimeOffset CreatedAt,
+     DateTimeOffset? UpdatedAt);
+diff --git a/src/NfseSaaS.Application/UseCases/Contratos/ContratoServicoRequest.cs b/src/NfseSaaS.Application/UseCases/Contratos/ContratoServicoRequest.cs
+new file mode 100644
+index 0000000..76de221
+--- /dev/null
++++ b/src/NfseSaaS.Application/UseCases/Contratos/ContratoServicoRequest.cs
+@@ -0,0 +1,6 @@
++namespace NfseSaaS.Application.UseCases.Contratos;
++
++public sealed record ContratoServicoRequest(
++    Guid ServicoId,
++    decimal Quantidade,
++    decimal ValorUnitario);
+diff --git a/src/NfseSaaS.Application/UseCases/Contratos/ContratoServicoResponse.cs b/src/NfseSaaS.Application/UseCases/Contratos/ContratoServicoResponse.cs
+new file mode 100644
+index 0000000..1754dda
+--- /dev/null
++++ b/src/NfseSaaS.Application/UseCases/Contratos/ContratoServicoResponse.cs
+@@ -0,0 +1,9 @@
++namespace NfseSaaS.Application.UseCases.Contratos;
++
++public sealed record ContratoServicoResponse(
++    Guid Id,
++    Guid ServicoId,
++    string ServicoDescricao,
++    decimal Quantidade,
++    decimal ValorUnitario,
++    decimal ValorTotal);
+diff --git a/src/NfseSaaS.Domain/Entities/Contrato.cs b/src/NfseSaaS.Domain/Entities/Contrato.cs
+index 2a661fe..3617bc1 100644
+--- a/src/NfseSaaS.Domain/Entities/Contrato.cs
++++ b/src/NfseSaaS.Domain/Entities/Contrato.cs
+@@ -1,4 +1,5 @@
+ using NfseSaaS.Domain.Common;
++using NfseSaaS.Domain.Enums;
+ 
+ namespace NfseSaaS.Domain.Entities;
+ 
+@@ -26,16 +27,31 @@ public sealed class Contrato : BaseEntity, ITenantEntity
+ 
+     public Guid ClienteId { get; set; }
+ 
+-    /// <summary>Serviço do catálogo de onde vem a classificação fiscal (código de tributação nacional, NBS) na hora de emitir a partir deste Contrato.</summary>
+-    public Guid ServicoId { get; set; }
+-
+     /// <summary>Rótulo próprio do Contrato (ex.: "Manutenção sistema A") — pode ser igual ou diferente da descrição do Servico.</summary>
+     public string Descricao { get; set; } = string.Empty;
+ 
++    /// <summary>
++    /// Total agregado — soma de ContratoServico.ValorTotal (linhas, Fase
++    /// 6). Continua guardado aqui, em vez de sempre recalculado, pra não
++    /// quebrar o fluxo de Reajuste (histórico em cima de um valor único)
++    /// já testado em produção. Nunca editável fora do cadastro/Reajuste.
++    /// </summary>
+     public decimal ValorAtual { get; set; }
+ 
+     public DateOnly DataInicioContrato { get; set; }
+ 
++    /// <summary>Status comercial do Contrato — Fase 6. Persistido, diferente de SituacaoContrato (calculada, só prazo de reajuste).</summary>
++    public StatusContrato Status { get; set; } = StatusContrato.Ativo;
++
++    /// <summary>Fim de vigência — nulo enquanto o Contrato não tiver prazo definido ou por tempo indeterminado.</summary>
++    public DateOnly? DataFim { get; set; }
++
++    /// <summary>Fase 6 — usado pela Fase 7 (Nota Mensal) pra selecionar automaticamente quais Contratos entram no lote do mês.</summary>
++    public TipoCobrancaContrato TipoCobranca { get; set; } = TipoCobrancaContrato.Avulso;
++
++    /// <summary>Fase 6 — se true, a tela de emissão em lote (Fase 7) permite ajustar o valor da linha na hora de gerar a nota; se false, usa sempre o valor do Contrato sem edição.</summary>
++    public bool PermitirAlterarValorNaEmissao { get; set; } = true;
++
+     /// <summary>De quantos em quantos meses o valor deveria ser reajustado. Padrão de mercado: 12.</summary>
+     public int PeriodicidadeReajusteMeses { get; set; } = 12;
+ 
+diff --git a/src/NfseSaaS.Domain/Entities/ContratoServico.cs b/src/NfseSaaS.Domain/Entities/ContratoServico.cs
+new file mode 100644
+index 0000000..db0b807
+--- /dev/null
++++ b/src/NfseSaaS.Domain/Entities/ContratoServico.cs
+@@ -0,0 +1,43 @@
++using NfseSaaS.Domain.Common;
++
++namespace NfseSaaS.Domain.Entities;
++
++/// <summary>
++/// Uma linha de serviço dentro de um Contrato — Fase 6 do roadmap:
++/// decisão fechada de migrar Contrato de "1 serviço só" pra "N serviços",
++/// pra suportar contratos que cobram mais de um serviço na mesma nota
++/// mensal (Fase 7, Nota Mensal) e permitir agrupar por
++/// CodigoTributacaoNacional na hora de gerar as notas.
++///
++/// Contrato.ValorAtual continua existindo como o total agregado (soma de
++/// ContratoServico.ValorTotal) — decisão deliberada pra não quebrar o
++/// fluxo de Reajuste (RegistrarReajusteUseCase) já testado em produção,
++/// que grava histórico em cima de um valor único do Contrato. Um
++/// reajuste escala proporcionalmente o ValorUnitario de cada linha (ver
++/// RegistrarReajusteUseCase).
++///
++/// Composição das linhas (adicionar/remover/trocar Serviço) só acontece
++/// no cadastro do Contrato nesta fase — AtualizarContratoUseCase
++/// deliberadamente não mexe nas linhas, mesmo raciocínio já usado pro
++/// ValorAtual (editar fora do fluxo dedicado pularia consistência). Um
++/// endpoint dedicado pra recompor linhas depois de criado fica pra
++/// quando houver demanda real, mesmo padrão do resto do projeto.
++///
++/// Entidade TENANT-SCOPED: sofre o Global Query Filter por TenantId.
++/// </summary>
++public sealed class ContratoServico : BaseEntity, ITenantEntity
++{
++    public Guid TenantId { get; set; }
++
++    public Guid ContratoId { get; set; }
++
++    /// <summary>Serviço do catálogo de onde vem a classificação fiscal (código de tributação nacional, NBS) na hora de emitir a partir desta linha.</summary>
++    public Guid ServicoId { get; set; }
++
++    public decimal Quantidade { get; set; } = 1;
++
++    public decimal ValorUnitario { get; set; }
++
++    /// <summary>Nunca persistido — sempre Quantidade * ValorUnitario (ver ContratoServicoConfiguration.Ignore).</summary>
++    public decimal ValorTotal => Quantidade * ValorUnitario;
++}
+diff --git a/src/NfseSaaS.Domain/Enums/StatusContrato.cs b/src/NfseSaaS.Domain/Enums/StatusContrato.cs
+new file mode 100644
+index 0000000..235fa85
+--- /dev/null
++++ b/src/NfseSaaS.Domain/Enums/StatusContrato.cs
+@@ -0,0 +1,15 @@
++namespace NfseSaaS.Domain.Enums;
++
++/// <summary>
++/// Status do ciclo de vida comercial do Contrato — persistido, diferente
++/// de SituacaoContrato (que é sempre calculada e trata só do prazo de
++/// reajuste). Fase 6 do roadmap.
++/// </summary>
++public enum StatusContrato
++{
++    Rascunho = 0,
++    Ativo = 1,
++    Suspenso = 2,
++    Encerrado = 3,
++    Cancelado = 4
++}
+diff --git a/src/NfseSaaS.Domain/Enums/TipoCobrancaContrato.cs b/src/NfseSaaS.Domain/Enums/TipoCobrancaContrato.cs
+new file mode 100644
+index 0000000..ffc737f
+--- /dev/null
++++ b/src/NfseSaaS.Domain/Enums/TipoCobrancaContrato.cs
+@@ -0,0 +1,12 @@
++namespace NfseSaaS.Domain.Enums;
++
++/// <summary>
++/// Como o Contrato é cobrado — usado pela Fase 7 (Nota Mensal) pra saber
++/// quais Contratos entram na auto-seleção de emissão em lote. Fase 6 do
++/// roadmap.
++/// </summary>
++public enum TipoCobrancaContrato
++{
++    Avulso = 0,
++    Mensal = 1
++}
+diff --git a/src/NfseSaaS.Infrastructure/Persistence/AppDbContext.cs b/src/NfseSaaS.Infrastructure/Persistence/AppDbContext.cs
+index f06c1dc..d5e6654 100644
+--- a/src/NfseSaaS.Infrastructure/Persistence/AppDbContext.cs
++++ b/src/NfseSaaS.Infrastructure/Persistence/AppDbContext.cs
+@@ -34,6 +34,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
+     public DbSet<Cliente> Clientes => Set<Cliente>();
+     public DbSet<Servico> Servicos => Set<Servico>();
+     public DbSet<Contrato> Contratos => Set<Contrato>();
++    public DbSet<ContratoServico> ContratoServicos => Set<ContratoServico>();
+     public DbSet<ReajusteContrato> ReajustesContrato => Set<ReajusteContrato>();
+     public DbSet<Nfse> NotasFiscais => Set<Nfse>();
+     public DbSet<NfseEvento> NfseEventos => Set<NfseEvento>();
+diff --git a/src/NfseSaaS.Infrastructure/Persistence/Configurations/ContratoConfiguration.cs b/src/NfseSaaS.Infrastructure/Persistence/Configurations/ContratoConfiguration.cs
+index fab189b..40dff05 100644
+--- a/src/NfseSaaS.Infrastructure/Persistence/Configurations/ContratoConfiguration.cs
++++ b/src/NfseSaaS.Infrastructure/Persistence/Configurations/ContratoConfiguration.cs
+@@ -1,6 +1,7 @@
+ using Microsoft.EntityFrameworkCore;
+ using Microsoft.EntityFrameworkCore.Metadata.Builders;
+ using NfseSaaS.Domain.Entities;
++using NfseSaaS.Domain.Enums;
+ 
+ namespace NfseSaaS.Infrastructure.Persistence.Configurations;
+ 
+@@ -22,16 +23,29 @@ public sealed class ContratoConfiguration : IEntityTypeConfiguration<Contrato>
+         builder.Property(c => c.IndiceReajuste)
+             .HasMaxLength(30);
+ 
++        // HasDefaultValue nos dois — mesmo cuidado que faltou em
++        // Nfse.TipoAmbiente (bug real: sem default, linhas antigas
++        // migradas ficam com 0/CLR-default em vez do valor esperado).
++        builder.Property(c => c.Status)
++            .HasConversion<int>()
++            .HasDefaultValue(StatusContrato.Ativo);
++
++        builder.Property(c => c.TipoCobranca)
++            .HasConversion<int>()
++            .HasDefaultValue(TipoCobrancaContrato.Avulso);
++
+         builder.HasIndex(c => new { c.TenantId, c.EmpresaId });
+         builder.HasIndex(c => new { c.TenantId, c.ClienteId });
+ 
+         // FKs reais (sem navigation property — mesmo padrão de
+         // Cliente/Servico/Nfse neste projeto: acesso direto por Id, não
+-        // navegação de grafo de objetos). Restrict nas 3: um Contrato
+-        // sempre precisa de uma Empresa, um Cliente e um Servico válidos
+-        // — excluir qualquer um deles enquanto o Contrato existir é
+-        // bloqueado pelo banco (backstop da mesma checagem já feita nos
+-        // use cases de exclusão correspondentes).
++        // navegação de grafo de objetos). Restrict nas 2: um Contrato
++        // sempre precisa de uma Empresa e um Cliente válidos — excluir
++        // qualquer um deles enquanto o Contrato existir é bloqueado pelo
++        // banco (backstop da mesma checagem já feita nos use cases de
++        // exclusão correspondentes). FK pra Servico saiu daqui na Fase 6
++        // — agora mora em ContratoServico (1 Contrato pode ter N
++        // serviços).
+         builder.HasOne<Empresa>()
+             .WithMany()
+             .HasForeignKey(c => c.EmpresaId)
+@@ -41,10 +55,5 @@ public sealed class ContratoConfiguration : IEntityTypeConfiguration<Contrato>
+             .WithMany()
+             .HasForeignKey(c => c.ClienteId)
+             .OnDelete(DeleteBehavior.Restrict);
+-
+-        builder.HasOne<Servico>()
+-            .WithMany()
+-            .HasForeignKey(c => c.ServicoId)
+-            .OnDelete(DeleteBehavior.Restrict);
+     }
+ }
+diff --git a/src/NfseSaaS.Infrastructure/Persistence/Configurations/ContratoServicoConfiguration.cs b/src/NfseSaaS.Infrastructure/Persistence/Configurations/ContratoServicoConfiguration.cs
+new file mode 100644
+index 0000000..ddf0da8
+--- /dev/null
++++ b/src/NfseSaaS.Infrastructure/Persistence/Configurations/ContratoServicoConfiguration.cs
+@@ -0,0 +1,45 @@
++using Microsoft.EntityFrameworkCore;
++using Microsoft.EntityFrameworkCore.Metadata.Builders;
++using NfseSaaS.Domain.Entities;
++
++namespace NfseSaaS.Infrastructure.Persistence.Configurations;
++
++public sealed class ContratoServicoConfiguration : IEntityTypeConfiguration<ContratoServico>
++{
++    public void Configure(EntityTypeBuilder<ContratoServico> builder)
++    {
++        builder.ToTable("contrato_servicos");
++
++        builder.HasKey(cs => cs.Id);
++
++        builder.Property(cs => cs.Quantidade)
++            .HasColumnType("numeric(18,4)");
++
++        builder.Property(cs => cs.ValorUnitario)
++            .HasColumnType("numeric(18,2)");
++
++        // ValorTotal é sempre Quantidade * ValorUnitario, nunca
++        // persistido — mesmo raciocínio de SituacaoContrato (calculado)
++        // usado em outras partes do projeto.
++        builder.Ignore(cs => cs.ValorTotal);
++
++        builder.HasIndex(cs => new { cs.TenantId, cs.ContratoId });
++
++        // Linha de detalhe do Contrato: some junto quando o Contrato é
++        // excluído (Contrato só é excluível se não tiver Nfse/Reajuste
++        // vinculado — ver ExcluirContratoUseCase — então não há histórico
++        // fiscal em risco aqui).
++        builder.HasOne<Contrato>()
++            .WithMany()
++            .HasForeignKey(cs => cs.ContratoId)
++            .OnDelete(DeleteBehavior.Cascade);
++
++        // Servico não pode ser excluído enquanto referenciado por alguma
++        // linha (ver ExcluirServicoUseCase, atualizado na Fase 6 pra
++        // checar aqui em vez de Contrato.ServicoId).
++        builder.HasOne<Servico>()
++            .WithMany()
++            .HasForeignKey(cs => cs.ServicoId)
++            .OnDelete(DeleteBehavior.Restrict);
++    }
++}
+diff --git a/src/NfseSaaS.Infrastructure/UseCases/AtualizarContratoUseCase.cs b/src/NfseSaaS.Infrastructure/UseCases/AtualizarContratoUseCase.cs
+index 038e806..8176169 100644
+--- a/src/NfseSaaS.Infrastructure/UseCases/AtualizarContratoUseCase.cs
++++ b/src/NfseSaaS.Infrastructure/UseCases/AtualizarContratoUseCase.cs
+@@ -22,16 +22,15 @@ public sealed class AtualizarContratoUseCase : IAtualizarContratoUseCase
+         var contrato = await _db.Contratos.FirstOrDefaultAsync(c => c.Id == id, cancellationToken)
+             ?? throw new RecursoNaoEncontradoException($"Contrato {id} não encontrado.");
+ 
+-        var servicoExiste = await _db.Servicos.AnyAsync(s => s.Id == request.ServicoId, cancellationToken);
+-        if (!servicoExiste)
+-            throw new RecursoNaoEncontradoException($"Serviço {request.ServicoId} não encontrado.");
+-
+-        contrato.ServicoId = request.ServicoId;
+         contrato.Descricao = request.Descricao;
+         contrato.DataInicioContrato = request.DataInicioContrato;
+         contrato.PeriodicidadeReajusteMeses = request.PeriodicidadeReajusteMeses;
+         contrato.IndiceReajuste = request.IndiceReajuste;
+         contrato.DiasAlertaOverride = request.DiasAlertaOverride;
++        contrato.Status = request.Status;
++        contrato.DataFim = request.DataFim;
++        contrato.TipoCobranca = request.TipoCobranca;
++        contrato.PermitirAlterarValorNaEmissao = request.PermitirAlterarValorNaEmissao;
+ 
+         _auditLogWriter.Registrar("AtualizarContrato", "Contrato", contrato.Id, new { contrato.Descricao });
+ 
+diff --git a/src/NfseSaaS.Infrastructure/UseCases/CadastrarContratoUseCase.cs b/src/NfseSaaS.Infrastructure/UseCases/CadastrarContratoUseCase.cs
+index 0f84f5b..600b852 100644
+--- a/src/NfseSaaS.Infrastructure/UseCases/CadastrarContratoUseCase.cs
++++ b/src/NfseSaaS.Infrastructure/UseCases/CadastrarContratoUseCase.cs
+@@ -28,26 +28,42 @@ public sealed class CadastrarContratoUseCase : ICadastrarContratoUseCase
+         if (!clienteExiste)
+             throw new RecursoNaoEncontradoException($"Cliente {request.ClienteId} não encontrado.");
+ 
+-        var servicoExiste = await _db.Servicos.AnyAsync(s => s.Id == request.ServicoId, cancellationToken);
+-        if (!servicoExiste)
+-            throw new RecursoNaoEncontradoException($"Serviço {request.ServicoId} não encontrado.");
++        var servicoIds = request.Servicos.Select(s => s.ServicoId).Distinct().ToList();
++        var totalServicosEncontrados = await _db.Servicos.CountAsync(s => servicoIds.Contains(s.Id), cancellationToken);
++        if (totalServicosEncontrados != servicoIds.Count)
++            throw new RecursoNaoEncontradoException("Um ou mais Serviços informados não foram encontrados.");
++
++        var valorAtual = request.Servicos.Sum(s => s.Quantidade * s.ValorUnitario);
+ 
+         var contrato = new Contrato
+         {
+             EmpresaId = request.EmpresaId,
+             ClienteId = request.ClienteId,
+-            ServicoId = request.ServicoId,
+             Descricao = request.Descricao,
+-            ValorAtual = request.ValorAtual,
++            ValorAtual = valorAtual,
+             DataInicioContrato = request.DataInicioContrato,
+             PeriodicidadeReajusteMeses = request.PeriodicidadeReajusteMeses,
+             IndiceReajuste = request.IndiceReajuste,
+-            DiasAlertaOverride = request.DiasAlertaOverride
++            DiasAlertaOverride = request.DiasAlertaOverride,
++            DataFim = request.DataFim,
++            TipoCobranca = request.TipoCobranca,
++            PermitirAlterarValorNaEmissao = request.PermitirAlterarValorNaEmissao
+         };
+ 
+         _db.Contratos.Add(contrato);
+ 
+-        _auditLogWriter.Registrar("CadastrarContrato", "Contrato", contrato.Id, new { contrato.EmpresaId, contrato.ClienteId, contrato.Descricao, contrato.ValorAtual });
++        foreach (var servico in request.Servicos)
++        {
++            _db.ContratoServicos.Add(new ContratoServico
++            {
++                ContratoId = contrato.Id,
++                ServicoId = servico.ServicoId,
++                Quantidade = servico.Quantidade,
++                ValorUnitario = servico.ValorUnitario
++            });
++        }
++
++        _auditLogWriter.Registrar("CadastrarContrato", "Contrato", contrato.Id, new { contrato.EmpresaId, contrato.ClienteId, contrato.Descricao, contrato.ValorAtual, TotalLinhas = request.Servicos.Count });
+ 
+         await _db.SaveChangesAsync(cancellationToken);
+ 
+diff --git a/src/NfseSaaS.Infrastructure/UseCases/ExcluirServicoUseCase.cs b/src/NfseSaaS.Infrastructure/UseCases/ExcluirServicoUseCase.cs
+index 508cefa..d4fec92 100644
+--- a/src/NfseSaaS.Infrastructure/UseCases/ExcluirServicoUseCase.cs
++++ b/src/NfseSaaS.Infrastructure/UseCases/ExcluirServicoUseCase.cs
+@@ -14,10 +14,10 @@ namespace NfseSaaS.Infrastructure.UseCases;
+ /// fiscal nunca mude retroativamente se o catálogo de Servico for editado
+ /// ou excluído depois.
+ ///
+-/// JÁ NÃO é sempre seguro, porém: Contrato tem uma FK real pra Servico
+-/// (herda a classificação fiscal de lá) — um Servico usado por algum
+-/// Contrato não pode ser excluído sem antes o Contrato apontar pra outro
+-/// Servico ou ser removido.
++/// JÁ NÃO é sempre seguro, porém: ContratoServico (Fase 6) tem uma FK
++/// real pra Servico (cada linha herda a classificação fiscal de lá) —
++/// um Servico usado por alguma linha de Contrato não pode ser excluído
++/// sem antes a linha apontar pra outro Servico ou ser removida.
+ /// </summary>
+ public sealed class ExcluirServicoUseCase : IExcluirServicoUseCase
+ {
+@@ -35,11 +35,11 @@ public sealed class ExcluirServicoUseCase : IExcluirServicoUseCase
+         var servico = await _db.Servicos.FirstOrDefaultAsync(s => s.Id == id, cancellationToken)
+             ?? throw new RecursoNaoEncontradoException($"Serviço {id} não encontrado.");
+ 
+-        var totalContratos = await _db.Contratos.CountAsync(c => c.ServicoId == id, cancellationToken);
+-        if (totalContratos > 0)
++        var totalLinhasContrato = await _db.ContratoServicos.CountAsync(cs => cs.ServicoId == id, cancellationToken);
++        if (totalLinhasContrato > 0)
+         {
+             throw new RegraNegocioException(
+-                $"Não é possível excluir o Serviço: existem {totalContratos} contrato(s) vinculados. Desative o Serviço em vez de excluir.");
++                $"Não é possível excluir o Serviço: existem {totalLinhasContrato} linha(s) de contrato vinculadas. Desative o Serviço em vez de excluir.");
+         }
+ 
+         _db.Servicos.Remove(servico);
+diff --git a/src/NfseSaaS.Infrastructure/UseCases/ListarContratosUseCase.cs b/src/NfseSaaS.Infrastructure/UseCases/ListarContratosUseCase.cs
+index 816c82c..a256763 100644
+--- a/src/NfseSaaS.Infrastructure/UseCases/ListarContratosUseCase.cs
++++ b/src/NfseSaaS.Infrastructure/UseCases/ListarContratosUseCase.cs
+@@ -26,8 +26,7 @@ public sealed class ListarContratosUseCase : IListarContratosUseCase
+             from c in _db.Contratos.AsNoTracking()
+             where c.EmpresaId == request.EmpresaId
+             join cli in _db.Clientes.AsNoTracking() on c.ClienteId equals cli.Id
+-            join srv in _db.Servicos.AsNoTracking() on c.ServicoId equals srv.Id
+-            select new { Contrato = c, ClienteNome = cli.Nome, ServicoDescricao = srv.Descricao };
++            select new { Contrato = c, ClienteNome = cli.Nome };
+ 
+         if (!request.IncluirInativos)
+             query = query.Where(x => x.Contrato.Ativo);
+@@ -53,18 +52,32 @@ public sealed class ListarContratosUseCase : IListarContratosUseCase
+ 
+         var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+ 
++        var contratoIdsDaPagina = itens.Select(x => x.Contrato.Id).ToList();
++        var linhasPorContrato = await (
++            from cs in _db.ContratoServicos.AsNoTracking()
++            where contratoIdsDaPagina.Contains(cs.ContratoId)
++            join srv in _db.Servicos.AsNoTracking() on cs.ServicoId equals srv.Id
++            select new { cs.ContratoId, Linha = cs, ServicoDescricao = srv.Descricao })
++            .ToListAsync(cancellationToken);
++
+         var respostas = itens.Select(x =>
+         {
+             var dataProximoReajuste = SituacaoContratoCalculator.CalcularDataProximoReajuste(x.Contrato);
+             var diasAlertaEfetivo = SituacaoContratoCalculator.DiasAlertaEfetivo(x.Contrato, empresa.DiasAlertaReajusteContratoPadrao);
+             var situacao = SituacaoContratoCalculator.CalcularSituacao(x.Contrato, empresa.DiasAlertaReajusteContratoPadrao, hoje);
+ 
++            var servicos = linhasPorContrato
++                .Where(l => l.ContratoId == x.Contrato.Id)
++                .Select(l => new ContratoServicoResponse(l.Linha.Id, l.Linha.ServicoId, l.ServicoDescricao, l.Linha.Quantidade, l.Linha.ValorUnitario, l.Linha.ValorTotal))
++                .ToList();
++
+             return new ContratoResponse(
+                 x.Contrato.Id, x.Contrato.EmpresaId, x.Contrato.ClienteId, x.ClienteNome,
+-                x.Contrato.ServicoId, x.ServicoDescricao, x.Contrato.Descricao, x.Contrato.ValorAtual,
++                x.Contrato.Descricao, servicos, x.Contrato.ValorAtual,
+                 x.Contrato.DataInicioContrato, x.Contrato.PeriodicidadeReajusteMeses, x.Contrato.IndiceReajuste,
+                 x.Contrato.DataUltimoReajuste, x.Contrato.DiasAlertaOverride, diasAlertaEfetivo,
+-                dataProximoReajuste, situacao, x.Contrato.Ativo, x.Contrato.CreatedAt, x.Contrato.UpdatedAt);
++                dataProximoReajuste, situacao, x.Contrato.Status, x.Contrato.DataFim, x.Contrato.TipoCobranca,
++                x.Contrato.PermitirAlterarValorNaEmissao, x.Contrato.Ativo, x.Contrato.CreatedAt, x.Contrato.UpdatedAt);
+         }).ToList();
+ 
+         return new PagedResult<ContratoResponse>
+diff --git a/src/NfseSaaS.Infrastructure/UseCases/ObterContratoPorIdUseCase.cs b/src/NfseSaaS.Infrastructure/UseCases/ObterContratoPorIdUseCase.cs
+index 6e92a83..4ec3772 100644
+--- a/src/NfseSaaS.Infrastructure/UseCases/ObterContratoPorIdUseCase.cs
++++ b/src/NfseSaaS.Infrastructure/UseCases/ObterContratoPorIdUseCase.cs
+@@ -21,14 +21,20 @@ public sealed class ObterContratoPorIdUseCase : IObterContratoPorIdUseCase
+             from c in _db.Contratos.AsNoTracking()
+             where c.Id == id
+             join cli in _db.Clientes.AsNoTracking() on c.ClienteId equals cli.Id
+-            join srv in _db.Servicos.AsNoTracking() on c.ServicoId equals srv.Id
+             join emp in _db.Empresas.AsNoTracking() on c.EmpresaId equals emp.Id
+-            select new { Contrato = c, ClienteNome = cli.Nome, ServicoDescricao = srv.Descricao, emp.DiasAlertaReajusteContratoPadrao })
++            select new { Contrato = c, ClienteNome = cli.Nome, emp.DiasAlertaReajusteContratoPadrao })
+             .FirstOrDefaultAsync(cancellationToken);
+ 
+         if (resultado is null)
+             throw new RecursoNaoEncontradoException($"Contrato {id} não encontrado.");
+ 
++        var servicos = await (
++            from cs in _db.ContratoServicos.AsNoTracking()
++            where cs.ContratoId == id
++            join srv in _db.Servicos.AsNoTracking() on cs.ServicoId equals srv.Id
++            select new ContratoServicoResponse(cs.Id, cs.ServicoId, srv.Descricao, cs.Quantidade, cs.ValorUnitario, cs.ValorTotal))
++            .ToListAsync(cancellationToken);
++
+         var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+         var dataProximoReajuste = SituacaoContratoCalculator.CalcularDataProximoReajuste(resultado.Contrato);
+         var diasAlertaEfetivo = SituacaoContratoCalculator.DiasAlertaEfetivo(resultado.Contrato, resultado.DiasAlertaReajusteContratoPadrao);
+@@ -36,9 +42,10 @@ public sealed class ObterContratoPorIdUseCase : IObterContratoPorIdUseCase
+ 
+         return new ContratoResponse(
+             resultado.Contrato.Id, resultado.Contrato.EmpresaId, resultado.Contrato.ClienteId, resultado.ClienteNome,
+-            resultado.Contrato.ServicoId, resultado.ServicoDescricao, resultado.Contrato.Descricao, resultado.Contrato.ValorAtual,
++            resultado.Contrato.Descricao, servicos, resultado.Contrato.ValorAtual,
+             resultado.Contrato.DataInicioContrato, resultado.Contrato.PeriodicidadeReajusteMeses, resultado.Contrato.IndiceReajuste,
+             resultado.Contrato.DataUltimoReajuste, resultado.Contrato.DiasAlertaOverride, diasAlertaEfetivo,
+-            dataProximoReajuste, situacao, resultado.Contrato.Ativo, resultado.Contrato.CreatedAt, resultado.Contrato.UpdatedAt);
++            dataProximoReajuste, situacao, resultado.Contrato.Status, resultado.Contrato.DataFim, resultado.Contrato.TipoCobranca,
++            resultado.Contrato.PermitirAlterarValorNaEmissao, resultado.Contrato.Ativo, resultado.Contrato.CreatedAt, resultado.Contrato.UpdatedAt);
+     }
+ }
+diff --git a/src/NfseSaaS.Infrastructure/UseCases/RegistrarReajusteUseCase.cs b/src/NfseSaaS.Infrastructure/UseCases/RegistrarReajusteUseCase.cs
+index bc5a900..0df23a8 100644
+--- a/src/NfseSaaS.Infrastructure/UseCases/RegistrarReajusteUseCase.cs
++++ b/src/NfseSaaS.Infrastructure/UseCases/RegistrarReajusteUseCase.cs
+@@ -53,6 +53,20 @@ public sealed class RegistrarReajusteUseCase : IRegistrarReajusteUseCase
+         contrato.ValorAtual = request.ValorNovo;
+         contrato.DataUltimoReajuste = request.DataReajuste;
+ 
++        // Fase 6: ValorAtual é a soma das linhas de ContratoServico —
++        // reajuste continua sendo um único percentual pro Contrato
++        // inteiro (fluxo já testado em produção), então escala cada
++        // linha pelo mesmo fator pra manter soma(linhas) == ValorAtual.
++        // Limitação conhecida: arredondamento por linha pode deixar a
++        // soma com centavos de diferença do total — aceitável pro MVP.
++        if (valorAnterior != 0)
++        {
++            var fator = request.ValorNovo / valorAnterior;
++            var linhas = await _db.ContratoServicos.Where(cs => cs.ContratoId == contratoId).ToListAsync(cancellationToken);
++            foreach (var linha in linhas)
++                linha.ValorUnitario = Math.Round(linha.ValorUnitario * fator, 2);
++        }
++
+         _db.ReajustesContrato.Add(reajuste);
+ 
+         _auditLogWriter.Registrar("RegistrarReajusteContrato", "Contrato", contrato.Id,
+diff --git a/src/NfseSaaS.Web/Views/Contratos/Index.cshtml b/src/NfseSaaS.Web/Views/Contratos/Index.cshtml
+index 5b1a4f7..7c60256 100644
+--- a/src/NfseSaaS.Web/Views/Contratos/Index.cshtml
++++ b/src/NfseSaaS.Web/Views/Contratos/Index.cshtml
+@@ -22,8 +22,10 @@
+                 <tr>
+                     <th>Cliente</th>
+                     <th>Descrição</th>
+-                    <th>Serviço</th>
++                    <th>Serviços</th>
+                     <th>Valor atual</th>
++                    <th>Cobrança</th>
++                    <th>Status</th>
+                     <th>Próximo reajuste</th>
+                     <th>Reajuste</th>
+                     <th>Situação</th>
+@@ -55,38 +57,71 @@
+                             <label class="form-label">Cliente</label>
+                             <select class="form-select" id="clienteId" required></select>
+                         </div>
+-                        <div class="mb-3">
+-                            <label class="form-label">Serviço (classificação fiscal)</label>
+-                            <select class="form-select" id="servicoId" required></select>
+-                        </div>
+                         <div class="mb-3">
+                             <label class="form-label">Descrição do contrato</label>
+                             <input type="text" class="form-control" id="descricao" maxlength="200" required placeholder="ex.: Manutenção sistema A" />
+                         </div>
+-                        <div class="mb-3">
+-                            <label class="form-label">Valor atual</label>
+-                            <input type="number" step="0.01" min="0.01" class="form-control" id="valorAtual" required />
+-                            <div class="form-text" id="nota-valor-nao-editavel"></div>
++
++                        <div class="mb-3" id="bloco-servicos">
++                            <label class="form-label">Serviços do contrato</label>
++                            <div id="linhas-servico-contrato"></div>
++                            <button type="button" class="btn btn-sm btn-outline-secondary mt-1" id="btn-add-linha-servico">
++                                <i class="bi bi-plus-lg"></i> Adicionar serviço
++                            </button>
++                            <div class="form-text" id="nota-servicos-nao-editaveis"></div>
++                            <div class="text-end mt-1"><strong>Total: <span id="valorAtualCalculado">R$ 0,00</span></strong></div>
+                         </div>
++
+                         <div class="row">
+                             <div class="col-md-6 mb-3">
+                                 <label class="form-label">Início do contrato</label>
+                                 <input type="date" class="form-control" id="dataInicioContrato" required />
+                             </div>
+                             <div class="col-md-6 mb-3">
+-                                <label class="form-label">Periodicidade de reajuste (meses)</label>
+-                                <input type="number" min="1" max="60" class="form-control" id="periodicidadeReajusteMeses" value="12" required />
++                                <label class="form-label">Fim do contrato</label>
++                                <input type="date" class="form-control" id="dataFim" placeholder="Deixe em branco pra prazo indeterminado" />
+                             </div>
+                         </div>
+                         <div class="row">
++                            <div class="col-md-6 mb-3">
++                                <label class="form-label">Tipo de cobrança</label>
++                                <select class="form-select" id="tipoCobranca">
++                                    <option value="0">Avulso</option>
++                                    <option value="1">Mensal</option>
++                                </select>
++                            </div>
++                            <div class="col-md-6 mb-3" id="bloco-status">
++                                <label class="form-label">Status</label>
++                                <select class="form-select" id="status">
++                                    <option value="0">Rascunho</option>
++                                    <option value="1">Ativo</option>
++                                    <option value="2">Suspenso</option>
++                                    <option value="3">Encerrado</option>
++                                    <option value="4">Cancelado</option>
++                                </select>
++                            </div>
++                        </div>
++                        <div class="row">
++                            <div class="col-md-6 mb-3">
++                                <label class="form-label">Periodicidade de reajuste (meses)</label>
++                                <input type="number" min="1" max="60" class="form-control" id="periodicidadeReajusteMeses" value="12" required />
++                            </div>
+                             <div class="col-md-6 mb-3">
+                                 <label class="form-label">Índice de reajuste</label>
+                                 <input type="text" class="form-control" id="indiceReajuste" maxlength="30" placeholder="ex.: IPCA, IGPM (opcional)" />
+                             </div>
++                        </div>
++                        <div class="row">
+                             <div class="col-md-6 mb-3">
+                                 <label class="form-label">Alertar com quantos dias de antecedência</label>
+                                 <input type="number" min="1" class="form-control" id="diasAlertaOverride" placeholder="Deixe em branco pra usar o padrão da empresa" />
+                             </div>
++                            <div class="col-md-6 mb-3 d-flex align-items-end">
++                                <div class="form-check">
++                                    <input type="checkbox" class="form-check-input" id="permitirAlterarValorNaEmissao" checked />
++                                    <label class="form-check-label" for="permitirAlterarValorNaEmissao">Permitir alterar valor na emissão em lote</label>
++                                </div>
++                            </div>
+                         </div>
+                     </div>
+                     <div class="modal-footer">
+diff --git a/src/NfseSaaS.Web/wwwroot/js/paginas/contratos.js b/src/NfseSaaS.Web/wwwroot/js/paginas/contratos.js
+index 24b15c3..3e7a7ce 100644
+--- a/src/NfseSaaS.Web/wwwroot/js/paginas/contratos.js
++++ b/src/NfseSaaS.Web/wwwroot/js/paginas/contratos.js
+@@ -8,18 +8,41 @@ const ROTULOS_SITUACAO_CONTRATO = {
+     2: { texto: 'Vencido', cor: 'danger' }
+ };
+ 
++// StatusContrato e TipoCobrancaContrato (Domain.Enums) serializados como
++// número pela API — Fase 6.
++const ROTULOS_STATUS_CONTRATO = {
++    0: { texto: 'Rascunho', cor: 'secondary' },
++    1: { texto: 'Ativo', cor: 'success' },
++    2: { texto: 'Suspenso', cor: 'warning' },
++    3: { texto: 'Encerrado', cor: 'dark' },
++    4: { texto: 'Cancelado', cor: 'danger' }
++};
++const ROTULOS_TIPO_COBRANCA = { 0: 'Avulso', 1: 'Mensal' };
++
+ let tabelaContratos;
+ let modalContrato;
+ let modalHistoricoReajuste;
+ let empresaAtualIdContratos;
+ let contratoAtualParaHistorico;
++let catalogoServicosContratos = []; // cache do combo, reaproveitado nas linhas dinâmicas
+ 
+ document.addEventListener('DOMContentLoaded', function () {
+     const colunas = [
+         { data: 'clienteNome' },
+         { data: 'descricao' },
+-        { data: 'servicoDescricao' },
++        {
++            data: 'servicos',
++            render: servicos => (servicos ?? []).map(s => s.servicoDescricao).join(', ') || '—'
++        },
+         { data: 'valorAtual', render: v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) },
++        { data: 'tipoCobranca', render: v => ROTULOS_TIPO_COBRANCA[v] ?? '—' },
++        {
++            data: 'status',
++            render: v => {
++                const r = ROTULOS_STATUS_CONTRATO[v] ?? { texto: 'Desconhecido', cor: 'secondary' };
++                return `<span class="badge text-bg-${r.cor}">${r.texto}</span>`;
++            }
++        },
+         { data: 'dataProximoReajuste', render: v => v ? new Date(v + 'T00:00:00').toLocaleDateString('pt-BR') : '—' },
+         {
+             data: 'situacao',
+@@ -70,6 +93,7 @@ document.addEventListener('DOMContentLoaded', function () {
+         document.getElementById('btn-novo-contrato').addEventListener('click', abrirModalNovoContrato);
+         document.getElementById('form-contrato').addEventListener('submit', salvarContrato);
+         document.getElementById('form-reajuste').addEventListener('submit', registrarReajuste);
++        document.getElementById('btn-add-linha-servico').addEventListener('click', () => adicionarLinhaServico());
+ 
+         document.getElementById('tabela-contratos').addEventListener('click', async function (e) {
+             const botao = e.target.closest('button');
+@@ -104,14 +128,19 @@ function limparFormularioContrato() {
+     document.getElementById('form-contrato').reset();
+     document.getElementById('contratoId').value = '';
+     document.getElementById('periodicidadeReajusteMeses').value = 12;
++    document.getElementById('linhas-servico-contrato').innerHTML = '';
+     ocultarErroFormulario('erro-contrato');
++    recalcularValorAtualCalculado();
+ 
+-    // Cliente e Valor só são editáveis no cadastro — depois de criado, o
+-    // valor muda exclusivamente pelo fluxo de Registrar reajuste (com
+-    // histórico), então nem faz sentido editar aqui.
++    // Cliente e as linhas de Serviço só são editáveis no cadastro —
++    // depois de criado, o valor muda exclusivamente pelo fluxo de
++    // Registrar reajuste (com histórico) e a composição de serviços fica
++    // pra um endpoint dedicado futuro (Fase 6, mesmo raciocínio já usado
++    // pro ValorAtual antes de existir linhas).
+     document.getElementById('clienteId').disabled = false;
+-    document.getElementById('valorAtual').disabled = false;
+-    document.getElementById('nota-valor-nao-editavel').textContent = '';
++    document.getElementById('bloco-servicos').classList.remove('d-none');
++    document.getElementById('bloco-status').classList.add('d-none');
++    document.getElementById('nota-servicos-nao-editaveis').textContent = '';
+ }
+ 
+ async function carregarOpcoesClienteEServico(clienteSelecionadoId) {
+@@ -124,8 +153,70 @@ async function carregarOpcoesClienteEServico(clienteSelecionadoId) {
+     selectCliente.innerHTML = clientes.items.map(c => `<option value="${c.id}">${c.nome} (${c.cpfCnpj})</option>`).join('');
+     if (clienteSelecionadoId) selectCliente.value = clienteSelecionadoId;
+ 
+-    const selectServico = document.getElementById('servicoId');
+-    selectServico.innerHTML = servicos.items.map(s => `<option value="${s.id}" data-valor="${s.valorPadrao}">${s.descricao}</option>`).join('');
++    catalogoServicosContratos = servicos.items;
++}
++
++// Fase 6: uma linha = 1 serviço do contrato (ServicoId + Quantidade +
++// ValorUnitario). Sugere o valorPadrao do Serviço escolhido como ponto
++// de partida — o usuário ainda ajusta pro valor real negociado.
++function adicionarLinhaServico(linha) {
++    const container = document.getElementById('linhas-servico-contrato');
++    const indice = container.children.length;
++
++    const opcoesServico = catalogoServicosContratos
++        .map(s => `<option value="${s.id}" data-valor="${s.valorPadrao}" ${linha?.servicoId === s.id ? 'selected' : ''}>${s.descricao}</option>`)
++        .join('');
++
++    const div = document.createElement('div');
++    div.className = 'row align-items-center mb-2 linha-servico-contrato';
++    div.innerHTML = `
++        <div class="col-6">
++            <select class="form-select form-select-sm campo-linha-servico">${opcoesServico}</select>
++        </div>
++        <div class="col-2">
++            <input type="number" step="0.01" min="0.01" class="form-control form-control-sm campo-linha-quantidade" value="${linha?.quantidade ?? 1}" placeholder="Qtd" />
++        </div>
++        <div class="col-3">
++            <input type="number" step="0.01" min="0.01" class="form-control form-control-sm campo-linha-valor" value="${linha?.valorUnitario ?? ''}" placeholder="Valor unit." />
++        </div>
++        <div class="col-1">
++            <button type="button" class="btn btn-sm btn-outline-danger btn-remover-linha-servico"><i class="bi bi-x-lg"></i></button>
++        </div>
++    `;
++    container.appendChild(div);
++
++    const selectServico = div.querySelector('.campo-linha-servico');
++    const campoValor = div.querySelector('.campo-linha-valor');
++    if (!linha) {
++        selectServico.onchange = () => {
++            const opcao = selectServico.selectedOptions[0];
++            if (opcao?.dataset.valor) campoValor.value = opcao.dataset.valor;
++            recalcularValorAtualCalculado();
++        };
++        selectServico.onchange();
++    }
++
++    div.querySelector('.btn-remover-linha-servico').addEventListener('click', () => {
++        div.remove();
++        recalcularValorAtualCalculado();
++    });
++    div.querySelector('.campo-linha-quantidade').addEventListener('input', recalcularValorAtualCalculado);
++    campoValor.addEventListener('input', recalcularValorAtualCalculado);
++
++    recalcularValorAtualCalculado();
++}
++
++function coletarLinhasServico() {
++    return Array.from(document.querySelectorAll('#linhas-servico-contrato .linha-servico-contrato')).map(div => ({
++        servicoId: div.querySelector('.campo-linha-servico').value,
++        quantidade: parseFloat(div.querySelector('.campo-linha-quantidade').value) || 0,
++        valorUnitario: parseFloat(div.querySelector('.campo-linha-valor').value) || 0
++    }));
++}
++
++function recalcularValorAtualCalculado() {
++    const total = coletarLinhasServico().reduce((soma, l) => soma + l.quantidade * l.valorUnitario, 0);
++    document.getElementById('valorAtualCalculado').textContent = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+ }
+ 
+ async function abrirModalNovoContrato() {
+@@ -135,17 +226,7 @@ async function abrirModalNovoContrato() {
+ 
+     try {
+         await carregarOpcoesClienteEServico();
+-
+-        // Sugestão de ponto de partida a partir do valor padrão do
+-        // Serviço escolhido — o usuário ainda ajusta pro valor real
+-        // negociado com o cliente antes de salvar.
+-        const selectServico = document.getElementById('servicoId');
+-        selectServico.onchange = function () {
+-            const opcao = selectServico.selectedOptions[0];
+-            if (opcao?.dataset.valor) document.getElementById('valorAtual').value = opcao.dataset.valor;
+-        };
+-        selectServico.onchange();
+-
++        adicionarLinhaServico();
+         modalContrato.show();
+     } catch (err) {
+         mostrarErro(err.message);
+@@ -161,18 +242,23 @@ async function abrirModalEditarContrato(id) {
+         await carregarOpcoesClienteEServico(contrato.clienteId);
+ 
+         document.getElementById('contratoId').value = contrato.id;
+-        document.getElementById('servicoId').value = contrato.servicoId;
+         document.getElementById('descricao').value = contrato.descricao;
+-        document.getElementById('valorAtual').value = contrato.valorAtual;
+         document.getElementById('dataInicioContrato').value = contrato.dataInicioContrato;
++        document.getElementById('dataFim').value = contrato.dataFim ?? '';
++        document.getElementById('tipoCobranca').value = contrato.tipoCobranca;
++        document.getElementById('status').value = contrato.status;
+         document.getElementById('periodicidadeReajusteMeses').value = contrato.periodicidadeReajusteMeses;
+         document.getElementById('indiceReajuste').value = contrato.indiceReajuste ?? '';
+         document.getElementById('diasAlertaOverride').value = contrato.diasAlertaOverride ?? '';
++        document.getElementById('permitirAlterarValorNaEmissao').checked = contrato.permitirAlterarValorNaEmissao;
++
++        (contrato.servicos ?? []).forEach(s => adicionarLinhaServico(s));
+ 
+         document.getElementById('clienteId').disabled = true;
+-        document.getElementById('valorAtual').disabled = true;
+-        document.getElementById('nota-valor-nao-editavel').textContent =
+-            'Cliente e valor não são editáveis aqui — o valor muda pelo fluxo de reajuste (mantém histórico).';
++        document.getElementById('bloco-servicos').classList.add('d-none');
++        document.getElementById('bloco-status').classList.remove('d-none');
++        document.getElementById('nota-servicos-nao-editaveis').textContent =
++            'Cliente e serviços não são editáveis aqui — o valor muda pelo fluxo de reajuste (mantém histórico).';
+ 
+         modalContrato.show();
+     } catch (err) {

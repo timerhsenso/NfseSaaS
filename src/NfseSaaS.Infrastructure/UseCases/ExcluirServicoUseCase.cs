@@ -14,10 +14,10 @@ namespace NfseSaaS.Infrastructure.UseCases;
 /// fiscal nunca mude retroativamente se o catálogo de Servico for editado
 /// ou excluído depois.
 ///
-/// JÁ NÃO é sempre seguro, porém: Contrato tem uma FK real pra Servico
-/// (herda a classificação fiscal de lá) — um Servico usado por algum
-/// Contrato não pode ser excluído sem antes o Contrato apontar pra outro
-/// Servico ou ser removido.
+/// JÁ NÃO é sempre seguro, porém: ContratoServico (Fase 6) tem uma FK
+/// real pra Servico (cada linha herda a classificação fiscal de lá) —
+/// um Servico usado por alguma linha de Contrato não pode ser excluído
+/// sem antes a linha apontar pra outro Servico ou ser removida.
 /// </summary>
 public sealed class ExcluirServicoUseCase : IExcluirServicoUseCase
 {
@@ -35,11 +35,11 @@ public sealed class ExcluirServicoUseCase : IExcluirServicoUseCase
         var servico = await _db.Servicos.FirstOrDefaultAsync(s => s.Id == id, cancellationToken)
             ?? throw new RecursoNaoEncontradoException($"Serviço {id} não encontrado.");
 
-        var totalContratos = await _db.Contratos.CountAsync(c => c.ServicoId == id, cancellationToken);
-        if (totalContratos > 0)
+        var totalLinhasContrato = await _db.ContratoServicos.CountAsync(cs => cs.ServicoId == id, cancellationToken);
+        if (totalLinhasContrato > 0)
         {
             throw new RegraNegocioException(
-                $"Não é possível excluir o Serviço: existem {totalContratos} contrato(s) vinculados. Desative o Serviço em vez de excluir.");
+                $"Não é possível excluir o Serviço: existem {totalLinhasContrato} linha(s) de contrato vinculadas. Desative o Serviço em vez de excluir.");
         }
 
         _db.Servicos.Remove(servico);

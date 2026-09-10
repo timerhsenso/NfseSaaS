@@ -26,8 +26,7 @@ public sealed class ListarContratosUseCase : IListarContratosUseCase
             from c in _db.Contratos.AsNoTracking()
             where c.EmpresaId == request.EmpresaId
             join cli in _db.Clientes.AsNoTracking() on c.ClienteId equals cli.Id
-            join srv in _db.Servicos.AsNoTracking() on c.ServicoId equals srv.Id
-            select new { Contrato = c, ClienteNome = cli.Nome, ServicoDescricao = srv.Descricao };
+            select new { Contrato = c, ClienteNome = cli.Nome };
 
         if (!request.IncluirInativos)
             query = query.Where(x => x.Contrato.Ativo);
@@ -53,18 +52,32 @@ public sealed class ListarContratosUseCase : IListarContratosUseCase
 
         var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
 
+        var contratoIdsDaPagina = itens.Select(x => x.Contrato.Id).ToList();
+        var linhasPorContrato = await (
+            from cs in _db.ContratoServicos.AsNoTracking()
+            where contratoIdsDaPagina.Contains(cs.ContratoId)
+            join srv in _db.Servicos.AsNoTracking() on cs.ServicoId equals srv.Id
+            select new { cs.ContratoId, Linha = cs, ServicoDescricao = srv.Descricao })
+            .ToListAsync(cancellationToken);
+
         var respostas = itens.Select(x =>
         {
             var dataProximoReajuste = SituacaoContratoCalculator.CalcularDataProximoReajuste(x.Contrato);
             var diasAlertaEfetivo = SituacaoContratoCalculator.DiasAlertaEfetivo(x.Contrato, empresa.DiasAlertaReajusteContratoPadrao);
             var situacao = SituacaoContratoCalculator.CalcularSituacao(x.Contrato, empresa.DiasAlertaReajusteContratoPadrao, hoje);
 
+            var servicos = linhasPorContrato
+                .Where(l => l.ContratoId == x.Contrato.Id)
+                .Select(l => new ContratoServicoResponse(l.Linha.Id, l.Linha.ServicoId, l.ServicoDescricao, l.Linha.Quantidade, l.Linha.ValorUnitario, l.Linha.ValorTotal))
+                .ToList();
+
             return new ContratoResponse(
                 x.Contrato.Id, x.Contrato.EmpresaId, x.Contrato.ClienteId, x.ClienteNome,
-                x.Contrato.ServicoId, x.ServicoDescricao, x.Contrato.Descricao, x.Contrato.ValorAtual,
+                x.Contrato.Descricao, servicos, x.Contrato.ValorAtual,
                 x.Contrato.DataInicioContrato, x.Contrato.PeriodicidadeReajusteMeses, x.Contrato.IndiceReajuste,
                 x.Contrato.DataUltimoReajuste, x.Contrato.DiasAlertaOverride, diasAlertaEfetivo,
-                dataProximoReajuste, situacao, x.Contrato.Ativo, x.Contrato.CreatedAt, x.Contrato.UpdatedAt);
+                dataProximoReajuste, situacao, x.Contrato.Status, x.Contrato.DataFim, x.Contrato.TipoCobranca,
+                x.Contrato.PermitirAlterarValorNaEmissao, x.Contrato.Ativo, x.Contrato.CreatedAt, x.Contrato.UpdatedAt);
         }).ToList();
 
         return new PagedResult<ContratoResponse>

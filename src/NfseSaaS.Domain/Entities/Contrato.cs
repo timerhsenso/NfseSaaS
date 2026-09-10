@@ -1,4 +1,5 @@
 using NfseSaaS.Domain.Common;
+using NfseSaaS.Domain.Enums;
 
 namespace NfseSaaS.Domain.Entities;
 
@@ -26,15 +27,30 @@ public sealed class Contrato : BaseEntity, ITenantEntity
 
     public Guid ClienteId { get; set; }
 
-    /// <summary>Serviço do catálogo de onde vem a classificação fiscal (código de tributação nacional, NBS) na hora de emitir a partir deste Contrato.</summary>
-    public Guid ServicoId { get; set; }
-
     /// <summary>Rótulo próprio do Contrato (ex.: "Manutenção sistema A") — pode ser igual ou diferente da descrição do Servico.</summary>
     public string Descricao { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Total agregado — soma de ContratoServico.ValorTotal (linhas, Fase
+    /// 6). Continua guardado aqui, em vez de sempre recalculado, pra não
+    /// quebrar o fluxo de Reajuste (histórico em cima de um valor único)
+    /// já testado em produção. Nunca editável fora do cadastro/Reajuste.
+    /// </summary>
     public decimal ValorAtual { get; set; }
 
     public DateOnly DataInicioContrato { get; set; }
+
+    /// <summary>Status comercial do Contrato — Fase 6. Persistido, diferente de SituacaoContrato (calculada, só prazo de reajuste).</summary>
+    public StatusContrato Status { get; set; } = StatusContrato.Ativo;
+
+    /// <summary>Fim de vigência — nulo enquanto o Contrato não tiver prazo definido ou por tempo indeterminado.</summary>
+    public DateOnly? DataFim { get; set; }
+
+    /// <summary>Fase 6 — usado pela Fase 7 (Nota Mensal) pra selecionar automaticamente quais Contratos entram no lote do mês.</summary>
+    public TipoCobrancaContrato TipoCobranca { get; set; } = TipoCobrancaContrato.Avulso;
+
+    /// <summary>Fase 6 — se true, a tela de emissão em lote (Fase 7) permite ajustar o valor da linha na hora de gerar a nota; se false, usa sempre o valor do Contrato sem edição.</summary>
+    public bool PermitirAlterarValorNaEmissao { get; set; } = true;
 
     /// <summary>De quantos em quantos meses o valor deveria ser reajustado. Padrão de mercado: 12.</summary>
     public int PeriodicidadeReajusteMeses { get; set; } = 12;
