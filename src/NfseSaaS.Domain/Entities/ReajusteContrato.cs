@@ -1,4 +1,5 @@
 using NfseSaaS.Domain.Common;
+using NfseSaaS.Domain.Enums;
 
 namespace NfseSaaS.Domain.Entities;
 
@@ -29,7 +30,7 @@ public sealed class ReajusteContrato : BaseEntity, ITenantEntity
     public decimal? PercentualAplicado { get; set; }
 
     /// <summary>Índice de referência usado NESTE reajuste específico — pode diferir do índice padrão do Contrato (ex.: negociação pontual num ano atípico).</summary>
-    public string? IndiceUsado { get; set; }
+    public IndiceReajusteContrato? IndiceUsado { get; set; }
 
     public string? Observacao { get; set; }
 }

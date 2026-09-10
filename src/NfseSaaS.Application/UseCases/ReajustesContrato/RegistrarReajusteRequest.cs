@@ -1,7 +1,9 @@
+using NfseSaaS.Domain.Enums;
+
 namespace NfseSaaS.Application.UseCases.ReajustesContrato;
 
 public sealed record RegistrarReajusteRequest(
     DateOnly DataReajuste,
     decimal ValorNovo,
-    string? IndiceUsado,
+    IndiceReajusteContrato? IndiceUsado,
     string? Observacao);

@@ -15,8 +15,9 @@ public sealed record CadastrarContratoRequest(
     IReadOnlyList<ContratoServicoRequest> Servicos,
     DateOnly DataInicioContrato,
     int PeriodicidadeReajusteMeses,
-    string? IndiceReajuste,
+    IndiceReajusteContrato? IndiceReajuste,
     int? DiasAlertaOverride,
+    string? Observacao,
     DateOnly? DataFim,
     TipoCobrancaContrato TipoCobranca,
     bool PermitirAlterarValorNaEmissao);

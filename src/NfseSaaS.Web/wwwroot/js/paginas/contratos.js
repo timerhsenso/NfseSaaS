@@ -19,6 +19,10 @@ const ROTULOS_STATUS_CONTRATO = {
 };
 const ROTULOS_TIPO_COBRANCA = { 0: 'Avulso', 1: 'Mensal' };
 
+// IndiceReajusteContrato (Domain.Enums) serializado como número — Fase 6
+// parte 2 (virou enum a pedido do usuário, era texto livre).
+const ROTULOS_INDICE_REAJUSTE = { 0: 'IPCA', 1: 'IGPM', 2: 'INCC', 3: 'INPC', 4: 'SELIC', 5: 'CDI', 99: 'Outro' };
+
 let tabelaContratos;
 let modalContrato;
 let modalHistoricoReajuste;
@@ -94,6 +98,17 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('form-contrato').addEventListener('submit', salvarContrato);
         document.getElementById('form-reajuste').addEventListener('submit', registrarReajuste);
         document.getElementById('btn-add-linha-servico').addEventListener('click', () => adicionarLinhaServico());
+        document.getElementById('btn-upload-documento').addEventListener('click', enviarDocumentoContrato);
+
+        document.getElementById('tabs-contrato').addEventListener('click', function (e) {
+            const botao = e.target.closest('button[data-tab-alvo]');
+            if (botao) trocarAbaContrato(botao.dataset.tabAlvo);
+        });
+
+        document.getElementById('lista-documentos-contrato').addEventListener('click', async function (e) {
+            const botao = e.target.closest('button.btn-excluir-documento');
+            if (botao) await excluirDocumentoContrato(botao.dataset.id);
+        });
 
         document.getElementById('tabela-contratos').addEventListener('click', async function (e) {
             const botao = e.target.closest('button');
@@ -124,13 +139,26 @@ async function carregarContratos() {
     }
 }
 
+function trocarAbaContrato(alvo) {
+    document.querySelectorAll('#tabs-contrato .nav-link').forEach(b => b.classList.toggle('active', b.dataset.tabAlvo === alvo));
+    document.querySelectorAll('.tab-conteudo-contrato').forEach(p => p.classList.toggle('d-none', p.dataset.tab !== alvo));
+}
+
 function limparFormularioContrato() {
     document.getElementById('form-contrato').reset();
     document.getElementById('contratoId').value = '';
     document.getElementById('periodicidadeReajusteMeses').value = 12;
     document.getElementById('linhas-servico-contrato').innerHTML = '';
+    document.getElementById('observacao').value = '';
     ocultarErroFormulario('erro-contrato');
     recalcularValorAtualCalculado();
+    trocarAbaContrato('tab-dados');
+
+    // Documentos e Histórico só existem depois que o Contrato tem Id.
+    document.getElementById('documentos-indisponivel').classList.remove('d-none');
+    document.getElementById('documentos-disponivel').classList.add('d-none');
+    document.getElementById('historico-indisponivel').classList.remove('d-none');
+    document.getElementById('tabela-historico-contrato').classList.add('d-none');
 
     // Cliente e as linhas de Serviço só são editáveis no cadastro —
     // depois de criado, o valor muda exclusivamente pelo fluxo de
@@ -247,6 +275,12 @@ function atualizarOpcoesServicosDisponiveis() {
             }
         }
     });
+
+    // Não deixa clicar em "Adicionar serviço" se todos os serviços ativos
+    // do catálogo já estão em uso em alguma linha — não haveria opção
+    // disponível pra escolher na linha nova.
+    const btnAdd = document.getElementById('btn-add-linha-servico');
+    btnAdd.disabled = catalogoServicosContratos.length > 0 && linhas.length >= catalogoServicosContratos.length;
 }
 
 function coletarLinhasServico() {
@@ -300,6 +334,7 @@ async function abrirModalEditarContrato(id) {
         document.getElementById('indiceReajuste').value = contrato.indiceReajuste ?? '';
         document.getElementById('diasAlertaOverride').value = contrato.diasAlertaOverride ?? '';
         document.getElementById('permitirAlterarValorNaEmissao').checked = contrato.permitirAlterarValorNaEmissao;
+        document.getElementById('observacao').value = contrato.observacao ?? '';
 
         (contrato.servicos ?? []).forEach(s => adicionarLinhaServico(s));
 
@@ -309,7 +344,110 @@ async function abrirModalEditarContrato(id) {
         document.getElementById('nota-servicos-nao-editaveis').textContent =
             'Cliente e serviços não são editáveis aqui — o valor muda pelo fluxo de reajuste (mantém histórico).';
 
+        document.getElementById('documentos-indisponivel').classList.add('d-none');
+        document.getElementById('documentos-disponivel').classList.remove('d-none');
+        document.getElementById('historico-indisponivel').classList.add('d-none');
+        document.getElementById('tabela-historico-contrato').classList.remove('d-none');
+        await Promise.all([carregarDocumentosContrato(id), carregarHistoricoContrato(id)]);
+
         modalContrato.show();
+    } catch (err) {
+        mostrarErro(err.message);
+    }
+}
+
+function formatarTamanhoArquivo(bytes) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+async function carregarDocumentosContrato(contratoId) {
+    const corpo = document.getElementById('lista-documentos-contrato');
+    try {
+        const documentos = await apiFetch(`/api/contratos/${contratoId}/documentos`);
+
+        if (documentos.length === 0) {
+            corpo.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Nenhum documento anexado ainda.</td></tr>';
+            return;
+        }
+
+        corpo.innerHTML = documentos.map(d => `
+            <tr>
+                <td><a href="/api/contratos/documentos/${d.id}/download" target="_blank">${d.nomeOriginal}</a></td>
+                <td>${formatarTamanhoArquivo(d.tamanhoBytes)}</td>
+                <td>${new Date(d.createdAt).toLocaleDateString('pt-BR')}</td>
+                <td><button type="button" class="btn btn-sm btn-outline-danger btn-excluir-documento" data-id="${d.id}"><i class="bi bi-trash"></i></button></td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        mostrarErro(err.message);
+    }
+}
+
+async function enviarDocumentoContrato() {
+    const contratoId = document.getElementById('contratoId').value;
+    const campoArquivo = document.getElementById('documento-arquivo');
+    if (!contratoId || !campoArquivo.files[0]) return;
+
+    const formData = new FormData();
+    formData.append('arquivo', campoArquivo.files[0]);
+
+    try {
+        // Upload multipart — não usa apiFetch (que sempre manda
+        // Content-Type: application/json); o navegador define o
+        // boundary do multipart/form-data automaticamente. Mesmo padrão
+        // já usado em empresas.js pro upload de certificado.
+        const resposta = await fetch(`/api/contratos/${contratoId}/documentos`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: formData
+        });
+
+        if (!resposta.ok) {
+            const corpo = await resposta.json().catch(() => null);
+            throw new Error(extrairMensagemDeErro(corpo) ?? `Erro ${resposta.status} ao anexar o documento.`);
+        }
+
+        campoArquivo.value = '';
+        await carregarDocumentosContrato(contratoId);
+        mostrarToast('Documento anexado.');
+    } catch (err) {
+        mostrarErro(err.message);
+    }
+}
+
+async function excluirDocumentoContrato(documentoId) {
+    const confirmado = await confirmarAcao('Excluir este documento?', { titulo: 'Excluir documento', textoBotao: 'Excluir', variante: 'perigo' });
+    if (!confirmado) return;
+
+    const contratoId = document.getElementById('contratoId').value;
+    try {
+        await apiFetch(`/api/contratos/documentos/${documentoId}`, { method: 'DELETE' });
+        await carregarDocumentosContrato(contratoId);
+        mostrarToast('Documento excluído.');
+    } catch (err) {
+        mostrarErro(err.message);
+    }
+}
+
+async function carregarHistoricoContrato(contratoId) {
+    const corpo = document.querySelector('#tabela-historico-contrato tbody');
+    try {
+        const itens = await apiFetch(`/api/contratos/${contratoId}/historico`);
+
+        if (itens.length === 0) {
+            corpo.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Nenhum evento registrado ainda.</td></tr>';
+            return;
+        }
+
+        corpo.innerHTML = itens.map(i => `
+            <tr>
+                <td>${new Date(i.data).toLocaleString('pt-BR')}</td>
+                <td>${i.origem}</td>
+                <td>${i.descricao}</td>
+            </tr>
+        `).join('');
     } catch (err) {
         mostrarErro(err.message);
     }
@@ -320,8 +458,10 @@ async function salvarContrato(e) {
     ocultarErroFormulario('erro-contrato');
 
     const id = document.getElementById('contratoId').value;
-    const indiceReajuste = document.getElementById('indiceReajuste').value.trim();
+    const valorIndice = document.getElementById('indiceReajuste').value;
+    const indiceReajuste = valorIndice !== '' ? parseInt(valorIndice, 10) : null;
     const diasAlertaOverride = document.getElementById('diasAlertaOverride').value;
+    const observacao = document.getElementById('observacao').value.trim() || null;
 
     const linhasServico = coletarLinhasServico();
     if (!id) {
@@ -338,8 +478,9 @@ async function salvarContrato(e) {
                 descricao: document.getElementById('descricao').value,
                 dataInicioContrato: document.getElementById('dataInicioContrato').value,
                 periodicidadeReajusteMeses: parseInt(document.getElementById('periodicidadeReajusteMeses').value, 10),
-                indiceReajuste: indiceReajuste || null,
+                indiceReajuste: indiceReajuste,
                 diasAlertaOverride: diasAlertaOverride ? parseInt(diasAlertaOverride, 10) : null,
+                observacao: observacao,
                 status: parseInt(document.getElementById('status').value, 10),
                 dataFim: document.getElementById('dataFim').value || null,
                 tipoCobranca: parseInt(document.getElementById('tipoCobranca').value, 10),
@@ -354,8 +495,9 @@ async function salvarContrato(e) {
                 servicos: linhasServico,
                 dataInicioContrato: document.getElementById('dataInicioContrato').value,
                 periodicidadeReajusteMeses: parseInt(document.getElementById('periodicidadeReajusteMeses').value, 10),
-                indiceReajuste: indiceReajuste || null,
+                indiceReajuste: indiceReajuste,
                 diasAlertaOverride: diasAlertaOverride ? parseInt(diasAlertaOverride, 10) : null,
+                observacao: observacao,
                 dataFim: document.getElementById('dataFim').value || null,
                 tipoCobranca: parseInt(document.getElementById('tipoCobranca').value, 10),
                 permitirAlterarValorNaEmissao: document.getElementById('permitirAlterarValorNaEmissao').checked
@@ -449,7 +591,7 @@ async function carregarHistorico(contratoId) {
                 <td>${Number(r.valorAnterior).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                 <td>${Number(r.valorNovo).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                 <td>${r.percentualAplicado != null ? r.percentualAplicado.toFixed(2) + '%' : '—'}</td>
-                <td>${r.indiceUsado ?? '—'}</td>
+                <td>${r.indiceUsado != null ? (ROTULOS_INDICE_REAJUSTE[r.indiceUsado] ?? '—') : '—'}</td>
                 <td>${r.observacao ?? '—'}</td>
             </tr>
         `).join('');
@@ -463,10 +605,11 @@ async function registrarReajuste(e) {
     ocultarErroFormulario('erro-reajuste');
 
     const contratoId = document.getElementById('reajuste-contratoId').value;
+    const valorIndice = document.getElementById('reajuste-indiceUsado').value;
     const payload = {
         dataReajuste: document.getElementById('reajuste-dataReajuste').value,
         valorNovo: parseFloat(document.getElementById('reajuste-valorNovo').value),
-        indiceUsado: document.getElementById('reajuste-indiceUsado').value.trim() || null,
+        indiceUsado: valorIndice !== '' ? parseInt(valorIndice, 10) : null,
         observacao: document.getElementById('reajuste-observacao').value.trim() || null
     };
 

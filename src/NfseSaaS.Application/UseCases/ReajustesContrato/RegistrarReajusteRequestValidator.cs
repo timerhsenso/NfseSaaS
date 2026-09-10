@@ -8,7 +8,7 @@ public sealed class RegistrarReajusteRequestValidator : AbstractValidator<Regist
     {
         RuleFor(x => x.DataReajuste).NotEqual(default(DateOnly)).WithMessage("DataReajuste é obrigatória.");
         RuleFor(x => x.ValorNovo).GreaterThan(0);
-        RuleFor(x => x.IndiceUsado).MaximumLength(30);
+        RuleFor(x => x.IndiceUsado).IsInEnum().When(x => x.IndiceUsado.HasValue);
         RuleFor(x => x.Observacao).MaximumLength(500);
     }
 }

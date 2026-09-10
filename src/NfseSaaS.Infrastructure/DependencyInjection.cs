@@ -9,6 +9,9 @@ using NfseSaaS.Application.UseCases.AuditLogs;
 using NfseSaaS.Application.UseCases.Certificados;
 using NfseSaaS.Application.UseCases.Clientes;
 using NfseSaaS.Application.UseCases.Contratos;
+using NfseSaaS.Application.UseCases.DocumentosContrato;
+using NfseSaaS.Application.UseCases.HistoricoContrato;
+using NfseSaaS.Infrastructure.Documents;
 using NfseSaaS.Application.UseCases.Empresas;
 using NfseSaaS.Application.UseCases.Exportacoes;
 using NfseSaaS.Application.UseCases.Consultas;
@@ -105,6 +108,7 @@ public static class DependencyInjection
         });
 
         AddCertificateStorage(services, configuration);
+        AddDocumentStorage(services, configuration);
 
         // Casos de uso: implementações reais aqui (não em Application),
         // porque tocam EF Core diretamente — sem repository genérico nem
@@ -144,6 +148,13 @@ public static class DependencyInjection
 
         services.AddScoped<IRegistrarReajusteUseCase, RegistrarReajusteUseCase>();
         services.AddScoped<IListarReajustesUseCase, ListarReajustesUseCase>();
+
+        services.AddScoped<IUploadDocumentoContratoUseCase, UploadDocumentoContratoUseCase>();
+        services.AddScoped<IListarDocumentosContratoUseCase, ListarDocumentosContratoUseCase>();
+        services.AddScoped<IExcluirDocumentoContratoUseCase, ExcluirDocumentoContratoUseCase>();
+        services.AddScoped<IObterDocumentoContratoParaDownloadUseCase, ObterDocumentoContratoParaDownloadUseCase>();
+
+        services.AddScoped<IObterHistoricoContratoUseCase, ObterHistoricoContratoUseCase>();
 
         services.AddScoped<IEmitirNfseUseCase, EmitirNfseUseCase>();
         services.AddScoped<IListarNfseUseCase, ListarNfseUseCase>();
@@ -198,5 +209,12 @@ public static class DependencyInjection
 
         services.AddScoped<CertificateFileStore>();
         services.AddScoped<ICertificateProvider, FileCertificateProvider>();
+    }
+
+    /// <summary>Raiz de disco pros documentos de Contrato — separada da raiz de certificados, sem criptografia (decisão do usuário).</summary>
+    private static void AddDocumentStorage(IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<DocumentStorageOptions>(configuration.GetSection(DocumentStorageOptions.SectionName));
+        services.AddScoped<ContratoDocumentoFileStore>();
     }
 }

@@ -42,7 +42,7 @@
 @if (podeEditar)
 {
     <div class="modal fade" id="modal-contrato" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <form id="form-contrato">
                     <div class="modal-header">
@@ -53,90 +53,145 @@
                         <div id="erro-contrato" class="alert alert-danger d-none"></div>
                         <input type="hidden" id="contratoId" />
 
-                        <div class="mb-3">
-                            <label class="form-label">Cliente</label>
-                            <select class="form-select" id="clienteId" required></select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Descrição do contrato</label>
-                            <input type="text" class="form-control" id="descricao" maxlength="200" required placeholder="ex.: Manutenção sistema A" />
-                        </div>
+                        <ul class="nav nav-tabs mb-3" id="tabs-contrato">
+                            <li class="nav-item"><button type="button" class="nav-link active" data-tab-alvo="tab-dados">Dados do contrato</button></li>
+                            <li class="nav-item"><button type="button" class="nav-link" data-tab-alvo="tab-servico">Serviço</button></li>
+                            <li class="nav-item"><button type="button" class="nav-link" data-tab-alvo="tab-cobranca">Cobrança</button></li>
+                            <li class="nav-item"><button type="button" class="nav-link" data-tab-alvo="tab-documentos">Documentos</button></li>
+                            <li class="nav-item"><button type="button" class="nav-link" data-tab-alvo="tab-historico">Histórico</button></li>
+                        </ul>
 
-                        <div class="mb-3" id="bloco-servicos">
-                            <label class="form-label">Serviços do contrato</label>
-                            <table class="table table-sm align-middle mb-1">
-                                <thead>
-                                    <tr>
-                                        <th>Serviço</th>
-                                        <th style="width:70px">Qtd</th>
-                                        <th style="width:110px">Valor unit.</th>
-                                        <th style="width:110px" class="text-end">Total</th>
-                                        <th style="width:36px"></th>
-                                    </tr>
-                                </thead>
-                            </table>
-                            <div style="max-height: 210px; overflow-y: auto;">
-                                <table class="table table-sm align-middle mb-0">
-                                    <tbody id="linhas-servico-contrato"></tbody>
-                                </table>
+                        <div class="tab-conteudo-contrato" data-tab="tab-dados">
+                            <div class="mb-3">
+                                <label class="form-label">Cliente</label>
+                                <select class="form-select" id="clienteId" required></select>
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline-secondary mt-1" id="btn-add-linha-servico">
-                                <i class="bi bi-plus-lg"></i> Adicionar serviço
-                            </button>
-                            <div class="form-text" id="nota-servicos-nao-editaveis"></div>
-                            <div class="text-end mt-1"><strong>Total: <span id="valorAtualCalculado">R$ 0,00</span></strong></div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Início do contrato</label>
-                                <input type="date" class="form-control" id="dataInicioContrato" required />
+                            <div class="mb-3">
+                                <label class="form-label">Descrição do contrato</label>
+                                <input type="text" class="form-control" id="descricao" maxlength="200" required placeholder="ex.: Manutenção sistema A" />
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Fim do contrato</label>
-                                <input type="date" class="form-control" id="dataFim" placeholder="Deixe em branco pra prazo indeterminado" />
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Tipo de cobrança</label>
-                                <select class="form-select" id="tipoCobranca">
-                                    <option value="0">Avulso</option>
-                                    <option value="1">Mensal</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6 mb-3" id="bloco-status">
-                                <label class="form-label">Status</label>
-                                <select class="form-select" id="status">
-                                    <option value="0">Rascunho</option>
-                                    <option value="1">Ativo</option>
-                                    <option value="2">Suspenso</option>
-                                    <option value="3">Encerrado</option>
-                                    <option value="4">Cancelado</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Periodicidade de reajuste (meses)</label>
-                                <input type="number" min="1" max="60" class="form-control" id="periodicidadeReajusteMeses" value="12" required />
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Índice de reajuste</label>
-                                <input type="text" class="form-control" id="indiceReajuste" maxlength="30" placeholder="ex.: IPCA, IGPM (opcional)" />
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Alertar com quantos dias de antecedência</label>
-                                <input type="number" min="1" class="form-control" id="diasAlertaOverride" placeholder="Deixe em branco pra usar o padrão da empresa" />
-                            </div>
-                            <div class="col-md-6 mb-3 d-flex align-items-end">
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" id="permitirAlterarValorNaEmissao" checked />
-                                    <label class="form-check-label" for="permitirAlterarValorNaEmissao">Permitir alterar valor na emissão em lote</label>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Início do contrato</label>
+                                    <input type="date" class="form-control" id="dataInicioContrato" required />
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Fim do contrato</label>
+                                    <input type="date" class="form-control" id="dataFim" placeholder="Deixe em branco pra prazo indeterminado" />
                                 </div>
                             </div>
+                            <div class="mb-3">
+                                <label class="form-label">Observação</label>
+                                <textarea class="form-control" id="observacao" maxlength="2000" rows="3" placeholder="opcional"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="tab-conteudo-contrato d-none" data-tab="tab-servico">
+                            <div id="bloco-servicos">
+                                <table class="table table-sm align-middle mb-1">
+                                    <thead>
+                                        <tr>
+                                            <th>Serviço</th>
+                                            <th style="width:70px">Qtd</th>
+                                            <th style="width:110px">Valor unit.</th>
+                                            <th style="width:110px" class="text-end">Total</th>
+                                            <th style="width:36px"></th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                                <div style="max-height: 210px; overflow-y: auto;">
+                                    <table class="table table-sm align-middle mb-0">
+                                        <tbody id="linhas-servico-contrato"></tbody>
+                                    </table>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary mt-1" id="btn-add-linha-servico">
+                                    <i class="bi bi-plus-lg"></i> Adicionar serviço
+                                </button>
+                                <div class="form-text" id="nota-servicos-nao-editaveis"></div>
+                                <div class="text-end mt-1"><strong>Total: <span id="valorAtualCalculado">R$ 0,00</span></strong></div>
+                            </div>
+                        </div>
+
+                        <div class="tab-conteudo-contrato d-none" data-tab="tab-cobranca">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Tipo de cobrança</label>
+                                    <select class="form-select" id="tipoCobranca">
+                                        <option value="0">Avulso</option>
+                                        <option value="1">Mensal</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3" id="bloco-status">
+                                    <label class="form-label">Status</label>
+                                    <select class="form-select" id="status">
+                                        <option value="0">Rascunho</option>
+                                        <option value="1">Ativo</option>
+                                        <option value="2">Suspenso</option>
+                                        <option value="3">Encerrado</option>
+                                        <option value="4">Cancelado</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Periodicidade de reajuste (meses)</label>
+                                    <input type="number" min="1" max="60" class="form-control" id="periodicidadeReajusteMeses" value="12" required />
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Índice de reajuste</label>
+                                    <select class="form-select" id="indiceReajuste">
+                                        <option value="">Não definido</option>
+                                        <option value="0">IPCA</option>
+                                        <option value="1">IGPM</option>
+                                        <option value="2">INCC</option>
+                                        <option value="3">INPC</option>
+                                        <option value="4">SELIC</option>
+                                        <option value="5">CDI</option>
+                                        <option value="99">Outro</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Alertar com quantos dias de antecedência</label>
+                                    <input type="number" min="1" class="form-control" id="diasAlertaOverride" placeholder="Deixe em branco pra usar o padrão da empresa" />
+                                </div>
+                                <div class="col-md-6 mb-3 d-flex align-items-end">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="permitirAlterarValorNaEmissao" checked />
+                                        <label class="form-check-label" for="permitirAlterarValorNaEmissao">Permitir alterar valor na emissão em lote</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-conteudo-contrato d-none" data-tab="tab-documentos">
+                            <div id="documentos-indisponivel" class="text-muted small">Salve o contrato primeiro pra poder anexar documentos.</div>
+                            <div id="documentos-disponivel" class="d-none">
+                                <div class="input-group mb-2">
+                                    <input type="file" class="form-control" id="documento-arquivo" accept=".pdf,.doc,.docx" />
+                                    <button type="button" class="btn btn-outline-secondary" id="btn-upload-documento">
+                                        <i class="bi bi-upload"></i> Anexar
+                                    </button>
+                                </div>
+                                <div class="form-text">.pdf, .doc ou .docx, até 10 MB.</div>
+                                <table class="table table-sm table-striped mt-2">
+                                    <thead>
+                                        <tr><th>Arquivo</th><th>Tamanho</th><th>Enviado em</th><th style="width:80px"></th></tr>
+                                    </thead>
+                                    <tbody id="lista-documentos-contrato"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="tab-conteudo-contrato d-none" data-tab="tab-historico">
+                            <div id="historico-indisponivel" class="text-muted small">O histórico aparece depois que o contrato é salvo.</div>
+                            <table class="table table-sm table-striped d-none" id="tabela-historico-contrato">
+                                <thead>
+                                    <tr><th>Data</th><th>Origem</th><th>Descrição</th></tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -178,7 +233,16 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Índice usado</label>
-                                <input type="text" class="form-control" id="reajuste-indiceUsado" maxlength="30" placeholder="opcional" />
+                                <select class="form-select" id="reajuste-indiceUsado">
+                                    <option value="">Não definido</option>
+                                    <option value="0">IPCA</option>
+                                    <option value="1">IGPM</option>
+                                    <option value="2">INCC</option>
+                                    <option value="3">INPC</option>
+                                    <option value="4">SELIC</option>
+                                    <option value="5">CDI</option>
+                                    <option value="99">Outro</option>
+                                </select>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Observação</label>

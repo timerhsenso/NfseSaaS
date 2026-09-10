@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NfseSaaS.Application.Authorization;
 using NfseSaaS.Application.UseCases.Contratos;
+using NfseSaaS.Application.UseCases.DocumentosContrato;
+using NfseSaaS.Application.UseCases.HistoricoContrato;
 using NfseSaaS.Application.UseCases.ReajustesContrato;
 
 namespace NfseSaaS.Web.Controllers.Api;
@@ -20,6 +22,11 @@ public sealed class ContratosController : ControllerBase
     private readonly IExcluirContratoUseCase _excluirContrato;
     private readonly IRegistrarReajusteUseCase _registrarReajuste;
     private readonly IListarReajustesUseCase _listarReajustes;
+    private readonly IUploadDocumentoContratoUseCase _uploadDocumento;
+    private readonly IListarDocumentosContratoUseCase _listarDocumentos;
+    private readonly IExcluirDocumentoContratoUseCase _excluirDocumento;
+    private readonly IObterDocumentoContratoParaDownloadUseCase _obterDocumentoParaDownload;
+    private readonly IObterHistoricoContratoUseCase _obterHistorico;
 
     public ContratosController(
         ICadastrarContratoUseCase cadastrarContrato,
@@ -30,7 +37,12 @@ public sealed class ContratosController : ControllerBase
         IReativarContratoUseCase reativarContrato,
         IExcluirContratoUseCase excluirContrato,
         IRegistrarReajusteUseCase registrarReajuste,
-        IListarReajustesUseCase listarReajustes)
+        IListarReajustesUseCase listarReajustes,
+        IUploadDocumentoContratoUseCase uploadDocumento,
+        IListarDocumentosContratoUseCase listarDocumentos,
+        IExcluirDocumentoContratoUseCase excluirDocumento,
+        IObterDocumentoContratoParaDownloadUseCase obterDocumentoParaDownload,
+        IObterHistoricoContratoUseCase obterHistorico)
     {
         _cadastrarContrato = cadastrarContrato;
         _listarContratos = listarContratos;
@@ -41,6 +53,11 @@ public sealed class ContratosController : ControllerBase
         _excluirContrato = excluirContrato;
         _registrarReajuste = registrarReajuste;
         _listarReajustes = listarReajustes;
+        _uploadDocumento = uploadDocumento;
+        _listarDocumentos = listarDocumentos;
+        _excluirDocumento = excluirDocumento;
+        _obterDocumentoParaDownload = obterDocumentoParaDownload;
+        _obterHistorico = obterHistorico;
     }
 
     [Authorize(Roles = Papeis.Administrador)]
@@ -121,5 +138,48 @@ public sealed class ContratosController : ControllerBase
     {
         var reajustes = await _listarReajustes.ExecutarAsync(id, cancellationToken);
         return Ok(reajustes);
+    }
+
+    /// <summary>multipart/form-data: campo "arquivo" (.pdf/.doc/.docx) — mesmo padrão do upload de certificado (EmpresasController).</summary>
+    [Authorize(Roles = Papeis.Administrador)]
+    [HttpPost("{id:guid}/documentos")]
+    [RequestSizeLimit(10 * 1024 * 1024)] // 10 MB por arquivo
+    public async Task<IActionResult> UploadDocumento(Guid id, IFormFile arquivo, CancellationToken cancellationToken)
+    {
+        using var memoryStream = new MemoryStream();
+        await arquivo.CopyToAsync(memoryStream, cancellationToken);
+
+        var documento = await _uploadDocumento.ExecutarAsync(id, arquivo.FileName, memoryStream.ToArray(), cancellationToken);
+        return Ok(documento);
+    }
+
+    [HttpGet("{id:guid}/documentos")]
+    public async Task<IActionResult> ListarDocumentos(Guid id, CancellationToken cancellationToken)
+    {
+        var documentos = await _listarDocumentos.ExecutarAsync(id, cancellationToken);
+        return Ok(documentos);
+    }
+
+    [HttpGet("documentos/{documentoId:guid}/download")]
+    public async Task<IActionResult> BaixarDocumento(Guid documentoId, CancellationToken cancellationToken)
+    {
+        var arquivo = await _obterDocumentoParaDownload.ExecutarAsync(documentoId, cancellationToken);
+        return File(arquivo.Conteudo, arquivo.ContentType, arquivo.NomeOriginal);
+    }
+
+    [Authorize(Roles = Papeis.Administrador)]
+    [HttpDelete("documentos/{documentoId:guid}")]
+    public async Task<IActionResult> ExcluirDocumento(Guid documentoId, CancellationToken cancellationToken)
+    {
+        await _excluirDocumento.ExecutarAsync(documentoId, cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>Timeline combinando AuditLog + ReajusteContrato deste Contrato (ver ObterHistoricoContratoUseCase).</summary>
+    [HttpGet("{id:guid}/historico")]
+    public async Task<IActionResult> ObterHistorico(Guid id, CancellationToken cancellationToken)
+    {
+        var historico = await _obterHistorico.ExecutarAsync(id, cancellationToken);
+        return Ok(historico);
     }
 }

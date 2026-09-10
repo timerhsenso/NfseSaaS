@@ -44,7 +44,7 @@ public sealed class ObterContratoPorIdUseCase : IObterContratoPorIdUseCase
             resultado.Contrato.Id, resultado.Contrato.EmpresaId, resultado.Contrato.ClienteId, resultado.ClienteNome,
             resultado.Contrato.Descricao, servicos, resultado.Contrato.ValorAtual,
             resultado.Contrato.DataInicioContrato, resultado.Contrato.PeriodicidadeReajusteMeses, resultado.Contrato.IndiceReajuste,
-            resultado.Contrato.DataUltimoReajuste, resultado.Contrato.DiasAlertaOverride, diasAlertaEfetivo,
+            resultado.Contrato.DataUltimoReajuste, resultado.Contrato.DiasAlertaOverride, diasAlertaEfetivo, resultado.Contrato.Observacao,
             dataProximoReajuste, situacao, resultado.Contrato.Status, resultado.Contrato.DataFim, resultado.Contrato.TipoCobranca,
             resultado.Contrato.PermitirAlterarValorNaEmissao, resultado.Contrato.Ativo, resultado.Contrato.CreatedAt, resultado.Contrato.UpdatedAt);
     }

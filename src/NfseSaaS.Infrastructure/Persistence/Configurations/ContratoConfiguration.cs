@@ -21,7 +21,10 @@ public sealed class ContratoConfiguration : IEntityTypeConfiguration<Contrato>
             .HasColumnType("numeric(18,2)");
 
         builder.Property(c => c.IndiceReajuste)
-            .HasMaxLength(30);
+            .HasConversion<int?>();
+
+        builder.Property(c => c.Observacao)
+            .HasMaxLength(2000);
 
         // HasDefaultValue nos dois — mesmo cuidado que faltou em
         // Nfse.TipoAmbiente (bug real: sem default, linhas antigas

@@ -1,3 +1,5 @@
+using NfseSaaS.Domain.Enums;
+
 namespace NfseSaaS.Application.UseCases.ReajustesContrato;
 
 public sealed record ReajusteContratoResponse(
@@ -7,6 +9,6 @@ public sealed record ReajusteContratoResponse(
     decimal ValorAnterior,
     decimal ValorNovo,
     decimal? PercentualAplicado,
-    string? IndiceUsado,
+    IndiceReajusteContrato? IndiceUsado,
     string? Observacao,
     DateTimeOffset CreatedAt);

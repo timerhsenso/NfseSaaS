@@ -26,6 +26,7 @@ public sealed class AtualizarContratoUseCase : IAtualizarContratoUseCase
         contrato.DataInicioContrato = request.DataInicioContrato;
         contrato.PeriodicidadeReajusteMeses = request.PeriodicidadeReajusteMeses;
         contrato.IndiceReajuste = request.IndiceReajuste;
+        contrato.Observacao = request.Observacao;
         contrato.DiasAlertaOverride = request.DiasAlertaOverride;
         contrato.Status = request.Status;
         contrato.DataFim = request.DataFim;

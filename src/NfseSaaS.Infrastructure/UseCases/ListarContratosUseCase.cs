@@ -75,7 +75,7 @@ public sealed class ListarContratosUseCase : IListarContratosUseCase
                 x.Contrato.Id, x.Contrato.EmpresaId, x.Contrato.ClienteId, x.ClienteNome,
                 x.Contrato.Descricao, servicos, x.Contrato.ValorAtual,
                 x.Contrato.DataInicioContrato, x.Contrato.PeriodicidadeReajusteMeses, x.Contrato.IndiceReajuste,
-                x.Contrato.DataUltimoReajuste, x.Contrato.DiasAlertaOverride, diasAlertaEfetivo,
+                x.Contrato.DataUltimoReajuste, x.Contrato.DiasAlertaOverride, diasAlertaEfetivo, x.Contrato.Observacao,
                 dataProximoReajuste, situacao, x.Contrato.Status, x.Contrato.DataFim, x.Contrato.TipoCobranca,
                 x.Contrato.PermitirAlterarValorNaEmissao, x.Contrato.Ativo, x.Contrato.CreatedAt, x.Contrato.UpdatedAt);
         }).ToList();

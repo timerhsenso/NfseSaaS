@@ -45,6 +45,7 @@ public sealed class CadastrarContratoUseCase : ICadastrarContratoUseCase
             PeriodicidadeReajusteMeses = request.PeriodicidadeReajusteMeses,
             IndiceReajuste = request.IndiceReajuste,
             DiasAlertaOverride = request.DiasAlertaOverride,
+            Observacao = request.Observacao,
             DataFim = request.DataFim,
             TipoCobranca = request.TipoCobranca,
             PermitirAlterarValorNaEmissao = request.PermitirAlterarValorNaEmissao

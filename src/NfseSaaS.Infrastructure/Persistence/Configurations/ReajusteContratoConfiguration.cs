@@ -15,7 +15,7 @@ public sealed class ReajusteContratoConfiguration : IEntityTypeConfiguration<Rea
         builder.Property(r => r.ValorAnterior).HasColumnType("numeric(18,2)");
         builder.Property(r => r.ValorNovo).HasColumnType("numeric(18,2)");
         builder.Property(r => r.PercentualAplicado).HasColumnType("numeric(9,4)");
-        builder.Property(r => r.IndiceUsado).HasMaxLength(30);
+        builder.Property(r => r.IndiceUsado).HasConversion<int?>();
         builder.Property(r => r.Observacao).HasMaxLength(500);
 
         builder.HasIndex(r => new { r.TenantId, r.ContratoId });

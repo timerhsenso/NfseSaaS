@@ -40,6 +40,8 @@ public sealed class Contrato : BaseEntity, ITenantEntity
 
     public DateOnly DataInicioContrato { get; set; }
 
+    public string? Observacao { get; set; }
+
     /// <summary>Status comercial do Contrato — Fase 6. Persistido, diferente de SituacaoContrato (calculada, só prazo de reajuste).</summary>
     public StatusContrato Status { get; set; } = StatusContrato.Ativo;
 
@@ -56,7 +58,7 @@ public sealed class Contrato : BaseEntity, ITenantEntity
     public int PeriodicidadeReajusteMeses { get; set; } = 12;
 
     /// <summary>Índice de referência (ex.: "IPCA", "IGPM") — texto livre de propósito: nem sempre se sabe o índice na hora do cadastro.</summary>
-    public string? IndiceReajuste { get; set; }
+    public IndiceReajusteContrato? IndiceReajuste { get; set; }
 
     /// <summary>Nulo até o primeiro reajuste ser registrado — nesse caso, o cálculo de vencimento usa DataInicioContrato como base.</summary>
     public DateOnly? DataUltimoReajuste { get; set; }
