@@ -15,52 +15,263 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+
           script: |
-            set -e
+            set -Eeuo pipefail
 
             cd /opt/nfsesaas/NfseSaaS
 
             echo "======================================"
-            echo "Atualizando código"
+            echo "INICIANDO DEPLOY"
+            echo "======================================"
+
+            # --------------------------------------------------
+            # Guarda informações da versão atualmente em produção
+            # --------------------------------------------------
+
+            PREVIOUS_COMMIT=$(git rev-parse HEAD)
+
+            PREVIOUS_IMAGE=$(docker inspect \
+              --format='{{.Image}}' \
+              nfsesaas-app)
+
+            APP_IMAGE_NAME=$(docker inspect \
+              --format='{{.Config.Image}}' \
+              nfsesaas-app)
+
+            echo "Commit atual : $PREVIOUS_COMMIT"
+            echo "Imagem atual : $PREVIOUS_IMAGE"
+            echo "Nome imagem  : $APP_IMAGE_NAME"
+
+
+            # --------------------------------------------------
+            # Função de rollback
+            # --------------------------------------------------
+
+            rollback() {
+
+              EXIT_CODE=$?
+
+              # Evita executar o trap novamente dentro do rollback
+              trap - ERR
+
+              echo ""
+              echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+              echo "DEPLOY FALHOU"
+              echo "INICIANDO ROLLBACK AUTOMÁTICO"
+              echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+
+              echo "Restaurando imagem anterior..."
+
+              docker tag "$PREVIOUS_IMAGE" "$APP_IMAGE_NAME"
+
+              docker compose \
+                -f docker-compose.prod.yml \
+                up -d --force-recreate app
+
+              echo "Aguardando versão anterior..."
+
+              sleep 10
+
+              echo "Testando versão restaurada..."
+
+              ROLLBACK_OK=0
+
+              for i in $(seq 1 12); do
+
+                if curl \
+                    --fail \
+                    --silent \
+                    --show-error \
+                    --max-time 5 \
+                    https://micoempresa.com.br/health
+                then
+                    ROLLBACK_OK=1
+                    break
+                fi
+
+                echo "Tentativa $i/12..."
+                sleep 5
+
+              done
+
+              echo ""
+
+              if [ "$ROLLBACK_OK" -eq 1 ]; then
+
+                echo "======================================"
+                echo "ROLLBACK CONCLUÍDO COM SUCESSO"
+                echo "Versão anterior restaurada."
+                echo "Commit anterior: $PREVIOUS_COMMIT"
+                echo "======================================"
+
+              else
+
+                echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+                echo "ATENÇÃO"
+                echo "ROLLBACK TAMBÉM FALHOU"
+                echo "Verificar servidor imediatamente."
+                echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+
+              fi
+
+              docker ps
+
+              exit "$EXIT_CODE"
+            }
+
+
+            trap rollback ERR
+
+
+            # --------------------------------------------------
+            # Backup PostgreSQL antes das migrations
+            # --------------------------------------------------
+
+            echo ""
+            echo "======================================"
+            echo "BACKUP DO BANCO"
+            echo "======================================"
+
+            mkdir -p /opt/nfsesaas/backups/postgres
+
+            BACKUP_FILE="/opt/nfsesaas/backups/postgres/nfse_saas_$(date +%Y%m%d_%H%M%S).dump"
+
+            docker exec nfsesaas-postgres \
+              pg_dump \
+              -U nfse \
+              -d nfse_saas \
+              -Fc \
+              > "$BACKUP_FILE"
+
+            echo "Backup criado:"
+            echo "$BACKUP_FILE"
+
+
+            # --------------------------------------------------
+            # Atualizar código
+            # --------------------------------------------------
+
+            echo ""
+            echo "======================================"
+            echo "ATUALIZANDO CÓDIGO"
             echo "======================================"
 
             git fetch origin
             git checkout master
-            git pull origin master
+            git pull --ff-only origin master
 
-            echo "======================================"
-            echo "Aplicando migrations"
-            echo "======================================"
+            NEW_COMMIT=$(git rev-parse HEAD)
 
-            docker compose -f docker-compose.prod.yml run --rm migrate
+            echo "Nova versão:"
+            echo "$NEW_COMMIT"
 
-            echo "======================================"
-            echo "Construindo nova imagem"
-            echo "======================================"
 
-            docker compose -f docker-compose.prod.yml build app
+            # --------------------------------------------------
+            # Build primeiro
+            # --------------------------------------------------
 
+            echo ""
             echo "======================================"
-            echo "Subindo nova versão"
-            echo "======================================"
-
-            docker compose -f docker-compose.prod.yml up -d app
-
-            echo "======================================"
-            echo "Aguardando aplicação"
+            echo "CONSTRUINDO NOVA IMAGEM"
             echo "======================================"
 
-            sleep 10
+            docker compose \
+              -f docker-compose.prod.yml \
+              build app
 
+
+            # --------------------------------------------------
+            # Migrations
+            # --------------------------------------------------
+
+            echo ""
             echo "======================================"
-            echo "Testando health check"
+            echo "APLICANDO MIGRATIONS"
             echo "======================================"
 
-            curl --fail --silent --show-error https://micoempresa.com.br/health
+            docker compose \
+              -f docker-compose.prod.yml \
+              run --rm migrate
+
+
+            # --------------------------------------------------
+            # Subir nova aplicação
+            # --------------------------------------------------
+
+            echo ""
+            echo "======================================"
+            echo "SUBINDO NOVA VERSÃO"
+            echo "======================================"
+
+            docker compose \
+              -f docker-compose.prod.yml \
+              up -d app
+
+
+            # --------------------------------------------------
+            # Health Check
+            # --------------------------------------------------
+
+            echo ""
+            echo "======================================"
+            echo "TESTANDO NOVA VERSÃO"
+            echo "======================================"
+
+            HEALTH_OK=0
+
+            for i in $(seq 1 12); do
+
+              if curl \
+                  --fail \
+                  --silent \
+                  --show-error \
+                  --max-time 5 \
+                  https://micoempresa.com.br/health
+              then
+
+                  HEALTH_OK=1
+                  break
+
+              fi
+
+              echo "Aplicação ainda não respondeu. Tentativa $i/12..."
+
+              sleep 5
+
+            done
+
+
+            if [ "$HEALTH_OK" -ne 1 ]; then
+
+              echo "Health check falhou."
+
+              # Força o trap de rollback
+              false
+
+            fi
+
+
+            # --------------------------------------------------
+            # Deploy concluído
+            # --------------------------------------------------
+
+            trap - ERR
 
             echo ""
             echo "======================================"
             echo "DEPLOY CONCLUÍDO COM SUCESSO"
             echo "======================================"
+
+            echo "Commit anterior:"
+            echo "$PREVIOUS_COMMIT"
+
+            echo "Novo commit:"
+            echo "$NEW_COMMIT"
+
+            echo "Backup do banco:"
+            echo "$BACKUP_FILE"
+
+            echo ""
 
             docker ps
