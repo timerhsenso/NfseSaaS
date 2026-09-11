@@ -14,6 +14,25 @@ jobs:
     name: Build e Testes
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: nfse_saas_test
+          POSTGRES_USER: nfse
+          POSTGRES_PASSWORD: nfse_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nfse -d nfse_saas_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=localhost;Port=5432;Database=nfse_saas_test;Username=nfse;Password=nfse_test_password
+
     steps:
       - name: Baixar código
         uses: actions/checkout@v4
@@ -28,6 +47,15 @@ jobs:
 
       - name: Compilar
         run: dotnet build --configuration Release --no-restore
+
+      - name: Instalar dotnet-ef
+        run: dotnet tool install --global dotnet-ef --version 8.0.10
+
+      - name: Aplicar migrations no banco de testes
+        run: |
+          dotnet ef database update \
+            --project src/NfseSaaS.Infrastructure/NfseSaaS.Infrastructure.csproj \
+            --startup-project src/NfseSaaS.Web/NfseSaaS.Web.csproj
 
       - name: Executar testes
         run: dotnet test --configuration Release --no-build
