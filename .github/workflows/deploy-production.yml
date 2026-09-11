@@ -1,0 +1,24 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Testar acesso ao VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Conectar ao VPS via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            echo "SSH funcionando!"
+            hostname
+            whoami
+            cd /opt/nfsesaas/NfseSaaS
+            git status
+            docker ps
