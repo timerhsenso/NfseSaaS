@@ -167,6 +167,7 @@ public static class DependencyInjection
         services.AddScoped<IListarEventosDaNfseUseCase, ListarEventosDaNfseUseCase>();
         services.AddScoped<IObterSnapshotFiscalDaNfseUseCase, ObterSnapshotFiscalDaNfseUseCase>();
         services.AddScoped<IObterDanfsePdfUseCase, ObterDanfsePdfUseCase>();
+        services.AddScoped<IGerarDanfsePdfLoteUseCase, GerarDanfsePdfLoteUseCase>();
         services.AddScoped<ISincronizarNotasDaSefinUseCase, SincronizarNotasDaSefinUseCase>();
         services.AddScoped<IRegistrarExportacaoUseCase, RegistrarExportacaoUseCase>();
         services.AddHttpClient("BrasilApi");

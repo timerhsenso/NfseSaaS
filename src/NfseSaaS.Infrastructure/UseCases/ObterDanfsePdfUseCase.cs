@@ -39,6 +39,13 @@ public sealed class ObterDanfsePdfUseCase : IObterDanfsePdfUseCase
             throw new RegraNegocioException(
                 $"Só é possível obter o DANFSe de uma Nfse Autorizada ou Cancelada com ChaveAcesso (status atual: {nfse.Status}).");
 
+        var clienteNome = await _db.Clientes.AsNoTracking()
+            .Where(c => c.Id == nfse.ClienteId)
+            .Select(c => c.Nome)
+            .FirstOrDefaultAsync(cancellationToken) ?? "Cliente";
+
+        var nomeArquivo = MontarNomeArquivo(clienteNome, nfse.NumeroDps, nfse.DataEmissao ?? new DateTimeOffset(nfse.DataCompetencia.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero));
+
         try
         {
             var (statusCode, bytesRemoto, contentType) = await _apiClient.ObterDanfsePdfAsync(nfse.EmpresaId, nfse.TipoAmbiente.ParaTpAmb(), nfse.ChaveAcesso, cancellationToken);
@@ -48,7 +55,7 @@ public sealed class ObterDanfsePdfUseCase : IObterDanfsePdfUseCase
                 return new DanfsePdfResponse(
                     Bytes: bytesRemoto,
                     ContentType: string.IsNullOrWhiteSpace(contentType) ? "application/pdf" : contentType,
-                    NomeArquivo: $"DANFSe-{nfse.ChaveAcesso}.pdf");
+                    NomeArquivo: nomeArquivo);
             }
         }
         catch (NfseApiException)
@@ -68,6 +75,25 @@ public sealed class ObterDanfsePdfUseCase : IObterDanfsePdfUseCase
         return new DanfsePdfResponse(
             Bytes: bytesLocal,
             ContentType: "application/pdf",
-            NomeArquivo: $"DANFSe-{nfse.ChaveAcesso}.pdf");
+            NomeArquivo: nomeArquivo);
+    }
+
+    /// <summary>
+    /// {Cliente sem espaço/caractere inválido}_{NumeroDps}_{MêsAno} — o
+    /// nome da Empresa (prestador) não entra de propósito: quando várias
+    /// notas são baixadas juntas (lote), é a mesma Empresa em todas,
+    /// então repetir o nome dela em cada arquivo não ajuda a diferenciar
+    /// nada — o Cliente é o que varia nota a nota. NumeroDps garante que
+    /// nunca colide (2 notas pro mesmo cliente no mesmo mês viram 2
+    /// arquivos diferentes).
+    /// </summary>
+    internal static string MontarNomeArquivo(string clienteNome, int numeroDps, DateTimeOffset dataEmissao)
+    {
+        var invalidos = Path.GetInvalidFileNameChars();
+        var clienteSanitizado = new string(clienteNome.Where(c => c != ' ' && !invalidos.Contains(c)).ToArray());
+        if (string.IsNullOrWhiteSpace(clienteSanitizado))
+            clienteSanitizado = "Cliente";
+
+        return $"{clienteSanitizado}_{numeroDps}_{dataEmissao:MMyyyy}.pdf";
     }
 }

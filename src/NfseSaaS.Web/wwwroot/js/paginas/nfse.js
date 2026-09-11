@@ -23,10 +23,16 @@ let clientesPorId = {};
 let nfseDetalheAtualId;
 let modalNotaMensal;
 let candidatosNotaMensal = []; // estado local da grade (inclui selecionado/valorAjustado/status/mensagem por linha)
+let nfseSelecionadas = new Set(); // ids marcados pra download em lote — sobrevive a paginação/redraw do DataTable, só é limpo quando os filtros mudam
 
 document.addEventListener('DOMContentLoaded', function () {
     tabelaNfse = new DataTable('#tabela-nfse', {
         columns: [
+            {
+                data: null,
+                orderable: false,
+                render: (d, t, n) => `<input type="checkbox" class="form-check-input check-linha-nfse" data-id="${n.id}" ${nfseSelecionadas.has(n.id) ? 'checked' : ''}>`
+            },
             { data: null, render: (d, t, n) => `${n.numeroDps}/${n.serieDps}` },
             { data: 'clienteId', render: id => clientesPorId[id] ?? id },
             { data: 'valorServico', render: v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) },
@@ -54,15 +60,21 @@ document.addEventListener('DOMContentLoaded', function () {
             {
                 data: null,
                 orderable: false,
-                render: (d, t, n) => `<button type="button" class="btn btn-sm btn-outline-secondary btn-ver-detalhe" data-id="${n.id}"><i class="bi bi-eye"></i> Detalhes</button>`
+                render: (d, t, n) => {
+                    const temPdf = n.status === STATUS_AUTORIZADA || n.status === STATUS_CANCELADA;
+                    const botaoPdf = temPdf
+                        ? `<a class="btn btn-sm btn-outline-secondary" href="/api/nfse/${n.id}/danfse-pdf" title="Baixar PDF (DANFSe)"><i class="bi bi-file-earmark-pdf"></i></a>`
+                        : '';
+                    return `<button type="button" class="btn btn-sm btn-outline-secondary btn-ver-detalhe" data-id="${n.id}"><i class="bi bi-eye"></i> Detalhes</button> ${botaoPdf}`;
+                }
             }
         ],
-        // Sem isso, o DataTables cai no default (1ª coluna, Número/Série,
-        // crescente) — a API já manda mais recente primeiro, mas a
-        // tabela reordenava na tela por cima disso. Índice 5 = coluna
-        // "Emissão" (0-based: número, cliente, valor, valorLíquido,
-        // status, emissão, ações).
-        order: [[5, 'desc']],
+        // Sem isso, o DataTables cai no default (1ª coluna, checkbox,
+        // não ordenável) — a API já manda mais recente primeiro, mas a
+        // tabela reordenava na tela por cima disso. Índice 6 = coluna
+        // "Emissão" (0-based: checkbox, número, cliente, valor,
+        // valorLíquido, status, emissão, ações).
+        order: [[6, 'desc']],
         language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/pt-BR.json' }
     });
 
@@ -72,6 +84,26 @@ document.addEventListener('DOMContentLoaded', function () {
         const botao = e.target.closest('.btn-ver-detalhe');
         if (botao) await abrirDetalheNfse(botao.dataset.id);
     });
+
+    document.getElementById('tabela-nfse').addEventListener('change', function (e) {
+        if (!e.target.classList.contains('check-linha-nfse')) return;
+        const id = e.target.dataset.id;
+        if (e.target.checked) nfseSelecionadas.add(id); else nfseSelecionadas.delete(id);
+        atualizarBotaoBaixarSelecionadas();
+    });
+
+    document.getElementById('check-selecionar-todas-nfse').addEventListener('change', function (e) {
+        // Seleciona/desmarca TODAS as notas já carregadas (até 200,
+        // pageSize atual), não só as da página visível no momento —
+        // senão trocar de página no DataTable perderia a marcação.
+        const todosIds = tabelaNfse.rows().data().toArray().map(n => n.id);
+        if (e.target.checked) todosIds.forEach(id => nfseSelecionadas.add(id));
+        else todosIds.forEach(id => nfseSelecionadas.delete(id));
+        tabelaNfse.draw(false); // false = mantém a página atual, só redesenha os checkboxes
+        atualizarBotaoBaixarSelecionadas();
+    });
+
+    document.getElementById('btn-baixar-selecionadas').addEventListener('click', baixarDanfsePdfLote);
 
     modalDetalheNfse = new bootstrap.Modal(document.getElementById('modal-detalhe-nfse'));
 
@@ -102,6 +134,26 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     empresaAtualIdNfse = obterEmpresaAtualId();
+
+    // Período padrão: últimos 30 dias, mesmo default do portal nacional
+    // (tela "Notas recebidas") — familiar pra quem já usa os dois.
+    const hoje = new Date();
+    const trintaDiasAtras = new Date(hoje);
+    trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
+    document.getElementById('filtro-data-fim').value = hoje.toISOString().slice(0, 10);
+    document.getElementById('filtro-data-inicio').value = trintaDiasAtras.toISOString().slice(0, 10);
+
+    ['filtro-data-inicio', 'filtro-data-fim', 'filtro-status', 'filtro-cliente'].forEach(id =>
+        document.getElementById(id).addEventListener('change', carregarNfse));
+
+    document.getElementById('btn-limpar-filtros-nfse').addEventListener('click', function () {
+        document.getElementById('filtro-data-inicio').value = trintaDiasAtras.toISOString().slice(0, 10);
+        document.getElementById('filtro-data-fim').value = hoje.toISOString().slice(0, 10);
+        document.getElementById('filtro-status').value = '';
+        document.getElementById('filtro-cliente').value = '';
+        carregarNfse();
+    });
+
     (async function () {
         await carregarClientesParaMapa();
         await carregarNfse();
@@ -114,15 +166,40 @@ async function carregarClientesParaMapa() {
         const resultado = await apiFetch(`/api/clientes?empresaId=${empresaAtualIdNfse}&pageSize=200&incluirInativos=true`);
         clientesPorId = {};
         for (const c of resultado.items) clientesPorId[c.id] = c.nome;
+
+        const selectFiltroCliente = document.getElementById('filtro-cliente');
+        selectFiltroCliente.innerHTML = '<option value="">Todos</option>' +
+            resultado.items.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
     } catch (err) {
         mostrarErro(err.message);
     }
 }
 
+function montarQueryFiltrosNfse() {
+    const params = new URLSearchParams();
+    params.set('empresaId', empresaAtualIdNfse);
+    params.set('pageSize', '200');
+
+    const dataInicio = document.getElementById('filtro-data-inicio').value;
+    const dataFim = document.getElementById('filtro-data-fim').value;
+    const status = document.getElementById('filtro-status').value;
+    const clienteId = document.getElementById('filtro-cliente').value;
+
+    if (dataInicio) params.set('dataInicio', dataInicio);
+    if (dataFim) params.set('dataFim', dataFim);
+    if (status !== '') params.set('status', status);
+    if (clienteId) params.set('clienteId', clienteId);
+
+    return params.toString();
+}
+
 async function carregarNfse() {
     if (!empresaAtualIdNfse) return;
     try {
-        const resultado = await apiFetch(`/api/nfse?empresaId=${empresaAtualIdNfse}&pageSize=200`);
+        const resultado = await apiFetch(`/api/nfse?${montarQueryFiltrosNfse()}`);
+        nfseSelecionadas.clear();
+        document.getElementById('check-selecionar-todas-nfse').checked = false;
+        atualizarBotaoBaixarSelecionadas();
         tabelaNfse.clear();
         tabelaNfse.rows.add(resultado.items);
         tabelaNfse.draw();
@@ -551,5 +628,63 @@ async function emitirNotaMensal() {
         mostrarErroFormulario('erro-nota-mensal', err.message);
     } finally {
         atualizarBotaoEmitirNotaMensal();
+    }
+}
+
+function atualizarBotaoBaixarSelecionadas() {
+    document.getElementById('btn-baixar-selecionadas').disabled = nfseSelecionadas.size === 0;
+}
+
+async function baixarDanfsePdfLote() {
+    if (nfseSelecionadas.size === 0) return;
+
+    const botao = document.getElementById('btn-baixar-selecionadas');
+    botao.disabled = true;
+    const iconeOriginal = botao.innerHTML;
+    botao.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Gerando...';
+
+    try {
+        // application/zip não é JSON — usa fetch direto, não apiFetch
+        // (que sempre tenta .json() na resposta). Mesmo padrão já usado
+        // pra upload de arquivo em outras telas.
+        const resposta = await fetch('/api/nfse/danfse-pdf/lote', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nfseIds: Array.from(nfseSelecionadas) })
+        });
+
+        if (!resposta.ok) {
+            const corpo = await resposta.json().catch(() => null);
+            throw new Error(extrairMensagemDeErro(corpo) ?? `Erro ${resposta.status} ao gerar o lote de PDFs.`);
+        }
+
+        const idsIgnorados = resposta.headers.get('X-Nfse-Ids-Ignorados');
+        const blob = await resposta.blob();
+
+        // Nome do arquivo vem no Content-Disposition — o navegador não
+        // expõe isso pro JS automaticamente, então repete a mesma
+        // convenção (data/hora) aqui só pro nome do .zip local.
+        const nomeZip = `DANFSe-lote-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.zip`;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = nomeZip;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+
+        if (idsIgnorados) {
+            const total = idsIgnorados.split(',').length;
+            mostrarToast(`Zip gerado. ${total} nota(s) ficaram de fora por não ter DANFSe disponível (precisa estar Autorizada ou Cancelada).`, 'erro');
+        } else {
+            mostrarToast('Zip com os PDFs selecionados gerado.');
+        }
+    } catch (err) {
+        mostrarErro(err.message);
+    } finally {
+        botao.disabled = nfseSelecionadas.size === 0;
+        botao.innerHTML = iconeOriginal;
     }
 }

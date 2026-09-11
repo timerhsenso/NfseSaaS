@@ -1,0 +1,184 @@
+diff --git a/src/NfseSaaS.Application/UseCases/Nfse/ListarNfseRequest.cs b/src/NfseSaaS.Application/UseCases/Nfse/ListarNfseRequest.cs
+index 1153fb8..f1993e7 100644
+--- a/src/NfseSaaS.Application/UseCases/Nfse/ListarNfseRequest.cs
++++ b/src/NfseSaaS.Application/UseCases/Nfse/ListarNfseRequest.cs
+@@ -5,5 +5,8 @@ namespace NfseSaaS.Application.UseCases.Nfse;
+ public sealed record ListarNfseRequest(
+     Guid? EmpresaId = null,
+     NfseStatus? Status = null,
++    Guid? ClienteId = null,
++    DateOnly? DataInicio = null,
++    DateOnly? DataFim = null,
+     int Page = 1,
+     int PageSize = 20);
+diff --git a/src/NfseSaaS.Infrastructure/UseCases/ListarNfseUseCase.cs b/src/NfseSaaS.Infrastructure/UseCases/ListarNfseUseCase.cs
+index 992dd9c..c2b8985 100644
+--- a/src/NfseSaaS.Infrastructure/UseCases/ListarNfseUseCase.cs
++++ b/src/NfseSaaS.Infrastructure/UseCases/ListarNfseUseCase.cs
+@@ -44,6 +44,33 @@ public sealed class ListarNfseUseCase : IListarNfseUseCase
+         if (request.Status is not null)
+             query = query.Where(n => n.Status == request.Status.Value);
+ 
++        if (request.ClienteId is not null)
++            query = query.Where(n => n.ClienteId == request.ClienteId.Value);
++
++        // Filtra por Data de Emissão (não Competência) — é o que o
++        // usuário mais busca no dia a dia (fechamento de mês,
++        // conciliação), mesmo campo que o portal nacional usa como
++        // padrão na tela de notas recebidas. DataFim é inclusivo até o
++        // fim do dia (23:59:59.999) — comparar só a data sem isso
++        // excluiria qualquer nota emitida depois da meia-noite daquele
++        // dia. Limites calculados em horário de Brasília (-03:00, fixo
++        // o ano todo, sem horário de verão desde 2019) — DataEmissao é
++        // gravado em UTC, então usar meia-noite UTC pura deslocaria o
++        // "dia" em até 3h pra quem está pensando em data local.
++        var offsetBrasilia = TimeSpan.FromHours(-3);
++
++        if (request.DataInicio is not null)
++        {
++            var inicioUtc = new DateTimeOffset(request.DataInicio.Value.ToDateTime(TimeOnly.MinValue), offsetBrasilia);
++            query = query.Where(n => n.DataEmissao >= inicioUtc);
++        }
++
++        if (request.DataFim is not null)
++        {
++            var fimUtc = new DateTimeOffset(request.DataFim.Value.ToDateTime(TimeOnly.MaxValue), offsetBrasilia);
++            query = query.Where(n => n.DataEmissao <= fimUtc);
++        }
++
+         var totalCount = await query.CountAsync(cancellationToken);
+ 
+         var itens = await query
+diff --git a/src/NfseSaaS.Web/Controllers/Api/NfseController.cs b/src/NfseSaaS.Web/Controllers/Api/NfseController.cs
+index bff8edc..0a585ff 100644
+--- a/src/NfseSaaS.Web/Controllers/Api/NfseController.cs
++++ b/src/NfseSaaS.Web/Controllers/Api/NfseController.cs
+@@ -50,12 +50,15 @@ public sealed class NfseController : ControllerBase
+     public async Task<IActionResult> Listar(
+         [FromQuery] Guid? empresaId = null,
+         [FromQuery] NfseStatus? status = null,
++        [FromQuery] Guid? clienteId = null,
++        [FromQuery] DateOnly? dataInicio = null,
++        [FromQuery] DateOnly? dataFim = null,
+         [FromQuery] int page = 1,
+         [FromQuery] int pageSize = 20,
+         CancellationToken cancellationToken = default)
+     {
+         var resultado = await _listarNfse.ExecutarAsync(
+-            new ListarNfseRequest(empresaId, status, page, pageSize), cancellationToken);
++            new ListarNfseRequest(empresaId, status, clienteId, dataInicio, dataFim, page, pageSize), cancellationToken);
+         return Ok(resultado);
+     }
+ 
+diff --git a/src/NfseSaaS.Web/Views/Nfse/Index.cshtml b/src/NfseSaaS.Web/Views/Nfse/Index.cshtml
+index 14dff16..3084683 100644
+--- a/src/NfseSaaS.Web/Views/Nfse/Index.cshtml
++++ b/src/NfseSaaS.Web/Views/Nfse/Index.cshtml
+@@ -24,6 +24,37 @@
+         </div>
+     </div>
+     <div class="card-body">
++        <div class="row align-items-end mb-3 g-2">
++            <div class="col-auto">
++                <label class="form-label small mb-1">De</label>
++                <input type="date" class="form-control form-control-sm" id="filtro-data-inicio" />
++            </div>
++            <div class="col-auto">
++                <label class="form-label small mb-1">Até</label>
++                <input type="date" class="form-control form-control-sm" id="filtro-data-fim" />
++            </div>
++            <div class="col-auto">
++                <label class="form-label small mb-1">Status</label>
++                <select class="form-select form-select-sm" id="filtro-status">
++                    <option value="">Todos</option>
++                    <option value="0">Rascunho</option>
++                    <option value="1">Processando</option>
++                    <option value="2">Autorizada</option>
++                    <option value="3">Rejeitada</option>
++                    <option value="4">Cancelada</option>
++                    <option value="5">Substituída</option>
++                </select>
++            </div>
++            <div class="col-auto" style="min-width: 220px;">
++                <label class="form-label small mb-1">Cliente</label>
++                <select class="form-select form-select-sm" id="filtro-cliente">
++                    <option value="">Todos</option>
++                </select>
++            </div>
++            <div class="col-auto">
++                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-limpar-filtros-nfse">Limpar filtros</button>
++            </div>
++        </div>
+         <table id="tabela-nfse" class="table table-striped table-bordered w-100">
+             <thead>
+                 <tr>
+diff --git a/src/NfseSaaS.Web/wwwroot/js/paginas/nfse.js b/src/NfseSaaS.Web/wwwroot/js/paginas/nfse.js
+index 797f941..b7584c3 100644
+--- a/src/NfseSaaS.Web/wwwroot/js/paginas/nfse.js
++++ b/src/NfseSaaS.Web/wwwroot/js/paginas/nfse.js
+@@ -102,6 +102,26 @@ document.addEventListener('DOMContentLoaded', function () {
+     }
+ 
+     empresaAtualIdNfse = obterEmpresaAtualId();
++
++    // Período padrão: últimos 30 dias, mesmo default do portal nacional
++    // (tela "Notas recebidas") — familiar pra quem já usa os dois.
++    const hoje = new Date();
++    const trintaDiasAtras = new Date(hoje);
++    trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
++    document.getElementById('filtro-data-fim').value = hoje.toISOString().slice(0, 10);
++    document.getElementById('filtro-data-inicio').value = trintaDiasAtras.toISOString().slice(0, 10);
++
++    ['filtro-data-inicio', 'filtro-data-fim', 'filtro-status', 'filtro-cliente'].forEach(id =>
++        document.getElementById(id).addEventListener('change', carregarNfse));
++
++    document.getElementById('btn-limpar-filtros-nfse').addEventListener('click', function () {
++        document.getElementById('filtro-data-inicio').value = trintaDiasAtras.toISOString().slice(0, 10);
++        document.getElementById('filtro-data-fim').value = hoje.toISOString().slice(0, 10);
++        document.getElementById('filtro-status').value = '';
++        document.getElementById('filtro-cliente').value = '';
++        carregarNfse();
++    });
++
+     (async function () {
+         await carregarClientesParaMapa();
+         await carregarNfse();
+@@ -114,15 +134,37 @@ async function carregarClientesParaMapa() {
+         const resultado = await apiFetch(`/api/clientes?empresaId=${empresaAtualIdNfse}&pageSize=200&incluirInativos=true`);
+         clientesPorId = {};
+         for (const c of resultado.items) clientesPorId[c.id] = c.nome;
++
++        const selectFiltroCliente = document.getElementById('filtro-cliente');
++        selectFiltroCliente.innerHTML = '<option value="">Todos</option>' +
++            resultado.items.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+     } catch (err) {
+         mostrarErro(err.message);
+     }
+ }
+ 
++function montarQueryFiltrosNfse() {
++    const params = new URLSearchParams();
++    params.set('empresaId', empresaAtualIdNfse);
++    params.set('pageSize', '200');
++
++    const dataInicio = document.getElementById('filtro-data-inicio').value;
++    const dataFim = document.getElementById('filtro-data-fim').value;
++    const status = document.getElementById('filtro-status').value;
++    const clienteId = document.getElementById('filtro-cliente').value;
++
++    if (dataInicio) params.set('dataInicio', dataInicio);
++    if (dataFim) params.set('dataFim', dataFim);
++    if (status !== '') params.set('status', status);
++    if (clienteId) params.set('clienteId', clienteId);
++
++    return params.toString();
++}
++
+ async function carregarNfse() {
+     if (!empresaAtualIdNfse) return;
+     try {
+-        const resultado = await apiFetch(`/api/nfse?empresaId=${empresaAtualIdNfse}&pageSize=200`);
++        const resultado = await apiFetch(`/api/nfse?${montarQueryFiltrosNfse()}`);
+         tabelaNfse.clear();
+         tabelaNfse.rows.add(resultado.items);
+         tabelaNfse.draw();

@@ -19,6 +19,7 @@ public sealed class NfseController : ControllerBase
     private readonly IListarEventosDaNfseUseCase _listarEventosDaNfse;
     private readonly IObterSnapshotFiscalDaNfseUseCase _obterSnapshotFiscalDaNfse;
     private readonly IObterDanfsePdfUseCase _obterDanfsePdf;
+    private readonly IGerarDanfsePdfLoteUseCase _gerarDanfsePdfLote;
 
     public NfseController(
         IEmitirNfseUseCase emitirNfse,
@@ -27,7 +28,8 @@ public sealed class NfseController : ControllerBase
         ICancelarNfseUseCase cancelarNfse,
         IListarEventosDaNfseUseCase listarEventosDaNfse,
         IObterSnapshotFiscalDaNfseUseCase obterSnapshotFiscalDaNfse,
-        IObterDanfsePdfUseCase obterDanfsePdf)
+        IObterDanfsePdfUseCase obterDanfsePdf,
+        IGerarDanfsePdfLoteUseCase gerarDanfsePdfLote)
     {
         _emitirNfse = emitirNfse;
         _listarNfse = listarNfse;
@@ -36,6 +38,7 @@ public sealed class NfseController : ControllerBase
         _listarEventosDaNfse = listarEventosDaNfse;
         _obterSnapshotFiscalDaNfse = obterSnapshotFiscalDaNfse;
         _obterDanfsePdf = obterDanfsePdf;
+        _gerarDanfsePdfLote = gerarDanfsePdfLote;
     }
 
     [Authorize(Roles = Papeis.PodeEmitir)]
@@ -50,12 +53,15 @@ public sealed class NfseController : ControllerBase
     public async Task<IActionResult> Listar(
         [FromQuery] Guid? empresaId = null,
         [FromQuery] NfseStatus? status = null,
+        [FromQuery] Guid? clienteId = null,
+        [FromQuery] DateOnly? dataInicio = null,
+        [FromQuery] DateOnly? dataFim = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
         var resultado = await _listarNfse.ExecutarAsync(
-            new ListarNfseRequest(empresaId, status, page, pageSize), cancellationToken);
+            new ListarNfseRequest(empresaId, status, clienteId, dataInicio, dataFim, page, pageSize), cancellationToken);
         return Ok(resultado);
     }
 
@@ -93,5 +99,17 @@ public sealed class NfseController : ControllerBase
     {
         var danfse = await _obterDanfsePdf.ExecutarAsync(id, cancellationToken);
         return File(danfse.Bytes, danfse.ContentType, danfse.NomeArquivo);
+    }
+
+    /// <summary>Ids que não tinham DANFSe disponível voltam no header X-Nfse-Ids-Ignorados (CSV) — não aborta o lote inteiro por causa de 1 nota sem PDF.</summary>
+    [HttpPost("danfse-pdf/lote")]
+    public async Task<IActionResult> ObterDanfsePdfLote([FromBody] GerarDanfsePdfLoteRequest request, CancellationToken cancellationToken)
+    {
+        var resultado = await _gerarDanfsePdfLote.ExecutarAsync(request, cancellationToken);
+
+        if (resultado.IdsIgnorados.Count > 0)
+            Response.Headers.Append("X-Nfse-Ids-Ignorados", string.Join(',', resultado.IdsIgnorados));
+
+        return File(resultado.ZipBytes, "application/zip", resultado.NomeArquivoZip);
     }
 }

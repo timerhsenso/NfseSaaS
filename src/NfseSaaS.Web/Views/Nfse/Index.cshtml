@@ -24,9 +24,46 @@
         </div>
     </div>
     <div class="card-body">
+        <div class="row align-items-end mb-3 g-2">
+            <div class="col-auto">
+                <label class="form-label small mb-1">De</label>
+                <input type="date" class="form-control form-control-sm" id="filtro-data-inicio" />
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-1">Até</label>
+                <input type="date" class="form-control form-control-sm" id="filtro-data-fim" />
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-1">Status</label>
+                <select class="form-select form-select-sm" id="filtro-status">
+                    <option value="">Todos</option>
+                    <option value="0">Rascunho</option>
+                    <option value="1">Processando</option>
+                    <option value="2">Autorizada</option>
+                    <option value="3">Rejeitada</option>
+                    <option value="4">Cancelada</option>
+                    <option value="5">Substituída</option>
+                </select>
+            </div>
+            <div class="col-auto" style="min-width: 220px;">
+                <label class="form-label small mb-1">Cliente</label>
+                <select class="form-select form-select-sm" id="filtro-cliente">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-limpar-filtros-nfse">Limpar filtros</button>
+            </div>
+            <div class="col-auto">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-baixar-selecionadas" disabled>
+                    <i class="bi bi-file-earmark-zip"></i> Baixar selecionadas
+                </button>
+            </div>
+        </div>
         <table id="tabela-nfse" class="table table-striped table-bordered w-100">
             <thead>
                 <tr>
+                    <th style="width:30px"><input type="checkbox" class="form-check-input" id="check-selecionar-todas-nfse"></th>
                     <th>Número/Série</th>
                     <th>Cliente</th>
                     <th>Valor</th>
