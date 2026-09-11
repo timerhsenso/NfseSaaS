@@ -5,20 +5,62 @@ on:
 
 jobs:
   deploy:
-    name: Testar acesso ao VPS
+    name: Deploy no VPS
     runs-on: ubuntu-latest
 
     steps:
-      - name: Conectar ao VPS via SSH
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            echo "SSH funcionando!"
-            hostname
-            whoami
+            set -e
+
             cd /opt/nfsesaas/NfseSaaS
-            git status
+
+            echo "======================================"
+            echo "Atualizando código"
+            echo "======================================"
+
+            git fetch origin
+            git checkout master
+            git pull origin master
+
+            echo "======================================"
+            echo "Aplicando migrations"
+            echo "======================================"
+
+            docker compose -f docker-compose.prod.yml run --rm migrate
+
+            echo "======================================"
+            echo "Construindo nova imagem"
+            echo "======================================"
+
+            docker compose -f docker-compose.prod.yml build app
+
+            echo "======================================"
+            echo "Subindo nova versão"
+            echo "======================================"
+
+            docker compose -f docker-compose.prod.yml up -d app
+
+            echo "======================================"
+            echo "Aguardando aplicação"
+            echo "======================================"
+
+            sleep 10
+
+            echo "======================================"
+            echo "Testando health check"
+            echo "======================================"
+
+            curl --fail --silent --show-error https://micoempresa.com.br/health
+
+            echo ""
+            echo "======================================"
+            echo "DEPLOY CONCLUÍDO COM SUCESSO"
+            echo "======================================"
+
             docker ps
