@@ -11,6 +11,7 @@ using NfseSaaS.Application.UseCases.Clientes;
 using NfseSaaS.Application.UseCases.Contratos;
 using NfseSaaS.Application.UseCases.DocumentosContrato;
 using NfseSaaS.Application.UseCases.HistoricoContrato;
+using NfseSaaS.Application.UseCases.NotaMensal;
 using NfseSaaS.Infrastructure.Documents;
 using NfseSaaS.Application.UseCases.Empresas;
 using NfseSaaS.Application.UseCases.Exportacoes;
@@ -159,6 +160,9 @@ public static class DependencyInjection
         services.AddScoped<IEmitirNfseUseCase, EmitirNfseUseCase>();
         services.AddScoped<IListarNfseUseCase, ListarNfseUseCase>();
         services.AddScoped<IObterNfsePorIdUseCase, ObterNfsePorIdUseCase>();
+
+        services.AddScoped<IListarCandidatosNotaMensalUseCase, ListarCandidatosNotaMensalUseCase>();
+        services.AddScoped<IEmitirNotaMensalLoteUseCase, EmitirNotaMensalLoteUseCase>();
         services.AddScoped<ICancelarNfseUseCase, CancelarNfseUseCase>();
         services.AddScoped<IListarEventosDaNfseUseCase, ListarEventosDaNfseUseCase>();
         services.AddScoped<IObterSnapshotFiscalDaNfseUseCase, ObterSnapshotFiscalDaNfseUseCase>();

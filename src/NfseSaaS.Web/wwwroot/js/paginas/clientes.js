@@ -46,6 +46,7 @@ document.addEventListener('DOMContentLoaded', function () {
         modalCliente = new bootstrap.Modal(document.getElementById('modal-cliente'));
         document.getElementById('btn-novo-cliente').addEventListener('click', abrirModalNovoCliente);
         document.getElementById('form-cliente').addEventListener('submit', salvarCliente);
+        document.getElementById('btn-consultar-cnpj-cliente').addEventListener('click', consultarCnpjCliente);
 
         document.getElementById('tabela-clientes').addEventListener('click', async function (e) {
             const botao = e.target.closest('button');
@@ -177,5 +178,47 @@ async function excluirCliente(id) {
         mostrarToast('Cliente excluído.');
     } catch (err) {
         mostrarErro(err.message);
+    }
+}
+
+// Só funciona pra CNPJ (14 dígitos) — CPF de pessoa física não tem
+// consulta pública de endereço na Receita. Mesmo endpoint já usado na
+// tela de Empresa (/api/consultas/cnpj/{cnpj}), reaproveitado aqui.
+async function consultarCnpjCliente() {
+    const campoCpfCnpj = document.getElementById('cpfCnpj');
+    const botao = document.getElementById('btn-consultar-cnpj-cliente');
+    const documento = campoCpfCnpj.value.replace(/\D/g, '');
+
+    if (documento.length !== 14) {
+        mostrarToast('A busca automática só funciona com CNPJ (14 dígitos) — CPF não tem endereço público na Receita.', 'erro');
+        return;
+    }
+
+    botao.disabled = true;
+    const iconeOriginal = botao.innerHTML;
+    botao.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+    try {
+        const dados = await apiFetch(`/api/consultas/cnpj/${documento}`);
+
+        document.getElementById('nome').value = dados.razaoSocial ?? '';
+        if (dados.telefone) document.getElementById('telefone').value = dados.telefone;
+        if (dados.email) document.getElementById('email').value = dados.email;
+        if (dados.codigoMunicipio) document.getElementById('codigoMunicipio').value = dados.codigoMunicipio;
+        if (dados.cep) document.getElementById('cep').value = dados.cep;
+        document.getElementById('logradouro').value = dados.logradouro ?? '';
+        document.getElementById('numero').value = dados.numero ?? '';
+        document.getElementById('complemento').value = dados.complemento ?? '';
+        document.getElementById('bairro').value = dados.bairro ?? '';
+        if (dados.uf) document.getElementById('uf').value = dados.uf;
+
+        mostrarToast(
+            `Endereço preenchido a partir da Receita Federal${dados.situacaoCadastral ? ' — situação: ' + dados.situacaoCadastral : ''}. Confira antes de salvar.`
+        );
+    } catch (err) {
+        mostrarErro(err.message);
+    } finally {
+        botao.disabled = false;
+        botao.innerHTML = iconeOriginal;
     }
 }

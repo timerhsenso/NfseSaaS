@@ -51,7 +51,12 @@
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">CPF/CNPJ</label>
-                                <input type="text" class="form-control" id="cpfCnpj" maxlength="14" required placeholder="Somente números" />
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="cpfCnpj" maxlength="14" required placeholder="Somente números" />
+                                    <button type="button" class="btn btn-outline-secondary" id="btn-consultar-cnpj-cliente" title="Buscar endereço na Receita Federal (só CNPJ, 14 dígitos)">
+                                        <i class="bi bi-search"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="col-md-8 mb-3">
                                 <label class="form-label">Nome</label>

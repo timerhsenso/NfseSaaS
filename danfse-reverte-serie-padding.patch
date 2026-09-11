@@ -1,0 +1,23 @@
+diff --git a/src/NfseSaaS.Infrastructure/Danfse/DanfseXmlDados.cs b/src/NfseSaaS.Infrastructure/Danfse/DanfseXmlDados.cs
+index 8562206..3b24310 100644
+--- a/src/NfseSaaS.Infrastructure/Danfse/DanfseXmlDados.cs
++++ b/src/NfseSaaS.Infrastructure/Danfse/DanfseXmlDados.cs
+@@ -67,17 +67,7 @@ internal sealed class DanfseXmlDados
+ 
+     public string NumeroDps() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:nDPS") ?? "-";
+ 
+-    /// <summary>
+-    /// 5 dígitos com zero à esquerda — puramente de exibição, copiado do
+-    /// formato do DANFSe oficial do portal nacional (o valor real em
+-    /// n:serie continua sem padding; PadLeft aqui não altera o XML,
+-    /// só como aparece na tela/PDF).
+-    /// </summary>
+-    public string SerieDps()
+-    {
+-        var serie = Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:serie");
+-        return serie is null ? "-" : serie.PadLeft(5, '0');
+-    }
++    public string SerieDps() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:serie") ?? "-";
+ 
+     public string DataHoraEmissaoDps() => FormatarDataHora(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:dhEmi"));
+ 

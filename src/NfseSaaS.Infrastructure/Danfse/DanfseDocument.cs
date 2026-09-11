@@ -184,15 +184,22 @@ internal sealed class DanfseDocument : IDocument
     }
 
     /// <summary>
-    /// Este SaaS não coleta um "destinatário da operação" distinto do
-    /// tomador — não há esse conceito na tela de emissão. Nota 3 da NT 008
-    /// cobre exatamente esse caso: informar a frase padrão em vez de
-    /// duplicar os dados do tomador.
+    /// Este SaaS não coleta um "destinatário da operação" nem um
+    /// "intermediário da operação" distintos do tomador — não há esse
+    /// conceito na tela de emissão. Texto e formatação (2 linhas
+    /// separadas, sem título de seção individual pra cada uma) copiados
+    /// do DANFSe oficial baixado do portal nacional da NFS-e, pra ficar
+    /// visualmente idêntico ao que o cliente já está acostumado a ver
+    /// lá — dá mais credibilidade que uma frase equivalente mas
+    /// redigida diferente.
     /// </summary>
     private void BlocoDestinatario(IContainer container)
     {
-        BlocoComTitulo(container, "DESTINATÁRIO DA OPERAÇÃO", corpo =>
-            corpo.Item().Text("O DESTINATÁRIO É O PRÓPRIO TOMADOR/ADQUIRENTE DA OPERAÇÃO").FontSize(7));
+        container.Column(coluna =>
+        {
+            coluna.Item().Text("DESTINATÁRIO DA OPERAÇÃO NÃO IDENTIFICADO NA NFS-e").FontSize(7);
+            coluna.Item().Text("INTERMEDIÁRIO DA OPERAÇÃO NÃO IDENTIFICADO NA NFS-e").FontSize(7);
+        });
     }
 
     private void BlocoServico(IContainer container)

@@ -21,6 +21,8 @@ let modalMotivoCancelamento;
 let empresaAtualIdNfse;
 let clientesPorId = {};
 let nfseDetalheAtualId;
+let modalNotaMensal;
+let candidatosNotaMensal = []; // estado local da grade (inclui selecionado/valorAjustado/status/mensagem por linha)
 
 document.addEventListener('DOMContentLoaded', function () {
     tabelaNfse = new DataTable('#tabela-nfse', {
@@ -78,6 +80,14 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('btn-emitir-nfse').addEventListener('click', abrirModalEmitirNfse);
         document.getElementById('form-emitir-nfse').addEventListener('submit', emitirNfse);
         document.getElementById('btn-sincronizar-sefin').addEventListener('click', sincronizarComSefin);
+
+        modalNotaMensal = new bootstrap.Modal(document.getElementById('modal-nota-mensal'));
+        document.getElementById('btn-nota-mensal').addEventListener('click', abrirModalNotaMensal);
+        document.getElementById('btn-buscar-candidatos-nota-mensal').addEventListener('click', buscarCandidatosNotaMensal);
+        document.getElementById('btn-emitir-nota-mensal').addEventListener('click', emitirNotaMensal);
+        document.getElementById('linhas-nota-mensal').addEventListener('change', function (e) {
+            if (e.target.classList.contains('nm-check') || e.target.classList.contains('nm-valor')) atualizarBotaoEmitirNotaMensal();
+        });
     }
 
     if (podeCancelarNfse) {
@@ -383,5 +393,163 @@ async function sincronizarComSefin() {
     } finally {
         botao.disabled = false;
         botao.innerHTML = '<i class="bi bi-cloud-download"></i> Buscar notas da SEFIN';
+    }
+}
+
+// ===== Nota Mensal (Fase 7) — emissão em lote =====
+
+function mesAtualIso() {
+    const hoje = new Date();
+    return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+}
+
+async function abrirModalNotaMensal() {
+    ocultarErroFormulario('erro-nota-mensal');
+    candidatosNotaMensal = [];
+    document.getElementById('nota-mensal-competencia').value = mesAtualIso();
+    document.getElementById('tabela-nota-mensal').classList.add('d-none');
+    document.getElementById('nota-mensal-sem-candidatos').classList.add('d-none');
+    document.getElementById('linhas-nota-mensal').innerHTML = '';
+    atualizarBotaoEmitirNotaMensal();
+    modalNotaMensal.show();
+    await buscarCandidatosNotaMensal();
+}
+
+async function buscarCandidatosNotaMensal() {
+    if (!empresaAtualIdNfse) return;
+    ocultarErroFormulario('erro-nota-mensal');
+
+    const competenciaMes = document.getElementById('nota-mensal-competencia').value; // yyyy-MM
+    if (!competenciaMes) return;
+    const competencia = `${competenciaMes}-01`;
+
+    try {
+        const candidatos = await apiFetch(`/api/nota-mensal/candidatos?empresaId=${empresaAtualIdNfse}&competencia=${competencia}`);
+
+        candidatosNotaMensal = candidatos.map(c => ({
+            ...c,
+            selecionado: !c.jaEmitidoNestaCompetencia,
+            valorAjustado: c.valorTotal,
+            status: c.jaEmitidoNestaCompetencia ? 'ja-emitido' : 'pendente',
+            mensagem: c.jaEmitidoNestaCompetencia ? 'Já tem nota nesta competência.' : null
+        }));
+
+        renderizarLinhasNotaMensal();
+    } catch (err) {
+        mostrarErroFormulario('erro-nota-mensal', err.message);
+    }
+}
+
+function renderizarLinhasNotaMensal() {
+    const corpo = document.getElementById('linhas-nota-mensal');
+    const tabela = document.getElementById('tabela-nota-mensal');
+    const semCandidatos = document.getElementById('nota-mensal-sem-candidatos');
+
+    if (candidatosNotaMensal.length === 0) {
+        tabela.classList.add('d-none');
+        semCandidatos.classList.remove('d-none');
+        atualizarBotaoEmitirNotaMensal();
+        return;
+    }
+
+    tabela.classList.remove('d-none');
+    semCandidatos.classList.add('d-none');
+
+    corpo.innerHTML = candidatosNotaMensal.map((c, i) => {
+        const servicos = c.linhas.map(l => l.servicoDescricao).join(', ');
+        const podeEditarValor = c.permitirAlterarValorNaEmissao && c.status === 'pendente';
+        const statusHtml = renderizarStatusNotaMensal(c);
+
+        return `
+            <tr>
+                <td><input type="checkbox" class="form-check-input nm-check" data-i="${i}" ${c.selecionado ? 'checked' : ''} ${c.status === 'sucesso' ? 'disabled' : ''}></td>
+                <td>${c.clienteNome}</td>
+                <td>${c.descricao}<br><small class="text-muted">${servicos}</small></td>
+                <td>
+                    <input type="number" step="0.01" min="0.01" class="form-control form-control-sm nm-valor" data-i="${i}"
+                        value="${c.valorAjustado}" ${podeEditarValor ? '' : 'readonly'}>
+                </td>
+                <td>${statusHtml}</td>
+            </tr>
+        `;
+    }).join('');
+
+    corpo.querySelectorAll('.nm-check').forEach(el => el.addEventListener('change', e => {
+        candidatosNotaMensal[e.target.dataset.i].selecionado = e.target.checked;
+    }));
+    corpo.querySelectorAll('.nm-valor').forEach(el => el.addEventListener('input', e => {
+        candidatosNotaMensal[e.target.dataset.i].valorAjustado = parseFloat(e.target.value) || 0;
+    }));
+
+    atualizarBotaoEmitirNotaMensal();
+}
+
+function renderizarStatusNotaMensal(c) {
+    if (c.status === 'ja-emitido') return '<span class="badge text-bg-secondary">Já emitido este mês</span>';
+    if (c.status === 'sucesso') return `<span class="badge text-bg-success">Emitida${c.numeroNfse ? ' — ' + c.numeroNfse : ''}</span>`;
+    if (c.status === 'falha') return `<span class="badge text-bg-danger" title="${c.mensagem ?? ''}">Falhou</span> <small class="text-danger">${c.mensagem ?? ''}</small>`;
+    return '<span class="badge text-bg-light text-dark">Pendente</span>';
+}
+
+function atualizarBotaoEmitirNotaMensal() {
+    const temSelecionado = candidatosNotaMensal.some(c => c.selecionado && c.status !== 'sucesso');
+    document.getElementById('btn-emitir-nota-mensal').disabled = !temSelecionado;
+}
+
+async function emitirNotaMensal() {
+    ocultarErroFormulario('erro-nota-mensal');
+
+    const competenciaMes = document.getElementById('nota-mensal-competencia').value;
+    const competencia = `${competenciaMes}-01`;
+
+    const itens = candidatosNotaMensal
+        .filter(c => c.selecionado && c.status !== 'sucesso')
+        .map(c => ({
+            contratoId: c.contratoId,
+            valorTotalAjustado: c.permitirAlterarValorNaEmissao ? c.valorAjustado : null
+        }));
+
+    if (itens.length === 0) return;
+
+    const botao = document.getElementById('btn-emitir-nota-mensal');
+    botao.disabled = true;
+
+    try {
+        const resultados = await apiFetch('/api/nota-mensal/emitir', {
+            method: 'POST',
+            body: JSON.stringify({ empresaId: empresaAtualIdNfse, competencia, itens })
+        });
+
+        // Pode vir mais de 1 resultado pro mesmo contrato (contrato com
+        // serviços de códigos de tributação diferentes vira mais de uma
+        // nota) — agrega por contratoId: só sucesso se TODAS as notas
+        // daquele contrato tiverem saído, mensagens combinadas.
+        const porContrato = new Map();
+        for (const r of resultados) {
+            if (!porContrato.has(r.contratoId)) porContrato.set(r.contratoId, []);
+            porContrato.get(r.contratoId).push(r);
+        }
+
+        for (const c of candidatosNotaMensal) {
+            const doContrato = porContrato.get(c.contratoId);
+            if (!doContrato) continue;
+
+            const todasOk = doContrato.every(r => r.sucesso);
+            c.status = todasOk ? 'sucesso' : 'falha';
+            c.numeroNfse = doContrato.map(r => r.numeroNfse).filter(Boolean).join(', ');
+            c.mensagem = todasOk ? null : doContrato.filter(r => !r.sucesso).map(r => r.mensagem).join('; ');
+            if (todasOk) c.selecionado = false; // sucesso sai da seleção — reprocessar só pega o que ainda falhou
+        }
+
+        renderizarLinhasNotaMensal();
+        await carregarNfse();
+
+        const totalFalhas = [...porContrato.values()].filter(rs => rs.some(r => !r.sucesso)).length;
+        if (totalFalhas === 0) mostrarToast('Lote emitido com sucesso.');
+        else mostrarToast(`Lote processado: ${totalFalhas} contrato(s) com falha — revise e emita de novo.`);
+    } catch (err) {
+        mostrarErroFormulario('erro-nota-mensal', err.message);
+    } finally {
+        atualizarBotaoEmitirNotaMensal();
     }
 }

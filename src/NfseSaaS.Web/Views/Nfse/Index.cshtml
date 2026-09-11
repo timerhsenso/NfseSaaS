@@ -14,6 +14,9 @@
                 <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-sincronizar-sefin">
                     <i class="bi bi-cloud-download"></i> Buscar notas da SEFIN
                 </button>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="btn-nota-mensal">
+                    <i class="bi bi-calendar-check"></i> Nota Mensal
+                </button>
                 <button type="button" class="btn btn-primary btn-sm" id="btn-emitir-nfse">
                     <i class="bi bi-plus-lg"></i> Emitir nota
                 </button>
@@ -151,6 +154,56 @@
                         <button type="submit" class="btn btn-danger">Confirmar cancelamento</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+}
+
+@if (podeEmitir)
+{
+    <div class="modal fade" id="modal-nota-mensal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nota Mensal — emissão em lote</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="erro-nota-mensal" class="alert alert-danger d-none"></div>
+
+                    <div class="row align-items-end mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Competência</label>
+                            <input type="month" class="form-control" id="nota-mensal-competencia" />
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-outline-secondary" id="btn-buscar-candidatos-nota-mensal">
+                                <i class="bi bi-search"></i> Buscar contratos elegíveis
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="nota-mensal-sem-candidatos" class="text-muted small d-none">Nenhum contrato Mensal/Ativo encontrado pra esta Empresa.</div>
+
+                    <table class="table table-sm table-striped d-none" id="tabela-nota-mensal">
+                        <thead>
+                            <tr>
+                                <th style="width:30px"></th>
+                                <th>Cliente</th>
+                                <th>Descrição / serviços</th>
+                                <th style="width:140px">Valor</th>
+                                <th style="width:220px">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="linhas-nota-mensal"></tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-primary" id="btn-emitir-nota-mensal" disabled>
+                        <i class="bi bi-send"></i> Emitir selecionados
+                    </button>
+                </div>
             </div>
         </div>
     </div>
