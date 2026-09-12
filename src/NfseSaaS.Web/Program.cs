@@ -53,6 +53,10 @@ try
     // PostgresHealthCheck).
     builder.Services.AddSingleton<NfseSaaS.Web.Services.ILogFileReader, NfseSaaS.Web.Services.LogFileReader>();
 
+    // Versão em produção (APP_VERSION/APP_COMMIT/APP_DEPLOY_EM, injetadas
+    // no deploy) + CHANGELOG.md — usado pela tela Sobre.
+    builder.Services.AddSingleton<NfseSaaS.Web.Services.IVersaoInfo, NfseSaaS.Web.Services.VersaoInfo>();
+
     var app = builder.Build();
 
     await NfseSaaS.Infrastructure.Identity.IdentitySeeder.SeedRolesAsync(app.Services);

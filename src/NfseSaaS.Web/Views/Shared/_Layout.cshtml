@@ -124,6 +124,10 @@
                     {
                         <a href="/Logs" class="@Ativo("/Logs")"><span class="nav-icon bi bi-terminal"></span>Logs</a>
                     }
+                    @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Sobre))
+                    {
+                        <a href="/Sobre" class="@Ativo("/Sobre")"><span class="nav-icon bi bi-info-circle"></span>Sobre</a>
+                    }
                 </nav>
             }
 

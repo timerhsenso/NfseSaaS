@@ -15,6 +15,15 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<!-- CHANGELOG.md mora na raiz do repo (convenção padrão), mas a
+             tela Sobre lê arquivo relativo ao ContentRootPath (mesma
+             pasta do NfseSaaS.Web.dll em runtime) — este Content item
+             garante que "dotnet publish" sempre copia o arquivo pra lá,
+             não importa como o Dockerfile monta a imagem por trás. -->
+		<Content Include="..\..\CHANGELOG.md" Link="CHANGELOG.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="FluentValidation" Version="12.1.1" />
 		<PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
 		<PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />

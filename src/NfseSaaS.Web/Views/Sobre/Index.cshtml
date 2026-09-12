@@ -1,0 +1,56 @@
+@{
+    ViewData["Title"] = "Sobre";
+}
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="text-muted small">Versão em produção</div>
+                <div class="h4 mb-0" id="sobre-versao">—</div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">Commit</div>
+                <div class="h5 mb-0"><code id="sobre-commit">—</code></div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">Deploy em</div>
+                <div class="h5 mb-0" id="sobre-deploy-em">—</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h6 class="mb-3">Histórico de mudanças</h6>
+        <pre id="sobre-changelog" class="changelog-viewer"></pre>
+    </div>
+</div>
+
+@section Scripts {
+    <style>
+        .changelog-viewer {
+            max-height: 65vh;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-size: 0.875rem;
+        }
+    </style>
+    <script>
+        (async function () {
+            try {
+                const dados = await apiFetch('/api/sobre');
+
+                document.getElementById('sobre-versao').textContent = dados.versao;
+                document.getElementById('sobre-commit').textContent = dados.commit;
+                document.getElementById('sobre-deploy-em').textContent = dados.deployEm
+                    ? new Date(dados.deployEm).toLocaleString('pt-BR')
+                    : 'não disponível';
+                document.getElementById('sobre-changelog').textContent = dados.changelog;
+            } catch (erro) {
+                document.getElementById('sobre-changelog').textContent = 'Erro ao carregar: ' + erro.message;
+            }
+        })();
+    </script>
+}

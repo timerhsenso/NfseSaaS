@@ -166,6 +166,21 @@ jobs:
             echo "Nova versão:"
             echo "$NEW_COMMIT"
 
+            # --------------------------------------------------
+            # Versão exibida na tela "Sobre" (Administrador)
+            # --------------------------------------------------
+            # git describe usa a tag mais recente alcançável a partir do
+            # commit atual (ex.: "v1.0.0" se for exatamente uma tag, ou
+            # "v1.0.0-3-gabc1234" se houver 3 commits além dela). Sem
+            # nenhuma tag ainda no repo, cai no --always (só o SHA curto)
+            # — funciona desde já, e passa a mostrar a tag assim que
+            # alguém rodar "git tag vX.Y.Z && git push --tags".
+            export APP_VERSION=$(git describe --tags --always)
+            export APP_COMMIT="$NEW_COMMIT"
+            export APP_DEPLOY_EM=$(date -u +%FT%TZ)
+
+            echo "Versão detectada: $APP_VERSION"
+
 
             # --------------------------------------------------
             # Build primeiro
@@ -198,6 +213,10 @@ jobs:
             # --------------------------------------------------
             # Subir nova aplicação
             # --------------------------------------------------
+            # APP_VERSION/APP_COMMIT/APP_DEPLOY_EM (exportados acima)
+            # só chegam dentro do container se docker-compose.prod.yml
+            # referenciar ${APP_VERSION} etc. no "environment:" do
+            # serviço "app" — ver instrução separada pra esse arquivo.
 
             echo ""
             echo "======================================"
