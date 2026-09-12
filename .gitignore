@@ -15,6 +15,12 @@ x86/
 [Ll]og/
 [Ll]ogs/
 
+## Exceção: a TELA "Logs do sistema" mora em src/NfseSaaS.Web/Views/Logs/
+## — sem isto, a regra [Ll]ogs/ acima ignora silenciosamente esses
+## arquivos .cshtml em qualquer git add (foi exatamente isto que fez o
+## Views/Logs/Index.cshtml nunca chegar num patch anterior).
+!/src/NfseSaaS.Web/Views/Logs/
+
 ## Testes
 [Tt]est[Rr]esult*/
 *.trx
@@ -46,3 +52,4 @@ docker-compose.override.yml
 Thumbs.db
 /documentacao/documentacao_tecnica_cicd_micoempresa_nfsesaas.pdf
 /documentacao/documentacao_tecnica_micoempresa_nfsesaas.pdf
+*.patch
