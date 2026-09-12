@@ -44,3 +44,5 @@ docker-compose.override.yml
 ## SO
 .DS_Store
 Thumbs.db
+/documentacao/documentacao_tecnica_cicd_micoempresa_nfsesaas.pdf
+/documentacao/documentacao_tecnica_micoempresa_nfsesaas.pdf
