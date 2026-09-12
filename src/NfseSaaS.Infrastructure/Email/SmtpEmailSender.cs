@@ -12,8 +12,9 @@ namespace NfseSaaS.Infrastructure.Email;
 /// pela própria documentação da Microsoft em vez do SmtpClient do .NET,
 /// que está em modo de manutenção e não deve ser usado em código novo).
 ///
-/// Falha de envio NUNCA propaga exceção — só loga e devolve false. E-mail
-/// é tratado como "melhor esforço": se falhar, a operação que chamou (ex.:
+/// Falha de envio NUNCA propaga exceção — só loga e devolve
+/// ResultadoEnvioEmail.Sucesso=false com o detalhe do erro. E-mail é
+/// tratado como "melhor esforço": se falhar, a operação que chamou (ex.:
 /// convidar um usuário) já aconteceu de verdade no banco e continua
 /// válida, só não chegou por e-mail dessa vez.
 /// </summary>
@@ -28,12 +29,12 @@ public sealed class SmtpEmailSender : IEmailSender
         _logger = logger;
     }
 
-    public async Task<bool> EnviarAsync(string destinatarioEmail, string assunto, string corpoHtml, CancellationToken cancellationToken)
+    public async Task<ResultadoEnvioEmail> EnviarAsync(string destinatarioEmail, string assunto, string corpoHtml, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(_options.SmtpHost))
         {
             _logger.LogWarning("Email:SmtpHost não configurado — e-mail para {Destinatario} NÃO foi enviado.", destinatarioEmail);
-            return false;
+            return new ResultadoEnvioEmail(false, "Email:SmtpHost não configurado no servidor.");
         }
 
         var mensagem = new MimeMessage();
@@ -58,12 +59,12 @@ public sealed class SmtpEmailSender : IEmailSender
             await client.SendAsync(mensagem, cancellationToken);
             await client.DisconnectAsync(true, cancellationToken);
 
-            return true;
+            return new ResultadoEnvioEmail(true, null);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Falha ao enviar e-mail para {Destinatario}.", destinatarioEmail);
-            return false;
+            return new ResultadoEnvioEmail(false, ex.Message);
         }
     }
 }

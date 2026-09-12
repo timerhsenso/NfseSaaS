@@ -1,0 +1,61 @@
+@{
+    ViewData["Title"] = "E-mails";
+}
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span>E-mails enviados pelo sistema</span>
+        <div class="d-flex gap-2">
+            <select class="form-select form-select-sm" id="filtro-status" style="width: auto;">
+                <option value="">Todos os status</option>
+                <option value="Pendente">Pendente</option>
+                <option value="Enviado">Enviado</option>
+                <option value="Falhou">Falhou</option>
+            </select>
+            <select class="form-select form-select-sm" id="filtro-tipo" style="width: auto;">
+                <option value="">Todos os tipos</option>
+                <option value="Convite">Convite</option>
+                <option value="ResetSenha">Reset de senha (Admin)</option>
+                <option value="EsqueciSenha">Esqueci minha senha</option>
+                <option value="AvisoTrocaSenha">Aviso de troca de senha</option>
+            </select>
+            <input type="text" class="form-control form-control-sm" id="filtro-busca" placeholder="Buscar destinatário..." style="width: 220px;" />
+        </div>
+    </div>
+    <div class="card-body">
+        <table id="tabela-emails" class="table table-striped table-bordered w-100">
+            <thead>
+                <tr>
+                    <th>Destinatário</th>
+                    <th>Tipo</th>
+                    <th>Assunto</th>
+                    <th>Status</th>
+                    <th>Tentativas</th>
+                    <th>Criado em</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-erro-email" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalhe do erro</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="erro-email-detalhe" class="text-danger small" style="white-space: pre-wrap;"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/paginas/emails.js" asp-append-version="true"></script>
+}

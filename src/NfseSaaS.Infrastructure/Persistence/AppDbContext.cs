@@ -44,6 +44,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
     public DbSet<Tela> Telas => Set<Tela>();
     public DbSet<Grupo> Grupos => Set<Grupo>();
     public DbSet<GrupoTela> GrupoTelas => Set<GrupoTela>();
+    public DbSet<EmailLog> EmailLogs => Set<EmailLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

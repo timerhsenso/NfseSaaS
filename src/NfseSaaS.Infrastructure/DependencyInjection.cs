@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.UseCases.AuditLogs;
 using NfseSaaS.Application.UseCases.Certificados;
@@ -65,6 +66,9 @@ public static class DependencyInjection
 
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
         services.AddScoped<IEmailSender, SmtpEmailSender>();
+        services.AddSingleton<IBackgroundEmailQueue, BackgroundEmailQueue>();
+        services.AddScoped<IEmailQueueService, EmailQueueService>();
+        services.AddHostedService<EmailDispatchHostedService>();
 
         services
             .AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>

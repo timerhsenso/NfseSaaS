@@ -78,7 +78,7 @@ public sealed class AuthController : ControllerBase
     private readonly ICurrentUser _currentUser;
     private readonly IAuditLogWriter _auditLogWriter;
     private readonly IGrupoProvisionamentoService _grupoProvisionamento;
-    private readonly IEmailSender _emailSender;
+    private readonly IEmailQueueService _emailQueueService;
     private readonly EmailOptions _emailOptions;
     private readonly IHostEnvironment _environment;
 
@@ -90,7 +90,7 @@ public sealed class AuthController : ControllerBase
         ICurrentUser currentUser,
         IAuditLogWriter auditLogWriter,
         IGrupoProvisionamentoService grupoProvisionamento,
-        IEmailSender emailSender,
+        IEmailQueueService emailQueueService,
         IOptions<EmailOptions> emailOptions,
         IHostEnvironment environment)
     {
@@ -101,7 +101,7 @@ public sealed class AuthController : ControllerBase
         _currentUser = currentUser;
         _auditLogWriter = auditLogWriter;
         _grupoProvisionamento = grupoProvisionamento;
-        _emailSender = emailSender;
+        _emailQueueService = emailQueueService;
         _emailOptions = emailOptions.Value;
         _environment = environment;
     }
@@ -210,7 +210,7 @@ public sealed class AuthController : ControllerBase
         _auditLogWriter.Registrar("AlterarPropriaSenha", "ApplicationUser", usuario.Id, null);
         await _db.SaveChangesAsync(cancellationToken);
 
-        await EnviarEmailAvisoTrocaSenhaAsync(usuario.Email!, cancellationToken);
+        await EnfileirarEmailAvisoTrocaSenhaAsync(usuario.Id, usuario.Email!, cancellationToken);
 
         return Ok();
     }
@@ -232,13 +232,17 @@ public sealed class AuthController : ControllerBase
         {
             var token = await _userManager.GeneratePasswordResetTokenAsync(usuario);
             var tenant = await _db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == usuario.TenantId, cancellationToken);
-            await EnviarEmailDeRedefinicaoSenhaAsync(usuario.Email!, token, tenant?.RazaoSocial, cancellationToken);
 
-            // Pré-autenticação, mesmo raciocínio do bloqueio de login —
-            // ver TenantIdOverrideDeSistema em AppDbContext.
+            // Pré-autenticação (AllowAnonymous) — não há Claim de tenant
+            // pra ApplyTenantIsolation resolver sozinho (EmailLog e
+            // AuditLog são ITenantEntity). Ver TenantIdOverrideDeSistema
+            // em AppDbContext. Cobre tanto o enfileiramento do e-mail
+            // quanto o log de auditoria logo abaixo.
             _db.TenantIdOverrideDeSistema = usuario.TenantId;
             try
             {
+                await EnfileirarEmailDeRedefinicaoSenhaAsync(usuario.Id, usuario.Email!, token, tenant?.RazaoSocial, cancellationToken);
+
                 _auditLogWriter.Registrar("SolicitarRedefinicaoSenha", "ApplicationUser", usuario.Id, null);
                 await _db.SaveChangesAsync(cancellationToken);
             }
@@ -278,7 +282,7 @@ public sealed class AuthController : ControllerBase
         _auditLogWriter.Registrar("RedefinirSenha", "ApplicationUser", usuario.Id, null);
         await _db.SaveChangesAsync(cancellationToken);
 
-        await EnviarEmailAvisoTrocaSenhaAsync(usuario.Email!, cancellationToken);
+        await EnfileirarEmailAvisoTrocaSenhaAsync(usuario.Id, usuario.Email!, cancellationToken);
 
         return Ok();
     }
@@ -286,10 +290,11 @@ public sealed class AuthController : ControllerBase
     /// <summary>
     /// Convida um e-mail para entrar no MESMO Tenant do usuário autenticado,
     /// já atribuído a um Grupo de permissão. Cria a conta (sem senha
-    /// utilizável), gera um token de convite e tenta enviá-lo por e-mail.
-    /// Se o envio falhar (ou em ambiente de Development), o token também
-    /// volta na resposta da API — nunca deixamos o convite sem nenhuma
-    /// forma de ser completado.
+    /// utilizável), gera um token de convite e enfileira o e-mail — o
+    /// envio de verdade roda em segundo plano (ver
+    /// EmailDispatchHostedService), a requisição não espera o SMTP. Status
+    /// do envio (Pendente/Enviado/Falhou) e reenvio ficam na tela de
+    /// E-mails.
     /// </summary>
     [RequerPermissao(TelaCatalogo.Usuarios, AcaoPermissao.Incluir)]
     [HttpPost("convidar")]
@@ -327,20 +332,20 @@ public sealed class AuthController : ControllerBase
         var token = await _userManager.GeneratePasswordResetTokenAsync(novoUsuario);
 
         var tenant = await _db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
-        var emailEnviado = await EnviarEmailDeConviteAsync(request.Email, token, tenant?.RazaoSocial, cancellationToken);
+        var emailLogId = await EnfileirarEmailDeConviteAsync(novoUsuario.Id, request.Email, token, tenant?.RazaoSocial, cancellationToken);
 
         var resposta = new Dictionary<string, object?>
         {
             ["userId"] = novoUsuario.Id,
             ["email"] = novoUsuario.Email,
-            ["emailEnviado"] = emailEnviado
+            ["emailLogId"] = emailLogId
         };
 
-        // Sem o token aqui, um e-mail que falhou vira um convite sem
-        // nenhuma forma de ser completado — então ele SEMPRE volta quando
-        // o envio não deu certo, mesmo em produção. Em Development volta
-        // sempre, pra testar via Swagger sem precisar de SMTP configurado.
-        if (_environment.IsDevelopment() || !emailEnviado)
+        // O envio de verdade roda em segundo plano (ver EmailDispatchHostedService)
+        // — a requisição não sabe mais na hora se saiu ou não. Acompanhe
+        // o status na tela de E-mails; o token só volta aqui em
+        // Development, pra testar via Swagger sem precisar de SMTP.
+        if (_environment.IsDevelopment())
             resposta["token"] = token;
 
         return Ok(resposta);
@@ -539,7 +544,7 @@ public sealed class AuthController : ControllerBase
         var tokenParaEmail = await _userManager.GeneratePasswordResetTokenAsync(usuario);
 
         var tenant = await _db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
-        var emailEnviado = await EnviarEmailDeResetPorAdminAsync(usuario.Email!, tokenParaEmail, tenant?.RazaoSocial, cancellationToken);
+        var emailLogId = await EnfileirarEmailDeResetPorAdminAsync(usuario.Id, usuario.Email!, tokenParaEmail, tenant?.RazaoSocial, cancellationToken);
 
         _auditLogWriter.Registrar("ResetarSenhaUsuario", "ApplicationUser", usuario.Id, new { usuario.Email });
         await _db.SaveChangesAsync(cancellationToken);
@@ -548,10 +553,10 @@ public sealed class AuthController : ControllerBase
         {
             ["userId"] = usuario.Id,
             ["email"] = usuario.Email,
-            ["emailEnviado"] = emailEnviado
+            ["emailLogId"] = emailLogId
         };
 
-        if (_environment.IsDevelopment() || !emailEnviado)
+        if (_environment.IsDevelopment())
             resposta["token"] = tokenParaEmail;
 
         return Ok(resposta);
@@ -580,16 +585,16 @@ public sealed class AuthController : ControllerBase
         var token = await _userManager.GeneratePasswordResetTokenAsync(usuario);
 
         var tenant = await _db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
-        var emailEnviado = await EnviarEmailDeConviteAsync(usuario.Email!, token, tenant?.RazaoSocial, cancellationToken);
+        var emailLogId = await EnfileirarEmailDeConviteAsync(usuario.Id, usuario.Email!, token, tenant?.RazaoSocial, cancellationToken);
 
         var resposta = new Dictionary<string, object?>
         {
             ["userId"] = usuario.Id,
             ["email"] = usuario.Email,
-            ["emailEnviado"] = emailEnviado
+            ["emailLogId"] = emailLogId
         };
 
-        if (_environment.IsDevelopment() || !emailEnviado)
+        if (_environment.IsDevelopment())
             resposta["token"] = token;
 
         return Ok(resposta);
@@ -655,7 +660,8 @@ public sealed class AuthController : ControllerBase
         return totalNoGrupo <= 1;
     }
 
-    private async Task<bool> EnviarEmailDeConviteAsync(string destinatarioEmail, string token, string? razaoSocialTenant, CancellationToken cancellationToken)
+    /// <summary>Monta e enfileira o e-mail de convite (ver IEmailQueueService) — nunca envia direto, nunca bloqueia a requisição esperando SMTP.</summary>
+    private Task<Guid> EnfileirarEmailDeConviteAsync(Guid usuarioId, string destinatarioEmail, string token, string? razaoSocialTenant, CancellationToken cancellationToken)
     {
         var nomeExibicao = string.IsNullOrWhiteSpace(razaoSocialTenant) ? "NfseSaaS" : razaoSocialTenant;
 
@@ -673,10 +679,10 @@ public sealed class AuthController : ControllerBase
             </ul>
             """;
 
-        return await _emailSender.EnviarAsync(destinatarioEmail, $"Convite — {nomeExibicao}", corpoHtml, cancellationToken);
+        return _emailQueueService.EnfileirarAsync(TipoEmailCatalogo.Convite, usuarioId, destinatarioEmail, $"Convite — {nomeExibicao}", corpoHtml, cancellationToken);
     }
 
-    private async Task<bool> EnviarEmailDeRedefinicaoSenhaAsync(string destinatarioEmail, string token, string? razaoSocialTenant, CancellationToken cancellationToken)
+    private Task<Guid> EnfileirarEmailDeRedefinicaoSenhaAsync(Guid usuarioId, string destinatarioEmail, string token, string? razaoSocialTenant, CancellationToken cancellationToken)
     {
         var nomeExibicao = string.IsNullOrWhiteSpace(razaoSocialTenant) ? "NfseSaaS" : razaoSocialTenant;
 
@@ -695,11 +701,11 @@ public sealed class AuthController : ControllerBase
             </ul>
             """;
 
-        return await _emailSender.EnviarAsync(destinatarioEmail, $"Redefinição de senha — {nomeExibicao}", corpoHtml, cancellationToken);
+        return _emailQueueService.EnfileirarAsync(TipoEmailCatalogo.EsqueciSenha, usuarioId, destinatarioEmail, $"Redefinição de senha — {nomeExibicao}", corpoHtml, cancellationToken);
     }
 
-    /// <summary>Variação de EnviarEmailDeRedefinicaoSenhaAsync — mesmo link, mas avisando que foi o Administrador quem resetou (não um pedido do próprio usuário).</summary>
-    private async Task<bool> EnviarEmailDeResetPorAdminAsync(string destinatarioEmail, string token, string? razaoSocialTenant, CancellationToken cancellationToken)
+    /// <summary>Variação de EnfileirarEmailDeRedefinicaoSenhaAsync — mesmo link, mas avisando que foi o Administrador quem resetou (não um pedido do próprio usuário).</summary>
+    private Task<Guid> EnfileirarEmailDeResetPorAdminAsync(Guid usuarioId, string destinatarioEmail, string token, string? razaoSocialTenant, CancellationToken cancellationToken)
     {
         var nomeExibicao = string.IsNullOrWhiteSpace(razaoSocialTenant) ? "NfseSaaS" : razaoSocialTenant;
 
@@ -718,11 +724,11 @@ public sealed class AuthController : ControllerBase
             </ul>
             """;
 
-        return await _emailSender.EnviarAsync(destinatarioEmail, $"Sua senha foi resetada — {nomeExibicao}", corpoHtml, cancellationToken);
+        return _emailQueueService.EnfileirarAsync(TipoEmailCatalogo.ResetSenha, usuarioId, destinatarioEmail, $"Sua senha foi resetada — {nomeExibicao}", corpoHtml, cancellationToken);
     }
 
     /// <summary>Disparado em TODA troca de senha (alterar ou redefinir por "esqueci") — detecção de troca que o dono da conta não reconhece.</summary>
-    private async Task<bool> EnviarEmailAvisoTrocaSenhaAsync(string destinatarioEmail, CancellationToken cancellationToken)
+    private Task<Guid> EnfileirarEmailAvisoTrocaSenhaAsync(Guid usuarioId, string destinatarioEmail, CancellationToken cancellationToken)
     {
         var corpoHtml = """
             <p>Sua senha no NfseSaaS foi alterada agora.</p>
@@ -730,6 +736,6 @@ public sealed class AuthController : ControllerBase
             <p><strong>Se você não reconhece esta troca</strong>, entre em contato com o Administrador do seu Tenant o quanto antes.</p>
             """;
 
-        return await _emailSender.EnviarAsync(destinatarioEmail, "Sua senha foi alterada — NfseSaaS", corpoHtml, cancellationToken);
+        return _emailQueueService.EnfileirarAsync(TipoEmailCatalogo.AvisoTrocaSenha, usuarioId, destinatarioEmail, "Sua senha foi alterada — NfseSaaS", corpoHtml, cancellationToken);
     }
 }

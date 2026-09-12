@@ -45,7 +45,8 @@ public sealed class GrupoProvisionamentoService : IGrupoProvisionamentoService
             [TelaCatalogo.Nfse] = new PermissaoIaec(Incluir: true, Alterar: false, Excluir: true, Consultar: true), // Excluir aqui = Cancelar; não existe "Alterar" pra Nfse (imutável após emitida)
             [TelaCatalogo.Usuarios] = PermissaoIaec.Tudo,
             [TelaCatalogo.Grupos] = PermissaoIaec.Tudo,
-            [TelaCatalogo.Auditoria] = PermissaoIaec.SoConsultar // Auditoria é só leitura por natureza, não tem Incluir/Alterar/Excluir manual
+            [TelaCatalogo.Auditoria] = PermissaoIaec.SoConsultar, // Auditoria é só leitura por natureza, não tem Incluir/Alterar/Excluir manual
+            [TelaCatalogo.Emails] = PermissaoIaec.Tudo
         }),
         ("Emissor", "Pode emitir Nfse. Leitura nas demais telas de cadastro.", false, new Dictionary<string, PermissaoIaec>
         {
@@ -56,7 +57,8 @@ public sealed class GrupoProvisionamentoService : IGrupoProvisionamentoService
             [TelaCatalogo.Nfse] = new PermissaoIaec(Incluir: true, Alterar: false, Excluir: false, Consultar: true),
             [TelaCatalogo.Usuarios] = PermissaoIaec.Nenhuma,
             [TelaCatalogo.Grupos] = PermissaoIaec.Nenhuma,
-            [TelaCatalogo.Auditoria] = PermissaoIaec.Nenhuma
+            [TelaCatalogo.Auditoria] = PermissaoIaec.Nenhuma,
+            [TelaCatalogo.Emails] = PermissaoIaec.Nenhuma
         }),
         ("Financeiro", "Leitura de Nfse e Auditoria para conciliação financeira.", false, new Dictionary<string, PermissaoIaec>
         {
@@ -67,7 +69,8 @@ public sealed class GrupoProvisionamentoService : IGrupoProvisionamentoService
             [TelaCatalogo.Nfse] = PermissaoIaec.SoConsultar,
             [TelaCatalogo.Usuarios] = PermissaoIaec.Nenhuma,
             [TelaCatalogo.Grupos] = PermissaoIaec.Nenhuma,
-            [TelaCatalogo.Auditoria] = PermissaoIaec.SoConsultar
+            [TelaCatalogo.Auditoria] = PermissaoIaec.SoConsultar,
+            [TelaCatalogo.Emails] = PermissaoIaec.Nenhuma
         }),
         ("Contador", "Leitura de Nfse e Auditoria para fins fiscais/contábeis.", false, new Dictionary<string, PermissaoIaec>
         {
@@ -78,7 +81,8 @@ public sealed class GrupoProvisionamentoService : IGrupoProvisionamentoService
             [TelaCatalogo.Nfse] = PermissaoIaec.SoConsultar,
             [TelaCatalogo.Usuarios] = PermissaoIaec.Nenhuma,
             [TelaCatalogo.Grupos] = PermissaoIaec.Nenhuma,
-            [TelaCatalogo.Auditoria] = PermissaoIaec.SoConsultar
+            [TelaCatalogo.Auditoria] = PermissaoIaec.SoConsultar,
+            [TelaCatalogo.Emails] = PermissaoIaec.Nenhuma
         }),
         ("Consulta", "Só leitura — sem acesso a Usuários, Grupos ou Auditoria.", false, new Dictionary<string, PermissaoIaec>
         {
@@ -89,7 +93,8 @@ public sealed class GrupoProvisionamentoService : IGrupoProvisionamentoService
             [TelaCatalogo.Nfse] = PermissaoIaec.SoConsultar,
             [TelaCatalogo.Usuarios] = PermissaoIaec.Nenhuma,
             [TelaCatalogo.Grupos] = PermissaoIaec.Nenhuma,
-            [TelaCatalogo.Auditoria] = PermissaoIaec.Nenhuma
+            [TelaCatalogo.Auditoria] = PermissaoIaec.Nenhuma,
+            [TelaCatalogo.Emails] = PermissaoIaec.Nenhuma
         })
     };
 

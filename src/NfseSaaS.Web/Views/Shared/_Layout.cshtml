@@ -116,6 +116,10 @@
                     {
                         <a href="/Grupos" class="@Ativo("/Grupos")"><span class="nav-icon bi bi-diagram-3"></span>Grupos de permissão</a>
                     }
+                    @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Emails))
+                    {
+                        <a href="/Emails" class="@Ativo("/Emails")"><span class="nav-icon bi bi-envelope-paper"></span>E-mails</a>
+                    }
                 </nav>
             }
 

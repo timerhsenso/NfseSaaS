@@ -1,0 +1,1094 @@
+diff --git a/src/NfseSaaS.Application/Abstractions/IEmailQueueService.cs b/src/NfseSaaS.Application/Abstractions/IEmailQueueService.cs
+new file mode 100644
+index 0000000..cd77f59
+--- /dev/null
++++ b/src/NfseSaaS.Application/Abstractions/IEmailQueueService.cs
+@@ -0,0 +1,13 @@
++namespace NfseSaaS.Application.Abstractions;
++
++/// <summary>
++/// Ponto único que os controllers usam pra "enviar" um e-mail — na
++/// prática só registra o EmailLog (Status=Pendente) e enfileira; o envio
++/// de verdade acontece em segundo plano (ver EmailDispatchHostedService
++/// em Infrastructure), então a requisição HTTP nunca espera o SMTP.
++/// </summary>
++public interface IEmailQueueService
++{
++    /// <returns>Id do EmailLog criado — útil pra quem chamou linkar direto na tela de E-mails, se quiser.</returns>
++    Task<Guid> EnfileirarAsync(string tipo, Guid? usuarioId, string destinatario, string assunto, string corpoHtml, CancellationToken cancellationToken);
++}
+diff --git a/src/NfseSaaS.Application/Abstractions/IEmailSender.cs b/src/NfseSaaS.Application/Abstractions/IEmailSender.cs
+index dbfa702..d442d4f 100644
+--- a/src/NfseSaaS.Application/Abstractions/IEmailSender.cs
++++ b/src/NfseSaaS.Application/Abstractions/IEmailSender.cs
+@@ -1,5 +1,8 @@
+ namespace NfseSaaS.Application.Abstractions;
+ 
++/// <summary>Resultado de uma tentativa de envio — ErroDetalhe é null quando Sucesso é true.</summary>
++public sealed record ResultadoEnvioEmail(bool Sucesso, string? ErroDetalhe);
++
+ /// <summary>
+ /// Abstração de envio de e-mail. Implementação real via SMTP em
+ /// Infrastructure (ver EmailOptions/SmtpEmailSender) — Application nunca
+@@ -7,10 +10,6 @@ namespace NfseSaaS.Application.Abstractions;
+ /// </summary>
+ public interface IEmailSender
+ {
+-    /// <returns>
+-    /// true se o e-mail foi efetivamente enviado; false se não foi
+-    /// (SMTP não configurado ou falha no envio) — nunca lança exceção,
+-    /// quem chama decide o que fazer com um envio que não saiu.
+-    /// </returns>
+-    Task<bool> EnviarAsync(string destinatarioEmail, string assunto, string corpoHtml, CancellationToken cancellationToken);
++    /// <summary>Nunca lança exceção — qualquer falha (SMTP não configurado, erro de rede, autenticação) vira ResultadoEnvioEmail.Sucesso=false com ErroDetalhe preenchido.</summary>
++    Task<ResultadoEnvioEmail> EnviarAsync(string destinatarioEmail, string assunto, string corpoHtml, CancellationToken cancellationToken);
+ }
+diff --git a/src/NfseSaaS.Application/Authorization/TelaCatalogo.cs b/src/NfseSaaS.Application/Authorization/TelaCatalogo.cs
+index 9188f43..28d58ec 100644
+--- a/src/NfseSaaS.Application/Authorization/TelaCatalogo.cs
++++ b/src/NfseSaaS.Application/Authorization/TelaCatalogo.cs
+@@ -17,6 +17,7 @@ public static class TelaCatalogo
+     public const string Usuarios = "Usuarios";
+     public const string Auditoria = "Auditoria";
+     public const string Grupos = "Grupos";
++    public const string Emails = "Emails";
+ 
+     public static readonly (string Codigo, string Nome, int Ordem)[] Todas =
+     {
+@@ -27,6 +28,7 @@ public static class TelaCatalogo
+         (Nfse, "Notas Fiscais", 5),
+         (Usuarios, "Usuários", 6),
+         (Grupos, "Grupos de permissão", 7),
+-        (Auditoria, "Auditoria", 8)
++        (Auditoria, "Auditoria", 8),
++        (Emails, "E-mails", 9)
+     };
+ }
+diff --git a/src/NfseSaaS.Application/Authorization/TipoEmailCatalogo.cs b/src/NfseSaaS.Application/Authorization/TipoEmailCatalogo.cs
+new file mode 100644
+index 0000000..af203f0
+--- /dev/null
++++ b/src/NfseSaaS.Application/Authorization/TipoEmailCatalogo.cs
+@@ -0,0 +1,10 @@
++namespace NfseSaaS.Application.Authorization;
++
++/// <summary>Códigos estáveis dos tipos de e-mail — ver EmailLog.Tipo.</summary>
++public static class TipoEmailCatalogo
++{
++    public const string Convite = "Convite";
++    public const string ResetSenha = "ResetSenha";
++    public const string EsqueciSenha = "EsqueciSenha";
++    public const string AvisoTrocaSenha = "AvisoTrocaSenha";
++}
+diff --git a/src/NfseSaaS.Domain/Entities/EmailLog.cs b/src/NfseSaaS.Domain/Entities/EmailLog.cs
+new file mode 100644
+index 0000000..a94799b
+--- /dev/null
++++ b/src/NfseSaaS.Domain/Entities/EmailLog.cs
+@@ -0,0 +1,42 @@
++using NfseSaaS.Domain.Common;
++using NfseSaaS.Domain.Enums;
++
++namespace NfseSaaS.Domain.Entities;
++
++/// <summary>
++/// Registro de todo e-mail que o sistema tenta enviar (convite, reset de
++/// senha, esqueci senha — e qualquer outro que vier a existir). Existe
++/// por dois motivos ao mesmo tempo: (1) é o item da fila de envio em
++/// segundo plano — grava Pendente antes de entrar na fila, pra não
++/// perder o pedido se a aplicação reiniciar no meio (ver
++/// EmailPendenteRecuperador); (2) é o que a tela de E-mails lista, com
++/// status, detalhe do erro e reenvio.
++///
++/// Entidade TENANT-SCOPED: sofre o Global Query Filter por TenantId.
++/// </summary>
++public sealed class EmailLog : BaseEntity, ITenantEntity
++{
++    public Guid TenantId { get; set; }
++
++    /// <summary>Código estável do tipo — ver TipoEmailCatalogo.</summary>
++    public string Tipo { get; set; } = string.Empty;
++
++    /// <summary>ApplicationUser relacionado, quando aplicável (convite, reset de senha, esqueci senha sempre têm um) — Guid solto, sem FK real (mesmo padrão de AuditLog.UserId).</summary>
++    public Guid? UsuarioId { get; set; }
++
++    public string Destinatario { get; set; } = string.Empty;
++
++    public string Assunto { get; set; } = string.Empty;
++
++    /// <summary>Corpo exato que foi (ou vai ser) enviado — é o que "Reenviar" manda de novo, sem regenerar nada (token incluso, se houver, é o mesmo da tentativa original).</summary>
++    public string CorpoHtml { get; set; } = string.Empty;
++
++    public StatusEmailLog Status { get; set; } = StatusEmailLog.Pendente;
++
++    /// <summary>Mensagem de erro da última tentativa — null enquanto Pendente/Enviado.</summary>
++    public string? ErroDetalhe { get; set; }
++
++    public int Tentativas { get; set; }
++
++    public DateTimeOffset? EnviadoEm { get; set; }
++}
+diff --git a/src/NfseSaaS.Domain/Enums/StatusEmailLog.cs b/src/NfseSaaS.Domain/Enums/StatusEmailLog.cs
+new file mode 100644
+index 0000000..299a4a6
+--- /dev/null
++++ b/src/NfseSaaS.Domain/Enums/StatusEmailLog.cs
+@@ -0,0 +1,8 @@
++namespace NfseSaaS.Domain.Enums;
++
++public enum StatusEmailLog
++{
++    Pendente,
++    Enviado,
++    Falhou
++}
+diff --git a/src/NfseSaaS.Infrastructure/DependencyInjection.cs b/src/NfseSaaS.Infrastructure/DependencyInjection.cs
+index e763cb6..d7c6ac0 100644
+--- a/src/NfseSaaS.Infrastructure/DependencyInjection.cs
++++ b/src/NfseSaaS.Infrastructure/DependencyInjection.cs
+@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
+ using Microsoft.EntityFrameworkCore;
+ using Microsoft.Extensions.Configuration;
+ using Microsoft.Extensions.DependencyInjection;
++using Microsoft.Extensions.Hosting;
+ using NfseSaaS.Application.Abstractions;
+ using NfseSaaS.Application.UseCases.AuditLogs;
+ using NfseSaaS.Application.UseCases.Certificados;
+@@ -65,6 +66,9 @@ public static class DependencyInjection
+ 
+         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
+         services.AddScoped<IEmailSender, SmtpEmailSender>();
++        services.AddSingleton<IBackgroundEmailQueue, BackgroundEmailQueue>();
++        services.AddScoped<IEmailQueueService, EmailQueueService>();
++        services.AddHostedService<EmailDispatchHostedService>();
+ 
+         services
+             .AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
+diff --git a/src/NfseSaaS.Infrastructure/Email/BackgroundEmailQueue.cs b/src/NfseSaaS.Infrastructure/Email/BackgroundEmailQueue.cs
+new file mode 100644
+index 0000000..bd368a1
+--- /dev/null
++++ b/src/NfseSaaS.Infrastructure/Email/BackgroundEmailQueue.cs
+@@ -0,0 +1,34 @@
++using System.Threading.Channels;
++
++namespace NfseSaaS.Infrastructure.Email;
++
++/// <summary>Um item pronto pra enviar — já tem o corpo montado, o EmailLog associado só é atualizado depois do envio (ver EmailDispatchHostedService).</summary>
++public sealed record ItemFilaEmail(Guid EmailLogId, string Destinatario, string Assunto, string CorpoHtml);
++
++/// <summary>
++/// Fila de envio de e-mail em memória (Channel — não persiste em disco).
++/// Singleton: uma instância só pra aplicação inteira, compartilhada entre
++/// quem enfileira (EmailQueueService, dentro de uma requisição) e quem
++/// consome (EmailDispatchHostedService, em background).
++///
++/// Fila em memória é perdida se a aplicação reiniciar no meio — por isso
++/// todo item já existe como EmailLog.Status=Pendente no banco ANTES de
++/// entrar aqui, e EmailPendenteRecuperador reenfileira no próximo boot
++/// tudo que ficou Pendente (ver Program.cs).
++/// </summary>
++public interface IBackgroundEmailQueue
++{
++    void Enfileirar(ItemFilaEmail item);
++
++    IAsyncEnumerable<ItemFilaEmail> LerTodosAsync(CancellationToken cancellationToken);
++}
++
++public sealed class BackgroundEmailQueue : IBackgroundEmailQueue
++{
++    private readonly Channel<ItemFilaEmail> _canal = Channel.CreateUnbounded<ItemFilaEmail>();
++
++    public void Enfileirar(ItemFilaEmail item) => _canal.Writer.TryWrite(item);
++
++    public IAsyncEnumerable<ItemFilaEmail> LerTodosAsync(CancellationToken cancellationToken) =>
++        _canal.Reader.ReadAllAsync(cancellationToken);
++}
+diff --git a/src/NfseSaaS.Infrastructure/Email/EmailDispatchHostedService.cs b/src/NfseSaaS.Infrastructure/Email/EmailDispatchHostedService.cs
+new file mode 100644
+index 0000000..8ebbea6
+--- /dev/null
++++ b/src/NfseSaaS.Infrastructure/Email/EmailDispatchHostedService.cs
+@@ -0,0 +1,90 @@
++using Microsoft.EntityFrameworkCore;
++using Microsoft.Extensions.DependencyInjection;
++using Microsoft.Extensions.Hosting;
++using Microsoft.Extensions.Logging;
++using NfseSaaS.Application.Abstractions;
++using NfseSaaS.Domain.Enums;
++using NfseSaaS.Infrastructure.Persistence;
++
++namespace NfseSaaS.Infrastructure.Email;
++
++/// <summary>
++/// Consome IBackgroundEmailQueue e processa um item por vez — envio
++/// serializado, não paralelo, de propósito (evita saturar o servidor
++/// SMTP com rajada e mantém a ordem de tentativa próxima da ordem de
++/// pedido, mais fácil de acompanhar na tela de E-mails).
++///
++/// Roda pra sempre em background (BackgroundService), fora do ciclo de
++/// vida de qualquer requisição HTTP — por isso cria um escopo de DI novo
++/// (e um AppDbContext novo) a cada item, e usa TenantIdOverrideDeSistema
++/// pra gravar o resultado (EmailLog é ITenantEntity, e aqui não há
++/// ICurrentTenant resolvido por Claim nenhum).
++/// </summary>
++public sealed class EmailDispatchHostedService : BackgroundService
++{
++    private readonly IBackgroundEmailQueue _fila;
++    private readonly IServiceScopeFactory _scopeFactory;
++    private readonly ILogger<EmailDispatchHostedService> _logger;
++
++    public EmailDispatchHostedService(IBackgroundEmailQueue fila, IServiceScopeFactory scopeFactory, ILogger<EmailDispatchHostedService> logger)
++    {
++        _fila = fila;
++        _scopeFactory = scopeFactory;
++        _logger = logger;
++    }
++
++    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
++    {
++        await foreach (var item in _fila.LerTodosAsync(stoppingToken))
++        {
++            try
++            {
++                await ProcessarAsync(item, stoppingToken);
++            }
++            catch (Exception ex) when (ex is not OperationCanceledException)
++            {
++                // Nunca deixa uma falha inesperada matar o loop inteiro —
++                // se acontecesse, todo e-mail depois desse na fila
++                // pararia de ser processado pro resto da vida do processo.
++                _logger.LogError(ex, "Falha inesperada processando item de e-mail {EmailLogId}.", item.EmailLogId);
++            }
++        }
++    }
++
++    private async Task ProcessarAsync(ItemFilaEmail item, CancellationToken cancellationToken)
++    {
++        using var scope = _scopeFactory.CreateScope();
++        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
++        var emailSender = scope.ServiceProvider.GetRequiredService<IEmailSender>();
++
++        var log = await db.EmailLogs.IgnoreQueryFilters().FirstOrDefaultAsync(e => e.Id == item.EmailLogId, cancellationToken);
++        if (log is null)
++            return; // não deveria acontecer — o registro é criado antes de enfileirar
++
++        log.Tentativas++;
++
++        var resultado = await emailSender.EnviarAsync(item.Destinatario, item.Assunto, item.CorpoHtml, cancellationToken);
++
++        if (resultado.Sucesso)
++        {
++            log.Status = StatusEmailLog.Enviado;
++            log.EnviadoEm = DateTimeOffset.UtcNow;
++            log.ErroDetalhe = null;
++        }
++        else
++        {
++            log.Status = StatusEmailLog.Falhou;
++            log.ErroDetalhe = resultado.ErroDetalhe;
++        }
++
++        db.TenantIdOverrideDeSistema = log.TenantId;
++        try
++        {
++            await db.SaveChangesAsync(cancellationToken);
++        }
++        finally
++        {
++            db.TenantIdOverrideDeSistema = null;
++        }
++    }
++}
+diff --git a/src/NfseSaaS.Infrastructure/Email/EmailQueueService.cs b/src/NfseSaaS.Infrastructure/Email/EmailQueueService.cs
+new file mode 100644
+index 0000000..dbe2af0
+--- /dev/null
++++ b/src/NfseSaaS.Infrastructure/Email/EmailQueueService.cs
+@@ -0,0 +1,36 @@
++using NfseSaaS.Application.Abstractions;
++using NfseSaaS.Domain.Entities;
++using NfseSaaS.Infrastructure.Persistence;
++
++namespace NfseSaaS.Infrastructure.Email;
++
++public sealed class EmailQueueService : IEmailQueueService
++{
++    private readonly AppDbContext _db;
++    private readonly IBackgroundEmailQueue _fila;
++
++    public EmailQueueService(AppDbContext db, IBackgroundEmailQueue fila)
++    {
++        _db = db;
++        _fila = fila;
++    }
++
++    public async Task<Guid> EnfileirarAsync(string tipo, Guid? usuarioId, string destinatario, string assunto, string corpoHtml, CancellationToken cancellationToken)
++    {
++        var log = new EmailLog
++        {
++            Tipo = tipo,
++            UsuarioId = usuarioId,
++            Destinatario = destinatario,
++            Assunto = assunto,
++            CorpoHtml = corpoHtml
++        };
++
++        _db.EmailLogs.Add(log);
++        await _db.SaveChangesAsync(cancellationToken);
++
++        _fila.Enfileirar(new ItemFilaEmail(log.Id, destinatario, assunto, corpoHtml));
++
++        return log.Id;
++    }
++}
+diff --git a/src/NfseSaaS.Infrastructure/Email/SmtpEmailSender.cs b/src/NfseSaaS.Infrastructure/Email/SmtpEmailSender.cs
+index 262feab..6a57916 100644
+--- a/src/NfseSaaS.Infrastructure/Email/SmtpEmailSender.cs
++++ b/src/NfseSaaS.Infrastructure/Email/SmtpEmailSender.cs
+@@ -12,8 +12,9 @@ namespace NfseSaaS.Infrastructure.Email;
+ /// pela própria documentação da Microsoft em vez do SmtpClient do .NET,
+ /// que está em modo de manutenção e não deve ser usado em código novo).
+ ///
+-/// Falha de envio NUNCA propaga exceção — só loga e devolve false. E-mail
+-/// é tratado como "melhor esforço": se falhar, a operação que chamou (ex.:
++/// Falha de envio NUNCA propaga exceção — só loga e devolve
++/// ResultadoEnvioEmail.Sucesso=false com o detalhe do erro. E-mail é
++/// tratado como "melhor esforço": se falhar, a operação que chamou (ex.:
+ /// convidar um usuário) já aconteceu de verdade no banco e continua
+ /// válida, só não chegou por e-mail dessa vez.
+ /// </summary>
+@@ -28,12 +29,12 @@ public sealed class SmtpEmailSender : IEmailSender
+         _logger = logger;
+     }
+ 
+-    public async Task<bool> EnviarAsync(string destinatarioEmail, string assunto, string corpoHtml, CancellationToken cancellationToken)
++    public async Task<ResultadoEnvioEmail> EnviarAsync(string destinatarioEmail, string assunto, string corpoHtml, CancellationToken cancellationToken)
+     {
+         if (string.IsNullOrWhiteSpace(_options.SmtpHost))
+         {
+             _logger.LogWarning("Email:SmtpHost não configurado — e-mail para {Destinatario} NÃO foi enviado.", destinatarioEmail);
+-            return false;
++            return new ResultadoEnvioEmail(false, "Email:SmtpHost não configurado no servidor.");
+         }
+ 
+         var mensagem = new MimeMessage();
+@@ -58,12 +59,12 @@ public sealed class SmtpEmailSender : IEmailSender
+             await client.SendAsync(mensagem, cancellationToken);
+             await client.DisconnectAsync(true, cancellationToken);
+ 
+-            return true;
++            return new ResultadoEnvioEmail(true, null);
+         }
+         catch (Exception ex)
+         {
+             _logger.LogError(ex, "Falha ao enviar e-mail para {Destinatario}.", destinatarioEmail);
+-            return false;
++            return new ResultadoEnvioEmail(false, ex.Message);
+         }
+     }
+ }
+diff --git a/src/NfseSaaS.Infrastructure/Identity/GrupoProvisionamentoService.cs b/src/NfseSaaS.Infrastructure/Identity/GrupoProvisionamentoService.cs
+index 037f770..8256c32 100644
+--- a/src/NfseSaaS.Infrastructure/Identity/GrupoProvisionamentoService.cs
++++ b/src/NfseSaaS.Infrastructure/Identity/GrupoProvisionamentoService.cs
+@@ -45,7 +45,8 @@ public sealed class GrupoProvisionamentoService : IGrupoProvisionamentoService
+             [TelaCatalogo.Nfse] = new PermissaoIaec(Incluir: true, Alterar: false, Excluir: true, Consultar: true), // Excluir aqui = Cancelar; não existe "Alterar" pra Nfse (imutável após emitida)
+             [TelaCatalogo.Usuarios] = PermissaoIaec.Tudo,
+             [TelaCatalogo.Grupos] = PermissaoIaec.Tudo,
+-            [TelaCatalogo.Auditoria] = PermissaoIaec.SoConsultar // Auditoria é só leitura por natureza, não tem Incluir/Alterar/Excluir manual
++            [TelaCatalogo.Auditoria] = PermissaoIaec.SoConsultar, // Auditoria é só leitura por natureza, não tem Incluir/Alterar/Excluir manual
++            [TelaCatalogo.Emails] = PermissaoIaec.Tudo
+         }),
+         ("Emissor", "Pode emitir Nfse. Leitura nas demais telas de cadastro.", false, new Dictionary<string, PermissaoIaec>
+         {
+@@ -56,7 +57,8 @@ public sealed class GrupoProvisionamentoService : IGrupoProvisionamentoService
+             [TelaCatalogo.Nfse] = new PermissaoIaec(Incluir: true, Alterar: false, Excluir: false, Consultar: true),
+             [TelaCatalogo.Usuarios] = PermissaoIaec.Nenhuma,
+             [TelaCatalogo.Grupos] = PermissaoIaec.Nenhuma,
+-            [TelaCatalogo.Auditoria] = PermissaoIaec.Nenhuma
++            [TelaCatalogo.Auditoria] = PermissaoIaec.Nenhuma,
++            [TelaCatalogo.Emails] = PermissaoIaec.Nenhuma
+         }),
+         ("Financeiro", "Leitura de Nfse e Auditoria para conciliação financeira.", false, new Dictionary<string, PermissaoIaec>
+         {
+@@ -67,7 +69,8 @@ public sealed class GrupoProvisionamentoService : IGrupoProvisionamentoService
+             [TelaCatalogo.Nfse] = PermissaoIaec.SoConsultar,
+             [TelaCatalogo.Usuarios] = PermissaoIaec.Nenhuma,
+             [TelaCatalogo.Grupos] = PermissaoIaec.Nenhuma,
+-            [TelaCatalogo.Auditoria] = PermissaoIaec.SoConsultar
++            [TelaCatalogo.Auditoria] = PermissaoIaec.SoConsultar,
++            [TelaCatalogo.Emails] = PermissaoIaec.Nenhuma
+         }),
+         ("Contador", "Leitura de Nfse e Auditoria para fins fiscais/contábeis.", false, new Dictionary<string, PermissaoIaec>
+         {
+@@ -78,7 +81,8 @@ public sealed class GrupoProvisionamentoService : IGrupoProvisionamentoService
+             [TelaCatalogo.Nfse] = PermissaoIaec.SoConsultar,
+             [TelaCatalogo.Usuarios] = PermissaoIaec.Nenhuma,
+             [TelaCatalogo.Grupos] = PermissaoIaec.Nenhuma,
+-            [TelaCatalogo.Auditoria] = PermissaoIaec.SoConsultar
++            [TelaCatalogo.Auditoria] = PermissaoIaec.SoConsultar,
++            [TelaCatalogo.Emails] = PermissaoIaec.Nenhuma
+         }),
+         ("Consulta", "Só leitura — sem acesso a Usuários, Grupos ou Auditoria.", false, new Dictionary<string, PermissaoIaec>
+         {
+@@ -89,7 +93,8 @@ public sealed class GrupoProvisionamentoService : IGrupoProvisionamentoService
+             [TelaCatalogo.Nfse] = PermissaoIaec.SoConsultar,
+             [TelaCatalogo.Usuarios] = PermissaoIaec.Nenhuma,
+             [TelaCatalogo.Grupos] = PermissaoIaec.Nenhuma,
+-            [TelaCatalogo.Auditoria] = PermissaoIaec.Nenhuma
++            [TelaCatalogo.Auditoria] = PermissaoIaec.Nenhuma,
++            [TelaCatalogo.Emails] = PermissaoIaec.Nenhuma
+         })
+     };
+ 
+diff --git a/src/NfseSaaS.Infrastructure/Persistence/AppDbContext.cs b/src/NfseSaaS.Infrastructure/Persistence/AppDbContext.cs
+index 533e3b7..f02d7f7 100644
+--- a/src/NfseSaaS.Infrastructure/Persistence/AppDbContext.cs
++++ b/src/NfseSaaS.Infrastructure/Persistence/AppDbContext.cs
+@@ -44,6 +44,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
+     public DbSet<Tela> Telas => Set<Tela>();
+     public DbSet<Grupo> Grupos => Set<Grupo>();
+     public DbSet<GrupoTela> GrupoTelas => Set<GrupoTela>();
++    public DbSet<EmailLog> EmailLogs => Set<EmailLog>();
+ 
+     protected override void OnModelCreating(ModelBuilder modelBuilder)
+     {
+diff --git a/src/NfseSaaS.Infrastructure/Persistence/Configurations/EmailLogConfiguration.cs b/src/NfseSaaS.Infrastructure/Persistence/Configurations/EmailLogConfiguration.cs
+new file mode 100644
+index 0000000..36d914d
+--- /dev/null
++++ b/src/NfseSaaS.Infrastructure/Persistence/Configurations/EmailLogConfiguration.cs
+@@ -0,0 +1,36 @@
++using Microsoft.EntityFrameworkCore;
++using Microsoft.EntityFrameworkCore.Metadata.Builders;
++using NfseSaaS.Domain.Entities;
++
++namespace NfseSaaS.Infrastructure.Persistence.Configurations;
++
++public sealed class EmailLogConfiguration : IEntityTypeConfiguration<EmailLog>
++{
++    public void Configure(EntityTypeBuilder<EmailLog> builder)
++    {
++        builder.ToTable("email_logs");
++
++        builder.HasKey(e => e.Id);
++
++        builder.Property(e => e.Tipo)
++            .IsRequired()
++            .HasMaxLength(50);
++
++        builder.Property(e => e.Destinatario)
++            .IsRequired()
++            .HasMaxLength(256);
++
++        builder.Property(e => e.Assunto)
++            .IsRequired()
++            .HasMaxLength(200);
++
++        builder.Property(e => e.CorpoHtml)
++            .IsRequired()
++            .HasColumnType("text");
++
++        builder.Property(e => e.ErroDetalhe)
++            .HasMaxLength(2000);
++
++        builder.HasIndex(e => new { e.TenantId, e.Status, e.CreatedAt });
++    }
++}
+diff --git a/src/NfseSaaS.Infrastructure/Persistence/Seeders/EmailPendenteRecuperador.cs b/src/NfseSaaS.Infrastructure/Persistence/Seeders/EmailPendenteRecuperador.cs
+new file mode 100644
+index 0000000..b75b52b
+--- /dev/null
++++ b/src/NfseSaaS.Infrastructure/Persistence/Seeders/EmailPendenteRecuperador.cs
+@@ -0,0 +1,30 @@
++using Microsoft.EntityFrameworkCore;
++using Microsoft.Extensions.DependencyInjection;
++using NfseSaaS.Domain.Enums;
++using NfseSaaS.Infrastructure.Email;
++
++namespace NfseSaaS.Infrastructure.Persistence.Seeders;
++
++/// <summary>
++/// A fila de e-mail é em memória (ver BackgroundEmailQueue) — se a
++/// aplicação reiniciar (deploy, IIS reciclando) com item ainda não
++/// processado, a fila em si se perde. O que NÃO se perde é o EmailLog
++/// (gravado como Pendente antes de entrar na fila) — este seeder só
++/// reenfileira, no boot, tudo que ficou Pendente.
++/// </summary>
++public static class EmailPendenteRecuperador
++{
++    public static async Task ReenfileirarPendentesAsync(IServiceProvider services)
++    {
++        using var scope = services.CreateScope();
++        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
++        var fila = scope.ServiceProvider.GetRequiredService<IBackgroundEmailQueue>();
++
++        var pendentes = await db.EmailLogs.IgnoreQueryFilters()
++            .Where(e => e.Status == StatusEmailLog.Pendente)
++            .ToListAsync();
++
++        foreach (var log in pendentes)
++            fila.Enfileirar(new ItemFilaEmail(log.Id, log.Destinatario, log.Assunto, log.CorpoHtml));
++    }
++}
+diff --git a/src/NfseSaaS.Web/Controllers/Api/AuthController.cs b/src/NfseSaaS.Web/Controllers/Api/AuthController.cs
+index 09ed900..3655916 100644
+--- a/src/NfseSaaS.Web/Controllers/Api/AuthController.cs
++++ b/src/NfseSaaS.Web/Controllers/Api/AuthController.cs
+@@ -78,7 +78,7 @@ public sealed class AuthController : ControllerBase
+     private readonly ICurrentUser _currentUser;
+     private readonly IAuditLogWriter _auditLogWriter;
+     private readonly IGrupoProvisionamentoService _grupoProvisionamento;
+-    private readonly IEmailSender _emailSender;
++    private readonly IEmailQueueService _emailQueueService;
+     private readonly EmailOptions _emailOptions;
+     private readonly IHostEnvironment _environment;
+ 
+@@ -90,7 +90,7 @@ public sealed class AuthController : ControllerBase
+         ICurrentUser currentUser,
+         IAuditLogWriter auditLogWriter,
+         IGrupoProvisionamentoService grupoProvisionamento,
+-        IEmailSender emailSender,
++        IEmailQueueService emailQueueService,
+         IOptions<EmailOptions> emailOptions,
+         IHostEnvironment environment)
+     {
+@@ -101,7 +101,7 @@ public sealed class AuthController : ControllerBase
+         _currentUser = currentUser;
+         _auditLogWriter = auditLogWriter;
+         _grupoProvisionamento = grupoProvisionamento;
+-        _emailSender = emailSender;
++        _emailQueueService = emailQueueService;
+         _emailOptions = emailOptions.Value;
+         _environment = environment;
+     }
+@@ -210,7 +210,7 @@ public sealed class AuthController : ControllerBase
+         _auditLogWriter.Registrar("AlterarPropriaSenha", "ApplicationUser", usuario.Id, null);
+         await _db.SaveChangesAsync(cancellationToken);
+ 
+-        await EnviarEmailAvisoTrocaSenhaAsync(usuario.Email!, cancellationToken);
++        await EnfileirarEmailAvisoTrocaSenhaAsync(usuario.Id, usuario.Email!, cancellationToken);
+ 
+         return Ok();
+     }
+@@ -232,13 +232,17 @@ public sealed class AuthController : ControllerBase
+         {
+             var token = await _userManager.GeneratePasswordResetTokenAsync(usuario);
+             var tenant = await _db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == usuario.TenantId, cancellationToken);
+-            await EnviarEmailDeRedefinicaoSenhaAsync(usuario.Email!, token, tenant?.RazaoSocial, cancellationToken);
+ 
+-            // Pré-autenticação, mesmo raciocínio do bloqueio de login —
+-            // ver TenantIdOverrideDeSistema em AppDbContext.
++            // Pré-autenticação (AllowAnonymous) — não há Claim de tenant
++            // pra ApplyTenantIsolation resolver sozinho (EmailLog e
++            // AuditLog são ITenantEntity). Ver TenantIdOverrideDeSistema
++            // em AppDbContext. Cobre tanto o enfileiramento do e-mail
++            // quanto o log de auditoria logo abaixo.
+             _db.TenantIdOverrideDeSistema = usuario.TenantId;
+             try
+             {
++                await EnfileirarEmailDeRedefinicaoSenhaAsync(usuario.Id, usuario.Email!, token, tenant?.RazaoSocial, cancellationToken);
++
+                 _auditLogWriter.Registrar("SolicitarRedefinicaoSenha", "ApplicationUser", usuario.Id, null);
+                 await _db.SaveChangesAsync(cancellationToken);
+             }
+@@ -278,7 +282,7 @@ public sealed class AuthController : ControllerBase
+         _auditLogWriter.Registrar("RedefinirSenha", "ApplicationUser", usuario.Id, null);
+         await _db.SaveChangesAsync(cancellationToken);
+ 
+-        await EnviarEmailAvisoTrocaSenhaAsync(usuario.Email!, cancellationToken);
++        await EnfileirarEmailAvisoTrocaSenhaAsync(usuario.Id, usuario.Email!, cancellationToken);
+ 
+         return Ok();
+     }
+@@ -286,10 +290,11 @@ public sealed class AuthController : ControllerBase
+     /// <summary>
+     /// Convida um e-mail para entrar no MESMO Tenant do usuário autenticado,
+     /// já atribuído a um Grupo de permissão. Cria a conta (sem senha
+-    /// utilizável), gera um token de convite e tenta enviá-lo por e-mail.
+-    /// Se o envio falhar (ou em ambiente de Development), o token também
+-    /// volta na resposta da API — nunca deixamos o convite sem nenhuma
+-    /// forma de ser completado.
++    /// utilizável), gera um token de convite e enfileira o e-mail — o
++    /// envio de verdade roda em segundo plano (ver
++    /// EmailDispatchHostedService), a requisição não espera o SMTP. Status
++    /// do envio (Pendente/Enviado/Falhou) e reenvio ficam na tela de
++    /// E-mails.
+     /// </summary>
+     [RequerPermissao(TelaCatalogo.Usuarios, AcaoPermissao.Incluir)]
+     [HttpPost("convidar")]
+@@ -327,20 +332,20 @@ public sealed class AuthController : ControllerBase
+         var token = await _userManager.GeneratePasswordResetTokenAsync(novoUsuario);
+ 
+         var tenant = await _db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
+-        var emailEnviado = await EnviarEmailDeConviteAsync(request.Email, token, tenant?.RazaoSocial, cancellationToken);
++        var emailLogId = await EnfileirarEmailDeConviteAsync(novoUsuario.Id, request.Email, token, tenant?.RazaoSocial, cancellationToken);
+ 
+         var resposta = new Dictionary<string, object?>
+         {
+             ["userId"] = novoUsuario.Id,
+             ["email"] = novoUsuario.Email,
+-            ["emailEnviado"] = emailEnviado
++            ["emailLogId"] = emailLogId
+         };
+ 
+-        // Sem o token aqui, um e-mail que falhou vira um convite sem
+-        // nenhuma forma de ser completado — então ele SEMPRE volta quando
+-        // o envio não deu certo, mesmo em produção. Em Development volta
+-        // sempre, pra testar via Swagger sem precisar de SMTP configurado.
+-        if (_environment.IsDevelopment() || !emailEnviado)
++        // O envio de verdade roda em segundo plano (ver EmailDispatchHostedService)
++        // — a requisição não sabe mais na hora se saiu ou não. Acompanhe
++        // o status na tela de E-mails; o token só volta aqui em
++        // Development, pra testar via Swagger sem precisar de SMTP.
++        if (_environment.IsDevelopment())
+             resposta["token"] = token;
+ 
+         return Ok(resposta);
+@@ -539,7 +544,7 @@ public sealed class AuthController : ControllerBase
+         var tokenParaEmail = await _userManager.GeneratePasswordResetTokenAsync(usuario);
+ 
+         var tenant = await _db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
+-        var emailEnviado = await EnviarEmailDeResetPorAdminAsync(usuario.Email!, tokenParaEmail, tenant?.RazaoSocial, cancellationToken);
++        var emailLogId = await EnfileirarEmailDeResetPorAdminAsync(usuario.Id, usuario.Email!, tokenParaEmail, tenant?.RazaoSocial, cancellationToken);
+ 
+         _auditLogWriter.Registrar("ResetarSenhaUsuario", "ApplicationUser", usuario.Id, new { usuario.Email });
+         await _db.SaveChangesAsync(cancellationToken);
+@@ -548,10 +553,10 @@ public sealed class AuthController : ControllerBase
+         {
+             ["userId"] = usuario.Id,
+             ["email"] = usuario.Email,
+-            ["emailEnviado"] = emailEnviado
++            ["emailLogId"] = emailLogId
+         };
+ 
+-        if (_environment.IsDevelopment() || !emailEnviado)
++        if (_environment.IsDevelopment())
+             resposta["token"] = tokenParaEmail;
+ 
+         return Ok(resposta);
+@@ -580,16 +585,16 @@ public sealed class AuthController : ControllerBase
+         var token = await _userManager.GeneratePasswordResetTokenAsync(usuario);
+ 
+         var tenant = await _db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
+-        var emailEnviado = await EnviarEmailDeConviteAsync(usuario.Email!, token, tenant?.RazaoSocial, cancellationToken);
++        var emailLogId = await EnfileirarEmailDeConviteAsync(usuario.Id, usuario.Email!, token, tenant?.RazaoSocial, cancellationToken);
+ 
+         var resposta = new Dictionary<string, object?>
+         {
+             ["userId"] = usuario.Id,
+             ["email"] = usuario.Email,
+-            ["emailEnviado"] = emailEnviado
++            ["emailLogId"] = emailLogId
+         };
+ 
+-        if (_environment.IsDevelopment() || !emailEnviado)
++        if (_environment.IsDevelopment())
+             resposta["token"] = token;
+ 
+         return Ok(resposta);
+@@ -655,7 +660,8 @@ public sealed class AuthController : ControllerBase
+         return totalNoGrupo <= 1;
+     }
+ 
+-    private async Task<bool> EnviarEmailDeConviteAsync(string destinatarioEmail, string token, string? razaoSocialTenant, CancellationToken cancellationToken)
++    /// <summary>Monta e enfileira o e-mail de convite (ver IEmailQueueService) — nunca envia direto, nunca bloqueia a requisição esperando SMTP.</summary>
++    private Task<Guid> EnfileirarEmailDeConviteAsync(Guid usuarioId, string destinatarioEmail, string token, string? razaoSocialTenant, CancellationToken cancellationToken)
+     {
+         var nomeExibicao = string.IsNullOrWhiteSpace(razaoSocialTenant) ? "NfseSaaS" : razaoSocialTenant;
+ 
+@@ -673,10 +679,10 @@ public sealed class AuthController : ControllerBase
+             </ul>
+             """;
+ 
+-        return await _emailSender.EnviarAsync(destinatarioEmail, $"Convite — {nomeExibicao}", corpoHtml, cancellationToken);
++        return _emailQueueService.EnfileirarAsync(TipoEmailCatalogo.Convite, usuarioId, destinatarioEmail, $"Convite — {nomeExibicao}", corpoHtml, cancellationToken);
+     }
+ 
+-    private async Task<bool> EnviarEmailDeRedefinicaoSenhaAsync(string destinatarioEmail, string token, string? razaoSocialTenant, CancellationToken cancellationToken)
++    private Task<Guid> EnfileirarEmailDeRedefinicaoSenhaAsync(Guid usuarioId, string destinatarioEmail, string token, string? razaoSocialTenant, CancellationToken cancellationToken)
+     {
+         var nomeExibicao = string.IsNullOrWhiteSpace(razaoSocialTenant) ? "NfseSaaS" : razaoSocialTenant;
+ 
+@@ -695,11 +701,11 @@ public sealed class AuthController : ControllerBase
+             </ul>
+             """;
+ 
+-        return await _emailSender.EnviarAsync(destinatarioEmail, $"Redefinição de senha — {nomeExibicao}", corpoHtml, cancellationToken);
++        return _emailQueueService.EnfileirarAsync(TipoEmailCatalogo.EsqueciSenha, usuarioId, destinatarioEmail, $"Redefinição de senha — {nomeExibicao}", corpoHtml, cancellationToken);
+     }
+ 
+-    /// <summary>Variação de EnviarEmailDeRedefinicaoSenhaAsync — mesmo link, mas avisando que foi o Administrador quem resetou (não um pedido do próprio usuário).</summary>
+-    private async Task<bool> EnviarEmailDeResetPorAdminAsync(string destinatarioEmail, string token, string? razaoSocialTenant, CancellationToken cancellationToken)
++    /// <summary>Variação de EnfileirarEmailDeRedefinicaoSenhaAsync — mesmo link, mas avisando que foi o Administrador quem resetou (não um pedido do próprio usuário).</summary>
++    private Task<Guid> EnfileirarEmailDeResetPorAdminAsync(Guid usuarioId, string destinatarioEmail, string token, string? razaoSocialTenant, CancellationToken cancellationToken)
+     {
+         var nomeExibicao = string.IsNullOrWhiteSpace(razaoSocialTenant) ? "NfseSaaS" : razaoSocialTenant;
+ 
+@@ -718,11 +724,11 @@ public sealed class AuthController : ControllerBase
+             </ul>
+             """;
+ 
+-        return await _emailSender.EnviarAsync(destinatarioEmail, $"Sua senha foi resetada — {nomeExibicao}", corpoHtml, cancellationToken);
++        return _emailQueueService.EnfileirarAsync(TipoEmailCatalogo.ResetSenha, usuarioId, destinatarioEmail, $"Sua senha foi resetada — {nomeExibicao}", corpoHtml, cancellationToken);
+     }
+ 
+     /// <summary>Disparado em TODA troca de senha (alterar ou redefinir por "esqueci") — detecção de troca que o dono da conta não reconhece.</summary>
+-    private async Task<bool> EnviarEmailAvisoTrocaSenhaAsync(string destinatarioEmail, CancellationToken cancellationToken)
++    private Task<Guid> EnfileirarEmailAvisoTrocaSenhaAsync(Guid usuarioId, string destinatarioEmail, CancellationToken cancellationToken)
+     {
+         var corpoHtml = """
+             <p>Sua senha no NfseSaaS foi alterada agora.</p>
+@@ -730,6 +736,6 @@ public sealed class AuthController : ControllerBase
+             <p><strong>Se você não reconhece esta troca</strong>, entre em contato com o Administrador do seu Tenant o quanto antes.</p>
+             """;
+ 
+-        return await _emailSender.EnviarAsync(destinatarioEmail, "Sua senha foi alterada — NfseSaaS", corpoHtml, cancellationToken);
++        return _emailQueueService.EnfileirarAsync(TipoEmailCatalogo.AvisoTrocaSenha, usuarioId, destinatarioEmail, "Sua senha foi alterada — NfseSaaS", corpoHtml, cancellationToken);
+     }
+ }
+diff --git a/src/NfseSaaS.Web/Controllers/Api/EmailLogsController.cs b/src/NfseSaaS.Web/Controllers/Api/EmailLogsController.cs
+new file mode 100644
+index 0000000..b7cbb44
+--- /dev/null
++++ b/src/NfseSaaS.Web/Controllers/Api/EmailLogsController.cs
+@@ -0,0 +1,102 @@
++using Microsoft.AspNetCore.Mvc;
++using Microsoft.EntityFrameworkCore;
++using NfseSaaS.Application.Authorization;
++using NfseSaaS.Application.Common;
++using NfseSaaS.Domain.Enums;
++using NfseSaaS.Infrastructure.Email;
++using NfseSaaS.Infrastructure.Persistence;
++using NfseSaaS.Web.Filters;
++
++namespace NfseSaaS.Web.Controllers.Api;
++
++public sealed record EmailLogResponse(
++    Guid Id,
++    string Tipo,
++    string Destinatario,
++    string Assunto,
++    string Status,
++    string? ErroDetalhe,
++    int Tentativas,
++    DateTimeOffset CreatedAt,
++    DateTimeOffset? EnviadoEm);
++
++/// <summary>
++/// Consulta e reenvio dos e-mails que o sistema tenta mandar (convite,
++/// reset de senha, esqueci senha, aviso de troca de senha — ver
++/// TipoEmailCatalogo). O envio de verdade é feito em segundo plano por
++/// EmailDispatchHostedService; esta API só lê/reenfileira o que já está
++/// registrado em EmailLog.
++/// </summary>
++[ApiController]
++[RequerPermissao(TelaCatalogo.Emails, AcaoPermissao.Consultar)]
++[Route("api/emails")]
++public sealed class EmailLogsController : ControllerBase
++{
++    private readonly AppDbContext _db;
++    private readonly IBackgroundEmailQueue _fila;
++
++    public EmailLogsController(AppDbContext db, IBackgroundEmailQueue fila)
++    {
++        _db = db;
++        _fila = fila;
++    }
++
++    [HttpGet]
++    public async Task<IActionResult> Listar(
++        [FromQuery] int page = 1,
++        [FromQuery] int pageSize = 20,
++        [FromQuery] StatusEmailLog? status = null,
++        [FromQuery] string? tipo = null,
++        [FromQuery] string? busca = null,
++        CancellationToken cancellationToken = default)
++    {
++        var (paginaNormalizada, tamanhoNormalizado) = Paginacao.Normalizar(page, pageSize);
++
++        var query = _db.EmailLogs.AsNoTracking().AsQueryable();
++
++        if (status is not null)
++            query = query.Where(e => e.Status == status.Value);
++
++        if (!string.IsNullOrWhiteSpace(tipo))
++            query = query.Where(e => e.Tipo == tipo);
++
++        if (!string.IsNullOrWhiteSpace(busca))
++            query = query.Where(e => EF.Functions.ILike(e.Destinatario, $"%{busca}%"));
++
++        var totalCount = await query.CountAsync(cancellationToken);
++
++        var itens = await query
++            .OrderByDescending(e => e.CreatedAt)
++            .Skip((paginaNormalizada - 1) * tamanhoNormalizado)
++            .Take(tamanhoNormalizado)
++            .Select(e => new EmailLogResponse(
++                e.Id, e.Tipo, e.Destinatario, e.Assunto, e.Status.ToString(), e.ErroDetalhe, e.Tentativas, e.CreatedAt, e.EnviadoEm))
++            .ToListAsync(cancellationToken);
++
++        return Ok(new PagedResult<EmailLogResponse>
++        {
++            Items = itens,
++            Page = paginaNormalizada,
++            PageSize = tamanhoNormalizado,
++            TotalCount = totalCount
++        });
++    }
++
++    /// <summary>Reenvia o e-mail EXATAMENTE como foi montado na tentativa original — não regenera token nem nada, só manda de novo o mesmo corpo.</summary>
++    [RequerPermissao(TelaCatalogo.Emails, AcaoPermissao.Alterar)]
++    [HttpPost("{id:guid}/reenviar")]
++    public async Task<IActionResult> Reenviar(Guid id, CancellationToken cancellationToken)
++    {
++        var log = await _db.EmailLogs.FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
++        if (log is null)
++            return NotFound();
++
++        log.Status = StatusEmailLog.Pendente;
++        log.ErroDetalhe = null;
++        await _db.SaveChangesAsync(cancellationToken);
++
++        _fila.Enfileirar(new ItemFilaEmail(log.Id, log.Destinatario, log.Assunto, log.CorpoHtml));
++
++        return NoContent();
++    }
++}
+diff --git a/src/NfseSaaS.Web/Controllers/EmailsController.cs b/src/NfseSaaS.Web/Controllers/EmailsController.cs
+new file mode 100644
+index 0000000..c53f2e8
+--- /dev/null
++++ b/src/NfseSaaS.Web/Controllers/EmailsController.cs
+@@ -0,0 +1,13 @@
++using Microsoft.AspNetCore.Mvc;
++using NfseSaaS.Application.Authorization;
++using NfseSaaS.Domain.Enums;
++using NfseSaaS.Web.Filters;
++
++namespace NfseSaaS.Web.Controllers;
++
++/// <summary>Log de todo e-mail que o sistema tenta enviar, com status e reenvio. Ver EmailLogsController (Api).</summary>
++[RequerPermissao(TelaCatalogo.Emails, AcaoPermissao.Consultar)]
++public sealed class EmailsController : Controller
++{
++    public IActionResult Index() => View();
++}
+diff --git a/src/NfseSaaS.Web/Program.cs b/src/NfseSaaS.Web/Program.cs
+index c83bcee..2bcb843 100644
+--- a/src/NfseSaaS.Web/Program.cs
++++ b/src/NfseSaaS.Web/Program.cs
+@@ -50,6 +50,7 @@ try
+     await NfseSaaS.Infrastructure.Persistence.Seeders.TelaSeeder.SeedTelasAsync(app.Services);
+     await NfseSaaS.Infrastructure.Persistence.Seeders.GrupoBackfillSeeder.BackfillAsync(app.Services);
+     await NfseSaaS.Infrastructure.Persistence.Seeders.AdministradorTelaSeeder.SincronizarAsync(app.Services);
++    await NfseSaaS.Infrastructure.Persistence.Seeders.EmailPendenteRecuperador.ReenfileirarPendentesAsync(app.Services);
+ 
+     app.UseMiddleware<CorrelationIdMiddleware>();
+     app.UseMiddleware<ExceptionHandlingMiddleware>();
+diff --git a/src/NfseSaaS.Web/Views/Emails/Index.cshtml b/src/NfseSaaS.Web/Views/Emails/Index.cshtml
+new file mode 100644
+index 0000000..9ae6d24
+--- /dev/null
++++ b/src/NfseSaaS.Web/Views/Emails/Index.cshtml
+@@ -0,0 +1,61 @@
++@{
++    ViewData["Title"] = "E-mails";
++}
++
++<div class="card">
++    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
++        <span>E-mails enviados pelo sistema</span>
++        <div class="d-flex gap-2">
++            <select class="form-select form-select-sm" id="filtro-status" style="width: auto;">
++                <option value="">Todos os status</option>
++                <option value="Pendente">Pendente</option>
++                <option value="Enviado">Enviado</option>
++                <option value="Falhou">Falhou</option>
++            </select>
++            <select class="form-select form-select-sm" id="filtro-tipo" style="width: auto;">
++                <option value="">Todos os tipos</option>
++                <option value="Convite">Convite</option>
++                <option value="ResetSenha">Reset de senha (Admin)</option>
++                <option value="EsqueciSenha">Esqueci minha senha</option>
++                <option value="AvisoTrocaSenha">Aviso de troca de senha</option>
++            </select>
++            <input type="text" class="form-control form-control-sm" id="filtro-busca" placeholder="Buscar destinatário..." style="width: 220px;" />
++        </div>
++    </div>
++    <div class="card-body">
++        <table id="tabela-emails" class="table table-striped table-bordered w-100">
++            <thead>
++                <tr>
++                    <th>Destinatário</th>
++                    <th>Tipo</th>
++                    <th>Assunto</th>
++                    <th>Status</th>
++                    <th>Tentativas</th>
++                    <th>Criado em</th>
++                    <th>Ações</th>
++                </tr>
++            </thead>
++        </table>
++    </div>
++</div>
++
++<div class="modal fade" id="modal-erro-email" tabindex="-1">
++    <div class="modal-dialog">
++        <div class="modal-content">
++            <div class="modal-header">
++                <h5 class="modal-title">Detalhe do erro</h5>
++                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
++            </div>
++            <div class="modal-body">
++                <pre id="erro-email-detalhe" class="text-danger small" style="white-space: pre-wrap;"></pre>
++            </div>
++            <div class="modal-footer">
++                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
++            </div>
++        </div>
++    </div>
++</div>
++
++@section Scripts {
++    <script src="~/js/paginas/emails.js" asp-append-version="true"></script>
++}
+diff --git a/src/NfseSaaS.Web/Views/Shared/_Layout.cshtml b/src/NfseSaaS.Web/Views/Shared/_Layout.cshtml
+index 896edbf..25296a6 100644
+--- a/src/NfseSaaS.Web/Views/Shared/_Layout.cshtml
++++ b/src/NfseSaaS.Web/Views/Shared/_Layout.cshtml
+@@ -116,6 +116,10 @@
+                     {
+                         <a href="/Grupos" class="@Ativo("/Grupos")"><span class="nav-icon bi bi-diagram-3"></span>Grupos de permissão</a>
+                     }
++                    @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Emails))
++                    {
++                        <a href="/Emails" class="@Ativo("/Emails")"><span class="nav-icon bi bi-envelope-paper"></span>E-mails</a>
++                    }
+                 </nav>
+             }
+ 
+diff --git a/src/NfseSaaS.Web/wwwroot/js/paginas/emails.js b/src/NfseSaaS.Web/wwwroot/js/paginas/emails.js
+new file mode 100644
+index 0000000..96e8f47
+--- /dev/null
++++ b/src/NfseSaaS.Web/wwwroot/js/paginas/emails.js
+@@ -0,0 +1,117 @@
++let tabelaEmails;
++let modalErroEmail;
++
++document.addEventListener('DOMContentLoaded', function () {
++    tabelaEmails = new DataTable('#tabela-emails', {
++        columns: [
++            { data: 'destinatario' },
++            { data: 'tipo', render: v => rotuloTipo(v) },
++            { data: 'assunto' },
++            { data: 'status', render: v => rotuloStatus(v) },
++            { data: 'tentativas' },
++            { data: 'createdAt', render: v => new Date(v).toLocaleString('pt-BR') },
++            {
++                data: null,
++                orderable: false,
++                render: (data, type, email) => {
++                    let botoes = '';
++                    if (email.status === 'Falhou') {
++                        botoes += `
++                            <button type="button" class="btn btn-sm btn-outline-secondary btn-ver-erro" data-erro="${(email.erroDetalhe || '').replace(/"/g, '&quot;')}" title="Ver detalhe do erro">
++                                <i class="bi bi-exclamation-triangle"></i>
++                            </button>
++                        `;
++                    }
++                    if (email.status === 'Falhou' || email.status === 'Enviado') {
++                        botoes += `
++                            <button type="button" class="btn btn-sm btn-outline-primary btn-reenviar-email" data-id="${email.id}" title="Reenviar">
++                                <i class="bi bi-arrow-repeat"></i>
++                            </button>
++                        `;
++                    }
++                    return botoes || '—';
++                }
++            }
++        ],
++        order: [[5, 'desc']],
++        language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/pt-BR.json' }
++    });
++
++    modalErroEmail = new bootstrap.Modal(document.getElementById('modal-erro-email'));
++
++    document.getElementById('tabela-emails').addEventListener('click', async function (e) {
++        const botao = e.target.closest('button');
++        if (!botao) return;
++
++        if (botao.classList.contains('btn-ver-erro')) {
++            document.getElementById('erro-email-detalhe').textContent = botao.dataset.erro || 'Sem detalhe registrado.';
++            modalErroEmail.show();
++        } else if (botao.classList.contains('btn-reenviar-email')) {
++            await reenviarEmail(botao.dataset.id);
++        }
++    });
++
++    document.getElementById('filtro-status').addEventListener('change', carregarEmails);
++    document.getElementById('filtro-tipo').addEventListener('change', carregarEmails);
++    document.getElementById('filtro-busca').addEventListener('input', debounce(carregarEmails, 400));
++
++    carregarEmails();
++});
++
++function rotuloStatus(status) {
++    switch (status) {
++        case 'Pendente': return '<span class="badge text-bg-warning">Pendente</span>';
++        case 'Enviado': return '<span class="badge text-bg-success">Enviado</span>';
++        case 'Falhou': return '<span class="badge text-bg-danger">Falhou</span>';
++        default: return status;
++    }
++}
++
++function rotuloTipo(tipo) {
++    switch (tipo) {
++        case 'Convite': return 'Convite';
++        case 'ResetSenha': return 'Reset de senha (Admin)';
++        case 'EsqueciSenha': return 'Esqueci minha senha';
++        case 'AvisoTrocaSenha': return 'Aviso de troca de senha';
++        default: return tipo;
++    }
++}
++
++async function carregarEmails() {
++    const params = new URLSearchParams({ pageSize: '200' });
++
++    const status = document.getElementById('filtro-status').value;
++    const tipo = document.getElementById('filtro-tipo').value;
++    const busca = document.getElementById('filtro-busca').value;
++
++    if (status) params.set('status', status);
++    if (tipo) params.set('tipo', tipo);
++    if (busca) params.set('busca', busca);
++
++    try {
++        const resultado = await apiFetch(`/api/emails?${params.toString()}`);
++        tabelaEmails.clear();
++        tabelaEmails.rows.add(resultado.items);
++        tabelaEmails.draw();
++    } catch (err) {
++        mostrarErro(err.message);
++    }
++}
++
++async function reenviarEmail(id) {
++    try {
++        await apiFetch(`/api/emails/${id}/reenviar`, { method: 'POST' });
++        await carregarEmails();
++        mostrarToast('E-mail reenfileirado para envio.');
++    } catch (err) {
++        mostrarErro(err.message);
++    }
++}
++
++function debounce(fn, atrasoMs) {
++    let timer;
++    return function (...args) {
++        clearTimeout(timer);
++        timer = setTimeout(() => fn.apply(this, args), atrasoMs);
++    };
++}
