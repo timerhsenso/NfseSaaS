@@ -1,0 +1,26 @@
+diff --git a/src/NfseSaaS.Web/Controllers/Api/AuthController.cs b/src/NfseSaaS.Web/Controllers/Api/AuthController.cs
+index 039b566..ec21f0f 100644
+--- a/src/NfseSaaS.Web/Controllers/Api/AuthController.cs
++++ b/src/NfseSaaS.Web/Controllers/Api/AuthController.cs
+@@ -468,7 +468,7 @@ public sealed class AuthController : ControllerBase
+     /// nos 9 controllers ainda não migrados, nunca acesso liberado por
+     /// omissão).
+     /// </summary>
+-    private async Task SincronizarRoleComGrupoAsync(ApplicationUser usuario, Grupo grupo, IReadOnlyCollection<string> papeisAtuais)
++    private async Task SincronizarRoleComGrupoAsync(ApplicationUser usuario, Grupo grupo, IList<string> papeisAtuais)
+     {
+         if (papeisAtuais.Count > 0)
+             await _userManager.RemoveFromRolesAsync(usuario, papeisAtuais);
+diff --git a/src/NfseSaaS.Web/Controllers/Api/GruposController.cs b/src/NfseSaaS.Web/Controllers/Api/GruposController.cs
+index 9711c86..f00abc1 100644
+--- a/src/NfseSaaS.Web/Controllers/Api/GruposController.cs
++++ b/src/NfseSaaS.Web/Controllers/Api/GruposController.cs
+@@ -168,7 +168,7 @@ public sealed class GruposController : ControllerBase
+         if (grupo.EhAdministrador)
+             return Conflict(new { erro = "O grupo Administrador sempre tem acesso total — a matriz dele não pode ser editada." });
+ 
+-        var telaIdsValidos = await _db.Telas.AsNoTracking().Select(t => t.Id).ToHashSetAsync(cancellationToken);
++        var telaIdsValidos = (await _db.Telas.AsNoTracking().Select(t => t.Id).ToListAsync(cancellationToken)).ToHashSet();
+ 
+         var linhasAtuais = await _db.GrupoTelas.Where(gt => gt.GrupoId == id).ToDictionaryAsync(gt => gt.TelaId, cancellationToken);
+ 

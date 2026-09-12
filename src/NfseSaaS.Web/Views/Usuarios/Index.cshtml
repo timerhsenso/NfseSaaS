@@ -14,14 +14,8 @@
                 <input type="email" class="form-control" id="email" required />
             </div>
             <div class="col-md-4">
-                <label class="form-label">Papel</label>
-                <select class="form-select" id="papel" required>
-                    <option value="Administrador">Administrador</option>
-                    <option value="Emissor" selected>Emissor</option>
-                    <option value="Financeiro">Financeiro</option>
-                    <option value="Consulta">Consulta</option>
-                    <option value="Contador">Contador</option>
-                </select>
+                <label class="form-label">Grupo</label>
+                <select class="form-select" id="grupoId" required></select>
             </div>
             <div class="col-md-2 d-flex align-items-end">
                 <button type="submit" class="btn btn-primary w-100">Convidar</button>
@@ -37,7 +31,7 @@
             <thead>
                 <tr>
                     <th>E-mail</th>
-                    <th>Papel</th>
+                    <th>Grupo</th>
                     <th>Status</th>
                     <th>Ações</th>
                 </tr>
@@ -46,26 +40,20 @@
     </div>
 </div>
 
-<div class="modal fade" id="modal-papel" tabindex="-1">
+<div class="modal fade" id="modal-grupo-usuario" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form id="form-papel">
+            <form id="form-grupo-usuario">
                 <div class="modal-header">
-                    <h5 class="modal-title">Alterar papel</h5>
+                    <h5 class="modal-title">Alterar grupo</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div id="erro-papel" class="alert alert-danger d-none"></div>
-                    <input type="hidden" id="papel-usuarioId" />
-                    <p class="mb-2">Usuário: <strong id="papel-email"></strong></p>
-                    <label class="form-label">Novo papel</label>
-                    <select class="form-select" id="papel-novo" required>
-                        <option value="Administrador">Administrador</option>
-                        <option value="Emissor">Emissor</option>
-                        <option value="Financeiro">Financeiro</option>
-                        <option value="Consulta">Consulta</option>
-                        <option value="Contador">Contador</option>
-                    </select>
+                    <div id="erro-grupo-usuario" class="alert alert-danger d-none"></div>
+                    <input type="hidden" id="grupo-usuarioId" />
+                    <p class="mb-2">Usuário: <strong id="grupo-usuario-email"></strong></p>
+                    <label class="form-label">Novo grupo</label>
+                    <select class="form-select" id="grupo-usuario-novo" required></select>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>

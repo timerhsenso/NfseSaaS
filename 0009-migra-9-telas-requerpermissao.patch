@@ -1,0 +1,736 @@
+diff --git a/src/NfseSaaS.Web/Controllers/Api/AuditLogsController.cs b/src/NfseSaaS.Web/Controllers/Api/AuditLogsController.cs
+index 861055b..fd2b960 100644
+--- a/src/NfseSaaS.Web/Controllers/Api/AuditLogsController.cs
++++ b/src/NfseSaaS.Web/Controllers/Api/AuditLogsController.cs
+@@ -1,7 +1,8 @@
+-using Microsoft.AspNetCore.Authorization;
+ using Microsoft.AspNetCore.Mvc;
+ using NfseSaaS.Application.Authorization;
+ using NfseSaaS.Application.UseCases.AuditLogs;
++using NfseSaaS.Domain.Enums;
++using NfseSaaS.Web.Filters;
+ 
+ namespace NfseSaaS.Web.Controllers.Api;
+ 
+@@ -10,11 +11,13 @@ namespace NfseSaaS.Web.Controllers.Api;
+ /// deve existir) POST/PUT/DELETE aqui. AuditLog só é escrito internamente
+ /// por IAuditLogWriter, como efeito colateral de outras operações; expor
+ /// escrita por API tornaria o log adulterável, o que anula o propósito
+-/// dele. Leitura restrita a Administrador — é dado de compliance sobre
+-/// TODAS as operações do Tenant, não só as do próprio usuário.
++/// dele. Leitura restrita a quem tem Consultar em Auditoria — hoje
++/// Administrador/Financeiro/Contador (ver GrupoProvisionamentoService) —
++/// é dado de compliance sobre TODAS as operações do Tenant, não só as
++/// do próprio usuário.
+ /// </summary>
+ [ApiController]
+-[Authorize(Roles = Papeis.Administrador)]
++[RequerPermissao(TelaCatalogo.Auditoria, AcaoPermissao.Consultar)]
+ [Route("api/auditlogs")]
+ public sealed class AuditLogsController : ControllerBase
+ {
+diff --git a/src/NfseSaaS.Web/Controllers/Api/AuthController.cs b/src/NfseSaaS.Web/Controllers/Api/AuthController.cs
+index ec21f0f..7116dbc 100644
+--- a/src/NfseSaaS.Web/Controllers/Api/AuthController.cs
++++ b/src/NfseSaaS.Web/Controllers/Api/AuthController.cs
+@@ -51,17 +51,14 @@ public sealed record UsuarioResponse(
+ /// próprio ASP.NET Core Identity (o mesmo de "esqueci minha senha") — não
+ /// há geração de token própria.
+ ///
+-/// TRANSIÇÃO pro módulo de segurança IAEC (Grupo/GrupoTela): este
+-/// controller já usa GrupoId como fonte de verdade, mas grava a Role
+-/// antiga do Identity EM PARALELO (ver SincronizarRoleComGrupoAsync) —
+-/// os outros 9 controllers do sistema (Empresas, Clientes, Servicos,
+-/// Contratos, Nfse, NotaMensal, AuditLogs) ainda checam
+-/// [Authorize(Roles=...)], e sem esse dual-write um usuário
+-/// convidado/editado por aqui perderia acesso a todas essas telas. Só
+-/// funciona automaticamente pros 5 grupos padrão (mesmo nome da Role
+-/// antiga) — um Grupo personalizado (criado na tela de Grupos) NÃO tem
+-/// Role equivalente, então usuários desses grupos ainda não conseguem
+-/// escrever nessas 9 telas até elas migrarem pro novo mecanismo.
++/// GrupoId (módulo de segurança IAEC — Grupo/GrupoTela) é a ÚNICA fonte
++/// de autorização de tela desde que os 9 controllers de negócio
++/// (Empresas, Clientes, Servicos, Contratos, Nfse, NotaMensal,
++/// AuditLogs) migraram de [Authorize(Roles=...)] pra [RequerPermissao].
++/// A Role antiga do Identity (AspNetRoles/AspNetUserRoles) não é mais
++/// escrita nem lida por nenhum controller — continua existindo só como
++/// dado histórico (RoleManager/IdentitySeeder seguem seedando os 5
++/// papéis por segurança, mas nada os atribui a usuário novo).
+ /// </summary>
+ [ApiController]
+ [Route("api/auth")]
+@@ -130,11 +127,6 @@ public sealed class AuthController : ControllerBase
+         if (!resultado.Succeeded)
+             return BadRequest(resultado.Errors.Select(e => e.Description));
+ 
+-        // O primeiro usuário de um Tenant é sempre Administrador — não há
+-        // ninguém ainda pra convidá-lo com outro papel. Role antiga em
+-        // paralelo ao GrupoId (ver dual-write no cabeçalho do controller).
+-        await _userManager.AddToRoleAsync(user, Papeis.Administrador);
+-
+         await _signInManager.SignInAsync(user, isPersistent: false);
+ 
+         return Ok(new { tenantId = tenant.Id, userId = user.Id });
+@@ -197,8 +189,6 @@ public sealed class AuthController : ControllerBase
+         if (!resultado.Succeeded)
+             return BadRequest(resultado.Errors.Select(e => e.Description));
+ 
+-        await SincronizarRoleComGrupoAsync(novoUsuario, grupo, papeisAtuais: Array.Empty<string>());
+-
+         var token = await _userManager.GeneratePasswordResetTokenAsync(novoUsuario);
+ 
+         var tenant = await _db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
+@@ -318,18 +308,11 @@ public sealed class AuthController : ControllerBase
+             return Conflict(new { erro = "Este é o único Administrador do Tenant — promova outro usuário antes de trocar o grupo dele." });
+ 
+         var grupoAnterior = usuario.GrupoId;
+-        var papeisAtuais = await _userManager.GetRolesAsync(usuario);
+-
+-        await using var transacao = await _db.Database.BeginTransactionAsync(cancellationToken);
+-
+         usuario.GrupoId = novoGrupo.Id;
+-        await SincronizarRoleComGrupoAsync(usuario, novoGrupo, papeisAtuais);
+ 
+         _auditLogWriter.Registrar("AlterarGrupoUsuario", "ApplicationUser", usuario.Id, new { usuario.Email, grupoAnterior, grupoNovo = novoGrupo.Id });
+         await _db.SaveChangesAsync(cancellationToken);
+ 
+-        await transacao.CommitAsync(cancellationToken);
+-
+         return NoContent();
+     }
+ 
+@@ -458,24 +441,6 @@ public sealed class AuthController : ControllerBase
+         return NoContent();
+     }
+ 
+-    /// <summary>
+-    /// Mantém a Role antiga do Identity sincronizada com o Grupo novo —
+-    /// ver o aviso de dual-write no cabeçalho do controller. Só funciona
+-    /// automaticamente pros 5 grupos padrão (mesmo Nome da Role
+-    /// original); um Grupo personalizado não tem Role equivalente, então
+-    /// o usuário fica sem nenhuma Role (mesmo estado de "sem papel" que
+-    /// já existia pra convite mal formado, tratado como acesso negado
+-    /// nos 9 controllers ainda não migrados, nunca acesso liberado por
+-    /// omissão).
+-    /// </summary>
+-    private async Task SincronizarRoleComGrupoAsync(ApplicationUser usuario, Grupo grupo, IList<string> papeisAtuais)
+-    {
+-        if (papeisAtuais.Count > 0)
+-            await _userManager.RemoveFromRolesAsync(usuario, papeisAtuais);
+-
+-        if (Papeis.Todos.Contains(grupo.Nome))
+-            await _userManager.AddToRoleAsync(usuario, grupo.Nome);
+-    }
+ 
+     /// <summary>
+     /// True se o usuário informado pertencer ao grupo Administrador
+diff --git a/src/NfseSaaS.Web/Controllers/Api/ClientesController.cs b/src/NfseSaaS.Web/Controllers/Api/ClientesController.cs
+index dfdf284..f519ade 100644
+--- a/src/NfseSaaS.Web/Controllers/Api/ClientesController.cs
++++ b/src/NfseSaaS.Web/Controllers/Api/ClientesController.cs
+@@ -1,12 +1,13 @@
+-using Microsoft.AspNetCore.Authorization;
+ using Microsoft.AspNetCore.Mvc;
++using NfseSaaS.Domain.Enums;
++using NfseSaaS.Web.Filters;
+ using NfseSaaS.Application.Authorization;
+ using NfseSaaS.Application.UseCases.Clientes;
+ 
+ namespace NfseSaaS.Web.Controllers.Api;
+ 
+ [ApiController]
+-[Authorize]
++[RequerPermissao(TelaCatalogo.Clientes, AcaoPermissao.Consultar)]
+ [Route("api/clientes")]
+ public sealed class ClientesController : ControllerBase
+ {
+@@ -36,7 +37,7 @@ public sealed class ClientesController : ControllerBase
+         _excluirCliente = excluirCliente;
+     }
+ 
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Clientes, AcaoPermissao.Incluir)]
+     [HttpPost]
+     public async Task<IActionResult> Cadastrar([FromBody] CadastrarClienteRequest request, CancellationToken cancellationToken)
+     {
+@@ -65,7 +66,7 @@ public sealed class ClientesController : ControllerBase
+         return Ok(cliente);
+     }
+ 
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Clientes, AcaoPermissao.Alterar)]
+     [HttpPut("{id:guid}")]
+     public async Task<IActionResult> Atualizar(Guid id, [FromBody] AtualizarClienteRequest request, CancellationToken cancellationToken)
+     {
+@@ -74,7 +75,7 @@ public sealed class ClientesController : ControllerBase
+     }
+ 
+     /// <summary>Soft delete (Ativo=false) — reversível via /reativar. Use quando o Cliente já tem histórico (Nfse).</summary>
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Clientes, AcaoPermissao.Alterar)]
+     [HttpPost("{id:guid}/desativar")]
+     public async Task<IActionResult> Desativar(Guid id, CancellationToken cancellationToken)
+     {
+@@ -82,7 +83,7 @@ public sealed class ClientesController : ControllerBase
+         return NoContent();
+     }
+ 
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Clientes, AcaoPermissao.Alterar)]
+     [HttpPost("{id:guid}/reativar")]
+     public async Task<IActionResult> Reativar(Guid id, CancellationToken cancellationToken)
+     {
+@@ -91,7 +92,7 @@ public sealed class ClientesController : ControllerBase
+     }
+ 
+     /// <summary>Exclusão REAL — só funciona se o Cliente não tiver Nfse vinculada (422 caso contrário).</summary>
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Clientes, AcaoPermissao.Excluir)]
+     [HttpDelete("{id:guid}")]
+     public async Task<IActionResult> Excluir(Guid id, CancellationToken cancellationToken)
+     {
+diff --git a/src/NfseSaaS.Web/Controllers/Api/ContratosController.cs b/src/NfseSaaS.Web/Controllers/Api/ContratosController.cs
+index 7a63b7d..65503ec 100644
+--- a/src/NfseSaaS.Web/Controllers/Api/ContratosController.cs
++++ b/src/NfseSaaS.Web/Controllers/Api/ContratosController.cs
+@@ -1,5 +1,6 @@
+-using Microsoft.AspNetCore.Authorization;
+ using Microsoft.AspNetCore.Mvc;
++using NfseSaaS.Domain.Enums;
++using NfseSaaS.Web.Filters;
+ using NfseSaaS.Application.Authorization;
+ using NfseSaaS.Application.UseCases.Contratos;
+ using NfseSaaS.Application.UseCases.DocumentosContrato;
+@@ -9,7 +10,7 @@ using NfseSaaS.Application.UseCases.ReajustesContrato;
+ namespace NfseSaaS.Web.Controllers.Api;
+ 
+ [ApiController]
+-[Authorize]
++[RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Consultar)]
+ [Route("api/contratos")]
+ public sealed class ContratosController : ControllerBase
+ {
+@@ -60,7 +61,7 @@ public sealed class ContratosController : ControllerBase
+         _obterHistorico = obterHistorico;
+     }
+ 
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Incluir)]
+     [HttpPost]
+     public async Task<IActionResult> Cadastrar([FromBody] CadastrarContratoRequest request, CancellationToken cancellationToken)
+     {
+@@ -90,7 +91,7 @@ public sealed class ContratosController : ControllerBase
+         return Ok(contrato);
+     }
+ 
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Alterar)]
+     [HttpPut("{id:guid}")]
+     public async Task<IActionResult> Atualizar(Guid id, [FromBody] AtualizarContratoRequest request, CancellationToken cancellationToken)
+     {
+@@ -99,7 +100,7 @@ public sealed class ContratosController : ControllerBase
+     }
+ 
+     /// <summary>Soft delete (Ativo=false) — reversível via /reativar.</summary>
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Alterar)]
+     [HttpPost("{id:guid}/desativar")]
+     public async Task<IActionResult> Desativar(Guid id, CancellationToken cancellationToken)
+     {
+@@ -107,7 +108,7 @@ public sealed class ContratosController : ControllerBase
+         return NoContent();
+     }
+ 
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Alterar)]
+     [HttpPost("{id:guid}/reativar")]
+     public async Task<IActionResult> Reativar(Guid id, CancellationToken cancellationToken)
+     {
+@@ -116,7 +117,7 @@ public sealed class ContratosController : ControllerBase
+     }
+ 
+     /// <summary>Exclusão REAL — bloqueada pelo banco se houver vínculo futuro (ver ExcluirContratoUseCase).</summary>
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Excluir)]
+     [HttpDelete("{id:guid}")]
+     public async Task<IActionResult> Excluir(Guid id, CancellationToken cancellationToken)
+     {
+@@ -125,7 +126,7 @@ public sealed class ContratosController : ControllerBase
+     }
+ 
+     /// <summary>Único caminho pra mudar o valor de um Contrato depois de criado — grava histórico (ver RegistrarReajusteUseCase).</summary>
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Alterar)]
+     [HttpPost("{id:guid}/reajustes")]
+     public async Task<IActionResult> RegistrarReajuste(Guid id, [FromBody] RegistrarReajusteRequest request, CancellationToken cancellationToken)
+     {
+@@ -141,7 +142,7 @@ public sealed class ContratosController : ControllerBase
+     }
+ 
+     /// <summary>multipart/form-data: campo "arquivo" (.pdf/.doc/.docx) — mesmo padrão do upload de certificado (EmpresasController).</summary>
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Incluir)]
+     [HttpPost("{id:guid}/documentos")]
+     [RequestSizeLimit(10 * 1024 * 1024)] // 10 MB por arquivo
+     public async Task<IActionResult> UploadDocumento(Guid id, IFormFile arquivo, CancellationToken cancellationToken)
+@@ -167,7 +168,7 @@ public sealed class ContratosController : ControllerBase
+         return File(arquivo.Conteudo, arquivo.ContentType, arquivo.NomeOriginal);
+     }
+ 
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Excluir)]
+     [HttpDelete("documentos/{documentoId:guid}")]
+     public async Task<IActionResult> ExcluirDocumento(Guid documentoId, CancellationToken cancellationToken)
+     {
+diff --git a/src/NfseSaaS.Web/Controllers/Api/EmpresasController.cs b/src/NfseSaaS.Web/Controllers/Api/EmpresasController.cs
+index f8c5f31..6893895 100644
+--- a/src/NfseSaaS.Web/Controllers/Api/EmpresasController.cs
++++ b/src/NfseSaaS.Web/Controllers/Api/EmpresasController.cs
+@@ -1,14 +1,15 @@
+-using Microsoft.AspNetCore.Authorization;
+ using Microsoft.AspNetCore.Mvc;
+ using NfseSaaS.Application.Authorization;
+ using NfseSaaS.Application.UseCases.Certificados;
+ using NfseSaaS.Application.UseCases.Empresas;
+ using NfseSaaS.Application.UseCases.SincronizacaoSefin;
++using NfseSaaS.Domain.Enums;
++using NfseSaaS.Web.Filters;
+ 
+ namespace NfseSaaS.Web.Controllers.Api;
+ 
+ [ApiController]
+-[Authorize]
++[RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Consultar)]
+ [Route("api/empresas")]
+ public sealed class EmpresasController : ControllerBase
+ {
+@@ -53,7 +54,7 @@ public sealed class EmpresasController : ControllerBase
+         _sincronizarNotasDaSefin = sincronizarNotasDaSefin;
+     }
+ 
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Incluir)]
+     [HttpPost]
+     public async Task<IActionResult> Cadastrar([FromBody] CadastrarEmpresaRequest request, CancellationToken cancellationToken)
+     {
+@@ -81,7 +82,7 @@ public sealed class EmpresasController : ControllerBase
+         return Ok(empresa);
+     }
+ 
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Alterar)]
+     [HttpPut("{id:guid}")]
+     public async Task<IActionResult> Atualizar(Guid id, [FromBody] AtualizarEmpresaRequest request, CancellationToken cancellationToken)
+     {
+@@ -90,7 +91,7 @@ public sealed class EmpresasController : ControllerBase
+     }
+ 
+     /// <summary>Soft delete (Ativo=false) — reversível via /reativar. Use quando a Empresa já tem histórico.</summary>
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Alterar)]
+     [HttpPost("{id:guid}/desativar")]
+     public async Task<IActionResult> Desativar(Guid id, CancellationToken cancellationToken)
+     {
+@@ -98,7 +99,7 @@ public sealed class EmpresasController : ControllerBase
+         return NoContent();
+     }
+ 
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Alterar)]
+     [HttpPost("{id:guid}/reativar")]
+     public async Task<IActionResult> Reativar(Guid id, CancellationToken cancellationToken)
+     {
+@@ -107,7 +108,7 @@ public sealed class EmpresasController : ControllerBase
+     }
+ 
+     /// <summary>Exclusão REAL — só funciona se a Empresa não tiver Cliente, Servico nem Nfse vinculados (422 caso contrário).</summary>
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Excluir)]
+     [HttpDelete("{id:guid}")]
+     public async Task<IActionResult> Excluir(Guid id, CancellationToken cancellationToken)
+     {
+@@ -122,7 +123,7 @@ public sealed class EmpresasController : ControllerBase
+     /// hora (ver Nfse.TipoAmbiente). Idempotente: chamar de novo com o
+     /// mesmo ambiente atual não faz nada (204 do mesmo jeito).
+     /// </summary>
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Alterar)]
+     [HttpPut("{id:guid}/ambiente")]
+     public async Task<IActionResult> AlterarAmbiente(Guid id, [FromBody] AlterarAmbienteEmpresaRequest request, CancellationToken cancellationToken)
+     {
+@@ -131,7 +132,7 @@ public sealed class EmpresasController : ControllerBase
+     }
+ 
+     /// <summary>Status do certificado digital da Empresa (sem expor .pfx/senha) — Subject, validade, se está utilizável.</summary>
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Alterar)]
+     [HttpGet("{id:guid}/certificado")]
+     public async Task<IActionResult> ObterStatusCertificado(Guid id, CancellationToken cancellationToken)
+     {
+@@ -145,7 +146,7 @@ public sealed class EmpresasController : ControllerBase
+     /// comando NfseSaaS.CertTool. multipart/form-data: campo "arquivo"
+     /// (o .pfx) + campo "senha".
+     /// </summary>
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Alterar)]
+     [HttpPost("{id:guid}/certificado")]
+     [RequestSizeLimit(5 * 1024 * 1024)] // 5 MB é generoso pra um .pfx (tipicamente poucos KB)
+     public async Task<IActionResult> EnviarCertificado(Guid id, IFormFile arquivo, [FromForm] string senha, CancellationToken cancellationToken)
+@@ -158,7 +159,7 @@ public sealed class EmpresasController : ControllerBase
+     }
+ 
+     /// <summary>Testa, de verdade, se o certificado cadastrado é aceito num handshake mTLS com a SEFIN Nacional — não emite nada.</summary>
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Alterar)]
+     [HttpPost("{id:guid}/certificado/testar-conexao")]
+     public async Task<IActionResult> TestarConexaoCertificado(Guid id, CancellationToken cancellationToken)
+     {
+@@ -171,7 +172,7 @@ public sealed class EmpresasController : ControllerBase
+     /// canal (portal web Emissor Nacional, outro sistema) que ainda não
+     /// existem neste SaaS — ver SincronizarNotasDaSefinUseCase.
+     /// </summary>
+-    [Authorize(Roles = Papeis.PodeEmitir)]
++    [RequerPermissao(TelaCatalogo.Nfse, AcaoPermissao.Incluir)]
+     [HttpPost("{id:guid}/sincronizar-sefin")]
+     public async Task<IActionResult> SincronizarComSefin(Guid id, CancellationToken cancellationToken)
+     {
+diff --git a/src/NfseSaaS.Web/Controllers/Api/NfseController.cs b/src/NfseSaaS.Web/Controllers/Api/NfseController.cs
+index e7f142c..05e4476 100644
+--- a/src/NfseSaaS.Web/Controllers/Api/NfseController.cs
++++ b/src/NfseSaaS.Web/Controllers/Api/NfseController.cs
+@@ -1,14 +1,14 @@
+-using Microsoft.AspNetCore.Authorization;
+ using Microsoft.AspNetCore.Mvc;
+ using NfseSaaS.Application.Authorization;
+ using NfseSaaS.Application.UseCases.Nfse;
+ using NfseSaaS.Application.UseCases.NfseEventos;
+ using NfseSaaS.Domain.Enums;
++using NfseSaaS.Web.Filters;
+ 
+ namespace NfseSaaS.Web.Controllers.Api;
+ 
+ [ApiController]
+-[Authorize]
++[RequerPermissao(TelaCatalogo.Nfse, AcaoPermissao.Consultar)]
+ [Route("api/nfse")]
+ public sealed class NfseController : ControllerBase
+ {
+@@ -41,7 +41,7 @@ public sealed class NfseController : ControllerBase
+         _gerarDanfsePdfLote = gerarDanfsePdfLote;
+     }
+ 
+-    [Authorize(Roles = Papeis.PodeEmitir)]
++    [RequerPermissao(TelaCatalogo.Nfse, AcaoPermissao.Incluir)]
+     [HttpPost("emitir")]
+     public async Task<IActionResult> Emitir([FromBody] EmitirNfseRequest request, CancellationToken cancellationToken)
+     {
+@@ -72,7 +72,7 @@ public sealed class NfseController : ControllerBase
+         return Ok(nfse);
+     }
+ 
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Nfse, AcaoPermissao.Excluir)]
+     [HttpPost("{id:guid}/cancelar")]
+     public async Task<IActionResult> Cancelar(Guid id, [FromBody] CancelarNfseRequest request, CancellationToken cancellationToken)
+     {
+diff --git a/src/NfseSaaS.Web/Controllers/Api/NotaMensalController.cs b/src/NfseSaaS.Web/Controllers/Api/NotaMensalController.cs
+index f7d50d2..181f6c0 100644
+--- a/src/NfseSaaS.Web/Controllers/Api/NotaMensalController.cs
++++ b/src/NfseSaaS.Web/Controllers/Api/NotaMensalController.cs
+@@ -1,13 +1,14 @@
+-using Microsoft.AspNetCore.Authorization;
+ using Microsoft.AspNetCore.Mvc;
+ using NfseSaaS.Application.Authorization;
+ using NfseSaaS.Application.UseCases.NotaMensal;
++using NfseSaaS.Domain.Enums;
++using NfseSaaS.Web.Filters;
+ 
+ namespace NfseSaaS.Web.Controllers.Api;
+ 
+ /// <summary>Emissão em lote (Fase 7) — Contratos Mensais/Ativos de uma Empresa, numa competência.</summary>
+ [ApiController]
+-[Authorize]
++[RequerPermissao(TelaCatalogo.Nfse, AcaoPermissao.Consultar)]
+ [Route("api/nota-mensal")]
+ public sealed class NotaMensalController : ControllerBase
+ {
+@@ -27,7 +28,7 @@ public sealed class NotaMensalController : ControllerBase
+         return Ok(candidatos);
+     }
+ 
+-    [Authorize(Roles = Papeis.PodeEmitir)]
++    [RequerPermissao(TelaCatalogo.Nfse, AcaoPermissao.Incluir)]
+     [HttpPost("emitir")]
+     public async Task<IActionResult> EmitirLote([FromBody] EmitirNotaMensalLoteRequest request, CancellationToken cancellationToken)
+     {
+diff --git a/src/NfseSaaS.Web/Controllers/Api/ServicosController.cs b/src/NfseSaaS.Web/Controllers/Api/ServicosController.cs
+index d8cb95f..285244d 100644
+--- a/src/NfseSaaS.Web/Controllers/Api/ServicosController.cs
++++ b/src/NfseSaaS.Web/Controllers/Api/ServicosController.cs
+@@ -1,12 +1,13 @@
+-using Microsoft.AspNetCore.Authorization;
+ using Microsoft.AspNetCore.Mvc;
++using NfseSaaS.Domain.Enums;
++using NfseSaaS.Web.Filters;
+ using NfseSaaS.Application.Authorization;
+ using NfseSaaS.Application.UseCases.Servicos;
+ 
+ namespace NfseSaaS.Web.Controllers.Api;
+ 
+ [ApiController]
+-[Authorize]
++[RequerPermissao(TelaCatalogo.Servicos, AcaoPermissao.Consultar)]
+ [Route("api/servicos")]
+ public sealed class ServicosController : ControllerBase
+ {
+@@ -36,7 +37,7 @@ public sealed class ServicosController : ControllerBase
+         _excluirServico = excluirServico;
+     }
+ 
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Servicos, AcaoPermissao.Incluir)]
+     [HttpPost]
+     public async Task<IActionResult> Cadastrar([FromBody] CadastrarServicoRequest request, CancellationToken cancellationToken)
+     {
+@@ -65,7 +66,7 @@ public sealed class ServicosController : ControllerBase
+         return Ok(servico);
+     }
+ 
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Servicos, AcaoPermissao.Alterar)]
+     [HttpPut("{id:guid}")]
+     public async Task<IActionResult> Atualizar(Guid id, [FromBody] AtualizarServicoRequest request, CancellationToken cancellationToken)
+     {
+@@ -74,7 +75,7 @@ public sealed class ServicosController : ControllerBase
+     }
+ 
+     /// <summary>Soft delete (Ativo=false) — reversível via /reativar.</summary>
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Servicos, AcaoPermissao.Alterar)]
+     [HttpPost("{id:guid}/desativar")]
+     public async Task<IActionResult> Desativar(Guid id, CancellationToken cancellationToken)
+     {
+@@ -82,7 +83,7 @@ public sealed class ServicosController : ControllerBase
+         return NoContent();
+     }
+ 
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Servicos, AcaoPermissao.Alterar)]
+     [HttpPost("{id:guid}/reativar")]
+     public async Task<IActionResult> Reativar(Guid id, CancellationToken cancellationToken)
+     {
+@@ -91,7 +92,7 @@ public sealed class ServicosController : ControllerBase
+     }
+ 
+     /// <summary>Exclusão REAL — sempre permitida (Nfse não referencia ServicoId, ver ExcluirServicoUseCase).</summary>
+-    [Authorize(Roles = Papeis.Administrador)]
++    [RequerPermissao(TelaCatalogo.Servicos, AcaoPermissao.Excluir)]
+     [HttpDelete("{id:guid}")]
+     public async Task<IActionResult> Excluir(Guid id, CancellationToken cancellationToken)
+     {
+diff --git a/src/NfseSaaS.Web/Controllers/AuditLogsController.cs b/src/NfseSaaS.Web/Controllers/AuditLogsController.cs
+index e04e25f..a20239e 100644
+--- a/src/NfseSaaS.Web/Controllers/AuditLogsController.cs
++++ b/src/NfseSaaS.Web/Controllers/AuditLogsController.cs
+@@ -1,15 +1,17 @@
+-using Microsoft.AspNetCore.Authorization;
+ using Microsoft.AspNetCore.Mvc;
+ using NfseSaaS.Application.Authorization;
++using NfseSaaS.Domain.Enums;
++using NfseSaaS.Web.Filters;
+ 
+ namespace NfseSaaS.Web.Controllers;
+ 
+ /// <summary>
+ /// Só serve a view — dados vêm via fetch do api/auditlogs já existente.
+-/// Restrito a Administrador, mesma regra da API (é dado de compliance
+-/// sobre TODAS as operações do Tenant).
++/// Restrito a quem tem Consultar em Auditoria, mesma regra da API (é
++/// dado de compliance sobre TODAS as operações do Tenant — hoje só
++/// Administrador/Financeiro/Contador têm isso, ver GrupoProvisionamentoService).
+ /// </summary>
+-[Authorize(Roles = Papeis.Administrador)]
++[RequerPermissao(TelaCatalogo.Auditoria, AcaoPermissao.Consultar)]
+ public sealed class AuditLogsController : Controller
+ {
+     public IActionResult Index() => View();
+diff --git a/src/NfseSaaS.Web/Controllers/ClientesController.cs b/src/NfseSaaS.Web/Controllers/ClientesController.cs
+index d677797..ee0f664 100644
+--- a/src/NfseSaaS.Web/Controllers/ClientesController.cs
++++ b/src/NfseSaaS.Web/Controllers/ClientesController.cs
+@@ -1,10 +1,12 @@
+-using Microsoft.AspNetCore.Authorization;
+ using Microsoft.AspNetCore.Mvc;
++using NfseSaaS.Application.Authorization;
++using NfseSaaS.Domain.Enums;
++using NfseSaaS.Web.Filters;
+ 
+ namespace NfseSaaS.Web.Controllers;
+ 
+ /// <summary>Só serve a view — dados vêm via fetch do api/clientes já existente.</summary>
+-[Authorize]
++[RequerPermissao(TelaCatalogo.Clientes, AcaoPermissao.Consultar)]
+ public sealed class ClientesController : Controller
+ {
+     public IActionResult Index() => View();
+diff --git a/src/NfseSaaS.Web/Controllers/ContratosController.cs b/src/NfseSaaS.Web/Controllers/ContratosController.cs
+index 726c2c0..28e2a03 100644
+--- a/src/NfseSaaS.Web/Controllers/ContratosController.cs
++++ b/src/NfseSaaS.Web/Controllers/ContratosController.cs
+@@ -1,10 +1,12 @@
+-using Microsoft.AspNetCore.Authorization;
+ using Microsoft.AspNetCore.Mvc;
++using NfseSaaS.Application.Authorization;
++using NfseSaaS.Domain.Enums;
++using NfseSaaS.Web.Filters;
+ 
+ namespace NfseSaaS.Web.Controllers;
+ 
+ /// <summary>Só serve a view — dados vêm via fetch do api/contratos já existente.</summary>
+-[Authorize]
++[RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Consultar)]
+ public sealed class ContratosController : Controller
+ {
+     public IActionResult Index() => View();
+diff --git a/src/NfseSaaS.Web/Controllers/EmpresasController.cs b/src/NfseSaaS.Web/Controllers/EmpresasController.cs
+index 30b7f70..c01990d 100644
+--- a/src/NfseSaaS.Web/Controllers/EmpresasController.cs
++++ b/src/NfseSaaS.Web/Controllers/EmpresasController.cs
+@@ -1,5 +1,7 @@
+-using Microsoft.AspNetCore.Authorization;
+ using Microsoft.AspNetCore.Mvc;
++using NfseSaaS.Application.Authorization;
++using NfseSaaS.Domain.Enums;
++using NfseSaaS.Web.Filters;
+ 
+ namespace NfseSaaS.Web.Controllers;
+ 
+@@ -9,7 +11,7 @@ namespace NfseSaaS.Web.Controllers;
+ /// usada por Swagger/clients externos. Nenhuma lógica de negócio
+ /// duplicada aqui.
+ /// </summary>
+-[Authorize]
++[RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Consultar)]
+ public sealed class EmpresasController : Controller
+ {
+     public IActionResult Index() => View();
+diff --git a/src/NfseSaaS.Web/Controllers/NfseController.cs b/src/NfseSaaS.Web/Controllers/NfseController.cs
+index b07a89c..a9250ed 100644
+--- a/src/NfseSaaS.Web/Controllers/NfseController.cs
++++ b/src/NfseSaaS.Web/Controllers/NfseController.cs
+@@ -1,10 +1,12 @@
+-using Microsoft.AspNetCore.Authorization;
+ using Microsoft.AspNetCore.Mvc;
++using NfseSaaS.Application.Authorization;
++using NfseSaaS.Domain.Enums;
++using NfseSaaS.Web.Filters;
+ 
+ namespace NfseSaaS.Web.Controllers;
+ 
+ /// <summary>Só serve a view — dados vêm via fetch do api/nfse já existente.</summary>
+-[Authorize]
++[RequerPermissao(TelaCatalogo.Nfse, AcaoPermissao.Consultar)]
+ public sealed class NfseController : Controller
+ {
+     public IActionResult Index() => View();
+diff --git a/src/NfseSaaS.Web/Controllers/ServicosController.cs b/src/NfseSaaS.Web/Controllers/ServicosController.cs
+index c21484b..feeb21a 100644
+--- a/src/NfseSaaS.Web/Controllers/ServicosController.cs
++++ b/src/NfseSaaS.Web/Controllers/ServicosController.cs
+@@ -1,10 +1,12 @@
+-using Microsoft.AspNetCore.Authorization;
+ using Microsoft.AspNetCore.Mvc;
++using NfseSaaS.Application.Authorization;
++using NfseSaaS.Domain.Enums;
++using NfseSaaS.Web.Filters;
+ 
+ namespace NfseSaaS.Web.Controllers;
+ 
+ /// <summary>Só serve a view — dados vêm via fetch do api/servicos já existente.</summary>
+-[Authorize]
++[RequerPermissao(TelaCatalogo.Servicos, AcaoPermissao.Consultar)]
+ public sealed class ServicosController : Controller
+ {
+     public IActionResult Index() => View();
+diff --git a/src/NfseSaaS.Web/Filters/RequerPermissaoAttribute.cs b/src/NfseSaaS.Web/Filters/RequerPermissaoAttribute.cs
+index 50ee714..a691c55 100644
+--- a/src/NfseSaaS.Web/Filters/RequerPermissaoAttribute.cs
++++ b/src/NfseSaaS.Web/Filters/RequerPermissaoAttribute.cs
+@@ -14,12 +14,9 @@ namespace NfseSaaS.Web.Filters;
+ /// ApplicationUserClaimsPrincipalFactory) contém a letra da Ação pedida.
+ /// Sem chamada ao banco: lê só do Claims já carregado na requisição.
+ ///
+-/// TRANSIÇÃO: só os controllers de Usuários e Grupos usam isto por
+-/// enquanto — os demais (Empresas, Clientes, Servicos, Contratos, Nfse,
+-/// NotaMensal, AuditLogs) ainda usam [Authorize(Roles = ...)] e serão
+-/// migrados numa próxima entrega. Até lá, ApplicationUser mantém a Role
+-/// antiga em paralelo ao GrupoId (ver AuthController) pra não quebrar
+-/// essas telas.
++/// Único mecanismo de autorização de tela do sistema — todos os
++/// controllers já migraram de [Authorize(Roles = ...)]; a Role antiga
++/// do Identity não é mais lida nem escrita por nenhum código do projeto.
+ /// </summary>
+ [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class)]
+ public sealed class RequerPermissaoAttribute : Attribute, IAuthorizationFilter
+diff --git a/src/NfseSaaS.Web/Views/Shared/_Layout.cshtml b/src/NfseSaaS.Web/Views/Shared/_Layout.cshtml
+index 171256e..bcb62a0 100644
+--- a/src/NfseSaaS.Web/Views/Shared/_Layout.cshtml
++++ b/src/NfseSaaS.Web/Views/Shared/_Layout.cshtml
+@@ -1,6 +1,8 @@
+ @inject NfseSaaS.Application.UseCases.Empresas.IObterEmpresaPorIdUseCase ObterEmpresaPorIdUseCase
+ @{
+-    var papelAdministrador = User.IsInRole("Administrador");
++    var papelAdministrador = User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Usuarios)
++        || User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Grupos)
++        || User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Auditoria);
+     var caminhoAtual = Context.Request.Path.Value?.TrimEnd('/') ?? "";
+     string Ativo(string caminho) => caminhoAtual.Equals(caminho, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+     var nomeUsuario = User.Identity?.Name ?? "Usuário";
+@@ -76,19 +78,40 @@
+             <div class="nav-label">Principal</div>
+             <nav class="sidebar-nav">
+                 <a href="/" class="@Ativo("")"><span class="nav-icon bi bi-speedometer2"></span>Dashboard</a>
+-                <a href="/Empresas" class="@Ativo("/Empresas")"><span class="nav-icon bi bi-building"></span>Empresas</a>
+-                <a href="/Clientes" class="@Ativo("/Clientes")"><span class="nav-icon bi bi-people"></span>Clientes</a>
+-                <a href="/Contratos" class="@Ativo("/Contratos")"><span class="nav-icon bi bi-file-earmark-ruled"></span>Contratos</a>
+-                <a href="/Servicos" class="@Ativo("/Servicos")"><span class="nav-icon bi bi-list-check"></span>Serviços</a>
+-                <a href="/Nfse" class="@Ativo("/Nfse")"><span class="nav-icon bi bi-file-earmark-text"></span>Notas fiscais</a>
++                @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Empresas))
++                {
++                    <a href="/Empresas" class="@Ativo("/Empresas")"><span class="nav-icon bi bi-building"></span>Empresas</a>
++                }
++                @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Clientes))
++                {
++                    <a href="/Clientes" class="@Ativo("/Clientes")"><span class="nav-icon bi bi-people"></span>Clientes</a>
++                }
++                @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Contratos))
++                {
++                    <a href="/Contratos" class="@Ativo("/Contratos")"><span class="nav-icon bi bi-file-earmark-ruled"></span>Contratos</a>
++                }
++                @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Servicos))
++                {
++                    <a href="/Servicos" class="@Ativo("/Servicos")"><span class="nav-icon bi bi-list-check"></span>Serviços</a>
++                }
++                @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Nfse))
++                {
++                    <a href="/Nfse" class="@Ativo("/Nfse")"><span class="nav-icon bi bi-file-earmark-text"></span>Notas fiscais</a>
++                }
+             </nav>
+ 
+             @if (papelAdministrador)
+             {
+                 <div class="nav-label">Administração</div>
+                 <nav class="sidebar-nav">
+-                    <a href="/AuditLogs" class="@Ativo("/AuditLogs")"><span class="nav-icon bi bi-shield-check"></span>Auditoria</a>
+-                    <a href="/Usuarios" class="@Ativo("/Usuarios")"><span class="nav-icon bi bi-person-plus"></span>Usuários</a>
++                    @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Auditoria))
++                    {
++                        <a href="/AuditLogs" class="@Ativo("/AuditLogs")"><span class="nav-icon bi bi-shield-check"></span>Auditoria</a>
++                    }
++                    @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Usuarios))
++                    {
++                        <a href="/Usuarios" class="@Ativo("/Usuarios")"><span class="nav-icon bi bi-person-plus"></span>Usuários</a>
++                    }
+                     @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Grupos))
+                     {
+                         <a href="/Grupos" class="@Ativo("/Grupos")"><span class="nav-icon bi bi-diagram-3"></span>Grupos de permissão</a>

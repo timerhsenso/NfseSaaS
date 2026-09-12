@@ -1,5 +1,6 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NfseSaaS.Domain.Enums;
+using NfseSaaS.Web.Filters;
 using NfseSaaS.Application.Authorization;
 using NfseSaaS.Application.UseCases.Contratos;
 using NfseSaaS.Application.UseCases.DocumentosContrato;
@@ -9,7 +10,7 @@ using NfseSaaS.Application.UseCases.ReajustesContrato;
 namespace NfseSaaS.Web.Controllers.Api;
 
 [ApiController]
-[Authorize]
+[RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Consultar)]
 [Route("api/contratos")]
 public sealed class ContratosController : ControllerBase
 {
@@ -60,7 +61,7 @@ public sealed class ContratosController : ControllerBase
         _obterHistorico = obterHistorico;
     }
 
-    [Authorize(Roles = Papeis.Administrador)]
+    [RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Incluir)]
     [HttpPost]
     public async Task<IActionResult> Cadastrar([FromBody] CadastrarContratoRequest request, CancellationToken cancellationToken)
     {
@@ -90,7 +91,7 @@ public sealed class ContratosController : ControllerBase
         return Ok(contrato);
     }
 
-    [Authorize(Roles = Papeis.Administrador)]
+    [RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Alterar)]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Atualizar(Guid id, [FromBody] AtualizarContratoRequest request, CancellationToken cancellationToken)
     {
@@ -99,7 +100,7 @@ public sealed class ContratosController : ControllerBase
     }
 
     /// <summary>Soft delete (Ativo=false) — reversível via /reativar.</summary>
-    [Authorize(Roles = Papeis.Administrador)]
+    [RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Alterar)]
     [HttpPost("{id:guid}/desativar")]
     public async Task<IActionResult> Desativar(Guid id, CancellationToken cancellationToken)
     {
@@ -107,7 +108,7 @@ public sealed class ContratosController : ControllerBase
         return NoContent();
     }
 
-    [Authorize(Roles = Papeis.Administrador)]
+    [RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Alterar)]
     [HttpPost("{id:guid}/reativar")]
     public async Task<IActionResult> Reativar(Guid id, CancellationToken cancellationToken)
     {
@@ -116,7 +117,7 @@ public sealed class ContratosController : ControllerBase
     }
 
     /// <summary>Exclusão REAL — bloqueada pelo banco se houver vínculo futuro (ver ExcluirContratoUseCase).</summary>
-    [Authorize(Roles = Papeis.Administrador)]
+    [RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Excluir)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Excluir(Guid id, CancellationToken cancellationToken)
     {
@@ -125,7 +126,7 @@ public sealed class ContratosController : ControllerBase
     }
 
     /// <summary>Único caminho pra mudar o valor de um Contrato depois de criado — grava histórico (ver RegistrarReajusteUseCase).</summary>
-    [Authorize(Roles = Papeis.Administrador)]
+    [RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Alterar)]
     [HttpPost("{id:guid}/reajustes")]
     public async Task<IActionResult> RegistrarReajuste(Guid id, [FromBody] RegistrarReajusteRequest request, CancellationToken cancellationToken)
     {
@@ -141,7 +142,7 @@ public sealed class ContratosController : ControllerBase
     }
 
     /// <summary>multipart/form-data: campo "arquivo" (.pdf/.doc/.docx) — mesmo padrão do upload de certificado (EmpresasController).</summary>
-    [Authorize(Roles = Papeis.Administrador)]
+    [RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Incluir)]
     [HttpPost("{id:guid}/documentos")]
     [RequestSizeLimit(10 * 1024 * 1024)] // 10 MB por arquivo
     public async Task<IActionResult> UploadDocumento(Guid id, IFormFile arquivo, CancellationToken cancellationToken)
@@ -167,7 +168,7 @@ public sealed class ContratosController : ControllerBase
         return File(arquivo.Conteudo, arquivo.ContentType, arquivo.NomeOriginal);
     }
 
-    [Authorize(Roles = Papeis.Administrador)]
+    [RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Excluir)]
     [HttpDelete("documentos/{documentoId:guid}")]
     public async Task<IActionResult> ExcluirDocumento(Guid documentoId, CancellationToken cancellationToken)
     {

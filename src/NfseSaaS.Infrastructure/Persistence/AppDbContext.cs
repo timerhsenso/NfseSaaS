@@ -41,6 +41,9 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
     public DbSet<NfseEvento> NfseEventos => Set<NfseEvento>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<ContadorDps> ContadoresDps => Set<ContadorDps>();
+    public DbSet<Tela> Telas => Set<Tela>();
+    public DbSet<Grupo> Grupos => Set<Grupo>();
+    public DbSet<GrupoTela> GrupoTelas => Set<GrupoTela>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -104,6 +107,21 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
     }
 
     /// <summary>
+    /// Override explícito de TenantId pra operações de SISTEMA que
+    /// precisam gravar entidade tenant-scoped ANTES de existir um
+    /// usuário autenticado pra resolver via Claims — bootstrap do
+    /// primeiro Grupo de um Tenant novo (Registrar, ninguém logado
+    /// ainda nesse ponto) e o backfill de Grupo pra Tenant pré-existente
+    /// (GrupoBackfillSeeder, roda no startup, fora de requisição HTTP).
+    /// Usado EXCLUSIVAMENTE por GrupoProvisionamentoService — nunca em
+    /// código de requisição normal, que sempre tem ICurrentTenant
+    /// resolvido pelo Claim e não precisa (nem deve) setar isto. Tem
+    /// prioridade sobre ICurrentTenant.TenantId em ApplyTenantIsolation
+    /// enquanto setado; SEMPRE limpo (null) logo depois de usado.
+    /// </summary>
+    public Guid? TenantIdOverrideDeSistema { get; set; }
+
+    /// <summary>
     /// Isolamento de multi-tenant nas ESCRITAS — complementa o Global Query
     /// Filter (que só protege leituras). Sem isto, nada impediria um bug
     /// (ou uma requisição manipulada) de gravar uma entidade tenant-scoped
@@ -119,12 +137,13 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
     ///   já pertence ao tenant atual.
     /// - Modified: uma tentativa de alterar o próprio TenantId é sempre
     ///   revertida antes de persistir — TenantId é imutável após a criação.
-    /// - Sem tenant resolvido (ex.: contexto de sistema/seed): qualquer
-    ///   gravação de entidade tenant-scoped é rejeitada.
+    /// - Sem tenant resolvido (ex.: contexto de sistema/seed) E sem
+    ///   TenantIdOverrideDeSistema setado: qualquer gravação de entidade
+    ///   tenant-scoped é rejeitada.
     /// </summary>
     private void ApplyTenantIsolation()
     {
-        var tenantId = _currentTenant.TenantId;
+        var tenantId = TenantIdOverrideDeSistema ?? _currentTenant.TenantId;
 
         foreach (var entry in ChangeTracker.Entries<ITenantEntity>())
         {

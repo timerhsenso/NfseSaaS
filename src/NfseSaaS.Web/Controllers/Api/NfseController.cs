@@ -1,14 +1,14 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NfseSaaS.Application.Authorization;
 using NfseSaaS.Application.UseCases.Nfse;
 using NfseSaaS.Application.UseCases.NfseEventos;
 using NfseSaaS.Domain.Enums;
+using NfseSaaS.Web.Filters;
 
 namespace NfseSaaS.Web.Controllers.Api;
 
 [ApiController]
-[Authorize]
+[RequerPermissao(TelaCatalogo.Nfse, AcaoPermissao.Consultar)]
 [Route("api/nfse")]
 public sealed class NfseController : ControllerBase
 {
@@ -41,7 +41,7 @@ public sealed class NfseController : ControllerBase
         _gerarDanfsePdfLote = gerarDanfsePdfLote;
     }
 
-    [Authorize(Roles = Papeis.PodeEmitir)]
+    [RequerPermissao(TelaCatalogo.Nfse, AcaoPermissao.Incluir)]
     [HttpPost("emitir")]
     public async Task<IActionResult> Emitir([FromBody] EmitirNfseRequest request, CancellationToken cancellationToken)
     {
@@ -72,7 +72,7 @@ public sealed class NfseController : ControllerBase
         return Ok(nfse);
     }
 
-    [Authorize(Roles = Papeis.Administrador)]
+    [RequerPermissao(TelaCatalogo.Nfse, AcaoPermissao.Excluir)]
     [HttpPost("{id:guid}/cancelar")]
     public async Task<IActionResult> Cancelar(Guid id, [FromBody] CancelarNfseRequest request, CancellationToken cancellationToken)
     {

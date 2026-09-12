@@ -1,6 +1,8 @@
 @inject NfseSaaS.Application.UseCases.Empresas.IObterEmpresaPorIdUseCase ObterEmpresaPorIdUseCase
 @{
-    var papelAdministrador = User.IsInRole("Administrador");
+    var papelAdministrador = User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Usuarios)
+        || User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Grupos)
+        || User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Auditoria);
     var caminhoAtual = Context.Request.Path.Value?.TrimEnd('/') ?? "";
     string Ativo(string caminho) => caminhoAtual.Equals(caminho, StringComparison.OrdinalIgnoreCase) ? "active" : "";
     var nomeUsuario = User.Identity?.Name ?? "Usuário";
@@ -76,19 +78,44 @@
             <div class="nav-label">Principal</div>
             <nav class="sidebar-nav">
                 <a href="/" class="@Ativo("")"><span class="nav-icon bi bi-speedometer2"></span>Dashboard</a>
-                <a href="/Empresas" class="@Ativo("/Empresas")"><span class="nav-icon bi bi-building"></span>Empresas</a>
-                <a href="/Clientes" class="@Ativo("/Clientes")"><span class="nav-icon bi bi-people"></span>Clientes</a>
-                <a href="/Contratos" class="@Ativo("/Contratos")"><span class="nav-icon bi bi-file-earmark-ruled"></span>Contratos</a>
-                <a href="/Servicos" class="@Ativo("/Servicos")"><span class="nav-icon bi bi-list-check"></span>Serviços</a>
-                <a href="/Nfse" class="@Ativo("/Nfse")"><span class="nav-icon bi bi-file-earmark-text"></span>Notas fiscais</a>
+                @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Empresas))
+                {
+                    <a href="/Empresas" class="@Ativo("/Empresas")"><span class="nav-icon bi bi-building"></span>Empresas</a>
+                }
+                @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Clientes))
+                {
+                    <a href="/Clientes" class="@Ativo("/Clientes")"><span class="nav-icon bi bi-people"></span>Clientes</a>
+                }
+                @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Contratos))
+                {
+                    <a href="/Contratos" class="@Ativo("/Contratos")"><span class="nav-icon bi bi-file-earmark-ruled"></span>Contratos</a>
+                }
+                @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Servicos))
+                {
+                    <a href="/Servicos" class="@Ativo("/Servicos")"><span class="nav-icon bi bi-list-check"></span>Serviços</a>
+                }
+                @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Nfse))
+                {
+                    <a href="/Nfse" class="@Ativo("/Nfse")"><span class="nav-icon bi bi-file-earmark-text"></span>Notas fiscais</a>
+                }
             </nav>
 
             @if (papelAdministrador)
             {
                 <div class="nav-label">Administração</div>
                 <nav class="sidebar-nav">
-                    <a href="/AuditLogs" class="@Ativo("/AuditLogs")"><span class="nav-icon bi bi-shield-check"></span>Auditoria</a>
-                    <a href="/Usuarios" class="@Ativo("/Usuarios")"><span class="nav-icon bi bi-person-plus"></span>Usuários</a>
+                    @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Auditoria))
+                    {
+                        <a href="/AuditLogs" class="@Ativo("/AuditLogs")"><span class="nav-icon bi bi-shield-check"></span>Auditoria</a>
+                    }
+                    @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Usuarios))
+                    {
+                        <a href="/Usuarios" class="@Ativo("/Usuarios")"><span class="nav-icon bi bi-person-plus"></span>Usuários</a>
+                    }
+                    @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Grupos))
+                    {
+                        <a href="/Grupos" class="@Ativo("/Grupos")"><span class="nav-icon bi bi-diagram-3"></span>Grupos de permissão</a>
+                    }
                 </nav>
             }
 
@@ -135,6 +162,8 @@
                             <i class="bi bi-chevron-down text-muted small"></i>
                         </div>
                         <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalAlterarSenha">Alterar senha</a></li>
+                            <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="#" id="link-sair">Sair</a></li>
                         </ul>
                     </div>
@@ -164,6 +193,54 @@
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="button" class="btn btn-primary" id="modalConfirmacaoBotaoConfirmar">Confirmar</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalAlterarSenha" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="form-alterar-senha-modal">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Alterar senha</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="erro-senha-modal" class="alert alert-danger d-none"></div>
+                        <div id="sucesso-senha-modal" class="alert alert-success d-none"></div>
+                        <div class="mb-3">
+                            <label class="form-label">Senha atual</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="senhaAtualModal" required autocomplete="current-password" />
+                                <button type="button" class="btn btn-outline-secondary btn-toggle-senha" tabindex="-1" title="Mostrar/ocultar senha">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Nova senha</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="novaSenhaModal" required minlength="8" autocomplete="new-password" />
+                                <button type="button" class="btn btn-outline-secondary btn-toggle-senha" tabindex="-1" title="Mostrar/ocultar senha">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Confirmar nova senha</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="confirmarNovaSenhaModal" required minlength="8" autocomplete="new-password" />
+                                <button type="button" class="btn btn-outline-secondary btn-toggle-senha" tabindex="-1" title="Mostrar/ocultar senha">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Salvar</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

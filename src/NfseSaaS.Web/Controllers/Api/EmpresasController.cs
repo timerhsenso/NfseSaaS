@@ -1,14 +1,15 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NfseSaaS.Application.Authorization;
 using NfseSaaS.Application.UseCases.Certificados;
 using NfseSaaS.Application.UseCases.Empresas;
 using NfseSaaS.Application.UseCases.SincronizacaoSefin;
+using NfseSaaS.Domain.Enums;
+using NfseSaaS.Web.Filters;
 
 namespace NfseSaaS.Web.Controllers.Api;
 
 [ApiController]
-[Authorize]
+[RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Consultar)]
 [Route("api/empresas")]
 public sealed class EmpresasController : ControllerBase
 {
@@ -53,7 +54,7 @@ public sealed class EmpresasController : ControllerBase
         _sincronizarNotasDaSefin = sincronizarNotasDaSefin;
     }
 
-    [Authorize(Roles = Papeis.Administrador)]
+    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Incluir)]
     [HttpPost]
     public async Task<IActionResult> Cadastrar([FromBody] CadastrarEmpresaRequest request, CancellationToken cancellationToken)
     {
@@ -81,7 +82,7 @@ public sealed class EmpresasController : ControllerBase
         return Ok(empresa);
     }
 
-    [Authorize(Roles = Papeis.Administrador)]
+    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Alterar)]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Atualizar(Guid id, [FromBody] AtualizarEmpresaRequest request, CancellationToken cancellationToken)
     {
@@ -90,7 +91,7 @@ public sealed class EmpresasController : ControllerBase
     }
 
     /// <summary>Soft delete (Ativo=false) — reversível via /reativar. Use quando a Empresa já tem histórico.</summary>
-    [Authorize(Roles = Papeis.Administrador)]
+    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Alterar)]
     [HttpPost("{id:guid}/desativar")]
     public async Task<IActionResult> Desativar(Guid id, CancellationToken cancellationToken)
     {
@@ -98,7 +99,7 @@ public sealed class EmpresasController : ControllerBase
         return NoContent();
     }
 
-    [Authorize(Roles = Papeis.Administrador)]
+    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Alterar)]
     [HttpPost("{id:guid}/reativar")]
     public async Task<IActionResult> Reativar(Guid id, CancellationToken cancellationToken)
     {
@@ -107,7 +108,7 @@ public sealed class EmpresasController : ControllerBase
     }
 
     /// <summary>Exclusão REAL — só funciona se a Empresa não tiver Cliente, Servico nem Nfse vinculados (422 caso contrário).</summary>
-    [Authorize(Roles = Papeis.Administrador)]
+    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Excluir)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Excluir(Guid id, CancellationToken cancellationToken)
     {
@@ -122,7 +123,7 @@ public sealed class EmpresasController : ControllerBase
     /// hora (ver Nfse.TipoAmbiente). Idempotente: chamar de novo com o
     /// mesmo ambiente atual não faz nada (204 do mesmo jeito).
     /// </summary>
-    [Authorize(Roles = Papeis.Administrador)]
+    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Alterar)]
     [HttpPut("{id:guid}/ambiente")]
     public async Task<IActionResult> AlterarAmbiente(Guid id, [FromBody] AlterarAmbienteEmpresaRequest request, CancellationToken cancellationToken)
     {
@@ -131,7 +132,7 @@ public sealed class EmpresasController : ControllerBase
     }
 
     /// <summary>Status do certificado digital da Empresa (sem expor .pfx/senha) — Subject, validade, se está utilizável.</summary>
-    [Authorize(Roles = Papeis.Administrador)]
+    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Alterar)]
     [HttpGet("{id:guid}/certificado")]
     public async Task<IActionResult> ObterStatusCertificado(Guid id, CancellationToken cancellationToken)
     {
@@ -145,7 +146,7 @@ public sealed class EmpresasController : ControllerBase
     /// comando NfseSaaS.CertTool. multipart/form-data: campo "arquivo"
     /// (o .pfx) + campo "senha".
     /// </summary>
-    [Authorize(Roles = Papeis.Administrador)]
+    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Alterar)]
     [HttpPost("{id:guid}/certificado")]
     [RequestSizeLimit(5 * 1024 * 1024)] // 5 MB é generoso pra um .pfx (tipicamente poucos KB)
     public async Task<IActionResult> EnviarCertificado(Guid id, IFormFile arquivo, [FromForm] string senha, CancellationToken cancellationToken)
@@ -158,7 +159,7 @@ public sealed class EmpresasController : ControllerBase
     }
 
     /// <summary>Testa, de verdade, se o certificado cadastrado é aceito num handshake mTLS com a SEFIN Nacional — não emite nada.</summary>
-    [Authorize(Roles = Papeis.Administrador)]
+    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Alterar)]
     [HttpPost("{id:guid}/certificado/testar-conexao")]
     public async Task<IActionResult> TestarConexaoCertificado(Guid id, CancellationToken cancellationToken)
     {
@@ -171,7 +172,7 @@ public sealed class EmpresasController : ControllerBase
     /// canal (portal web Emissor Nacional, outro sistema) que ainda não
     /// existem neste SaaS — ver SincronizarNotasDaSefinUseCase.
     /// </summary>
-    [Authorize(Roles = Papeis.PodeEmitir)]
+    [RequerPermissao(TelaCatalogo.Nfse, AcaoPermissao.Incluir)]
     [HttpPost("{id:guid}/sincronizar-sefin")]
     public async Task<IActionResult> SincronizarComSefin(Guid id, CancellationToken cancellationToken)
     {

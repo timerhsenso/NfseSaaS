@@ -34,4 +34,26 @@ public sealed class AccountController : Controller
         ViewData["Token"] = token;
         return View();
     }
+
+    [HttpGet("/Account/EsqueciSenha")]
+    public IActionResult EsqueciSenha() => View();
+
+    [HttpGet("/Account/RedefinirSenha")]
+    public IActionResult RedefinirSenha(string? email = null, string? token = null)
+    {
+        ViewData["Email"] = email;
+        ViewData["Token"] = token;
+        return View();
+    }
+
+    /// <summary>
+    /// Destino padrão do Identity (AccessDeniedPath) quando um usuário
+    /// autenticado tenta uma tela MVC sem permissão — rota que faltava
+    /// no projeto (só existia pra /api, tratado à parte em
+    /// OnRedirectToAccessDenied) e nunca tinha sido exercitada até o
+    /// módulo de segurança IAEC ([RequerPermissao]) tornar esse caminho
+    /// alcançável de verdade.
+    /// </summary>
+    [HttpGet("/Account/AccessDenied")]
+    public IActionResult AccessDenied(string? returnUrl = null) => View();
 }

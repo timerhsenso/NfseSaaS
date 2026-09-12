@@ -27,4 +27,13 @@ public sealed class ApplicationUser : IdentityUser<Guid>
     /// convites e bloqueia reenvio/exclusão de convite já aceito.
     /// </summary>
     public DateTimeOffset? ConviteAceitoEm { get; set; }
+
+    /// <summary>
+    /// Grupo de permissão do módulo de segurança IAEC (ver Grupo/GrupoTela)
+    /// — substitui o papel do Identity como fonte de autorização de tela.
+    /// Durante a transição, o usuário também mantém a Role antiga em
+    /// paralelo (ver AuthController) até todos os controllers migrarem
+    /// pro novo mecanismo de permissão.
+    /// </summary>
+    public Guid? GrupoId { get; set; }
 }

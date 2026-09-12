@@ -1,0 +1,79 @@
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Redefinir senha";
+}
+
+<h5 class="card-title mb-4">Definir nova senha</h5>
+
+<div id="erro-redefinir-senha" class="alert alert-danger d-none"></div>
+
+<form id="form-redefinir-senha">
+    <div class="mb-3">
+        <label class="form-label" for="email">E-mail</label>
+        <input type="email" class="form-control" id="email" value="@ViewData["Email"]" required />
+    </div>
+    <input type="hidden" id="token" value="@ViewData["Token"]" />
+    <div class="mb-3">
+        <label class="form-label" for="novaSenha">Nova senha</label>
+        <div class="input-group">
+            <input type="password" class="form-control" id="novaSenha" required minlength="8" autocomplete="new-password" />
+            <button type="button" class="btn btn-outline-secondary btn-toggle-senha" tabindex="-1" title="Mostrar/ocultar senha">
+                <i class="bi bi-eye"></i>
+            </button>
+        </div>
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="confirmarNovaSenha">Confirmar nova senha</label>
+        <div class="input-group">
+            <input type="password" class="form-control" id="confirmarNovaSenha" required minlength="8" autocomplete="new-password" />
+            <button type="button" class="btn btn-outline-secondary btn-toggle-senha" tabindex="-1" title="Mostrar/ocultar senha">
+                <i class="bi bi-eye"></i>
+            </button>
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary w-100">Redefinir senha e entrar</button>
+</form>
+
+@section Scripts {
+    <script>
+        document.getElementById('form-redefinir-senha').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const erroDiv = document.getElementById('erro-redefinir-senha');
+            erroDiv.classList.add('d-none');
+
+            const novaSenha = document.getElementById('novaSenha').value;
+            const confirmarNovaSenha = document.getElementById('confirmarNovaSenha').value;
+
+            if (novaSenha !== confirmarNovaSenha) {
+                erroDiv.textContent = 'A confirmação não bate com a nova senha.';
+                erroDiv.classList.remove('d-none');
+                return;
+            }
+
+            try {
+                const resposta = await fetch('/api/auth/redefinir-senha', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: document.getElementById('email').value,
+                        token: document.getElementById('token').value,
+                        novaSenha
+                    })
+                });
+
+                if (!resposta.ok) {
+                    const corpo = await resposta.json().catch(() => null);
+                    erroDiv.textContent = extrairMensagemDeErro(corpo) ?? 'Não foi possível redefinir a senha.';
+                    erroDiv.classList.remove('d-none');
+                    return;
+                }
+
+                window.location.href = '/';
+            } catch (err) {
+                erroDiv.textContent = 'Não foi possível redefinir a senha. Tente novamente.';
+                erroDiv.classList.remove('d-none');
+            }
+        });
+    </script>
+}

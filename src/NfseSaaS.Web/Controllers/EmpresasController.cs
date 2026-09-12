@@ -1,5 +1,7 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NfseSaaS.Application.Authorization;
+using NfseSaaS.Domain.Enums;
+using NfseSaaS.Web.Filters;
 
 namespace NfseSaaS.Web.Controllers;
 
@@ -9,7 +11,7 @@ namespace NfseSaaS.Web.Controllers;
 /// usada por Swagger/clients externos. Nenhuma lógica de negócio
 /// duplicada aqui.
 /// </summary>
-[Authorize]
+[RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Consultar)]
 public sealed class EmpresasController : Controller
 {
     public IActionResult Index() => View();

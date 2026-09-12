@@ -60,6 +60,7 @@ public static class DependencyInjection
         services.AddScoped<ICurrentTenant, CurrentTenant>();
         services.AddScoped<ICurrentUser, CurrentUser>();
         services.AddScoped<IAuditLogWriter, AuditLogWriter>();
+        services.AddScoped<IGrupoProvisionamentoService, GrupoProvisionamentoService>();
         services.AddScoped<INfseEventoWriter, NfseEventoWriter>();
 
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
@@ -68,10 +69,24 @@ public static class DependencyInjection
         services
             .AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
             {
-                // Regras mínimas de senha para esta fase. Serão revisadas
-                // conforme requisitos de segurança do produto evoluírem.
+                // Senha forte: 8+ caracteres, maiúscula, minúscula, número
+                // e símbolo — explícito aqui de propósito (mesmo que
+                // coincida com o default do Identity) pra não depender de
+                // ninguém saber de cor qual é esse default.
                 options.Password.RequiredLength = 8;
+                options.Password.RequireUppercase = true;
+                options.Password.RequireLowercase = true;
+                options.Password.RequireDigit = true;
+                options.Password.RequireNonAlphanumeric = true;
                 options.User.RequireUniqueEmail = true;
+
+                // Bloqueio após tentativa errada — 5 tentativas, 15
+                // minutos bloqueado. Só tem efeito de verdade combinado
+                // com lockoutOnFailure:true na chamada de
+                // PasswordSignInAsync (ver AuthController.Login).
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+                options.Lockout.AllowedForNewUsers = true;
             })
             .AddEntityFrameworkStores<AppDbContext>()
             .AddDefaultTokenProviders()

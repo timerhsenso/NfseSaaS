@@ -1,0 +1,158 @@
+diff --git a/src/NfseSaaS.Web/Controllers/Api/AuthController.cs b/src/NfseSaaS.Web/Controllers/Api/AuthController.cs
+index c260c82..09ed900 100644
+--- a/src/NfseSaaS.Web/Controllers/Api/AuthController.cs
++++ b/src/NfseSaaS.Web/Controllers/Api/AuthController.cs
+@@ -502,6 +502,61 @@ public sealed class AuthController : ControllerBase
+         return NoContent();
+     }
+ 
++    /// <summary>
++    /// Reseta a senha de um usuário a pedido do Administrador — NUNCA
++    /// manda senha nenhuma por e-mail (texto puro em trânsito é um
++    /// vazamento em potencial, e uma "senha padrão" é adivinhável antes
++    /// do usuário trocar). Em vez disso: troca pra uma senha aleatória
++    /// que não fica guardada em lugar nenhum (nem log), o que já
++    /// invalida a senha antiga e derruba qualquer sessão ativa dele
++    /// (troca de senha sempre atualiza o SecurityStamp do Identity) — e
++    /// manda o mesmo link de "definir nova senha" do fluxo de
++    /// redefinição normal, avisando que foi o Administrador quem
++    /// resetou. Diferença real pro "esqueci minha senha" comum: lá a
++    /// senha antiga continua válida até o usuário completar a troca;
++    /// aqui ela já morre na hora do clique do Administrador.
++    /// </summary>
++    [RequerPermissao(TelaCatalogo.Usuarios, AcaoPermissao.Alterar)]
++    [HttpPost("usuarios/{id:guid}/resetar-senha")]
++    public async Task<IActionResult> ResetarSenha(Guid id, CancellationToken cancellationToken)
++    {
++        if (_currentTenant.TenantId is not { } tenantId)
++            return Unauthorized();
++
++        var usuario = await _db.Users.FirstOrDefaultAsync(u => u.Id == id && u.TenantId == tenantId, cancellationToken);
++        if (usuario is null)
++            return NotFound();
++
++        var tokenParaZerar = await _userManager.GeneratePasswordResetTokenAsync(usuario);
++        var senhaAleatoriaDescartavel = Guid.NewGuid().ToString("N") + "Aa1!"; // gerada, usada uma vez pra invalidar a antiga, e esquecida — nunca persiste em lugar nenhum
++        var resultadoZerar = await _userManager.ResetPasswordAsync(usuario, tokenParaZerar, senhaAleatoriaDescartavel);
++        if (!resultadoZerar.Succeeded)
++            return BadRequest(resultadoZerar.Errors.Select(e => e.Description));
++
++        // O ResetPasswordAsync acima já mudou o SecurityStamp — o token
++        // usado pra zerar não serve mais pro link que o usuário vai
++        // clicar, precisa gerar um novo em cima do stamp atualizado.
++        var tokenParaEmail = await _userManager.GeneratePasswordResetTokenAsync(usuario);
++
++        var tenant = await _db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
++        var emailEnviado = await EnviarEmailDeResetPorAdminAsync(usuario.Email!, tokenParaEmail, tenant?.RazaoSocial, cancellationToken);
++
++        _auditLogWriter.Registrar("ResetarSenhaUsuario", "ApplicationUser", usuario.Id, new { usuario.Email });
++        await _db.SaveChangesAsync(cancellationToken);
++
++        var resposta = new Dictionary<string, object?>
++        {
++            ["userId"] = usuario.Id,
++            ["email"] = usuario.Email,
++            ["emailEnviado"] = emailEnviado
++        };
++
++        if (_environment.IsDevelopment() || !emailEnviado)
++            resposta["token"] = tokenParaEmail;
++
++        return Ok(resposta);
++    }
++
+     /// <summary>
+     /// Reenvia o e-mail de convite (novo token — o anterior continua
+     /// válido também, o Identity não invalida tokens antigos ao gerar um
+@@ -643,6 +698,29 @@ public sealed class AuthController : ControllerBase
+         return await _emailSender.EnviarAsync(destinatarioEmail, $"Redefinição de senha — {nomeExibicao}", corpoHtml, cancellationToken);
+     }
+ 
++    /// <summary>Variação de EnviarEmailDeRedefinicaoSenhaAsync — mesmo link, mas avisando que foi o Administrador quem resetou (não um pedido do próprio usuário).</summary>
++    private async Task<bool> EnviarEmailDeResetPorAdminAsync(string destinatarioEmail, string token, string? razaoSocialTenant, CancellationToken cancellationToken)
++    {
++        var nomeExibicao = string.IsNullOrWhiteSpace(razaoSocialTenant) ? "NfseSaaS" : razaoSocialTenant;
++
++        var linkRedefinicao = string.IsNullOrWhiteSpace(_emailOptions.AppBaseUrl)
++            ? null
++            : $"{_emailOptions.AppBaseUrl.TrimEnd('/')}/Account/RedefinirSenha?email={Uri.EscapeDataString(destinatarioEmail)}&token={Uri.EscapeDataString(token)}";
++
++        var corpoHtml = $"""
++            <p>Sua senha no <strong>{WebUtility.HtmlEncode(nomeExibicao)}</strong> (NfseSaaS) foi resetada por um Administrador.</p>
++            <p>Sua senha anterior não vale mais — defina uma nova pra voltar a acessar o sistema.</p>
++            {(linkRedefinicao is not null ? $"""<p><a href="{linkRedefinicao}">Clique aqui para definir sua nova senha</a></p>""" : "")}
++            <p>Se o link acima não abrir uma tela (ou se preferir usar via API), utilize estes dados na redefinição:</p>
++            <ul>
++                <li>E-mail: {WebUtility.HtmlEncode(destinatarioEmail)}</li>
++                <li>Token: {WebUtility.HtmlEncode(token)}</li>
++            </ul>
++            """;
++
++        return await _emailSender.EnviarAsync(destinatarioEmail, $"Sua senha foi resetada — {nomeExibicao}", corpoHtml, cancellationToken);
++    }
++
+     /// <summary>Disparado em TODA troca de senha (alterar ou redefinir por "esqueci") — detecção de troca que o dono da conta não reconhece.</summary>
+     private async Task<bool> EnviarEmailAvisoTrocaSenhaAsync(string destinatarioEmail, CancellationToken cancellationToken)
+     {
+diff --git a/src/NfseSaaS.Web/wwwroot/js/paginas/usuarios.js b/src/NfseSaaS.Web/wwwroot/js/paginas/usuarios.js
+index 4d54633..09424e2 100644
+--- a/src/NfseSaaS.Web/wwwroot/js/paginas/usuarios.js
++++ b/src/NfseSaaS.Web/wwwroot/js/paginas/usuarios.js
+@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', async function () {
+ 
+         if (botao.classList.contains('btn-reenviar')) await reenviarConvite(id);
+         else if (botao.classList.contains('btn-editar-grupo')) abrirModalGrupoUsuario(botao.dataset.id, botao.dataset.email, botao.dataset.grupoId);
++        else if (botao.classList.contains('btn-resetar-senha')) await resetarSenha(botao.dataset.id, botao.dataset.email);
+         else if (botao.classList.contains('btn-bloquear')) await bloquearUsuario(id);
+         else if (botao.classList.contains('btn-desbloquear')) await desbloquearUsuario(id);
+         else if (botao.classList.contains('btn-excluir-usuario')) await excluirUsuario(id);
+@@ -84,6 +85,12 @@ function montarAcoes(usuario) {
+         </button>
+     `;
+ 
++    const botaoResetarSenha = `
++        <button type="button" class="btn btn-sm btn-outline-secondary btn-resetar-senha" data-id="${usuario.id}" data-email="${usuario.email}" title="Resetar senha">
++            <i class="bi bi-key"></i>
++        </button>
++    `;
++
+     const botaoBloqueio = usuario.bloqueado
+         ? `<button type="button" class="btn btn-sm btn-outline-success btn-desbloquear" data-id="${usuario.id}" title="Desbloquear acesso"><i class="bi bi-unlock"></i></button>`
+         : `<button type="button" class="btn btn-sm btn-outline-warning btn-bloquear" data-id="${usuario.id}" title="Bloquear acesso"><i class="bi bi-lock"></i></button>`;
+@@ -94,7 +101,7 @@ function montarAcoes(usuario) {
+         </button>
+     `;
+ 
+-    return botaoGrupo + botaoBloqueio + botaoExcluir;
++    return botaoGrupo + botaoResetarSenha + botaoBloqueio + botaoExcluir;
+ }
+ 
+ async function carregarUsuarios() {
+@@ -186,6 +193,27 @@ async function salvarGrupoUsuario(e) {
+     }
+ }
+ 
++async function resetarSenha(id, email) {
++    const confirmado = await confirmarAcao(
++        `Resetar a senha de ${email}? A senha atual dele deixa de funcionar na hora e um e-mail é enviado com o link para definir uma nova.`,
++        { titulo: 'Resetar senha', textoBotao: 'Resetar', variante: 'perigo' }
++    );
++    if (!confirmado) return;
++
++    try {
++        const resultado = await apiFetch(`/api/auth/usuarios/${id}/resetar-senha`, { method: 'POST' });
++
++        let mensagem = `Senha resetada — enviamos um link para ${resultado.email} definir uma nova.`;
++        if (!resultado.emailEnviado) {
++            mensagem += ` O e-mail não pôde ser enviado — token: ${resultado.token}`;
++        }
++
++        mostrarToast(mensagem);
++    } catch (err) {
++        mostrarErro(err.message);
++    }
++}
++
+ async function bloquearUsuario(id) {
+     const confirmado = await confirmarAcao(
+         'Bloquear o acesso deste usuário? Ele não conseguirá mais fazer login até ser desbloqueado.',

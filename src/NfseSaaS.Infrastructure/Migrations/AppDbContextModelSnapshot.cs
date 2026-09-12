@@ -600,6 +600,89 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.ToTable("empresas", (string)null);
                 });
 
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.Grupo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Descricao")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("EhAdministrador")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("Padrao")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Nome")
+                        .IsUnique();
+
+                    b.ToTable("grupos", (string)null);
+                });
+
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.GrupoTela", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Alterar")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("Consultar")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Excluir")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("GrupoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Incluir")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("TelaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GrupoId");
+
+                    b.HasIndex("TelaId");
+
+                    b.HasIndex("TenantId", "GrupoId", "TelaId")
+                        .IsUnique();
+
+                    b.ToTable("grupo_telas", (string)null);
+                });
+
             modelBuilder.Entity("NfseSaaS.Domain.Entities.Nfse", b =>
                 {
                     b.Property<Guid>("Id")
@@ -879,6 +962,39 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.ToTable("servicos", (string)null);
                 });
 
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.Tela", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("Ordem")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Codigo")
+                        .IsUnique();
+
+                    b.ToTable("telas", (string)null);
+                });
+
             modelBuilder.Entity("NfseSaaS.Domain.Entities.Tenant", b =>
                 {
                     b.Property<Guid>("Id")
@@ -942,6 +1058,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("boolean");
 
+                    b.Property<Guid?>("GrupoId")
+                        .HasColumnType("uuid");
+
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("boolean");
 
@@ -979,6 +1098,8 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasColumnType("character varying(256)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("GrupoId");
 
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
@@ -1089,6 +1210,21 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.GrupoTela", b =>
+                {
+                    b.HasOne("NfseSaaS.Domain.Entities.Grupo", null)
+                        .WithMany()
+                        .HasForeignKey("GrupoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("NfseSaaS.Domain.Entities.Tela", null)
+                        .WithMany()
+                        .HasForeignKey("TelaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("NfseSaaS.Domain.Entities.Nfse", b =>
                 {
                     b.HasOne("NfseSaaS.Domain.Entities.Cliente", null)
@@ -1134,6 +1270,14 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasForeignKey("EmpresaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("NfseSaaS.Infrastructure.Identity.ApplicationUser", b =>
+                {
+                    b.HasOne("NfseSaaS.Domain.Entities.Grupo", null)
+                        .WithMany()
+                        .HasForeignKey("GrupoId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 #pragma warning restore 612, 618
         }

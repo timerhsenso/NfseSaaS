@@ -1,11 +1,12 @@
 let tabelaUsuarios;
-let modalPapel;
+let modalGrupoUsuario;
+let gruposCache = [];
 
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', async function () {
     tabelaUsuarios = new DataTable('#tabela-usuarios', {
         columns: [
             { data: 'email' },
-            { data: 'papel' },
+            { data: 'grupo' },
             {
                 data: null,
                 render: (data, type, usuario) => {
@@ -24,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function () {
         language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/pt-BR.json' }
     });
 
-    modalPapel = new bootstrap.Modal(document.getElementById('modal-papel'));
+    modalGrupoUsuario = new bootstrap.Modal(document.getElementById('modal-grupo-usuario'));
 
     document.getElementById('tabela-usuarios').addEventListener('click', async function (e) {
         const botao = e.target.closest('button');
@@ -32,17 +33,30 @@ document.addEventListener('DOMContentLoaded', function () {
         const id = botao.dataset.id;
 
         if (botao.classList.contains('btn-reenviar')) await reenviarConvite(id);
-        else if (botao.classList.contains('btn-editar-papel')) abrirModalPapel(botao.dataset.id, botao.dataset.email, botao.dataset.papel);
+        else if (botao.classList.contains('btn-editar-grupo')) abrirModalGrupoUsuario(botao.dataset.id, botao.dataset.email, botao.dataset.grupoId);
+        else if (botao.classList.contains('btn-resetar-senha')) await resetarSenha(botao.dataset.id, botao.dataset.email);
         else if (botao.classList.contains('btn-bloquear')) await bloquearUsuario(id);
         else if (botao.classList.contains('btn-desbloquear')) await desbloquearUsuario(id);
         else if (botao.classList.contains('btn-excluir-usuario')) await excluirUsuario(id);
     });
 
     document.getElementById('form-convite').addEventListener('submit', convidar);
-    document.getElementById('form-papel').addEventListener('submit', salvarPapel);
+    document.getElementById('form-grupo-usuario').addEventListener('submit', salvarGrupoUsuario);
 
+    await carregarGruposParaSelects();
     carregarUsuarios();
 });
+
+async function carregarGruposParaSelects() {
+    try {
+        gruposCache = await apiFetch('/api/grupos');
+        const opcoes = gruposCache.map(g => `<option value="${g.id}">${g.nome}</option>`).join('');
+        document.getElementById('grupoId').innerHTML = opcoes;
+        document.getElementById('grupo-usuario-novo').innerHTML = opcoes;
+    } catch (err) {
+        mostrarErro(err.message);
+    }
+}
 
 function montarAcoes(usuario) {
     if (usuario.pendente) {
@@ -57,12 +71,23 @@ function montarAcoes(usuario) {
     }
 
     if (usuario.ehVoce) {
-        return '<span class="text-muted">Você</span>';
+        return `
+            <button type="button" class="btn btn-sm btn-outline-primary btn-editar-grupo" data-id="${usuario.id}" data-email="${usuario.email}" data-grupo-id="${usuario.grupoId || ''}" title="Alterar grupo">
+                <i class="bi bi-person-gear"></i>
+            </button>
+            <span class="text-muted ms-1">Você</span>
+        `;
     }
 
-    const botaoPapel = `
-        <button type="button" class="btn btn-sm btn-outline-primary btn-editar-papel" data-id="${usuario.id}" data-email="${usuario.email}" data-papel="${usuario.papel}" title="Alterar papel">
+    const botaoGrupo = `
+        <button type="button" class="btn btn-sm btn-outline-primary btn-editar-grupo" data-id="${usuario.id}" data-email="${usuario.email}" data-grupo-id="${usuario.grupoId || ''}" title="Alterar grupo">
             <i class="bi bi-person-gear"></i>
+        </button>
+    `;
+
+    const botaoResetarSenha = `
+        <button type="button" class="btn btn-sm btn-outline-secondary btn-resetar-senha" data-id="${usuario.id}" data-email="${usuario.email}" title="Resetar senha">
+            <i class="bi bi-key"></i>
         </button>
     `;
 
@@ -76,7 +101,7 @@ function montarAcoes(usuario) {
         </button>
     `;
 
-    return botaoPapel + botaoBloqueio + botaoExcluir;
+    return botaoGrupo + botaoResetarSenha + botaoBloqueio + botaoExcluir;
 }
 
 async function carregarUsuarios() {
@@ -102,7 +127,7 @@ async function convidar(e) {
             method: 'POST',
             body: JSON.stringify({
                 email: document.getElementById('email').value,
-                papel: document.getElementById('papel').value
+                grupoId: document.getElementById('grupoId').value
             })
         });
 
@@ -137,34 +162,55 @@ async function reenviarConvite(id) {
     }
 }
 
-function abrirModalPapel(id, email, papelAtual) {
-    document.getElementById('erro-papel').classList.add('d-none');
-    document.getElementById('papel-usuarioId').value = id;
-    document.getElementById('papel-email').textContent = email;
-    document.getElementById('papel-novo').value = papelAtual;
-    modalPapel.show();
+function abrirModalGrupoUsuario(id, email, grupoIdAtual) {
+    document.getElementById('erro-grupo-usuario').classList.add('d-none');
+    document.getElementById('grupo-usuarioId').value = id;
+    document.getElementById('grupo-usuario-email').textContent = email;
+    document.getElementById('grupo-usuario-novo').value = grupoIdAtual;
+    modalGrupoUsuario.show();
 }
 
-async function salvarPapel(e) {
+async function salvarGrupoUsuario(e) {
     e.preventDefault();
-    const erroDiv = document.getElementById('erro-papel');
+    const erroDiv = document.getElementById('erro-grupo-usuario');
     erroDiv.classList.add('d-none');
 
-    const id = document.getElementById('papel-usuarioId').value;
-    const papel = document.getElementById('papel-novo').value;
+    const id = document.getElementById('grupo-usuarioId').value;
+    const grupoId = document.getElementById('grupo-usuario-novo').value;
 
     try {
-        await apiFetch(`/api/auth/usuarios/${id}/papel`, {
+        await apiFetch(`/api/auth/usuarios/${id}/grupo`, {
             method: 'PUT',
-            body: JSON.stringify({ papel })
+            body: JSON.stringify({ grupoId })
         });
 
-        modalPapel.hide();
+        modalGrupoUsuario.hide();
         await carregarUsuarios();
-        mostrarToast('Papel atualizado.');
+        mostrarToast('Grupo atualizado.');
     } catch (err) {
         erroDiv.textContent = err.message;
         erroDiv.classList.remove('d-none');
+    }
+}
+
+async function resetarSenha(id, email) {
+    const confirmado = await confirmarAcao(
+        `Resetar a senha de ${email}? A senha atual dele deixa de funcionar na hora e um e-mail é enviado com o link para definir uma nova.`,
+        { titulo: 'Resetar senha', textoBotao: 'Resetar', variante: 'perigo' }
+    );
+    if (!confirmado) return;
+
+    try {
+        const resultado = await apiFetch(`/api/auth/usuarios/${id}/resetar-senha`, { method: 'POST' });
+
+        let mensagem = `Senha resetada — enviamos um link para ${resultado.email} definir uma nova.`;
+        if (!resultado.emailEnviado) {
+            mensagem += ` O e-mail não pôde ser enviado — token: ${resultado.token}`;
+        }
+
+        mostrarToast(mensagem);
+    } catch (err) {
+        mostrarErro(err.message);
     }
 }
 

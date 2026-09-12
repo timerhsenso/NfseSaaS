@@ -1,4 +1,28 @@
 /**
+ * Botão de mostrar/ocultar senha — padrão único em todo campo de senha
+ * do sistema (Login, Registrar, Convite, Esqueci/Redefinir senha, modal
+ * de Alterar senha). Delegado no document (não por elemento) de
+ * propósito: funciona também em conteúdo injetado depois, como o modal
+ * de Alterar senha em _Layout.cshtml.
+ */
+document.addEventListener('click', function (e) {
+    const botao = e.target.closest('.btn-toggle-senha');
+    if (!botao) return;
+
+    const input = botao.previousElementSibling;
+    if (!input || input.tagName !== 'INPUT') return;
+
+    const icone = botao.querySelector('i');
+    if (input.type === 'password') {
+        input.type = 'text';
+        if (icone) icone.classList.replace('bi-eye', 'bi-eye-slash');
+    } else {
+        input.type = 'password';
+        if (icone) icone.classList.replace('bi-eye-slash', 'bi-eye');
+    }
+});
+
+/**
  * Helper único de chamadas à API JSON (mesma API que Swagger/clients
  * externos consomem — as telas MVC nunca duplicam lógica de negócio,
  * só chamam /api/... via fetch). Centralizado aqui porque toda tela
@@ -175,3 +199,54 @@ function confirmarAcao(mensagem, opcoes) {
         modal.show();
     });
 }
+
+/**
+ * Modal global "Alterar senha" (ver _Layout.cshtml) — acionado pelo
+ * dropdown do usuário em qualquer tela do sistema, por isso a lógica
+ * mora aqui em vez de num arquivo por página.
+ */
+document.addEventListener('DOMContentLoaded', function () {
+    const modalEl = document.getElementById('modalAlterarSenha');
+    const form = document.getElementById('form-alterar-senha-modal');
+    if (!modalEl || !form) return; // páginas que não usam _Layout.cshtml (ex.: telas de login/registro)
+
+    modalEl.addEventListener('show.bs.modal', function () {
+        form.reset();
+        document.getElementById('erro-senha-modal').classList.add('d-none');
+        document.getElementById('sucesso-senha-modal').classList.add('d-none');
+    });
+
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const erroDiv = document.getElementById('erro-senha-modal');
+        const sucessoDiv = document.getElementById('sucesso-senha-modal');
+        erroDiv.classList.add('d-none');
+        sucessoDiv.classList.add('d-none');
+
+        const novaSenha = document.getElementById('novaSenhaModal').value;
+        const confirmarNovaSenha = document.getElementById('confirmarNovaSenhaModal').value;
+
+        if (novaSenha !== confirmarNovaSenha) {
+            erroDiv.textContent = 'A confirmação não bate com a nova senha.';
+            erroDiv.classList.remove('d-none');
+            return;
+        }
+
+        try {
+            await apiFetch('/api/auth/alterar-senha', {
+                method: 'POST',
+                body: JSON.stringify({
+                    senhaAtual: document.getElementById('senhaAtualModal').value,
+                    novaSenha
+                })
+            });
+
+            sucessoDiv.textContent = 'Senha alterada com sucesso.';
+            sucessoDiv.classList.remove('d-none');
+            form.reset();
+        } catch (err) {
+            erroDiv.textContent = err.message;
+            erroDiv.classList.remove('d-none');
+        }
+    });
+});

@@ -15,7 +15,12 @@
     <input type="hidden" id="token" value="@ViewData["Token"]" />
     <div class="mb-3">
         <label class="form-label" for="novaSenha">Nova senha</label>
-        <input type="password" class="form-control" id="novaSenha" required minlength="8" />
+        <div class="input-group">
+            <input type="password" class="form-control" id="novaSenha" required minlength="8" autocomplete="new-password" />
+            <button type="button" class="btn btn-outline-secondary btn-toggle-senha" tabindex="-1" title="Mostrar/ocultar senha">
+                <i class="bi bi-eye"></i>
+            </button>
+        </div>
     </div>
     <button type="submit" class="btn btn-primary w-100">Definir senha e entrar</button>
 </form>

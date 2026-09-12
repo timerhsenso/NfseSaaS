@@ -1,13 +1,14 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NfseSaaS.Application.Authorization;
 using NfseSaaS.Application.UseCases.NotaMensal;
+using NfseSaaS.Domain.Enums;
+using NfseSaaS.Web.Filters;
 
 namespace NfseSaaS.Web.Controllers.Api;
 
 /// <summary>Emissão em lote (Fase 7) — Contratos Mensais/Ativos de uma Empresa, numa competência.</summary>
 [ApiController]
-[Authorize]
+[RequerPermissao(TelaCatalogo.Nfse, AcaoPermissao.Consultar)]
 [Route("api/nota-mensal")]
 public sealed class NotaMensalController : ControllerBase
 {
@@ -27,7 +28,7 @@ public sealed class NotaMensalController : ControllerBase
         return Ok(candidatos);
     }
 
-    [Authorize(Roles = Papeis.PodeEmitir)]
+    [RequerPermissao(TelaCatalogo.Nfse, AcaoPermissao.Incluir)]
     [HttpPost("emitir")]
     public async Task<IActionResult> EmitirLote([FromBody] EmitirNotaMensalLoteRequest request, CancellationToken cancellationToken)
     {

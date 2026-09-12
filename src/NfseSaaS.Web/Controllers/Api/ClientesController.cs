@@ -1,12 +1,13 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NfseSaaS.Domain.Enums;
+using NfseSaaS.Web.Filters;
 using NfseSaaS.Application.Authorization;
 using NfseSaaS.Application.UseCases.Clientes;
 
 namespace NfseSaaS.Web.Controllers.Api;
 
 [ApiController]
-[Authorize]
+[RequerPermissao(TelaCatalogo.Clientes, AcaoPermissao.Consultar)]
 [Route("api/clientes")]
 public sealed class ClientesController : ControllerBase
 {
@@ -36,7 +37,7 @@ public sealed class ClientesController : ControllerBase
         _excluirCliente = excluirCliente;
     }
 
-    [Authorize(Roles = Papeis.Administrador)]
+    [RequerPermissao(TelaCatalogo.Clientes, AcaoPermissao.Incluir)]
     [HttpPost]
     public async Task<IActionResult> Cadastrar([FromBody] CadastrarClienteRequest request, CancellationToken cancellationToken)
     {
@@ -65,7 +66,7 @@ public sealed class ClientesController : ControllerBase
         return Ok(cliente);
     }
 
-    [Authorize(Roles = Papeis.Administrador)]
+    [RequerPermissao(TelaCatalogo.Clientes, AcaoPermissao.Alterar)]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Atualizar(Guid id, [FromBody] AtualizarClienteRequest request, CancellationToken cancellationToken)
     {
@@ -74,7 +75,7 @@ public sealed class ClientesController : ControllerBase
     }
 
     /// <summary>Soft delete (Ativo=false) — reversível via /reativar. Use quando o Cliente já tem histórico (Nfse).</summary>
-    [Authorize(Roles = Papeis.Administrador)]
+    [RequerPermissao(TelaCatalogo.Clientes, AcaoPermissao.Alterar)]
     [HttpPost("{id:guid}/desativar")]
     public async Task<IActionResult> Desativar(Guid id, CancellationToken cancellationToken)
     {
@@ -82,7 +83,7 @@ public sealed class ClientesController : ControllerBase
         return NoContent();
     }
 
-    [Authorize(Roles = Papeis.Administrador)]
+    [RequerPermissao(TelaCatalogo.Clientes, AcaoPermissao.Alterar)]
     [HttpPost("{id:guid}/reativar")]
     public async Task<IActionResult> Reativar(Guid id, CancellationToken cancellationToken)
     {
@@ -91,7 +92,7 @@ public sealed class ClientesController : ControllerBase
     }
 
     /// <summary>Exclusão REAL — só funciona se o Cliente não tiver Nfse vinculada (422 caso contrário).</summary>
-    [Authorize(Roles = Papeis.Administrador)]
+    [RequerPermissao(TelaCatalogo.Clientes, AcaoPermissao.Excluir)]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Excluir(Guid id, CancellationToken cancellationToken)
     {
