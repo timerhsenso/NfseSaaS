@@ -44,6 +44,12 @@ try
         .AddHealthChecks()
         .AddCheck<PostgresHealthCheck>("postgresql");
 
+    // Leitor dos arquivos de logs/log-.txt (Serilog File sink) — usado
+    // pela tela de Logs do sistema. Ferramenta operacional do Web, não
+    // atravessa Application/Infrastructure (mesmo raciocínio do
+    // PostgresHealthCheck).
+    builder.Services.AddSingleton<NfseSaaS.Web.Services.ILogFileReader, NfseSaaS.Web.Services.LogFileReader>();
+
     var app = builder.Build();
 
     await NfseSaaS.Infrastructure.Identity.IdentitySeeder.SeedRolesAsync(app.Services);

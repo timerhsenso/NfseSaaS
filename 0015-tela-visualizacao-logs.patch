@@ -1,0 +1,392 @@
+diff --git a/src/NfseSaaS.Application/Authorization/TelaCatalogo.cs b/src/NfseSaaS.Application/Authorization/TelaCatalogo.cs
+index 28d58ec..887d6cd 100644
+--- a/src/NfseSaaS.Application/Authorization/TelaCatalogo.cs
++++ b/src/NfseSaaS.Application/Authorization/TelaCatalogo.cs
+@@ -18,6 +18,7 @@ public static class TelaCatalogo
+     public const string Auditoria = "Auditoria";
+     public const string Grupos = "Grupos";
+     public const string Emails = "Emails";
++    public const string Logs = "Logs";
+ 
+     public static readonly (string Codigo, string Nome, int Ordem)[] Todas =
+     {
+@@ -29,6 +30,7 @@ public static class TelaCatalogo
+         (Usuarios, "Usuários", 6),
+         (Grupos, "Grupos de permissão", 7),
+         (Auditoria, "Auditoria", 8),
+-        (Emails, "E-mails", 9)
++        (Emails, "E-mails", 9),
++        (Logs, "Logs do sistema", 10)
+     };
+ }
+diff --git a/src/NfseSaaS.Infrastructure/Identity/GrupoProvisionamentoService.cs b/src/NfseSaaS.Infrastructure/Identity/GrupoProvisionamentoService.cs
+index 8256c32..c87b884 100644
+--- a/src/NfseSaaS.Infrastructure/Identity/GrupoProvisionamentoService.cs
++++ b/src/NfseSaaS.Infrastructure/Identity/GrupoProvisionamentoService.cs
+@@ -46,7 +46,8 @@ public sealed class GrupoProvisionamentoService : IGrupoProvisionamentoService
+             [TelaCatalogo.Usuarios] = PermissaoIaec.Tudo,
+             [TelaCatalogo.Grupos] = PermissaoIaec.Tudo,
+             [TelaCatalogo.Auditoria] = PermissaoIaec.SoConsultar, // Auditoria é só leitura por natureza, não tem Incluir/Alterar/Excluir manual
+-            [TelaCatalogo.Emails] = PermissaoIaec.Tudo
++            [TelaCatalogo.Emails] = PermissaoIaec.Tudo,
++            [TelaCatalogo.Logs] = PermissaoIaec.SoConsultar // Log técnico (stack trace de infraestrutura) — só Administrador, nem Financeiro/Contador enxergam isso
+         }),
+         ("Emissor", "Pode emitir Nfse. Leitura nas demais telas de cadastro.", false, new Dictionary<string, PermissaoIaec>
+         {
+@@ -58,7 +59,8 @@ public sealed class GrupoProvisionamentoService : IGrupoProvisionamentoService
+             [TelaCatalogo.Usuarios] = PermissaoIaec.Nenhuma,
+             [TelaCatalogo.Grupos] = PermissaoIaec.Nenhuma,
+             [TelaCatalogo.Auditoria] = PermissaoIaec.Nenhuma,
+-            [TelaCatalogo.Emails] = PermissaoIaec.Nenhuma
++            [TelaCatalogo.Emails] = PermissaoIaec.Nenhuma,
++            [TelaCatalogo.Logs] = PermissaoIaec.Nenhuma
+         }),
+         ("Financeiro", "Leitura de Nfse e Auditoria para conciliação financeira.", false, new Dictionary<string, PermissaoIaec>
+         {
+@@ -70,7 +72,8 @@ public sealed class GrupoProvisionamentoService : IGrupoProvisionamentoService
+             [TelaCatalogo.Usuarios] = PermissaoIaec.Nenhuma,
+             [TelaCatalogo.Grupos] = PermissaoIaec.Nenhuma,
+             [TelaCatalogo.Auditoria] = PermissaoIaec.SoConsultar,
+-            [TelaCatalogo.Emails] = PermissaoIaec.Nenhuma
++            [TelaCatalogo.Emails] = PermissaoIaec.Nenhuma,
++            [TelaCatalogo.Logs] = PermissaoIaec.Nenhuma
+         }),
+         ("Contador", "Leitura de Nfse e Auditoria para fins fiscais/contábeis.", false, new Dictionary<string, PermissaoIaec>
+         {
+@@ -82,7 +85,8 @@ public sealed class GrupoProvisionamentoService : IGrupoProvisionamentoService
+             [TelaCatalogo.Usuarios] = PermissaoIaec.Nenhuma,
+             [TelaCatalogo.Grupos] = PermissaoIaec.Nenhuma,
+             [TelaCatalogo.Auditoria] = PermissaoIaec.SoConsultar,
+-            [TelaCatalogo.Emails] = PermissaoIaec.Nenhuma
++            [TelaCatalogo.Emails] = PermissaoIaec.Nenhuma,
++            [TelaCatalogo.Logs] = PermissaoIaec.Nenhuma
+         }),
+         ("Consulta", "Só leitura — sem acesso a Usuários, Grupos ou Auditoria.", false, new Dictionary<string, PermissaoIaec>
+         {
+@@ -94,7 +98,8 @@ public sealed class GrupoProvisionamentoService : IGrupoProvisionamentoService
+             [TelaCatalogo.Usuarios] = PermissaoIaec.Nenhuma,
+             [TelaCatalogo.Grupos] = PermissaoIaec.Nenhuma,
+             [TelaCatalogo.Auditoria] = PermissaoIaec.Nenhuma,
+-            [TelaCatalogo.Emails] = PermissaoIaec.Nenhuma
++            [TelaCatalogo.Emails] = PermissaoIaec.Nenhuma,
++            [TelaCatalogo.Logs] = PermissaoIaec.Nenhuma
+         })
+     };
+ 
+diff --git a/src/NfseSaaS.Web/Controllers/Api/LogsController.cs b/src/NfseSaaS.Web/Controllers/Api/LogsController.cs
+new file mode 100644
+index 0000000..b630583
+--- /dev/null
++++ b/src/NfseSaaS.Web/Controllers/Api/LogsController.cs
+@@ -0,0 +1,47 @@
++using Microsoft.AspNetCore.Mvc;
++using NfseSaaS.Application.Authorization;
++using NfseSaaS.Domain.Enums;
++using NfseSaaS.Web.Filters;
++using NfseSaaS.Web.Services;
++
++namespace NfseSaaS.Web.Controllers.Api;
++
++/// <summary>
++/// Só leitura, por design — mesma lógica do AuditLogsController: não
++/// existe (e não deve existir) escrita aqui. Restrito a quem tem
++/// Consultar em Logs — hoje só o grupo Administrador (ver
++/// GrupoProvisionamentoService), porque isto pode conter stack trace de
++/// infraestrutura, não é dado de negócio do Tenant.
++/// </summary>
++[ApiController]
++[RequerPermissao(TelaCatalogo.Logs, AcaoPermissao.Consultar)]
++[Route("api/logs")]
++public sealed class LogsController : ControllerBase
++{
++    private readonly ILogFileReader _logFileReader;
++
++    public LogsController(ILogFileReader logFileReader)
++    {
++        _logFileReader = logFileReader;
++    }
++
++    [HttpGet("arquivos")]
++    public IActionResult ListarArquivos() => Ok(_logFileReader.ListarArquivos());
++
++    [HttpGet("conteudo")]
++    public IActionResult ObterConteudo(
++        [FromQuery] string arquivo,
++        [FromQuery] int linhas = 500,
++        [FromQuery] string? nivel = null,
++        [FromQuery] string? busca = null)
++    {
++        try
++        {
++            return Ok(_logFileReader.LerUltimasLinhas(arquivo, linhas, nivel, busca));
++        }
++        catch (FileNotFoundException ex)
++        {
++            return NotFound(new { erro = ex.Message });
++        }
++    }
++}
+diff --git a/src/NfseSaaS.Web/Controllers/LogsController.cs b/src/NfseSaaS.Web/Controllers/LogsController.cs
+new file mode 100644
+index 0000000..8c57b9c
+--- /dev/null
++++ b/src/NfseSaaS.Web/Controllers/LogsController.cs
+@@ -0,0 +1,16 @@
++using Microsoft.AspNetCore.Mvc;
++using NfseSaaS.Application.Authorization;
++using NfseSaaS.Domain.Enums;
++using NfseSaaS.Web.Filters;
++
++namespace NfseSaaS.Web.Controllers;
++
++/// <summary>
++/// Só serve a view — dados vêm via fetch do api/logs. Restrito a quem
++/// tem Consultar em Logs (hoje só Administrador).
++/// </summary>
++[RequerPermissao(TelaCatalogo.Logs, AcaoPermissao.Consultar)]
++public sealed class LogsController : Controller
++{
++    public IActionResult Index() => View();
++}
+diff --git a/src/NfseSaaS.Web/Program.cs b/src/NfseSaaS.Web/Program.cs
+index 19c8559..454f9dc 100644
+--- a/src/NfseSaaS.Web/Program.cs
++++ b/src/NfseSaaS.Web/Program.cs
+@@ -44,6 +44,12 @@ try
+         .AddHealthChecks()
+         .AddCheck<PostgresHealthCheck>("postgresql");
+ 
++    // Leitor dos arquivos de logs/log-.txt (Serilog File sink) — usado
++    // pela tela de Logs do sistema. Ferramenta operacional do Web, não
++    // atravessa Application/Infrastructure (mesmo raciocínio do
++    // PostgresHealthCheck).
++    builder.Services.AddSingleton<NfseSaaS.Web.Services.ILogFileReader, NfseSaaS.Web.Services.LogFileReader>();
++
+     var app = builder.Build();
+ 
+     await NfseSaaS.Infrastructure.Identity.IdentitySeeder.SeedRolesAsync(app.Services);
+diff --git a/src/NfseSaaS.Web/Services/LogFileReader.cs b/src/NfseSaaS.Web/Services/LogFileReader.cs
+new file mode 100644
+index 0000000..df2fd09
+--- /dev/null
++++ b/src/NfseSaaS.Web/Services/LogFileReader.cs
+@@ -0,0 +1,107 @@
++namespace NfseSaaS.Web.Services;
++
++public sealed record ArquivoLog(string Nome, DateTimeOffset ModificadoEm, long TamanhoBytes);
++
++public sealed record LinhasLog(string Arquivo, IReadOnlyList<string> Linhas, bool Truncado);
++
++/// <summary>
++/// Lê os arquivos gerados pelo sink Serilog.File configurado em
++/// Program.cs (logs/log-.txt, rollingInterval Day → um arquivo por dia,
++/// ex.: log-20260912.txt). Ferramenta puramente operacional pra dar
++/// visibilidade de erro em produção sem precisar de terminal/SSH — não é
++/// conceito de negócio, por isso vive direto no Web (mesmo raciocínio do
++/// HealthChecks/PostgresHealthCheck), sem Application/Infrastructure.
++///
++/// IMPORTANTE (ambiente Docker): isto só mostra o que está no filesystem
++/// do container ATUAL. Se "logs/" não for um volume persistente, um
++/// redeploy zera o histórico — mas cobre o caso mais comum, que é
++/// investigar um erro que acabou de acontecer na sessão atual.
++/// </summary>
++public interface ILogFileReader
++{
++    IReadOnlyList<ArquivoLog> ListarArquivos();
++
++    LinhasLog LerUltimasLinhas(string nomeArquivo, int maximoLinhas, string? nivel, string? busca);
++}
++
++public sealed class LogFileReader : ILogFileReader
++{
++    // Cap de segurança: nunca varre mais que isto por leitura, mesmo se o
++    // arquivo do dia estiver enorme — é um visualizador rápido, não uma
++    // ferramenta de análise de log histórico completa (pra isso, baixar
++    // o arquivo mesmo).
++    private const int MaximoLinhasVarridas = 20_000;
++
++    private readonly string _pastaLogs;
++
++    public LogFileReader(IHostEnvironment environment)
++    {
++        _pastaLogs = Path.Combine(environment.ContentRootPath, "logs");
++    }
++
++    public IReadOnlyList<ArquivoLog> ListarArquivos()
++    {
++        if (!Directory.Exists(_pastaLogs))
++            return Array.Empty<ArquivoLog>();
++
++        return Directory.GetFiles(_pastaLogs, "log-*.txt")
++            .Select(caminho => new FileInfo(caminho))
++            .OrderByDescending(arquivo => arquivo.LastWriteTimeUtc)
++            .Select(arquivo => new ArquivoLog(arquivo.Name, arquivo.LastWriteTimeUtc, arquivo.Length))
++            .ToList();
++    }
++
++    public LinhasLog LerUltimasLinhas(string nomeArquivo, int maximoLinhas, string? nivel, string? busca)
++    {
++        var caminho = ResolverCaminhoSeguro(nomeArquivo);
++        maximoLinhas = Math.Clamp(maximoLinhas, 1, 2000);
++
++        // Fila circular: mantém só as últimas N linhas que passaram no
++        // filtro, sem carregar o arquivo inteiro na memória.
++        var janela = new Queue<string>(maximoLinhas);
++        var totalVarrido = 0;
++
++        foreach (var linha in File.ReadLines(caminho))
++        {
++            totalVarrido++;
++            if (totalVarrido > MaximoLinhasVarridas)
++                break;
++
++            if (!string.IsNullOrEmpty(nivel) && !linha.Contains($"[{nivel}]", StringComparison.OrdinalIgnoreCase))
++                continue;
++
++            if (!string.IsNullOrEmpty(busca) && !linha.Contains(busca, StringComparison.OrdinalIgnoreCase))
++                continue;
++
++            if (janela.Count == maximoLinhas)
++                janela.Dequeue();
++
++            janela.Enqueue(linha);
++        }
++
++        return new LinhasLog(nomeArquivo, janela.ToList(), totalVarrido > MaximoLinhasVarridas);
++    }
++
++    /// <summary>
++    /// Nunca confia no nome de arquivo vindo da query string: só aceita o
++    /// padrão exato gerado pelo Serilog (log-AAAAMMDD.txt) e confirma que
++    /// o caminho final continua dentro de logs/ — bloqueia qualquer
++    /// tentativa de "../" ou caminho absoluto injetado no parâmetro.
++    /// </summary>
++    private string ResolverCaminhoSeguro(string nomeArquivo)
++    {
++        if (string.IsNullOrWhiteSpace(nomeArquivo) ||
++            !System.Text.RegularExpressions.Regex.IsMatch(nomeArquivo, @"^log-\d{8}\.txt$"))
++        {
++            throw new FileNotFoundException("Nome de arquivo de log inválido.");
++        }
++
++        var caminhoCompleto = Path.GetFullPath(Path.Combine(_pastaLogs, nomeArquivo));
++        var pastaLogsCompleta = Path.GetFullPath(_pastaLogs) + Path.DirectorySeparatorChar;
++
++        if (!caminhoCompleto.StartsWith(pastaLogsCompleta, StringComparison.Ordinal) || !File.Exists(caminhoCompleto))
++            throw new FileNotFoundException("Arquivo de log não encontrado.");
++
++        return caminhoCompleto;
++    }
++}
+diff --git a/src/NfseSaaS.Web/Views/Shared/_Layout.cshtml b/src/NfseSaaS.Web/Views/Shared/_Layout.cshtml
+index 25296a6..00e3368 100644
+--- a/src/NfseSaaS.Web/Views/Shared/_Layout.cshtml
++++ b/src/NfseSaaS.Web/Views/Shared/_Layout.cshtml
+@@ -120,6 +120,10 @@
+                     {
+                         <a href="/Emails" class="@Ativo("/Emails")"><span class="nav-icon bi bi-envelope-paper"></span>E-mails</a>
+                     }
++                    @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Logs))
++                    {
++                        <a href="/Logs" class="@Ativo("/Logs")"><span class="nav-icon bi bi-terminal"></span>Logs</a>
++                    }
+                 </nav>
+             }
+ 
+diff --git a/src/NfseSaaS.Web/wwwroot/js/paginas/logs.js b/src/NfseSaaS.Web/wwwroot/js/paginas/logs.js
+new file mode 100644
+index 0000000..65d5de5
+--- /dev/null
++++ b/src/NfseSaaS.Web/wwwroot/js/paginas/logs.js
+@@ -0,0 +1,91 @@
++document.addEventListener('DOMContentLoaded', async function () {
++    document.getElementById('form-filtros-logs').addEventListener('submit', function (e) {
++        e.preventDefault();
++        carregarConteudoLog();
++    });
++
++    await carregarArquivosLog();
++    await carregarConteudoLog();
++});
++
++async function carregarArquivosLog() {
++    const select = document.getElementById('filtro-arquivo-log');
++
++    try {
++        const arquivos = await apiFetch('/api/logs/arquivos');
++
++        if (!arquivos.length) {
++            select.innerHTML = '<option value="">Nenhum arquivo de log encontrado</option>';
++            return;
++        }
++
++        select.innerHTML = arquivos.map(function (arquivo, indice) {
++            const tamanhoKb = Math.round(arquivo.tamanhoBytes / 1024);
++            const selecionado = indice === 0 ? 'selected' : '';
++            return `<option value="${arquivo.nome}" ${selecionado}>${arquivo.nome} (${tamanhoKb} KB)</option>`;
++        }).join('');
++    } catch (erro) {
++        select.innerHTML = '<option value="">Erro ao listar arquivos</option>';
++    }
++}
++
++async function carregarConteudoLog() {
++    const arquivo = document.getElementById('filtro-arquivo-log').value;
++    const preConteudo = document.getElementById('conteudo-log');
++    const avisoTruncado = document.getElementById('aviso-truncado-log');
++    const avisoVazio = document.getElementById('aviso-vazio-log');
++
++    avisoTruncado.classList.add('d-none');
++    avisoVazio.classList.add('d-none');
++
++    if (!arquivo) {
++        preConteudo.textContent = '';
++        return;
++    }
++
++    const parametros = new URLSearchParams({
++        arquivo: arquivo,
++        linhas: document.getElementById('filtro-linhas-log').value
++    });
++
++    const nivel = document.getElementById('filtro-nivel-log').value;
++    const busca = document.getElementById('filtro-busca-log').value.trim();
++
++    if (nivel) parametros.set('nivel', nivel);
++    if (busca) parametros.set('busca', busca);
++
++    preConteudo.textContent = 'Carregando...';
++
++    try {
++        const resultado = await apiFetch(`/api/logs/conteudo?${parametros.toString()}`);
++
++        if (resultado.truncado) {
++            avisoTruncado.classList.remove('d-none');
++        }
++
++        if (!resultado.linhas.length) {
++            avisoVazio.classList.remove('d-none');
++            preConteudo.textContent = '';
++            return;
++        }
++
++        preConteudo.innerHTML = resultado.linhas.map(function (linha) {
++            const linhaEscapada = linha
++                .replace(/&/g, '&amp;')
++                .replace(/</g, '&lt;')
++                .replace(/>/g, '&gt;');
++
++            if (linha.includes('[ERR]') || linha.includes('[FTL]')) {
++                return `<span class="linha-erro">${linhaEscapada}</span>`;
++            }
++            if (linha.includes('[WRN]')) {
++                return `<span class="linha-aviso">${linhaEscapada}</span>`;
++            }
++            return linhaEscapada;
++        }).join('\n');
++
++        preConteudo.scrollTop = preConteudo.scrollHeight;
++    } catch (erro) {
++        preConteudo.textContent = 'Erro ao carregar o log: ' + erro.message;
++    }
++}

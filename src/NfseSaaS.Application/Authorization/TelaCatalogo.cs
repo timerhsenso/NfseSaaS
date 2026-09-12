@@ -18,6 +18,7 @@ public static class TelaCatalogo
     public const string Auditoria = "Auditoria";
     public const string Grupos = "Grupos";
     public const string Emails = "Emails";
+    public const string Logs = "Logs";
 
     public static readonly (string Codigo, string Nome, int Ordem)[] Todas =
     {
@@ -29,6 +30,7 @@ public static class TelaCatalogo
         (Usuarios, "Usuários", 6),
         (Grupos, "Grupos de permissão", 7),
         (Auditoria, "Auditoria", 8),
-        (Emails, "E-mails", 9)
+        (Emails, "E-mails", 9),
+        (Logs, "Logs do sistema", 10)
     };
 }
