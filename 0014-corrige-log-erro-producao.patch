@@ -1,0 +1,130 @@
+diff --git a/src/NfseSaaS.Web/Controllers/HomeController.cs b/src/NfseSaaS.Web/Controllers/HomeController.cs
+index 10dc415..60c9be2 100644
+--- a/src/NfseSaaS.Web/Controllers/HomeController.cs
++++ b/src/NfseSaaS.Web/Controllers/HomeController.cs
+@@ -7,4 +7,22 @@ namespace NfseSaaS.Web.Controllers;
+ public sealed class HomeController : Controller
+ {
+     public IActionResult Index() => View();
++
++    /// <summary>
++    /// Página de erro amigável pra requisições de tela (MVC/Razor).
++    /// ExceptionHandlingMiddleware redireciona pra cá quando uma exceção
++    /// não tratada estoura fora de /api — o log completo (stack trace,
++    /// tipo, CorrelationId) já foi gravado lá; aqui só exibimos o
++    /// CorrelationId pro usuário poder informar ao suporte. [AllowAnonymous]
++    /// porque o erro pode acontecer antes da autenticação estar
++    /// estabelecida (ex.: sessão expirada no meio de uma navegação).
++    /// </summary>
++    [AllowAnonymous]
++    [Route("Home/Error")]
++    public IActionResult Error(string? cid)
++    {
++        return View(new ErrorViewModel(cid ?? HttpContext.TraceIdentifier));
++    }
+ }
++
++public sealed record ErrorViewModel(string CorrelationId);
+diff --git a/src/NfseSaaS.Web/Middleware/ExceptionHandlingMiddleware.cs b/src/NfseSaaS.Web/Middleware/ExceptionHandlingMiddleware.cs
+index de99ea1..7f009e7 100644
+--- a/src/NfseSaaS.Web/Middleware/ExceptionHandlingMiddleware.cs
++++ b/src/NfseSaaS.Web/Middleware/ExceptionHandlingMiddleware.cs
+@@ -6,10 +6,11 @@ using NfseSaaS.Nacional.Exceptions;
+ namespace NfseSaaS.Web.Middleware;
+ 
+ /// <summary>
+-/// Middleware global de tratamento de exceções. Nunca expõe stack trace ao
+-/// usuário — registra o detalhe técnico completo no log (com CorrelationId
+-/// já anexado pelo CorrelationIdMiddleware) e devolve uma resposta JSON
+-/// genérica e segura.
++/// Middleware global de tratamento de exceções — ÚNICO ponto que loga
++/// exceção não tratada (_logger.LogError(ex, ...), com CorrelationId já
++/// anexado pelo CorrelationIdMiddleware). Nunca expõe stack trace ao
++/// usuário: devolve JSON genérico pra requisições de API e redireciona pra
++/// /Home/Error (página HTML amigável) pra requisições de tela.
+ /// </summary>
+ public sealed class ExceptionHandlingMiddleware
+ {
+@@ -41,6 +42,32 @@ public sealed class ExceptionHandlingMiddleware
+                     string.Join(" | ", nfseValidationException.Codigos));
+             }
+ 
++            // A resposta já começou a ser escrita (ex.: exceção estourou no
++            // meio da renderização de uma View Razor) — não dá mais pra
++            // trocar status code/headers. Só loga (já feito acima) e sai;
++            // tentar escrever de novo geraria uma segunda exceção que
++            // mascararia esta no log.
++            if (context.Response.HasStarted)
++            {
++                return;
++            }
++
++            var correlationId = context.TraceIdentifier;
++
++            // Tela MVC (Razor) → devolve uma página de erro amigável em vez
++            // de um JSON cru na tela. Só é considerado "tela" quando NÃO é
++            // uma chamada sob /api E o cliente aceita HTML (evita
++            // classificar chamadas AJAX/fetch feitas de dentro das telas,
++            // que também esperam JSON, como se fossem navegação de página).
++            var ehRequisicaoDeTela = !context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase)
++                && context.Request.Headers.Accept.Any(h => h != null && h.Contains("text/html", StringComparison.OrdinalIgnoreCase));
++
++            if (ehRequisicaoDeTela)
++            {
++                context.Response.Redirect($"/Home/Error?cid={Uri.EscapeDataString(correlationId)}");
++                return;
++            }
++
+             var statusCode = ex switch
+             {
+                 ValidacaoException => HttpStatusCode.UnprocessableEntity,
+diff --git a/src/NfseSaaS.Web/Program.cs b/src/NfseSaaS.Web/Program.cs
+index 2bcb843..19c8559 100644
+--- a/src/NfseSaaS.Web/Program.cs
++++ b/src/NfseSaaS.Web/Program.cs
+@@ -62,7 +62,20 @@ try
+     }
+     else
+     {
+-        app.UseExceptionHandler("/Home/Error");
++        // NÃO usar app.UseExceptionHandler("/Home/Error") aqui: essa
++        // middleware é INTERNA ao pipeline (registrada depois de
++        // ExceptionHandlingMiddleware, ou seja, mais perto do endpoint) e
++        // captura a exceção ANTES dela chegar no ExceptionHandlingMiddleware
++        // — que é quem de fato chama _logger.LogError(ex, ...) com a
++        // exceção completa. Resultado prático que estava acontecendo em
++        // produção: toda exceção era silenciosamente engolida pelo
++        // UseExceptionHandler, que tentava reexecutar a pipeline contra
++        // "/Home/Error" (rota que nem existia) e devolvia um 404 em
++        // branco pro usuário — e a exceção original nunca era logada,
++        // só o log de auditoria ("tentou fazer X") gravado antes dela
++        // estourar. ExceptionHandlingMiddleware sozinho já cobre log +
++        // status code + resposta amigável (JSON pra /api, HTML pra tela)
++        // — não precisa de handler duplicado.
+         app.UseHsts();
+     }
+ 
+diff --git a/src/NfseSaaS.Web/Views/Home/Error.cshtml b/src/NfseSaaS.Web/Views/Home/Error.cshtml
+new file mode 100644
+index 0000000..90d112b
+--- /dev/null
++++ b/src/NfseSaaS.Web/Views/Home/Error.cshtml
+@@ -0,0 +1,18 @@
++@model NfseSaaS.Web.Controllers.ErrorViewModel
++@{
++    ViewData["Title"] = "Erro";
++    Layout = "_AuthLayout";
++}
++
++<div class="text-center py-3">
++    <i class="bi bi-exclamation-octagon display-1 text-danger"></i>
++    <h4 class="mt-3">Ocorreu um erro ao processar sua solicitação</h4>
++    <p class="text-muted">
++        Já registramos os detalhes técnicos. Se o problema continuar, informe o código
++        abaixo ao suporte.
++    </p>
++    <p>
++        <code>@Model.CorrelationId</code>
++    </p>
++    <a href="/" class="btn btn-primary">Voltar ao início</a>
++</div>

@@ -62,7 +62,20 @@ try
     }
     else
     {
-        app.UseExceptionHandler("/Home/Error");
+        // NÃO usar app.UseExceptionHandler("/Home/Error") aqui: essa
+        // middleware é INTERNA ao pipeline (registrada depois de
+        // ExceptionHandlingMiddleware, ou seja, mais perto do endpoint) e
+        // captura a exceção ANTES dela chegar no ExceptionHandlingMiddleware
+        // — que é quem de fato chama _logger.LogError(ex, ...) com a
+        // exceção completa. Resultado prático que estava acontecendo em
+        // produção: toda exceção era silenciosamente engolida pelo
+        // UseExceptionHandler, que tentava reexecutar a pipeline contra
+        // "/Home/Error" (rota que nem existia) e devolvia um 404 em
+        // branco pro usuário — e a exceção original nunca era logada,
+        // só o log de auditoria ("tentou fazer X") gravado antes dela
+        // estourar. ExceptionHandlingMiddleware sozinho já cobre log +
+        // status code + resposta amigável (JSON pra /api, HTML pra tela)
+        // — não precisa de handler duplicado.
         app.UseHsts();
     }
 

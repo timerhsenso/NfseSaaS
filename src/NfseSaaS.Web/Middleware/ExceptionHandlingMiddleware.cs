@@ -6,10 +6,11 @@ using NfseSaaS.Nacional.Exceptions;
 namespace NfseSaaS.Web.Middleware;
 
 /// <summary>
-/// Middleware global de tratamento de exceções. Nunca expõe stack trace ao
-/// usuário — registra o detalhe técnico completo no log (com CorrelationId
-/// já anexado pelo CorrelationIdMiddleware) e devolve uma resposta JSON
-/// genérica e segura.
+/// Middleware global de tratamento de exceções — ÚNICO ponto que loga
+/// exceção não tratada (_logger.LogError(ex, ...), com CorrelationId já
+/// anexado pelo CorrelationIdMiddleware). Nunca expõe stack trace ao
+/// usuário: devolve JSON genérico pra requisições de API e redireciona pra
+/// /Home/Error (página HTML amigável) pra requisições de tela.
 /// </summary>
 public sealed class ExceptionHandlingMiddleware
 {
@@ -39,6 +40,32 @@ public sealed class ExceptionHandlingMiddleware
                 _logger.LogWarning(
                     "DPS reprovada em validação local: {Erros}",
                     string.Join(" | ", nfseValidationException.Codigos));
+            }
+
+            // A resposta já começou a ser escrita (ex.: exceção estourou no
+            // meio da renderização de uma View Razor) — não dá mais pra
+            // trocar status code/headers. Só loga (já feito acima) e sai;
+            // tentar escrever de novo geraria uma segunda exceção que
+            // mascararia esta no log.
+            if (context.Response.HasStarted)
+            {
+                return;
+            }
+
+            var correlationId = context.TraceIdentifier;
+
+            // Tela MVC (Razor) → devolve uma página de erro amigável em vez
+            // de um JSON cru na tela. Só é considerado "tela" quando NÃO é
+            // uma chamada sob /api E o cliente aceita HTML (evita
+            // classificar chamadas AJAX/fetch feitas de dentro das telas,
+            // que também esperam JSON, como se fossem navegação de página).
+            var ehRequisicaoDeTela = !context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase)
+                && context.Request.Headers.Accept.Any(h => h != null && h.Contains("text/html", StringComparison.OrdinalIgnoreCase));
+
+            if (ehRequisicaoDeTela)
+            {
+                context.Response.Redirect($"/Home/Error?cid={Uri.EscapeDataString(correlationId)}");
+                return;
             }
 
             var statusCode = ex switch
