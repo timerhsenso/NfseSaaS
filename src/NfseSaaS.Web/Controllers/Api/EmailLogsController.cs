@@ -82,7 +82,7 @@ public sealed class EmailLogsController : ControllerBase
         });
     }
 
-    /// <summary>Reenvia o e-mail EXATAMENTE como foi montado na tentativa original — não regenera token nem nada, só manda de novo o mesmo corpo.</summary>
+    /// <summary>Reenvia o e-mail EXATAMENTE como foi montado na tentativa original — não regenera token nem nada, só manda de novo o mesmo corpo. Só permitido pra e-mail com Status=Falhou (reenviar um Enviado ou Pendente não faz sentido); e-mail de Convite tem checagem extra porque o convite pode já ter sido aceito por outra tentativa.</summary>
     [RequerPermissao(TelaCatalogo.Emails, AcaoPermissao.Alterar)]
     [HttpPost("{id:guid}/reenviar")]
     public async Task<IActionResult> Reenviar(Guid id, CancellationToken cancellationToken)
@@ -90,6 +90,18 @@ public sealed class EmailLogsController : ControllerBase
         var log = await _db.EmailLogs.FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
         if (log is null)
             return NotFound();
+
+        if (log.Status != StatusEmailLog.Falhou)
+            return Conflict(new { erro = "Só é possível reenviar e-mails com status Falhou." });
+
+        if (log.Tipo == TipoEmailCatalogo.Convite && log.UsuarioId is { } usuarioId)
+        {
+            var conviteJaAceito = await _db.Users.AnyAsync(
+                u => u.Id == usuarioId && u.ConviteAceitoEm != null, cancellationToken);
+
+            if (conviteJaAceito)
+                return Conflict(new { erro = "Este convite já foi aceito — não é possível reenviar." });
+        }
 
         log.Status = StatusEmailLog.Pendente;
         log.ErroDetalhe = null;

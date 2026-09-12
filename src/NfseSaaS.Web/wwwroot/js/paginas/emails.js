@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             </button>
                         `;
                     }
-                    if (email.status === 'Falhou' || email.status === 'Enviado') {
+                    if (email.status === 'Falhou') {
                         botoes += `
                             <button type="button" class="btn btn-sm btn-outline-primary btn-reenviar-email" data-id="${email.id}" title="Reenviar">
                                 <i class="bi bi-arrow-repeat"></i>
