@@ -21,10 +21,13 @@ try
     builder.Host.UseSerilog((context, services, configuration) => configuration
         .ReadFrom.Configuration(context.Configuration)
         .Enrich.FromLogContext()
-        .WriteTo.Console()
+        .WriteTo.Console(outputTemplate:
+            "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] ({CorrelationId}) {Message:lj}{NewLine}{Exception}")
         .WriteTo.File(
             Path.Combine(context.HostingEnvironment.ContentRootPath, "logs", "log-.txt"),
-            rollingInterval: RollingInterval.Day));
+            rollingInterval: RollingInterval.Day,
+            outputTemplate:
+                "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] ({CorrelationId}) {Message:lj}{NewLine}{Exception}"));
 
     // --- Program.cs enxuto: cada camada registra a si mesma (Requisito 16) ---
     builder.Services.AddApplication();

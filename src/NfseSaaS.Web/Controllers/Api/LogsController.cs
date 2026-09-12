@@ -43,5 +43,14 @@ public sealed class LogsController : ControllerBase
         {
             return NotFound(new { erro = ex.Message });
         }
+        catch (IOException)
+        {
+            // Arquivo do dia atual, em uso pelo próprio Serilog no
+            // instante exato da leitura — já tentamos internamente com
+            // retry (ver LogFileReader), isto só acontece se o lock
+            // persistiu além disso. Não é erro de aplicação, por isso
+            // não vira 500/log de exceção — é só "tente de novo".
+            return StatusCode(423, new { erro = "O arquivo está sendo gravado agora pelo sistema. Tente atualizar em alguns segundos." });
+        }
     }
 }

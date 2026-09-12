@@ -61,7 +61,10 @@ public sealed class LogFileReader : ILogFileReader
         var janela = new Queue<string>(maximoLinhas);
         var totalVarrido = 0;
 
-        foreach (var linha in File.ReadLines(caminho))
+        using var leitor = AbrirParaLeituraCompartilhada(caminho);
+
+        string? linha;
+        while ((linha = leitor.ReadLine()) is not null)
         {
             totalVarrido++;
             if (totalVarrido > MaximoLinhasVarridas)
@@ -103,5 +106,44 @@ public sealed class LogFileReader : ILogFileReader
             throw new FileNotFoundException("Arquivo de log não encontrado.");
 
         return caminhoCompleto;
+    }
+
+    /// <summary>
+    /// O arquivo do dia atual está sempre aberto pro Serilog escrever
+    /// (WriteTo.File em Program.cs). Abrir só com FileAccess.Read não
+    /// basta — o compartilhamento também precisa incluir Write (é o
+    /// PRÓPRIO Serilog que está escrevendo), senão o SO recusa com
+    /// IOException ("being used by another process"), mesmo lendo
+    /// via .NET só-leitura. Delete também liberado porque o rolling do
+    /// Serilog pode renomear/recriar o arquivo entre uma leitura e outra.
+    /// Retry curto porque o lock às vezes é só do instante do flush
+    /// (write em lote), não constante.
+    /// </summary>
+    private static StreamReader AbrirParaLeituraCompartilhada(string caminho)
+    {
+        const int tentativas = 3;
+
+        for (var tentativa = 1; tentativa <= tentativas; tentativa++)
+        {
+            try
+            {
+                var stream = new FileStream(
+                    caminho,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.ReadWrite | FileShare.Delete);
+
+                return new StreamReader(stream);
+            }
+            catch (IOException) when (tentativa < tentativas)
+            {
+                Thread.Sleep(150);
+            }
+        }
+
+        // Última tentativa: deixa a IOException propagar pro controller,
+        // que devolve 423 com mensagem amigável em vez do 500 genérico.
+        var streamFinal = new FileStream(caminho, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        return new StreamReader(streamFinal);
     }
 }

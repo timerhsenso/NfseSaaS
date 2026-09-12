@@ -1,0 +1,71 @@
+@{
+    ViewData["Title"] = "Logs do sistema";
+}
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form id="form-filtros-logs" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Arquivo</label>
+                <select class="form-select" id="filtro-arquivo-log"></select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Nível</label>
+                <select class="form-select" id="filtro-nivel-log">
+                    <option value="">Todos</option>
+                    <option value="ERR">Erro</option>
+                    <option value="WRN">Aviso</option>
+                    <option value="INF">Informação</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Buscar</label>
+                <input type="text" class="form-control" id="filtro-busca-log" placeholder="ex.: CorrelationId, texto do erro" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Últimas linhas</label>
+                <select class="form-select" id="filtro-linhas-log">
+                    <option value="200">200</option>
+                    <option value="500" selected>500</option>
+                    <option value="1000">1000</option>
+                    <option value="2000">2000</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Atualizar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div id="aviso-truncado-log" class="alert alert-warning d-none">
+            Arquivo maior que o limite de varredura — mostrando só as últimas linhas encontradas. Pra análise completa, baixe o arquivo direto do servidor.
+        </div>
+        <div id="aviso-vazio-log" class="alert alert-secondary d-none">
+            Nenhuma linha encontrada com esse filtro.
+        </div>
+        <pre id="conteudo-log" class="log-viewer"></pre>
+    </div>
+</div>
+
+@section Scripts {
+    <style>
+        .log-viewer {
+            max-height: 70vh;
+            overflow-y: auto;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            font-size: 0.8125rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .log-viewer .linha-erro { color: #f47174; }
+        .log-viewer .linha-aviso { color: #dcdcaa; }
+    </style>
+    <script src="~/js/paginas/logs.js" asp-append-version="true"></script>
+}

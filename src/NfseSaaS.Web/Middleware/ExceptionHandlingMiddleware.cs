@@ -52,7 +52,7 @@ public sealed class ExceptionHandlingMiddleware
                 return;
             }
 
-            var correlationId = context.TraceIdentifier;
+            var correlationId = context.Response.Headers["X-Correlation-Id"].ToString();
 
             // Tela MVC (Razor) → devolve uma página de erro amigável em vez
             // de um JSON cru na tela. Só é considerado "tela" quando NÃO é
