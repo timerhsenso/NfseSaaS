@@ -33,10 +33,12 @@ public sealed class AtualizarEmpresaRequestValidator : AbstractValidator<Atualiz
         RuleFor(x => x.CstPisCofins).NotEmpty();
         RuleFor(x => x.TpRetPisCofins).NotEmpty();
 
+        // Mesma regra do DpsValidator (módulo Nacional) — ver comentário
+        // equivalente em CadastrarEmpresaRequestValidator.
         RuleFor(x => x.PercentualTotalTributosSimplesNacional)
             .NotEmpty()
             .Matches(@"^\d+(\.\d{1,4})?$").WithMessage("PercentualTotalTributosSimplesNacional deve ser um número decimal (ex.: '3.00').")
-            .When(x => x.OpSimpNac == "3");
+            .When(x => x.OpSimpNac is "2" or "3");
 
         RuleFor(x => x.DiasAlertaReajusteContratoPadrao).GreaterThan(0);
     }

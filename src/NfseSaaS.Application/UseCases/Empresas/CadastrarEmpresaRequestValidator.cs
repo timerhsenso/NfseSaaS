@@ -37,11 +37,15 @@ public sealed class CadastrarEmpresaRequestValidator : AbstractValidator<Cadastr
         RuleFor(x => x.CstPisCofins).NotEmpty();
         RuleFor(x => x.TpRetPisCofins).NotEmpty();
 
-        // Só é obrigatório para quem optou pelo Simples Nacional (exceto MEI) —
-        // é o campo pTotTribSN da DPS, não faz sentido fora desse regime.
+        // Mesma regra do DpsValidator (módulo Nacional): pTotTribSN é
+        // exigido pela SEFIN tanto pra MEI ("2") quanto pra ME/EPP ("3"),
+        // não só "3" — travar aqui, no cadastro, é o que impede a Empresa
+        // de ficar salva em estado que só quebra depois, na hora de emitir
+        // (era possível salvar Optante sem o percentual e só descobrir o
+        // problema quando a SEFIN rejeitasse a DPS).
         RuleFor(x => x.PercentualTotalTributosSimplesNacional)
             .NotEmpty()
             .Matches(@"^\d+(\.\d{1,4})?$").WithMessage("PercentualTotalTributosSimplesNacional deve ser um número decimal (ex.: '3.00').")
-            .When(x => x.OpSimpNac == "3");
+            .When(x => x.OpSimpNac is "2" or "3");
     }
 }

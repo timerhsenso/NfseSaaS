@@ -47,7 +47,19 @@ public sealed class DpsBuilder : IDpsBuilder
         if (request.TpAmb is not ("1" or "2"))
             throw new ArgumentException($"TpAmb inválido: '{request.TpAmb}'. Esperado \"1\" (Produção) ou \"2\" (Homologação).", nameof(request));
 
-        var agora = DateTimeOffset.Now - MargemSegurancaDhEmi;
+        // DateTimeOffset.Now usa o fuso do SERVIDOR, não o de Brasília — em
+        // produção (container Linux/Docker) o fuso do SO é UTC, então
+        // .Now vem com offset "+00:00". O dhEmi acaba correto em termos de
+        // INSTANTE (mesmo ponto no tempo), mas a SEFIN rejeitou com E0008
+        // ("dhEmi posterior ao processamento") mesmo assim — sinal de que
+        // ela não normaliza o offset recebido antes de comparar, e lê os
+        // dígitos do relógio como se já fossem hora de Brasília. Resultado:
+        // um dhEmi em UTC aparenta estar ~3h no "futuro" da perspectiva
+        // dela. Construir explicitamente em -03:00 (fixo, sem horário de
+        // verão desde 2019 — mesma premissa já usada em
+        // ListarNfseUseCase.offsetBrasilia) elimina essa ambiguidade
+        // independente do fuso do servidor onde isto roda.
+        var agora = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-3)) - MargemSegurancaDhEmi;
 
         var infDpsId =
             "DPS" +
@@ -122,8 +134,23 @@ public sealed class DpsBuilder : IDpsBuilder
         Add(doc, piscofins, "CST", request.Tributacao.CstPisCofins);
         Add(doc, piscofins, "tpRetPisCofins", request.Tributacao.TpRetPisCofins);
 
-        var totTrib = AddNode(doc, trib, "totTrib");
-        Add(doc, totTrib, "pTotTribSN", request.Tributacao.PercentualTotalTributosSimplesNacional);
+        // <totTrib> só existe pra carregar pTotTribSN — se não tem valor
+        // (Empresa Não optante, "1"), omite o grupo inteiro em vez de
+        // deixar <totTrib></totTrib> vazio; mesmo raciocínio do pTotTribSN
+        // abaixo, aplicado um nível acima por precaução.
+        if (!string.IsNullOrWhiteSpace(request.Tributacao.PercentualTotalTributosSimplesNacional))
+        {
+            var totTrib = AddNode(doc, trib, "totTrib");
+
+            // pTotTribSN é opcional de verdade no XSD (minOccurs=0) pra
+            // Empresa Não optante ("1") — mesma regra que já vale no
+            // DpsValidator. Se o valor vier vazio, o elemento NÃO pode
+            // aparecer no XML: um <pTotTribSN></pTotTribSN> vazio quebra
+            // o Pattern do tipo TSDec2V2 na SEFIN (E1235 "Falha no esquema
+            // XML do DF-e"), mesmo a validação local deixando passar por
+            // considerar o campo dispensável nesse caso.
+            Add(doc, totTrib, "pTotTribSN", request.Tributacao.PercentualTotalTributosSimplesNacional);
+        }
 
         return (XmlSerializationHelper.ToXmlString(doc), infDpsId);
     }
