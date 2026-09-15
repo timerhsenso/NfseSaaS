@@ -465,8 +465,19 @@ async function salvarContrato(e) {
 
     const linhasServico = coletarLinhasServico();
     if (!id) {
+        // Guid vazio ("") quebra o model binding no backend antes de a
+        // validação do FluentValidation rodar (vira 400 silencioso, sem
+        // log e sem mensagem por campo) — barra aqui, na aba onde o
+        // problema está, com uma mensagem que a pessoa entende.
+        if (linhasServico.length === 0 || linhasServico.some(l => !l.servicoId)) {
+            trocarAbaContrato('tab-servico');
+            mostrarErroFormulario('erro-contrato', 'Selecione o Serviço em todas as linhas da aba "Serviço" antes de salvar.');
+            return;
+        }
+
         const idsUnicos = new Set(linhasServico.map(l => l.servicoId));
         if (idsUnicos.size !== linhasServico.length) {
+            trocarAbaContrato('tab-servico');
             mostrarErroFormulario('erro-contrato', 'O mesmo serviço não pode aparecer em mais de uma linha.');
             return;
         }

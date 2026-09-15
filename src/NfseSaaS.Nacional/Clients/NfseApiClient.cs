@@ -41,6 +41,20 @@ public sealed class NfseApiClient : INfseApiClient
             var payload = new { dpsXmlGZipB64 = dpsXmlGZipBase64 };
             using var response = await client.PostAsJsonAsync(MontarUrl("nfse", tpAmb), payload, timeoutCts.Token);
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                // Mesmo raciocínio do log em EnviarEventoAsync: o log padrão
+                // do HttpClientFactory (Information "Received HTTP response
+                // headers... 400") só grava o status code, nunca o corpo —
+                // sem isto, uma rejeição cujo formato não bate com o que
+                // NfseResponseParser espera vira "motivo não informado" na
+                // tela, sem nenhum rastro em lugar nenhum do porquê real.
+                _logger.LogWarning(
+                    "SEFIN Nacional retornou HTTP {StatusCode} ao emitir a DPS da Empresa {EmpresaId}. Corpo bruto: {Body}",
+                    (int)response.StatusCode, empresaId, body);
+            }
+
             return ((int)response.StatusCode, body);
         }
         catch (HttpRequestException ex)
