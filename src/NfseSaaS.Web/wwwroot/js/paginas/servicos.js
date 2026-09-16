@@ -48,6 +48,49 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('btn-novo-servico').addEventListener('click', abrirModalNovoServico);
         document.getElementById('form-servico').addEventListener('submit', salvarServico);
 
+        // dropdownParent: sem isso, o dropdown do select2 renderiza fora
+        // do modal do Bootstrap (problema conhecido dos dois juntos) —
+        // apontando pro modal, ele nasce dentro e some junto quando o
+        // modal fecha. minimumInputLength evita buscar o catálogo
+        // inteiro (338 códigos) ao simplesmente abrir o campo.
+        $('#codigoTributacaoNacional').select2({
+            dropdownParent: $('#modal-servico'),
+            placeholder: 'Digite o código ou parte da descrição do serviço',
+            minimumInputLength: 2,
+            language: {
+                inputTooShort: () => 'Digite pelo menos 2 caracteres para buscar.',
+                searching: () => 'Buscando…',
+                noResults: () => 'Nenhum código encontrado.'
+            },
+            ajax: {
+                url: '/api/catalogos/ctribnac',
+                dataType: 'json',
+                delay: 300,
+                data: params => ({ busca: params.term, limite: 20 }),
+                processResults: data => ({ results: data.results })
+            }
+        });
+
+        // Mesma configuração do cTribNac acima, só trocando a URL — ver
+        // os comentários ali pro porquê de cada opção.
+        $('#codigoNbs').select2({
+            dropdownParent: $('#modal-servico'),
+            placeholder: 'Digite o código ou parte da descrição do serviço',
+            minimumInputLength: 2,
+            language: {
+                inputTooShort: () => 'Digite pelo menos 2 caracteres para buscar.',
+                searching: () => 'Buscando…',
+                noResults: () => 'Nenhum código encontrado.'
+            },
+            ajax: {
+                url: '/api/catalogos/nbs',
+                dataType: 'json',
+                delay: 300,
+                data: params => ({ busca: params.term, limite: 20 }),
+                processResults: data => ({ results: data.results })
+            }
+        });
+
         document.getElementById('tabela-servicos').addEventListener('click', async function (e) {
             const botao = e.target.closest('button');
             if (!botao) return;
@@ -82,6 +125,16 @@ function limparFormularioServico() {
     document.getElementById('form-servico').reset();
     document.getElementById('servicoId').value = '';
     document.getElementById('erro-servico').classList.add('d-none');
+
+    // form.reset() não atualiza a UI do select2 (ele só espelha o
+    // <select> nativo por baixo) — precisa limpar e disparar 'change'
+    // manualmente, senão o select2 continua mostrando a opção do
+    // serviço editado anteriormente.
+    document.getElementById('codigoTributacaoNacional').innerHTML = '';
+    $('#codigoTributacaoNacional').val(null).trigger('change');
+
+    document.getElementById('codigoNbs').innerHTML = '';
+    $('#codigoNbs').val(null).trigger('change');
 }
 
 function abrirModalNovoServico() {
@@ -99,14 +152,56 @@ async function abrirModalEditarServico(id) {
 
         document.getElementById('servicoId').value = servico.id;
         document.getElementById('descricao').value = servico.descricao;
-        document.getElementById('codigoTributacaoNacional').value = servico.codigoTributacaoNacional;
-        document.getElementById('codigoNbs').value = servico.codigoNbs;
         document.getElementById('valorPadrao').value = servico.valorPadrao;
+
+        await preencherCodigoTributacaoNacionalAtual(servico.codigoTributacaoNacional);
+        await preencherCodigoNbsAtual(servico.codigoNbs);
 
         modalServico.show();
     } catch (err) {
         mostrarErro(err.message);
     }
+}
+
+// select2 com fonte remota (AJAX) não tem como saber o TEXTO de um
+// código já salvo sem perguntar pra API — a própria busca do
+// select2 já casa por código exato, então reaproveita ela aqui pra
+// montar a <option> antes de exibir o modal. Se a busca falhar por
+// qualquer motivo, ainda cria a option só com o código puro (o
+// formulário continua editável, só sem a descrição por extenso).
+async function preencherCodigoTributacaoNacionalAtual(codigo) {
+    const select = document.getElementById('codigoTributacaoNacional');
+    if (!codigo) return;
+
+    let texto = codigo;
+    try {
+        const resposta = await apiFetch(`/api/catalogos/ctribnac?busca=${encodeURIComponent(codigo)}&limite=5`);
+        const item = (resposta.results ?? []).find(r => r.id === codigo);
+        if (item) texto = item.text;
+    } catch (err) {
+        // Segue com texto = codigo (ver comentário acima).
+    }
+
+    select.appendChild(new Option(texto, codigo, true, true));
+    $(select).trigger('change');
+}
+
+// Mesmo raciocínio de preencherCodigoTributacaoNacionalAtual, pro campo NBS.
+async function preencherCodigoNbsAtual(codigo) {
+    const select = document.getElementById('codigoNbs');
+    if (!codigo) return;
+
+    let texto = codigo;
+    try {
+        const resposta = await apiFetch(`/api/catalogos/nbs?busca=${encodeURIComponent(codigo)}&limite=5`);
+        const item = (resposta.results ?? []).find(r => r.id === codigo);
+        if (item) texto = item.text;
+    } catch (err) {
+        // Segue com texto = codigo (ver comentário acima).
+    }
+
+    select.appendChild(new Option(texto, codigo, true, true));
+    $(select).trigger('change');
 }
 
 async function salvarServico(e) {

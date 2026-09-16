@@ -23,6 +23,16 @@
 	  <ProjectReference Include="..\NfseSaaS.Nacional\NfseSaaS.Nacional.csproj" />
   </ItemGroup>
 
+  <!--
+    Tabela oficial de Código de Tributação Nacional (cTribNac) — embarcada
+    no assembly (não lida de disco em runtime), pra funcionar igual em
+    qualquer forma de deploy. Ver CodigoTributacaoNacionalSeeder.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="Persistence\Seeders\Dados\ctribnac.json" />
+    <EmbeddedResource Include="Persistence\Seeders\Dados\nbs.json" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="MailKit" Version="4.17.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.10" />

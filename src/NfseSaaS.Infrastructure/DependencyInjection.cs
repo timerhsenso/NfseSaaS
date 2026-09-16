@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.UseCases.AuditLogs;
+using NfseSaaS.Application.UseCases.Catalogos;
 using NfseSaaS.Application.UseCases.Certificados;
 using NfseSaaS.Application.UseCases.Clientes;
 using NfseSaaS.Application.UseCases.Contratos;
@@ -191,6 +192,9 @@ public static class DependencyInjection
         services.AddScoped<IRegistrarExportacaoUseCase, RegistrarExportacaoUseCase>();
         services.AddHttpClient("BrasilApi");
         services.AddScoped<IConsultarCnpjUseCase, BrasilApiCnpjClient>();
+
+        services.AddScoped<IBuscarCodigoTributacaoNacionalUseCase, BuscarCodigoTributacaoNacionalUseCase>();
+        services.AddScoped<IBuscarCodigoNbsUseCase, BuscarCodigoNbsUseCase>();
 
         services.AddScoped<IListarAuditLogsUseCase, ListarAuditLogsUseCase>();
         services.AddScoped<IObterAuditLogPorIdUseCase, ObterAuditLogPorIdUseCase>();

@@ -73,3 +73,20 @@ versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH)
   Agora toda exceção é logada com stack trace completo e `CorrelationId`.
 - Tela quebrada exibia JSON cru ou 404 em branco; agora mostra uma
   página de erro amigável com código de correlação pro suporte.
+
+## [1.3.0] - 2026-09-16
+### Adicionado
+- Catálogo oficial de Código de Tributação Nacional (cTribNac, 338
+  códigos) e de NBS — Nomenclatura Brasileira de Serviços (920
+  códigos), alimentados a partir das tabelas oficiais do governo.
+- Busca com autocomplete nos campos cTribNac e NBS do cadastro de
+  Serviço, no lugar de digitação livre.
+
+### Alterado
+- `CodigoTributacaoNacional` e `CodigoNbs` do Serviço agora são
+  validados contra o catálogo oficial antes de salvar (não só
+  formato) — bloqueia código que a SEFIN rejeitaria de qualquer jeito.
+
+### Corrigido
+- Busca nos catálogos não encontrava termos que só apareciam com
+  letra maiúscula na descrição (comparação estava case-sensitive).
