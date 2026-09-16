@@ -64,9 +64,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const botao = e.target.closest('button');
         if (!botao) return;
 
-        if (botao.classList.contains('btn-matriz')) await abrirModalMatriz(botao.dataset.id, botao.dataset.nome, botao.dataset.admin === 'true');
-        else if (botao.classList.contains('btn-editar-grupo')) abrirModalEditarGrupo(botao.dataset.id, botao.dataset.nome, botao.dataset.descricao);
-        else if (botao.classList.contains('btn-excluir-grupo')) await excluirGrupo(botao.dataset.id);
+        await executarComBotaoDesabilitado(botao, async () => {
+            if (botao.classList.contains('btn-matriz')) await abrirModalMatriz(botao.dataset.id, botao.dataset.nome, botao.dataset.admin === 'true');
+            else if (botao.classList.contains('btn-editar-grupo')) abrirModalEditarGrupo(botao.dataset.id, botao.dataset.nome, botao.dataset.descricao);
+            else if (botao.classList.contains('btn-excluir-grupo')) await excluirGrupo(botao.dataset.id);
+        });
     });
 
     carregarGrupos();

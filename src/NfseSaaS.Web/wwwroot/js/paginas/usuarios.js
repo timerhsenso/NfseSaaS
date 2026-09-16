@@ -32,12 +32,14 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (!botao) return;
         const id = botao.dataset.id;
 
-        if (botao.classList.contains('btn-reenviar')) await reenviarConvite(id);
-        else if (botao.classList.contains('btn-editar-grupo')) abrirModalGrupoUsuario(botao.dataset.id, botao.dataset.email, botao.dataset.grupoId);
-        else if (botao.classList.contains('btn-resetar-senha')) await resetarSenha(botao.dataset.id, botao.dataset.email);
-        else if (botao.classList.contains('btn-bloquear')) await bloquearUsuario(id);
-        else if (botao.classList.contains('btn-desbloquear')) await desbloquearUsuario(id);
-        else if (botao.classList.contains('btn-excluir-usuario')) await excluirUsuario(id);
+        await executarComBotaoDesabilitado(botao, async () => {
+            if (botao.classList.contains('btn-reenviar')) await reenviarConvite(id);
+            else if (botao.classList.contains('btn-editar-grupo')) abrirModalGrupoUsuario(botao.dataset.id, botao.dataset.email, botao.dataset.grupoId);
+            else if (botao.classList.contains('btn-resetar-senha')) await resetarSenha(botao.dataset.id, botao.dataset.email);
+            else if (botao.classList.contains('btn-bloquear')) await bloquearUsuario(id);
+            else if (botao.classList.contains('btn-desbloquear')) await desbloquearUsuario(id);
+            else if (botao.classList.contains('btn-excluir-usuario')) await excluirUsuario(id);
+        });
     });
 
     document.getElementById('form-convite').addEventListener('submit', convidar);

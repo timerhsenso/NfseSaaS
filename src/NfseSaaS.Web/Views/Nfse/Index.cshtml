@@ -143,8 +143,17 @@
                 <h6 class="text-muted mt-3">Histórico de eventos</h6>
                 <ul class="list-group mb-3" id="detalhe-nfse-eventos"></ul>
 
-                <h6 class="text-muted">Snapshot fiscal (contexto da emissão)</h6>
-                <pre id="detalhe-nfse-snapshot" class="bg-body-tertiary p-2 rounded small"></pre>
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <h6 class="text-muted mb-0">Snapshot fiscal (contexto da emissão)</h6>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-toggle-snapshot"
+                            data-bs-toggle="collapse" data-bs-target="#detalhe-nfse-snapshot-collapse"
+                            aria-expanded="false" aria-controls="detalhe-nfse-snapshot-collapse">
+                        <i class="bi bi-chevron-down"></i> Mostrar
+                    </button>
+                </div>
+                <div class="collapse" id="detalhe-nfse-snapshot-collapse">
+                    <pre id="detalhe-nfse-snapshot" class="bg-body-tertiary p-2 rounded small mt-2"></pre>
+                </div>
             </div>
             <div class="modal-footer">
                 <a class="btn btn-outline-primary" id="link-baixar-danfse" target="_blank" rel="noopener">

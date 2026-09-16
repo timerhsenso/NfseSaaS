@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('tabela-nfse').addEventListener('click', async function (e) {
         const botao = e.target.closest('.btn-ver-detalhe');
-        if (botao) await abrirDetalheNfse(botao.dataset.id);
+        if (botao) await executarComBotaoDesabilitado(botao, () => abrirDetalheNfse(botao.dataset.id));
     });
 
     document.getElementById('tabela-nfse').addEventListener('change', function (e) {
@@ -106,6 +106,18 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('btn-baixar-selecionadas').addEventListener('click', baixarDanfsePdfLote);
 
     modalDetalheNfse = new bootstrap.Modal(document.getElementById('modal-detalhe-nfse'));
+
+    // Troca ícone/texto do botão conforme o snapshot é expandido/ocultado
+    // — só precisa de um listener (o elemento do modal fica fixo no DOM,
+    // só o conteúdo é repopulado a cada abertura, ver abrirDetalheNfse).
+    const snapshotCollapse = document.getElementById('detalhe-nfse-snapshot-collapse');
+    const btnToggleSnapshot = document.getElementById('btn-toggle-snapshot');
+    snapshotCollapse.addEventListener('show.bs.collapse', function () {
+        btnToggleSnapshot.innerHTML = '<i class="bi bi-chevron-up"></i> Ocultar';
+    });
+    snapshotCollapse.addEventListener('hide.bs.collapse', function () {
+        btnToggleSnapshot.innerHTML = '<i class="bi bi-chevron-down"></i> Mostrar';
+    });
 
     if (podeEmitirNfse) {
         modalEmitirNfse = new bootstrap.Modal(document.getElementById('modal-emitir-nfse'));
@@ -405,6 +417,13 @@ async function abrirDetalheNfse(id) {
         document.getElementById('detalhe-nfse-snapshot').textContent = snapshot
             ? JSON.stringify(snapshot, null, 2)
             : 'Sem snapshot (nota emitida antes deste recurso existir).';
+
+        // Sempre começa fechado — quem quiser ver o JSON clica em
+        // "Mostrar" (ver listener show.bs.collapse/hide.bs.collapse).
+        document.getElementById('detalhe-nfse-snapshot-collapse').classList.remove('show');
+        const btnToggleSnapshot = document.getElementById('btn-toggle-snapshot');
+        btnToggleSnapshot.setAttribute('aria-expanded', 'false');
+        btnToggleSnapshot.innerHTML = '<i class="bi bi-chevron-down"></i> Mostrar';
 
         const btnCancelar = document.getElementById('btn-cancelar-nfse');
         if (btnCancelar) btnCancelar.classList.toggle('d-none', nfse.status !== STATUS_AUTORIZADA);

@@ -86,11 +86,13 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!botao) return;
             const id = botao.dataset.id;
 
-            if (botao.classList.contains('btn-editar')) await abrirModalEditarEmpresa(id);
-            else if (botao.classList.contains('btn-certificado')) await abrirModalCertificado(id, botao.dataset.nome);
-            else if (botao.classList.contains('btn-alterar-ambiente')) await alterarAmbiente(id, botao.dataset.nome, parseInt(botao.dataset.novoAmbiente, 10));
-            else if (botao.classList.contains('btn-alternar-ativo')) await alternarAtivo(id, botao.dataset.ativo === 'true');
-            else if (botao.classList.contains('btn-excluir')) await excluirEmpresa(id);
+            await executarComBotaoDesabilitado(botao, async () => {
+                if (botao.classList.contains('btn-editar')) await abrirModalEditarEmpresa(id);
+                else if (botao.classList.contains('btn-certificado')) await abrirModalCertificado(id, botao.dataset.nome);
+                else if (botao.classList.contains('btn-alterar-ambiente')) await alterarAmbiente(id, botao.dataset.nome, parseInt(botao.dataset.novoAmbiente, 10));
+                else if (botao.classList.contains('btn-alternar-ativo')) await alternarAtivo(id, botao.dataset.ativo === 'true');
+                else if (botao.classList.contains('btn-excluir')) await excluirEmpresa(id);
+            });
         });
     }
 

@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         document.getElementById('lista-documentos-contrato').addEventListener('click', async function (e) {
             const botao = e.target.closest('button.btn-excluir-documento');
-            if (botao) await excluirDocumentoContrato(botao.dataset.id);
+            if (botao) await executarComBotaoDesabilitado(botao, () => excluirDocumentoContrato(botao.dataset.id));
         });
 
         document.getElementById('tabela-contratos').addEventListener('click', async function (e) {
@@ -115,10 +115,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!botao) return;
             const id = botao.dataset.id;
 
-            if (botao.classList.contains('btn-editar')) await abrirModalEditarContrato(id);
-            else if (botao.classList.contains('btn-alternar-ativo')) await alternarAtivoContrato(id, botao.dataset.ativo === 'true');
-            else if (botao.classList.contains('btn-excluir')) await excluirContrato(id);
-            else if (botao.classList.contains('btn-historico')) await abrirModalHistorico(id, botao.dataset.descricao);
+            await executarComBotaoDesabilitado(botao, async () => {
+                if (botao.classList.contains('btn-editar')) await abrirModalEditarContrato(id);
+                else if (botao.classList.contains('btn-alternar-ativo')) await alternarAtivoContrato(id, botao.dataset.ativo === 'true');
+                else if (botao.classList.contains('btn-excluir')) await excluirContrato(id);
+                else if (botao.classList.contains('btn-historico')) await abrirModalHistorico(id, botao.dataset.descricao);
+            });
         });
     }
 

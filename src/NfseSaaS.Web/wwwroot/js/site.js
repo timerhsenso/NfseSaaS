@@ -77,6 +77,28 @@ async function apiFetch(url, options) {
 }
 
 /**
+ * Desabilita o botão clicado enquanto a ação assíncrona associada a ele
+ * roda, e reabilita no fim (sucesso ou erro). Usado no handler de clique
+ * delegado de toda tabela de listagem (Empresas, Clientes, Serviços,
+ * Contratos, Usuários, Grupos, E-mails) — sem isso, dava pra clicar
+ * "ativar/desativar" (ou excluir, editar etc.) várias vezes seguidas
+ * antes da primeira requisição terminar e do DataTable redesenhar a
+ * linha, disparando uma requisição nova a cada clique. `if (botao.disabled)
+ * return` cobre o clique duplo mais rápido que o navegador consegue
+ * disparar (entre o clique e o disabled=true não há await no meio).
+ */
+async function executarComBotaoDesabilitado(botao, acaoAsync) {
+    if (botao.disabled) return;
+
+    botao.disabled = true;
+    try {
+        await acaoAsync();
+    } finally {
+        botao.disabled = false;
+    }
+}
+
+/**
  * A API tem 2 formatos de erro possíveis (ver ExceptionHandlingMiddleware
  * e os poucos BadRequest/Conflict manuais em AuthController):
  * - { erro: "...", erros?: { campo: ["msg", ...] } } — formato padrão
@@ -100,22 +122,52 @@ function mostrarErro(mensagem) {
 /**
  * Toast discreto no canto da tela — substitui o alert() nativo do
  * navegador (mais profissional, não bloqueia a interação). tipo:
- * 'sucesso' (padrão) ou 'erro' (fundo vermelho).
+ * 'sucesso' (padrão) ou 'erro' (fundo vermelho). Empilha: cada chamada
+ * cria um toast novo e independente — um toast que já está na tela não
+ * é sobrescrito por uma chamada seguinte, como acontecia antes (só
+ * havia um elemento fixo, reaproveitado a cada mostrarToast()).
  */
 function mostrarToast(mensagem, tipo) {
-    const toast = document.getElementById('toastNfse');
-    if (!toast) {
+    const container = document.getElementById('toastContainerNfse');
+    if (!container) {
         // Fallback pras páginas que ainda não usam o _Layout novo.
         alert(mensagem);
         return;
     }
 
-    toast.textContent = mensagem;
-    toast.classList.toggle('toast-erro', tipo === 'erro');
-    toast.classList.add('show');
+    const ehErro = tipo === 'erro';
+    const duracaoMs = ehErro ? 5000 : 3000;
 
-    clearTimeout(window.__toastTimer);
-    window.__toastTimer = setTimeout(() => toast.classList.remove('show'), tipo === 'erro' ? 4000 : 2500);
+    const toast = document.createElement('div');
+    toast.className = 'toast-nfse' + (ehErro ? ' toast-erro' : '');
+    toast.innerHTML = `
+        <i class="bi ${ehErro ? 'bi-exclamation-triangle-fill' : 'bi-check-circle-fill'} toast-nfse-icone"></i>
+        <span class="toast-nfse-texto"></span>
+        <button type="button" class="toast-nfse-fechar" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
+        <div class="toast-nfse-barra" style="animation-duration: ${duracaoMs}ms"></div>
+    `;
+    // .textContent, não interpolado no innerHTML acima — mensagem pode
+    // vir de erro de API/validação, nunca confiar nela como HTML.
+    toast.querySelector('.toast-nfse-texto').textContent = mensagem;
+
+    function remover() {
+        toast.classList.remove('show');
+        toast.classList.add('hide');
+        toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+    }
+
+    const timer = setTimeout(remover, duracaoMs);
+    toast.querySelector('.toast-nfse-fechar').addEventListener('click', function () {
+        clearTimeout(timer);
+        remover();
+    });
+
+    container.appendChild(toast);
+    // Força o navegador a aplicar o estado inicial (opacity/transform
+    // de "fora da tela") antes de adicionar .show — sem isto as duas
+    // mudanças caem no mesmo frame e a transição de entrada não anima.
+    void toast.offsetWidth;
+    toast.classList.add('show');
 }
 
 /**

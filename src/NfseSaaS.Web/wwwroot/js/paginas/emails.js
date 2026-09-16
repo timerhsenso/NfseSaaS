@@ -43,12 +43,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const botao = e.target.closest('button');
         if (!botao) return;
 
-        if (botao.classList.contains('btn-ver-erro')) {
-            document.getElementById('erro-email-detalhe').textContent = botao.dataset.erro || 'Sem detalhe registrado.';
-            modalErroEmail.show();
-        } else if (botao.classList.contains('btn-reenviar-email')) {
-            await reenviarEmail(botao.dataset.id);
-        }
+        await executarComBotaoDesabilitado(botao, async () => {
+            if (botao.classList.contains('btn-ver-erro')) {
+                document.getElementById('erro-email-detalhe').textContent = botao.dataset.erro || 'Sem detalhe registrado.';
+                modalErroEmail.show();
+            } else if (botao.classList.contains('btn-reenviar-email')) {
+                await reenviarEmail(botao.dataset.id);
+            }
+        });
     });
 
     document.getElementById('filtro-status').addEventListener('change', carregarEmails);

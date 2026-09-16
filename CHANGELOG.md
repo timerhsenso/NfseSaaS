@@ -4,6 +4,45 @@ Todas as mudanças relevantes do NfseSaaS são registradas aqui, por versão.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
+## [1.2.0] - 2026-09-16
+### Adicionado
+- Snapshot fiscal da nota, na tela de detalhe, agora é colapsável
+  (some por padrão, evita modal gigante).
+- Toasts passaram a empilhar múltiplas mensagens (antes uma
+  sobrescrevia a outra), com ícone de sucesso/erro, botão de fechar e
+  barra de progresso.
+
+### Alterado
+- Todo modal passou a abrir centralizado verticalmente na tela (antes
+  abria colado no topo), com corpo de altura limitada e scroll
+  interno, cantos mais suaves e fundo com leve desfoque.
+
+### Corrigido
+- Botões de ação em tabela (editar, excluir, ativar/desativar etc., em
+  Empresas, Clientes, Serviços, Contratos, Usuários, Grupos, E-mails e
+  Nfse) não desabilitavam durante a requisição — clique repetido antes
+  da tela atualizar disparava a mesma ação várias vezes seguidas.
+
+## [1.1.0] - 2026-09-16
+### Adicionado
+- Proteção anti-CSRF (cookie de validação HttpOnly + cookie legível +
+  header `X-CSRF-TOKEN`) em toda rota que muda estado, tela e API —
+  conferida automaticamente, sem precisar decorar cada action.
+- Cabeçalhos de segurança em toda resposta: `Content-Security-Policy`,
+  `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`,
+  `Permissions-Policy`.
+- Rate limiting por IP nas rotas de login, registro, recuperação de
+  senha e emissão de nota mensal em lote, mais um limite global de
+  rede de segurança.
+- Retry com backoff exponencial e circuit breaker (Polly) nas chamadas
+  à SEFIN Nacional e ao ADN — uma instabilidade do lado deles não trava
+  mais uma emissão em lote inteira.
+
+### Alterado
+- Todo JavaScript e CSS que estava inline nas views foi movido para
+  arquivos externos em `wwwroot/`, permitindo uma
+  `Content-Security-Policy` sem `'unsafe-inline'` em `script-src`.
+
 ## [1.0.1] - 2026-09-15
 ### Corrigido
 - Descrição do serviço na emissão avulsa de Nfse era um campo de uma

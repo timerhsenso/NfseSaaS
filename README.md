@@ -7,9 +7,11 @@ Nacional da NFS-e / SEFIN Nacional.
 > fiscal real com a SEFIN (assinatura de DPS via mTLS, emissão, cancelamento
 > e sincronização de eventos), CRUDs completos (Empresas, Clientes,
 > Serviços), Contratos com múltiplos serviços por contrato, reajuste,
-> documentos anexos e emissão mensal em lote. Fase 8 (dashboard, MRR,
-> webhooks, API pública, portal do cliente) adiada conscientemente — só
-> entra com demanda real confirmada.
+> documentos anexos e emissão mensal em lote. Hardening de segurança
+> aplicado (anti-CSRF, security headers/CSP, rate limiting, resiliência
+> com Polly na integração fiscal — ver seção "Segurança" abaixo). Fase 8
+> (dashboard, MRR, webhooks, API pública, portal do cliente) adiada
+> conscientemente — só entra com demanda real confirmada.
 
 ## Objetivo do projeto
 
@@ -103,6 +105,35 @@ por toda a comunicação com a SEFIN Nacional:
 Administrador ou Emissor; cancelamento e CRUD de Empresa/Cliente/Serviço e
 convite de usuário exigem Administrador; leituras são abertas a qualquer
 usuário autenticado do tenant.
+
+## Segurança
+
+- **Anti-CSRF** em toda rota que muda estado (POST/PUT/PATCH/DELETE, telas
+  e API): cookie de validação HttpOnly + cookie legível
+  (`NfseSaaS.Xsrf-Token`) + header `X-CSRF-TOKEN`, conferidos
+  automaticamente por `ValidacaoAntiforgeryFilter` (`Web/Filters/`) — não é
+  necessário decorar cada action manualmente.
+- **Security headers** em toda resposta via `SecurityHeadersMiddleware`
+  (`Web/Middleware/`): `Content-Security-Policy`, `X-Frame-Options`,
+  `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`. A CSP
+  lista explicitamente os hosts externos usados (CDNs de script/estilo/
+  fonte, e `cdn.datatables.net` em `connect-src` para o i18n do
+  DataTables) e não usa `'unsafe-inline'` em `script-src` — todo JS/CSS do
+  projeto está em arquivo externo (`wwwroot/js`, `wwwroot/css`). `style-src`
+  mantém `'unsafe-inline'` porque o Bootstrap injeta `style` inline via JS
+  em tempo de execução, sem alternativa limpa via nonce.
+- **Rate limiting por IP** (`Microsoft.AspNetCore.RateLimiting`, nativo do
+  .NET 8) nas rotas de autenticação (`AuthSensivel`, `Recuperacao`) e na
+  emissão de nota mensal em lote (`NotaMensal`), mais um limite global como
+  rede de segurança. Depende de `UseForwardedHeaders()` para resolver o IP
+  real do cliente por trás do Nginx (produção) — sem isso, todo o tráfego
+  cairia no mesmo balde.
+- **Resiliência (Polly)** nas chamadas HTTP do `NfseSaaS.Nacional`
+  (`NfseApiClient`/`AdnDistribuicaoClient`): retry com backoff exponencial
+  em falha transitória (rede, 5xx/408 — nunca em 4xx, que é rejeição de
+  negócio) + circuit breaker global, para que uma instabilidade da SEFIN
+  não trave uma emissão em lote inteira. Ver
+  `NfseSaaS.Nacional/Resilience/PollyPolicies.cs`.
 
 ## Nota Mensal (emissão em lote)
 
@@ -217,6 +248,7 @@ src/
     Validation/         (DpsValidator)
     Clients/            (NfseApiClient, AdnDistribuicaoClient, NfseResponseParser,
                           EventoResponseParser, CertificateHttpMessageHandlerBuilderFilter)
+    Resilience/         (PollyPolicies — retry + circuit breaker)
     Helpers/            (GZipHelper, XmlSerializationHelper, NfseXmlValoresParser)
     Exceptions/         (NfseValidationException, NfseCertificateException, NfseApiException)
     Services/           (NfseNacionalService)
@@ -227,7 +259,9 @@ src/
     Controllers/Api/      (Api: Empresas, Clientes, Servicos, Contratos, Nfse, NotaMensal,
                             Consultas, Exportacoes, AuditLogs, Auth)
     Views/
-    Middleware/          (CorrelationId, ExceptionHandling)
+    Filters/             (ValidacaoAutomaticaFilter, ValidacaoAntiforgeryFilter,
+                           RequerPermissaoAttribute)
+    Middleware/          (CorrelationId, ExceptionHandling, SecurityHeaders)
     HealthChecks/        (PostgresHealthCheck)
     Program.cs
 tests/

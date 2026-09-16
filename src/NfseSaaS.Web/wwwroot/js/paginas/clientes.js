@@ -53,9 +53,11 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!botao) return;
             const id = botao.dataset.id;
 
-            if (botao.classList.contains('btn-editar')) await abrirModalEditarCliente(id);
-            else if (botao.classList.contains('btn-alternar-ativo')) await alternarAtivoCliente(id, botao.dataset.ativo === 'true');
-            else if (botao.classList.contains('btn-excluir')) await excluirCliente(id);
+            await executarComBotaoDesabilitado(botao, async () => {
+                if (botao.classList.contains('btn-editar')) await abrirModalEditarCliente(id);
+                else if (botao.classList.contains('btn-alternar-ativo')) await alternarAtivoCliente(id, botao.dataset.ativo === 'true');
+                else if (botao.classList.contains('btn-excluir')) await excluirCliente(id);
+            });
         });
     }
 
