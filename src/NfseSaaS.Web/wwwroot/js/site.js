@@ -206,6 +206,38 @@ function ocultarErroFormulario(idDiv) {
     div.classList.add('d-none');
 }
 
+/**
+ * Confere se o <form> passa na validação nativa (required, etc.) antes
+ * de deixar o submit prosseguir. Feito pra formulário com abas
+ * (Bootstrap tab-pane escondido via d-none): sem isto, quando o campo
+ * inválido está numa aba não visível, o navegador bloqueia o submit
+ * SILENCIOSAMENTE — não dá pra mostrar o balão de aviso nativo em cima
+ * de um elemento escondido, e o evento 'submit' nem chega a disparar.
+ * Por isso o <form> precisa do atributo `novalidate` (ver
+ * Views/Contratos e Views/Empresas) — desliga o bloqueio automático do
+ * navegador, e a checagem passa a ser feita aqui, manualmente, já
+ * dentro do nosso handler de submit.
+ *
+ * seletorPainel: seletor CSS do container de cada aba (ex.:
+ * '.tab-conteudo-contrato'). trocarAba: a função de troca de aba já
+ * existente na tela (trocarAbaContrato, trocarAbaEmpresa) — recebe o
+ * data-tab do painel onde está o primeiro campo inválido.
+ */
+function validarFormularioComAbas(form, seletorPainel, trocarAba, idErroDiv) {
+    const primeiroInvalido = form.querySelector(':invalid');
+    if (!primeiroInvalido) return true;
+
+    const painel = primeiroInvalido.closest(seletorPainel);
+    if (painel) trocarAba(painel.dataset.tab);
+
+    const rotulo = primeiroInvalido.closest('div')?.querySelector('label.form-label');
+    const nomeCampo = rotulo ? rotulo.textContent.trim() : (primeiroInvalido.name || primeiroInvalido.id || 'um campo');
+
+    mostrarErroFormulario(idErroDiv, `Preencha "${nomeCampo}" antes de salvar.`);
+    primeiroInvalido.focus();
+    return false;
+}
+
 function mostrarResultado(idDiv, sucesso, mensagem) {
     const div = document.getElementById(idDiv);
     if (!div) return;

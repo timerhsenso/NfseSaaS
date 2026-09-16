@@ -43,7 +43,7 @@
     <div class="modal fade" id="modal-empresa" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <form id="form-empresa">
+                <form id="form-empresa" novalidate>
                     <div class="modal-header">
                         <h5 class="modal-title" id="titulo-modal-empresa">Nova empresa</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -52,7 +52,14 @@
                         <div id="erro-empresa" class="alert alert-danger d-none"></div>
                         <input type="hidden" id="empresaId" />
 
-                        <h6 class="text-muted">Dados gerais</h6>
+                        <ul class="nav nav-tabs mb-3" id="tabs-empresa">
+                            <li class="nav-item"><button type="button" class="nav-link active" data-tab-alvo="tab-dados-empresa"><i class="bi bi-building"></i> Dados gerais</button></li>
+                            <li class="nav-item"><button type="button" class="nav-link" data-tab-alvo="tab-endereco-empresa"><i class="bi bi-geo-alt"></i> Endereço</button></li>
+                            <li class="nav-item"><button type="button" class="nav-link" data-tab-alvo="tab-regime-empresa"><i class="bi bi-receipt"></i> Regime tributário</button></li>
+                            <li class="nav-item"><button type="button" class="nav-link" data-tab-alvo="tab-contratos-empresa"><i class="bi bi-file-earmark-text"></i> Contratos</button></li>
+                        </ul>
+
+                        <div class="tab-conteudo-empresa" data-tab="tab-dados-empresa">
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">CNPJ</label>
@@ -92,8 +99,9 @@
                                 <input type="email" class="form-control" id="email" required />
                             </div>
                         </div>
+                        </div>
 
-                        <h6 class="text-muted mt-3">Endereço</h6>
+                        <div class="tab-conteudo-empresa d-none" data-tab="tab-endereco-empresa">
                         <div class="row">
                             <div class="col-md-3 mb-3">
                                 <label class="form-label">CEP</label>
@@ -122,8 +130,9 @@
                                 <input type="text" class="form-control" id="uf" maxlength="2" required placeholder="BA" />
                             </div>
                         </div>
+                        </div>
 
-                        <h6 class="text-muted mt-3">Regime tributário</h6>
+                        <div class="tab-conteudo-empresa d-none" data-tab="tab-regime-empresa">
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Opção pelo Simples Nacional</label>
@@ -210,14 +219,16 @@
                                 <div class="form-text">Obrigatório se "Optante" (MEI ou Simples Nacional).</div>
                             </div>
                         </div>
+                        </div>
 
-                        <h6 class="text-muted mt-3">Contratos</h6>
+                        <div class="tab-conteudo-empresa d-none" data-tab="tab-contratos-empresa">
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Alertar reajuste com quantos dias de antecedência</label>
                                 <input type="number" min="1" class="form-control" id="diasAlertaReajusteContratoPadrao" value="30" required />
                                 <div class="form-text">Padrão pra todos os Contratos desta Empresa — cada Contrato pode sobrescrever esse número individualmente.</div>
                             </div>
+                        </div>
                         </div>
                     </div>
                     <div class="modal-footer">

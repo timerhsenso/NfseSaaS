@@ -90,3 +90,24 @@ versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH)
 ### Corrigido
 - Busca nos catálogos não encontrava termos que só apareciam com
   letra maiúscula na descrição (comparação estava case-sensitive).
+
+## [1.4.0] - 2026-09-16
+### Adicionado
+- Campo Cliente com busca por CNPJ/CPF ou nome (autocomplete) nos
+  modais de cadastro de Contrato e de emissão avulsa de Nfse.
+
+### Alterado
+- Modal de cadastro de Empresa reorganizado em abas (Dados gerais,
+  Endereço, Regime tributário, Contratos), no lugar de uma coluna só.
+- Campos de reajuste do Contrato (periodicidade, índice, alerta de
+  antecedência) agora dependem do Tipo de cobrança: obrigatórios e
+  editáveis para Mensal, zerados e bloqueados para Avulso — validado
+  também no servidor.
+
+### Corrigido
+- Salvar um Contrato ou Empresa com campo obrigatório vazio numa aba
+  diferente da atual não avisava nada (o navegador barra o envio sem
+  mostrar aviso quando o campo inválido está escondido). Agora troca
+  pra aba certa e mostra qual campo falta.
+- Campo Cliente na emissão avulsa de nota carregava a lista inteira
+  (até 200 clientes) e vinha com um selecionado sem o usuário escolher.

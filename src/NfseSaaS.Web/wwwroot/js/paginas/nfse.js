@@ -125,6 +125,35 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('form-emitir-nfse').addEventListener('submit', emitirNfse);
         document.getElementById('btn-sincronizar-sefin').addEventListener('click', sincronizarComSefin);
 
+        // Mesmo padrão do clienteId em contratos.js: dropdownParent pra
+        // não nascer fora do modal, minimumInputLength pra não carregar
+        // a lista de clientes inteira (chegava a 200) só de abrir o
+        // campo. Trocar de cliente busca os Contratos dele — ver
+        // carregarContratosDoCliente, chamado pelo 'change' nativo que
+        // o select2 dispara no <select> por baixo.
+        $('#emitir-clienteId').select2({
+            dropdownParent: $('#modal-emitir-nfse'),
+            placeholder: 'Digite o CNPJ/CPF ou o nome do cliente',
+            minimumInputLength: 2,
+            language: {
+                inputTooShort: () => 'Digite pelo menos 2 caracteres para buscar.',
+                searching: () => 'Buscando…',
+                noResults: () => 'Nenhum cliente encontrado.'
+            },
+            ajax: {
+                url: '/api/clientes',
+                dataType: 'json',
+                delay: 300,
+                data: params => ({ empresaId: empresaAtualIdNfse, busca: params.term, pageSize: 20 }),
+                processResults: data => ({
+                    results: data.items.map(c => ({ id: c.id, text: `${c.nome} (${c.cpfCnpj})` }))
+                })
+            }
+        });
+        document.getElementById('emitir-clienteId').addEventListener('change', function () {
+            carregarContratosDoCliente(this.value);
+        });
+
         modalNotaMensal = new bootstrap.Modal(document.getElementById('modal-nota-mensal'));
         document.getElementById('btn-nota-mensal').addEventListener('click', abrirModalNotaMensal);
         document.getElementById('btn-buscar-candidatos-nota-mensal').addEventListener('click', buscarCandidatosNotaMensal);
@@ -236,14 +265,13 @@ async function abrirModalEmitirNfse() {
     document.getElementById('erro-emitir-nfse').classList.add('d-none');
     document.getElementById('emitir-dataCompetencia').value = dataLocalIso();
 
-    try {
-        const [clientes, servicos] = await Promise.all([
-            apiFetch(`/api/clientes?empresaId=${empresaAtualIdNfse}&pageSize=200`),
-            apiFetch(`/api/servicos?empresaId=${empresaAtualIdNfse}&pageSize=200`)
-        ]);
+    // select2 não some sozinho no form.reset() — limpa manualmente,
+    // senão reabrir o modal mostra o cliente da vez anterior.
+    document.getElementById('emitir-clienteId').innerHTML = '';
+    $('#emitir-clienteId').val(null).trigger('change');
 
-        const selectCliente = document.getElementById('emitir-clienteId');
-        selectCliente.innerHTML = clientes.items.map(c => `<option value="${c.id}">${c.nome} (${c.cpfCnpj})</option>`).join('');
+    try {
+        const servicos = await apiFetch(`/api/servicos?empresaId=${empresaAtualIdNfse}&pageSize=200`);
 
         const selectServico = document.getElementById('emitir-servicoId');
         selectServico.innerHTML = servicos.items.map(s => `<option value="${s.id}" data-descricao="${s.descricao}" data-valor="${s.valorPadrao}">${s.descricao}</option>`).join('');
@@ -258,12 +286,6 @@ async function abrirModalEmitirNfse() {
             document.getElementById('emitir-valorServico').value = opcao?.dataset.valor ?? '';
         };
 
-        // Trocar de Cliente busca os Contratos ativos dele — o combo de
-        // Contrato é opcional e some quando o Cliente não tem nenhum
-        // (nada muda pra quem nunca usa Contrato).
-        selectCliente.onchange = () => carregarContratosDoCliente(selectCliente.value);
-        await selectCliente.onchange();
-
         modalEmitirNfse.show();
     } catch (err) {
         mostrarErro(err.message);
@@ -274,6 +296,17 @@ async function carregarContratosDoCliente(clienteId) {
     const campoContrato = document.getElementById('campo-emitir-contrato');
     const selectContrato = document.getElementById('emitir-contratoId');
     const selectServico = document.getElementById('emitir-servicoId');
+
+    // Dispara com clienteId vazio quando o select2 é limpo (abrir o
+    // modal, ou apagar a busca) — não é erro, só esconde o combo de
+    // Contrato e volta ao fluxo 100% manual, sem bater na API à toa.
+    if (!clienteId) {
+        contratosDoClienteAtual = [];
+        campoContrato.classList.add('d-none');
+        selectContrato.innerHTML = '';
+        document.getElementById('aviso-reajuste-contrato').classList.add('d-none');
+        return;
+    }
 
     try {
         const resultado = await apiFetch(`/api/contratos?empresaId=${empresaAtualIdNfse}&clienteId=${clienteId}&pageSize=50`);

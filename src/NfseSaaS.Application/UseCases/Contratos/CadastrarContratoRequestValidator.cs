@@ -1,4 +1,5 @@
 using FluentValidation;
+using NfseSaaS.Domain.Enums;
 
 namespace NfseSaaS.Application.UseCases.Contratos;
 
@@ -9,10 +10,33 @@ public sealed class CadastrarContratoRequestValidator : AbstractValidator<Cadast
         RuleFor(x => x.EmpresaId).NotEmpty();
         RuleFor(x => x.ClienteId).NotEmpty();
         RuleFor(x => x.Descricao).NotEmpty().MaximumLength(200);
-        RuleFor(x => x.PeriodicidadeReajusteMeses).GreaterThan(0).LessThanOrEqualTo(60);
+
+        // Reajuste (periodicidade/índice/alerta) só se aplica a cobrança
+        // Mensal — Avulso é emitido uma vez, não tem recorrência pra
+        // reajustar. Espelha o que o JS já trava na tela (ver
+        // aplicarRegraTipoCobranca em contratos.js) — aqui é o backstop
+        // server-side, pra não confiar só na UI.
+        RuleFor(x => x.PeriodicidadeReajusteMeses)
+            .GreaterThan(0).LessThanOrEqualTo(60)
+            .When(x => x.TipoCobranca == TipoCobrancaContrato.Mensal);
+        RuleFor(x => x.PeriodicidadeReajusteMeses)
+            .Equal(0).WithMessage("Periodicidade de reajuste não se aplica a cobrança Avulsa.")
+            .When(x => x.TipoCobranca == TipoCobrancaContrato.Avulso);
+
         RuleFor(x => x.IndiceReajuste).IsInEnum().When(x => x.IndiceReajuste.HasValue);
+        RuleFor(x => x.IndiceReajuste)
+            .NotNull().WithMessage("Índice de reajuste é obrigatório para cobrança Mensal.")
+            .When(x => x.TipoCobranca == TipoCobrancaContrato.Mensal);
+        RuleFor(x => x.IndiceReajuste)
+            .Null().WithMessage("Índice de reajuste não se aplica a cobrança Avulsa.")
+            .When(x => x.TipoCobranca == TipoCobrancaContrato.Avulso);
+
         RuleFor(x => x.Observacao).MaximumLength(2000);
+
         RuleFor(x => x.DiasAlertaOverride).GreaterThan(0).When(x => x.DiasAlertaOverride.HasValue);
+        RuleFor(x => x.DiasAlertaOverride)
+            .Null().WithMessage("Alerta de reajuste não se aplica a cobrança Avulsa.")
+            .When(x => x.TipoCobranca == TipoCobrancaContrato.Avulso);
 
         RuleFor(x => x.Servicos).NotEmpty().WithMessage("Informe ao menos um serviço.");
         RuleForEach(x => x.Servicos).ChildRules(servico =>

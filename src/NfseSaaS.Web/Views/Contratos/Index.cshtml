@@ -44,7 +44,7 @@
     <div class="modal fade" id="modal-contrato" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <form id="form-contrato">
+                <form id="form-contrato" novalidate>
                     <div class="modal-header">
                         <h5 class="modal-title" id="titulo-modal-contrato">Novo contrato</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -64,7 +64,7 @@
                         <div class="tab-conteudo-contrato" data-tab="tab-dados">
                             <div class="mb-3">
                                 <label class="form-label">Cliente</label>
-                                <select class="form-select" id="clienteId" required></select>
+                                <select class="form-control" id="clienteId" style="width: 100%" required></select>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Descrição do contrato</label>

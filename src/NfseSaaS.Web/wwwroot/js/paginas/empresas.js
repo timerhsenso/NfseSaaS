@@ -81,6 +81,11 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('form-certificado').addEventListener('submit', enviarCertificado);
         document.getElementById('btn-testar-conexao').addEventListener('click', testarConexaoCertificado);
 
+        document.getElementById('tabs-empresa').addEventListener('click', function (e) {
+            const botao = e.target.closest('button[data-tab-alvo]');
+            if (botao) trocarAbaEmpresa(botao.dataset.tabAlvo);
+        });
+
         document.getElementById('tabela-empresas').addEventListener('click', async function (e) {
             const botao = e.target.closest('button');
             if (!botao) return;
@@ -116,6 +121,14 @@ function limparFormularioEmpresa() {
     document.getElementById('form-empresa').reset();
     document.getElementById('empresaId').value = '';
     document.getElementById('erro-empresa').classList.add('d-none');
+    trocarAbaEmpresa('tab-dados-empresa');
+}
+
+// Mesmo padrão de trocarAbaContrato (contratos.js) — troca a aba ativa
+// no cabeçalho e mostra só o painel correspondente.
+function trocarAbaEmpresa(alvo) {
+    document.querySelectorAll('#tabs-empresa .nav-link').forEach(b => b.classList.toggle('active', b.dataset.tabAlvo === alvo));
+    document.querySelectorAll('.tab-conteudo-empresa').forEach(p => p.classList.toggle('d-none', p.dataset.tab !== alvo));
 }
 
 function abrirModalNovaEmpresa() {
@@ -192,6 +205,10 @@ function montarPayloadEmpresa() {
 async function salvarEmpresa(e) {
     e.preventDefault();
     ocultarErroFormulario('erro-empresa');
+
+    if (!validarFormularioComAbas(document.getElementById('form-empresa'), '.tab-conteudo-empresa', trocarAbaEmpresa, 'erro-empresa')) {
+        return;
+    }
 
     const id = document.getElementById('empresaId').value;
     const payload = montarPayloadEmpresa();

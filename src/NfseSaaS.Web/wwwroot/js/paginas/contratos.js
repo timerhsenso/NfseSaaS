@@ -105,6 +105,32 @@ document.addEventListener('DOMContentLoaded', function () {
             if (botao) trocarAbaContrato(botao.dataset.tabAlvo);
         });
 
+        document.getElementById('tipoCobranca').addEventListener('change', aplicarRegraTipoCobranca);
+
+        // dropdownParent: mesmo motivo do select2 em servicos.js — sem
+        // isso o dropdown nasce fora do modal do Bootstrap. minimumInputLength
+        // evita carregar a lista de clientes inteira só de abrir o campo
+        // (empresaId sempre filtra pra Empresa atual, igual o resto da tela).
+        $('#clienteId').select2({
+            dropdownParent: $('#modal-contrato'),
+            placeholder: 'Digite o CNPJ/CPF ou o nome do cliente',
+            minimumInputLength: 2,
+            language: {
+                inputTooShort: () => 'Digite pelo menos 2 caracteres para buscar.',
+                searching: () => 'Buscando…',
+                noResults: () => 'Nenhum cliente encontrado.'
+            },
+            ajax: {
+                url: '/api/clientes',
+                dataType: 'json',
+                delay: 300,
+                data: params => ({ empresaId: empresaAtualIdContratos, busca: params.term, pageSize: 20 }),
+                processResults: data => ({
+                    results: data.items.map(c => ({ id: c.id, text: `${c.nome} (${c.cpfCnpj})` }))
+                })
+            }
+        });
+
         document.getElementById('lista-documentos-contrato').addEventListener('click', async function (e) {
             const botao = e.target.closest('button.btn-excluir-documento');
             if (botao) await executarComBotaoDesabilitado(botao, () => excluirDocumentoContrato(botao.dataset.id));
@@ -146,6 +172,37 @@ function trocarAbaContrato(alvo) {
     document.querySelectorAll('.tab-conteudo-contrato').forEach(p => p.classList.toggle('d-none', p.dataset.tab !== alvo));
 }
 
+// Reajuste (periodicidade/índice/alerta) só faz sentido pra cobrança
+// Mensal — Avulso é emitido uma vez, não tem recorrência pra reajustar.
+// "Permitir alterar valor na emissão em lote" só importa pra Mensal
+// também (Avulso nunca entra na emissão em lote, ver TipoCobrancaContrato)
+// — por isso fica travado marcado, não é uma escolha real nesse caso.
+// Chamado ao trocar o <select>, e também ao abrir/editar o modal (ver
+// limparFormularioContrato e abrirModalEditarContrato) pra já nascer
+// no estado certo.
+function aplicarRegraTipoCobranca() {
+    const avulso = document.getElementById('tipoCobranca').value === '0';
+
+    const periodicidade = document.getElementById('periodicidadeReajusteMeses');
+    const indice = document.getElementById('indiceReajuste');
+    const diasAlerta = document.getElementById('diasAlertaOverride');
+    const permitirAlterar = document.getElementById('permitirAlterarValorNaEmissao');
+
+    periodicidade.disabled = avulso;
+    periodicidade.required = !avulso;
+    indice.disabled = avulso;
+    indice.required = !avulso;
+    diasAlerta.disabled = avulso;
+    permitirAlterar.disabled = avulso;
+
+    if (avulso) {
+        periodicidade.value = 0;
+        indice.value = '';
+        diasAlerta.value = '';
+        permitirAlterar.checked = true;
+    }
+}
+
 function limparFormularioContrato() {
     document.getElementById('form-contrato').reset();
     document.getElementById('contratoId').value = '';
@@ -155,6 +212,10 @@ function limparFormularioContrato() {
     ocultarErroFormulario('erro-contrato');
     recalcularValorAtualCalculado();
     trocarAbaContrato('tab-dados');
+    aplicarRegraTipoCobranca();
+
+    document.getElementById('clienteId').innerHTML = '';
+    $('#clienteId').val(null).trigger('change');
 
     // Documentos e Histórico só existem depois que o Contrato tem Id.
     document.getElementById('documentos-indisponivel').classList.remove('d-none');
@@ -167,23 +228,31 @@ function limparFormularioContrato() {
     // Registrar reajuste (com histórico) e a composição de serviços fica
     // pra um endpoint dedicado futuro (Fase 6, mesmo raciocínio já usado
     // pro ValorAtual antes de existir linhas).
-    document.getElementById('clienteId').disabled = false;
+    $('#clienteId').prop('disabled', false);
     document.getElementById('bloco-servicos').classList.remove('d-none');
     document.getElementById('bloco-status').classList.add('d-none');
     document.getElementById('nota-servicos-nao-editaveis').textContent = '';
 }
 
-async function carregarOpcoesClienteEServico(clienteSelecionadoId) {
-    const [clientes, servicos] = await Promise.all([
-        apiFetch(`/api/clientes?empresaId=${empresaAtualIdContratos}&pageSize=200`),
-        apiFetch(`/api/servicos?empresaId=${empresaAtualIdContratos}&pageSize=200`)
-    ]);
-
-    const selectCliente = document.getElementById('clienteId');
-    selectCliente.innerHTML = clientes.items.map(c => `<option value="${c.id}">${c.nome} (${c.cpfCnpj})</option>`).join('');
-    if (clienteSelecionadoId) selectCliente.value = clienteSelecionadoId;
-
+// Cliente não entra mais aqui — select2 (ver inicialização acima) busca
+// direto na API conforme o usuário digita. Só o catálogo de Serviços da
+// Empresa atual continua pré-carregado (usado pelas linhas de serviço
+// do contrato, catalogoServicosContratos).
+async function carregarServicosContrato() {
+    const servicos = await apiFetch(`/api/servicos?empresaId=${empresaAtualIdContratos}&pageSize=200`);
     catalogoServicosContratos = servicos.items;
+}
+
+// select2 com fonte remota não sabe o texto de um cliente já
+// selecionado sem perguntar pra API — mas ContratoResponse já traz
+// ClienteNome embutido (join feito no backend), então não precisa de
+// uma chamada extra só pra isso, diferente do padrão usado pros
+// catálogos de cTribNac/NBS em servicos.js.
+function preencherClienteAtual(clienteId, clienteNome) {
+    const select = document.getElementById('clienteId');
+    select.innerHTML = '';
+    select.appendChild(new Option(clienteNome, clienteId, true, true));
+    $(select).trigger('change');
 }
 
 // Fase 6: uma linha = 1 serviço do contrato (ServicoId + Quantidade +
@@ -310,7 +379,7 @@ async function abrirModalNovoContrato() {
     document.getElementById('dataInicioContrato').value = dataLocalIso();
 
     try {
-        await carregarOpcoesClienteEServico();
+        await carregarServicosContrato();
         adicionarLinhaServico();
         modalContrato.show();
     } catch (err) {
@@ -324,7 +393,8 @@ async function abrirModalEditarContrato(id) {
 
     try {
         const contrato = await apiFetch(`/api/contratos/${id}`);
-        await carregarOpcoesClienteEServico(contrato.clienteId);
+        await carregarServicosContrato();
+        preencherClienteAtual(contrato.clienteId, contrato.clienteNome);
 
         document.getElementById('contratoId').value = contrato.id;
         document.getElementById('descricao').value = contrato.descricao;
@@ -337,10 +407,11 @@ async function abrirModalEditarContrato(id) {
         document.getElementById('diasAlertaOverride').value = contrato.diasAlertaOverride ?? '';
         document.getElementById('permitirAlterarValorNaEmissao').checked = contrato.permitirAlterarValorNaEmissao;
         document.getElementById('observacao').value = contrato.observacao ?? '';
+        aplicarRegraTipoCobranca();
 
         (contrato.servicos ?? []).forEach(s => adicionarLinhaServico(s));
 
-        document.getElementById('clienteId').disabled = true;
+        $('#clienteId').prop('disabled', true);
         document.getElementById('bloco-servicos').classList.add('d-none');
         document.getElementById('bloco-status').classList.remove('d-none');
         document.getElementById('nota-servicos-nao-editaveis').textContent =
@@ -459,6 +530,10 @@ async function carregarHistoricoContrato(contratoId) {
 async function salvarContrato(e) {
     e.preventDefault();
     ocultarErroFormulario('erro-contrato');
+
+    if (!validarFormularioComAbas(document.getElementById('form-contrato'), '.tab-conteudo-contrato', trocarAbaContrato, 'erro-contrato')) {
+        return;
+    }
 
     const id = document.getElementById('contratoId').value;
     const valorIndice = document.getElementById('indiceReajuste').value;
