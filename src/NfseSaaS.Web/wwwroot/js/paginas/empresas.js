@@ -340,6 +340,7 @@ async function enviarCertificado(e) {
         const resposta = await fetch(`/api/empresas/${empresaCertificadoAtualId}/certificado`, {
             method: 'POST',
             credentials: 'same-origin',
+            headers: obterCsrfHeader(),
             body: formData
         });
 

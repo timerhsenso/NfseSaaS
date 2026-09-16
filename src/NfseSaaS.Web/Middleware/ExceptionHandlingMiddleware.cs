@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using Microsoft.AspNetCore.Antiforgery;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Nacional.Exceptions;
 
@@ -76,6 +77,7 @@ public sealed class ExceptionHandlingMiddleware
                 NfseValidationException => HttpStatusCode.UnprocessableEntity,
                 NfseCertificateException => HttpStatusCode.InternalServerError,
                 NfseApiException => HttpStatusCode.BadGateway,
+                AntiforgeryValidationException => HttpStatusCode.Forbidden,
                 _ => HttpStatusCode.InternalServerError
             };
 
@@ -98,6 +100,11 @@ public sealed class ExceptionHandlingMiddleware
                 {
                     erro = erroValidacaoDps.Message,
                     erros = erroValidacaoDps.Codigos
+                },
+                AntiforgeryValidationException => new
+                {
+                    erro = "Sessão de segurança expirada. Atualize a página e tente novamente.",
+                    erros = (object?)null
                 },
                 _ when _environment.IsDevelopment() => new { erro = ex.Message, detalhe = ex.ToString() },
                 _ => new { erro = "Ocorreu um erro ao processar a solicitação.", detalhe = (string?)null }

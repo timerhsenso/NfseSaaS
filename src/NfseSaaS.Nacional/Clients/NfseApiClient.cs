@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NfseSaaS.Nacional.Exceptions;
 using NfseSaaS.Nacional.Options;
+using Polly.CircuitBreaker;
 
 namespace NfseSaaS.Nacional.Clients;
 
@@ -57,6 +58,10 @@ public sealed class NfseApiClient : INfseApiClient
 
             return ((int)response.StatusCode, body);
         }
+        catch (BrokenCircuitException ex)
+        {
+            throw new NfseApiException("SEFIN Nacional indisponível (falhas consecutivas recentes) — tente novamente em alguns instantes.", ex);
+        }
         catch (HttpRequestException ex)
         {
             throw new NfseApiException("Falha de comunicação com a SEFIN Nacional ao enviar a DPS.", ex);
@@ -77,6 +82,10 @@ public sealed class NfseApiClient : INfseApiClient
             using var response = await client.GetAsync(MontarUrl($"nfse/{chaveAcesso}", tpAmb), timeoutCts.Token);
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
             return ((int)response.StatusCode, body);
+        }
+        catch (BrokenCircuitException ex)
+        {
+            throw new NfseApiException($"SEFIN Nacional indisponível (falhas consecutivas recentes) — tente novamente em alguns instantes. Chave {chaveAcesso}.", ex);
         }
         catch (HttpRequestException ex)
         {
@@ -115,6 +124,10 @@ public sealed class NfseApiClient : INfseApiClient
 
             return ((int)response.StatusCode, body);
         }
+        catch (BrokenCircuitException ex)
+        {
+            throw new NfseApiException($"SEFIN Nacional indisponível (falhas consecutivas recentes) — tente novamente em alguns instantes. Chave {chaveAcesso}.", ex);
+        }
         catch (HttpRequestException ex)
         {
             throw new NfseApiException($"Falha de comunicação com a SEFIN Nacional ao enviar o evento da chave {chaveAcesso}.", ex);
@@ -135,6 +148,10 @@ public sealed class NfseApiClient : INfseApiClient
             using var response = await client.GetAsync(MontarUrl($"danfse/{chaveAcesso}", tpAmb), timeoutCts.Token);
             var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
             return ((int)response.StatusCode, bytes, response.Content.Headers.ContentType?.MediaType);
+        }
+        catch (BrokenCircuitException ex)
+        {
+            throw new NfseApiException($"SEFIN Nacional indisponível (falhas consecutivas recentes) — tente novamente em alguns instantes. Chave {chaveAcesso}.", ex);
         }
         catch (HttpRequestException ex)
         {

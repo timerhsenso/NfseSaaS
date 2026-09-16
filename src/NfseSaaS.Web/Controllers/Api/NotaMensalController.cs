@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using NfseSaaS.Application.Authorization;
 using NfseSaaS.Application.UseCases.NotaMensal;
 using NfseSaaS.Domain.Enums;
@@ -29,6 +30,7 @@ public sealed class NotaMensalController : ControllerBase
     }
 
     [RequerPermissao(TelaCatalogo.Nfse, AcaoPermissao.Incluir)]
+    [EnableRateLimiting("NotaMensal")]
     [HttpPost("emitir")]
     public async Task<IActionResult> EmitirLote([FromBody] EmitirNotaMensalLoteRequest request, CancellationToken cancellationToken)
     {

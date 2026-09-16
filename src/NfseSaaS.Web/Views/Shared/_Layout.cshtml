@@ -44,16 +44,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - NfseSaaS</title>
 
-    <script>
-        // Aplica o tema salvo ANTES do resto da página renderizar — sem
-        // isso, a tela pisca clara por uma fração de segundo antes de
-        // escurecer (o CSS só carrega/aplica depois). localStorage, não
-        // banco — a preferência é só deste navegador, como pedido.
-        (function () {
-            var tema = localStorage.getItem('nfsesaas-tema') || 'light';
-            document.documentElement.setAttribute('data-theme', tema);
-        })();
-    </script>
+    <script src="~/js/tema-inicial.js" asp-append-version="true"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -64,7 +55,7 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.2.5/css/buttons.bootstrap5.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
-<body>
+<body data-usuario-atual="@nomeUsuario">
     <div class="app">
         <aside class="sidebar" id="sidebar">
             <div class="brand">
@@ -271,60 +262,7 @@
     <script src="~/js/empresa-atual.js" asp-append-version="true"></script>
     <script src="~/js/exportacao.js" asp-append-version="true"></script>
 
-    <script>
-        window.usuarioAtual = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(nomeUsuario));
-
-        // Sidebar em telas pequenas — substitui o toggle que vinha do
-        // AdminLTE (removido junto com o resto da lib).
-        (function () {
-            var sidebar = document.getElementById('sidebar');
-            var overlay = document.getElementById('overlaySidebar');
-            var botao = document.getElementById('botaoMenu');
-
-            function fechar() {
-                sidebar.classList.remove('open');
-                overlay.classList.remove('show');
-            }
-
-            botao?.addEventListener('click', function () {
-                sidebar.classList.toggle('open');
-                overlay.classList.toggle('show');
-            });
-            overlay?.addEventListener('click', fechar);
-        })();
-
-        // Logout: chama a mesma API usada pelo Swagger/clients externos —
-        // a tela MVC nunca duplica a lógica de autenticação, só consome
-        // o endpoint /api/auth/* via fetch (mesmo padrão de todas as
-        // outras telas, que consomem /api/empresas, /api/clientes etc.).
-        document.getElementById('link-sair')?.addEventListener('click', async function (e) {
-            e.preventDefault();
-            await fetch('/api/auth/logout', { method: 'POST' });
-            window.location.href = '/Account/Login';
-        });
-
-        // Tema claro/escuro — preferência só deste navegador (localStorage,
-        // sem banco). O <head> já aplicou o tema salvo antes de renderizar
-        // (evita o "flash" de tela clara); aqui só cuida do clique.
-        (function () {
-            var icone = document.getElementById('iconeTema');
-
-            function atualizarIcone(tema) {
-                icone.className = tema === 'dark' ? 'bi bi-sun' : 'bi bi-moon-stars';
-            }
-
-            atualizarIcone(document.documentElement.getAttribute('data-theme'));
-
-            document.getElementById('botaoTema')?.addEventListener('click', function () {
-                var temaAtual = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-                var novoTema = temaAtual === 'dark' ? 'light' : 'dark';
-
-                document.documentElement.setAttribute('data-theme', novoTema);
-                localStorage.setItem('nfsesaas-tema', novoTema);
-                atualizarIcone(novoTema);
-            });
-        })();
-    </script>
+    <script src="~/js/layout.js" asp-append-version="true"></script>
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>

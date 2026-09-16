@@ -401,6 +401,7 @@ async function enviarDocumentoContrato() {
         const resposta = await fetch(`/api/contratos/${contratoId}/documentos`, {
             method: 'POST',
             credentials: 'same-origin',
+            headers: obterCsrfHeader(),
             body: formData
         });
 

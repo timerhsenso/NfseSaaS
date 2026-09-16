@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using NfseSaaS.Nacional.Exceptions;
 using NfseSaaS.Nacional.Models;
 using NfseSaaS.Nacional.Options;
+using Polly.CircuitBreaker;
 
 namespace NfseSaaS.Nacional.Clients;
 
@@ -56,6 +57,10 @@ public sealed class AdnDistribuicaoClient : IAdnDistribuicaoClient
                 new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
             return resultado ?? throw new NfseApiException("ADN retornou corpo vazio/inválido.");
+        }
+        catch (BrokenCircuitException ex)
+        {
+            throw new NfseApiException($"ADN indisponível (falhas consecutivas recentes) — tente novamente em alguns instantes. NSU {ultimoNsuProcessado}.", ex);
         }
         catch (HttpRequestException ex)
         {

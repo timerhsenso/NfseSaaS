@@ -69,7 +69,7 @@ function configurarExportacao(tabela, nomeTela) {
         fetch('/api/exportacoes', {
             method: 'POST',
             credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...obterCsrfHeader() },
             body: JSON.stringify({ tela: nomeTela, formato: formato })
         }).catch(function (err) {
             console.warn('Não foi possível registrar a exportação:', err);

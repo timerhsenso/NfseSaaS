@@ -4,9 +4,12 @@ using Microsoft.Extensions.Http;
 using NfseSaaS.Nacional.Builders;
 using NfseSaaS.Nacional.Clients;
 using NfseSaaS.Nacional.Options;
+using NfseSaaS.Nacional.Resilience;
 using NfseSaaS.Nacional.Services;
 using NfseSaaS.Nacional.Signing;
 using NfseSaaS.Nacional.Validation;
+using Polly;
+using Polly.Wrap;
 
 namespace NfseSaaS.Nacional;
 
@@ -35,6 +38,19 @@ public static class DependencyInjection
         // CertificateHttpMessageHandlerBuilderFilter para o porquê.
         services.AddHttpClient();
         services.AddSingleton<IHttpMessageHandlerBuilderFilter, CertificateHttpMessageHandlerBuilderFilter>();
+
+        // Resiliência (retry + circuit breaker) pra TODO HttpClient criado
+        // pela factory — cobre os clients dinâmicos por Empresa acima e,
+        // como ConfigureHttpClientDefaults é global ao container de DI,
+        // também acaba cobrindo o client nomeado "BrasilApi" registrado
+        // em NfseSaaS.Infrastructure (consulta de CNPJ) — bônus aceitável,
+        // já que é outra chamada HTTP externa que também se beneficia de
+        // retry em falha transitória. Instância única e reutilizada de
+        // propósito: o circuit breaker precisa manter estado (contagem de
+        // falhas/tempo aberto) entre chamadas — criar uma política nova a
+        // cada requisição nunca abriria o circuito de verdade.
+        var resilienciaHttp = PollyPolicies.CriarCircuitBreaker().WrapAsync(PollyPolicies.CriarRetry());
+        services.ConfigureHttpClientDefaults(http => http.AddPolicyHandler(resilienciaHttp));
 
         services.AddScoped<IDpsValidator, DpsValidator>();
         services.AddScoped<IDpsBuilder, DpsBuilder>();

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -107,6 +108,7 @@ public sealed class AuthController : ControllerBase
     }
 
     /// <summary>Cria um novo Tenant, provisiona os 5 grupos padrão e cria o primeiro usuário (grupo Administrador), já autenticado (cookie com o Claim tenant_id).</summary>
+    [EnableRateLimiting("AuthSensivel")]
     [HttpPost("registrar")]
     public async Task<IActionResult> Registrar([FromBody] RegistrarRequest request, CancellationToken cancellationToken)
     {
@@ -145,6 +147,7 @@ public sealed class AuthController : ControllerBase
     /// bloqueio em si é gravado em auditoria; tentativa errada isolada
     /// (sem chegar a bloquear) não gera log — seria ruído demais.
     /// </summary>
+    [EnableRateLimiting("AuthSensivel")]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
@@ -223,6 +226,7 @@ public sealed class AuthController : ControllerBase
     /// (enumeração de usuário), então nunca revela isso.
     /// </summary>
     [AllowAnonymous]
+    [EnableRateLimiting("Recuperacao")]
     [HttpPost("esqueci-senha")]
     public async Task<IActionResult> SolicitarRedefinicaoSenha([FromBody] SolicitarRedefinicaoSenhaRequest request, CancellationToken cancellationToken)
     {
@@ -264,6 +268,7 @@ public sealed class AuthController : ControllerBase
     /// desbloquear.
     /// </summary>
     [AllowAnonymous]
+    [EnableRateLimiting("AuthSensivel")]
     [HttpPost("redefinir-senha")]
     public async Task<IActionResult> RedefinirSenha([FromBody] RedefinirSenhaRequest request, CancellationToken cancellationToken)
     {
@@ -353,6 +358,7 @@ public sealed class AuthController : ControllerBase
 
     /// <summary>Aceita um convite: define a senha da conta criada em Convidar (via token) e já autentica.</summary>
     [AllowAnonymous]
+    [EnableRateLimiting("AuthSensivel")]
     [HttpPost("aceitar-convite")]
     public async Task<IActionResult> AceitarConvite([FromBody] AceitarConviteRequest request)
     {

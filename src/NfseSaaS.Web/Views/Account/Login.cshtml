@@ -7,7 +7,7 @@
 
 <div id="erro-login" class="alert alert-danger d-none"></div>
 
-<form id="form-login">
+<form id="form-login" data-return-url="@ViewData["ReturnUrl"]">
     <div class="mb-3">
         <label class="form-label" for="email">E-mail</label>
         <input type="email" class="form-control" id="email" required autofocus />
@@ -32,41 +32,5 @@
 </div>
 
 @section Scripts {
-    <script>
-        const returnUrl = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewData["ReturnUrl"] as string ?? "/"));
-
-        document.getElementById('form-login').addEventListener('submit', async function (e) {
-            e.preventDefault();
-            const erroDiv = document.getElementById('erro-login');
-            erroDiv.classList.add('d-none');
-
-            try {
-                const resposta = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: document.getElementById('email').value,
-                        senha: document.getElementById('senha').value
-                    })
-                });
-
-                if (!resposta.ok) {
-                    if (resposta.status === 423) {
-                        const corpo = await resposta.json().catch(() => null);
-                        erroDiv.textContent = corpo?.erro ?? 'Conta bloqueada temporariamente após várias tentativas erradas.';
-                    } else {
-                        erroDiv.textContent = 'E-mail ou senha inválidos.';
-                    }
-                    erroDiv.classList.remove('d-none');
-                    return;
-                }
-
-                window.location.href = returnUrl || '/';
-            } catch (err) {
-                erroDiv.textContent = 'Não foi possível entrar. Tente novamente.';
-                erroDiv.classList.remove('d-none');
-            }
-        });
-    </script>
+    <script src="~/js/paginas/login.js" asp-append-version="true"></script>
 }

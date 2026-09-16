@@ -22,6 +22,26 @@ document.addEventListener('click', function (e) {
     }
 });
 
+/** Lê o valor de um cookie pelo nome (usado só pro token anti-CSRF, abaixo). */
+function lerCookie(nome) {
+    const prefixo = `${nome}=`;
+    const linha = document.cookie.split('; ').find(l => l.startsWith(prefixo));
+    return linha ? decodeURIComponent(linha.substring(prefixo.length)) : null;
+}
+
+/**
+ * Header anti-CSRF a incluir em toda requisição que muda estado
+ * (POST/PUT/DELETE) — o backend confere este header contra um cookie
+ * HttpOnly separado em ValidacaoAntiforgeryFilter (Program.cs/Filters/).
+ * O cookie "NfseSaaS.Xsrf-Token" (legível por JS) é emitido pelo próprio
+ * backend em toda resposta, então já está presente antes do primeiro
+ * fetch — inclusive na tela de login, sem precisar de sessão.
+ */
+function obterCsrfHeader() {
+    const token = lerCookie('NfseSaaS.Xsrf-Token');
+    return token ? { 'X-CSRF-TOKEN': token } : {};
+}
+
 /**
  * Helper único de chamadas à API JSON (mesma API que Swagger/clients
  * externos consomem — as telas MVC nunca duplicam lógica de negócio,
@@ -33,7 +53,7 @@ document.addEventListener('click', function (e) {
 async function apiFetch(url, options) {
     const resposta = await fetch(url, {
         credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...obterCsrfHeader() },
         ...options
     });
 

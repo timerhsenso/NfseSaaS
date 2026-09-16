@@ -5,8 +5,11 @@ let grupoMatrizAtualId;
 let telasCache;
 
 document.addEventListener('DOMContentLoaded', function () {
-    const podeAlterar = window.__gruposPermissoes.podeAlterar;
-    const podeExcluir = window.__gruposPermissoes.podeExcluir;
+    // Vem de data-pode-alterar/data-pode-excluir no container da página
+    // (ver Grupos/Index.cshtml) — atributo HTML já escapado pelo Razor,
+    // não precisa mais de Html.Raw pra injetar valor bruto no JS.
+    const podeAlterar = document.getElementById('pagina-grupos').dataset.podeAlterar === 'true';
+    const podeExcluir = document.getElementById('pagina-grupos').dataset.podeExcluir === 'true';
 
     tabelaGrupos = new DataTable('#tabela-grupos', {
         columns: [
@@ -149,7 +152,7 @@ async function abrirModalMatriz(id, nome, ehAdministrador) {
     const avisoAdmin = document.getElementById('matriz-aviso-admin');
     const btnSalvar = document.getElementById('btn-salvar-matriz');
     avisoAdmin.classList.toggle('d-none', !ehAdministrador);
-    btnSalvar.classList.toggle('d-none', ehAdministrador || !window.__gruposPermissoes.podeAlterar);
+    btnSalvar.classList.toggle('d-none', ehAdministrador || document.getElementById('pagina-grupos').dataset.podeAlterar !== 'true');
 
     try {
         const detalhe = await apiFetch(`/api/grupos/${id}`);

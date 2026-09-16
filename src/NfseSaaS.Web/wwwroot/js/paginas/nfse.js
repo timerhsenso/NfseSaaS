@@ -650,7 +650,7 @@ async function baixarDanfsePdfLote() {
         const resposta = await fetch('/api/nfse/danfse-pdf/lote', {
             method: 'POST',
             credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...obterCsrfHeader() },
             body: JSON.stringify({ nfseIds: Array.from(nfseSelecionadas) })
         });
 
