@@ -3,11 +3,13 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.UseCases.AutomacaoNotaMensal;
 using NfseSaaS.Application.UseCases.NotaMensal;
 using NfseSaaS.Domain.Entities;
 using NfseSaaS.Domain.Enums;
+using NfseSaaS.Infrastructure.Email;
 using NfseSaaS.Infrastructure.Persistence;
 
 namespace NfseSaaS.Infrastructure.Jobs;
@@ -27,11 +29,16 @@ public sealed class ExecutarAutomacaoNotaMensalJob : IExecutarAutomacaoNotaMensa
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<ExecutarAutomacaoNotaMensalJob> _logger;
+    private readonly EmailOptions _emailOptions;
 
-    public ExecutarAutomacaoNotaMensalJob(IServiceScopeFactory scopeFactory, ILogger<ExecutarAutomacaoNotaMensalJob> logger)
+    public ExecutarAutomacaoNotaMensalJob(
+        IServiceScopeFactory scopeFactory,
+        ILogger<ExecutarAutomacaoNotaMensalJob> logger,
+        IOptions<EmailOptions> emailOptions)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _emailOptions = emailOptions.Value;
     }
 
     public async Task ExecutarAsync(Guid empresaId)
@@ -93,9 +100,7 @@ public sealed class ExecutarAutomacaoNotaMensalJob : IExecutarAutomacaoNotaMensa
         }
         else
         {
-            _logger.LogInformation(
-                "Automação de Nota Mensal: Empresa {EmpresaId} está em modo ListarParaRevisao (fase seguinte da automação, ainda não implementada) — pulando execução.",
-                empresaId);
+            await ExecutarModoListarParaRevisaoAsync(scope.ServiceProvider, empresa, competencia);
         }
     }
 
@@ -179,6 +184,66 @@ public sealed class ExecutarAutomacaoNotaMensalJob : IExecutarAutomacaoNotaMensa
         // recebe isto".
         await emailQueue.EnfileirarAsync(
             tipo: "AutomacaoNotaMensalResumo",
+            usuarioId: null,
+            destinatario: empresa.Email,
+            assunto: assunto,
+            corpoHtml: corpo.ToString(),
+            cancellationToken: CancellationToken.None);
+    }
+
+    private async Task ExecutarModoListarParaRevisaoAsync(IServiceProvider servicos, Empresa empresa, DateOnly competencia)
+    {
+        var listarCandidatos = servicos.GetRequiredService<IListarCandidatosNotaMensalUseCase>();
+        var emailQueue = servicos.GetRequiredService<IEmailQueueService>();
+
+        var candidatos = await listarCandidatos.ExecutarAsync(empresa.Id, competencia, CancellationToken.None);
+        var pendentes = candidatos.Where(c => !c.JaEmitidoNestaCompetencia).ToList();
+
+        _logger.LogInformation(
+            "Automação de Nota Mensal (revisão): Empresa {EmpresaId}, competência {Competencia:yyyy-MM} — {TotalCandidatos} candidato(s) elegíve(is) no total, {Pendentes} pendente(s) pra revisar.",
+            empresa.Id, competencia, candidatos.Count, pendentes.Count);
+
+        // Nada pendente — não manda e-mail de "vazio", ninguém precisa
+        // ser avisado que não há nada pra revisar.
+        if (pendentes.Count == 0)
+            return;
+
+        await EnviarEmailRevisaoAsync(emailQueue, empresa, competencia, pendentes);
+    }
+
+    private async Task EnviarEmailRevisaoAsync(
+        IEmailQueueService emailQueue,
+        Empresa empresa,
+        DateOnly competencia,
+        IReadOnlyList<ContratoCandidatoNotaMensalResponse> pendentes)
+    {
+        var nomeCompetencia = competencia.ToString("MM/yyyy");
+        var assunto = $"Nota Mensal {nomeCompetencia} pronta para revisão — {pendentes.Count} contrato(s) — {empresa.RazaoSocial}";
+
+        var corpo = new StringBuilder();
+        corpo.Append($"<p>A competência <strong>{nomeCompetencia}</strong> de <strong>{WebUtility.HtmlEncode(empresa.RazaoSocial)}</strong> está pronta para revisão — <strong>{pendentes.Count}</strong> contrato(s) elegível(is), nenhum emitido ainda (modo automático desligado para esta Empresa).</p>");
+        corpo.Append("<ul>");
+        foreach (var candidato in pendentes)
+        {
+            corpo.Append($"<li>{WebUtility.HtmlEncode(candidato.ClienteNome)} — {WebUtility.HtmlEncode(candidato.Descricao)}: {candidato.ValorTotal:C}</li>");
+        }
+        corpo.Append("</ul>");
+
+        // AppBaseUrl vazio (padrão hoje — ver EmailOptions) = e-mail sai
+        // sem link clicável, só com a orientação textual. Nada quebra,
+        // só fica menos conveniente até a URL de produção ser configurada.
+        if (string.IsNullOrWhiteSpace(_emailOptions.AppBaseUrl))
+        {
+            corpo.Append("<p>Abra a tela de Nota Mensal no sistema e selecione a competência acima para revisar e confirmar a emissão.</p>");
+        }
+        else
+        {
+            var link = $"{_emailOptions.AppBaseUrl.TrimEnd('/')}/Nfse?empresaId={empresa.Id}&competencia={competencia:yyyy-MM}&abrirNotaMensal=1";
+            corpo.Append($"<p><a href=\"{link}\">Clique aqui para revisar e confirmar a emissão</a></p>");
+        }
+
+        await emailQueue.EnfileirarAsync(
+            tipo: "AutomacaoNotaMensalRevisao",
             usuarioId: null,
             destinatario: empresa.Email,
             assunto: assunto,

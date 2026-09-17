@@ -176,6 +176,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     empresaAtualIdNfse = obterEmpresaAtualId();
 
+    // Link do e-mail de "revisão" da automação de Nota Mensal
+    // (?abrirNotaMensal=1&competencia=yyyy-MM) — se empresa-atual.js
+    // tiver disparado um reload nesta mesma carga por causa de
+    // ?empresaId=... na URL, este trecho nem chega a rodar agora; roda
+    // de novo na carga seguinte, já com a Empresa certa.
+    if (podeEmitirNfse) {
+        const paramsUrl = new URLSearchParams(location.search);
+        if (paramsUrl.get('abrirNotaMensal') === '1') {
+            abrirModalNotaMensal(paramsUrl.get('competencia'));
+            history.replaceState(null, '', location.pathname);
+        }
+    }
+
     // Período padrão: últimos 30 dias, mesmo default do portal nacional
     // (tela "Notas recebidas") — familiar pra quem já usa os dois.
     const hoje = new Date();
@@ -532,10 +545,10 @@ function mesAtualIso() {
     return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
 }
 
-async function abrirModalNotaMensal() {
+async function abrirModalNotaMensal(competenciaMesOverride) {
     ocultarErroFormulario('erro-nota-mensal');
     candidatosNotaMensal = [];
-    document.getElementById('nota-mensal-competencia').value = mesAtualIso();
+    document.getElementById('nota-mensal-competencia').value = competenciaMesOverride || mesAtualIso();
     document.getElementById('tabela-nota-mensal').classList.add('d-none');
     document.getElementById('nota-mensal-sem-candidatos').classList.add('d-none');
     document.getElementById('linhas-nota-mensal').innerHTML = '';

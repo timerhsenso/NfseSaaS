@@ -56,6 +56,16 @@ async function inicializarSeletorEmpresaTopo() {
             select.appendChild(option);
         }
 
+        // Link vindo de e-mail (ex.: resumo da automação de Nota Mensal)
+        // pode pedir pra trocar de Empresa direto pela URL — só troca se
+        // for diferente da atual, senão ficaria recarregando à toa.
+        const empresaIdNaUrl = new URLSearchParams(location.search).get('empresaId');
+        if (empresaIdNaUrl && empresaIdNaUrl !== obterEmpresaAtualId() && resultado.items.some(e => e.id === empresaIdNaUrl)) {
+            definirEmpresaAtualId(empresaIdNaUrl);
+            location.reload();
+            return;
+        }
+
         let idAtual = obterEmpresaAtualId();
         const existeNaLista = idAtual && resultado.items.some(e => e.id === idAtual);
 
