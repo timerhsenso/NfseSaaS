@@ -40,12 +40,21 @@ public sealed class ListarCandidatosNotaMensalUseCase : IListarCandidatosNotaMen
         // "Já emitido nesta competência" olha pro mês inteiro (não o dia
         // exato) — a nota mensal desse contrato pode ter sido emitida em
         // qualquer dia daquele mês, avulsa ou por este mesmo lote antes.
+        //
+        // Status == Autorizada, de propósito: uma nota Rejeitada (ou
+        // Cancelada, Substituida, ainda Processando) NÃO significa que
+        // o mês já está resolvido — significa que precisa decidir o que
+        // fazer (reenviar corrigido, ou não). Contar qualquer status
+        // como "já emitido" faria o modo Automático desistir pra sempre
+        // de um contrato rejeitado, e faria o modo ListarParaRevisao
+        // nunca mostrar de volta algo que precisa de decisão.
         var inicioMes = new DateOnly(competencia.Year, competencia.Month, 1);
         var fimMes = inicioMes.AddMonths(1).AddDays(-1);
 
         var contratosComNotaNaCompetencia = await _db.NotasFiscais.AsNoTracking()
             .Where(n => n.ContratoId != null && contratoIds.Contains(n.ContratoId.Value)
-                && n.DataCompetencia >= inicioMes && n.DataCompetencia <= fimMes)
+                && n.DataCompetencia >= inicioMes && n.DataCompetencia <= fimMes
+                && n.Status == NfseStatus.Autorizada)
             .Select(n => n.ContratoId!.Value)
             .Distinct()
             .ToListAsync(cancellationToken);
