@@ -10,6 +10,7 @@ public sealed class CadastrarContratoRequestValidator : AbstractValidator<Cadast
         RuleFor(x => x.EmpresaId).NotEmpty();
         RuleFor(x => x.ClienteId).NotEmpty();
         RuleFor(x => x.Descricao).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.Status).IsInEnum();
 
         // Reajuste (periodicidade/índice/alerta) só se aplica a cobrança
         // Mensal — Avulso é emitido uma vez, não tem recorrência pra

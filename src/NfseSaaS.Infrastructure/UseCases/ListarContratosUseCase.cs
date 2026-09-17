@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NfseSaaS.Application.Common;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.Contratos;
+using NfseSaaS.Domain.Enums;
 using NfseSaaS.Infrastructure.Persistence;
 
 namespace NfseSaaS.Infrastructure.UseCases;
@@ -28,8 +29,10 @@ public sealed class ListarContratosUseCase : IListarContratosUseCase
             join cli in _db.Clientes.AsNoTracking() on c.ClienteId equals cli.Id
             select new { Contrato = c, ClienteNome = cli.Nome };
 
+        // Ativo (bool) foi removido — Status é a única fonte de verdade
+        // agora (ver comentário em Contrato.cs).
         if (!request.IncluirInativos)
-            query = query.Where(x => x.Contrato.Ativo);
+            query = query.Where(x => x.Contrato.Status == StatusContrato.Ativo);
 
         if (request.ClienteId.HasValue)
             query = query.Where(x => x.Contrato.ClienteId == request.ClienteId.Value);
@@ -77,7 +80,7 @@ public sealed class ListarContratosUseCase : IListarContratosUseCase
                 x.Contrato.DataInicioContrato, x.Contrato.PeriodicidadeReajusteMeses, x.Contrato.IndiceReajuste,
                 x.Contrato.DataUltimoReajuste, x.Contrato.DiasAlertaOverride, diasAlertaEfetivo, x.Contrato.Observacao,
                 dataProximoReajuste, situacao, x.Contrato.Status, x.Contrato.DataFim, x.Contrato.TipoCobranca,
-                x.Contrato.PermitirAlterarValorNaEmissao, x.Contrato.Ativo, x.Contrato.CreatedAt, x.Contrato.UpdatedAt);
+                x.Contrato.PermitirAlterarValorNaEmissao, x.Contrato.CreatedAt, x.Contrato.UpdatedAt);
         }).ToList();
 
         return new PagedResult<ContratoResponse>

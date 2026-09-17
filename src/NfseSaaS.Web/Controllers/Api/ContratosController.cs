@@ -18,8 +18,6 @@ public sealed class ContratosController : ControllerBase
     private readonly IListarContratosUseCase _listarContratos;
     private readonly IObterContratoPorIdUseCase _obterContratoPorId;
     private readonly IAtualizarContratoUseCase _atualizarContrato;
-    private readonly IDesativarContratoUseCase _desativarContrato;
-    private readonly IReativarContratoUseCase _reativarContrato;
     private readonly IExcluirContratoUseCase _excluirContrato;
     private readonly IRegistrarReajusteUseCase _registrarReajuste;
     private readonly IListarReajustesUseCase _listarReajustes;
@@ -34,8 +32,6 @@ public sealed class ContratosController : ControllerBase
         IListarContratosUseCase listarContratos,
         IObterContratoPorIdUseCase obterContratoPorId,
         IAtualizarContratoUseCase atualizarContrato,
-        IDesativarContratoUseCase desativarContrato,
-        IReativarContratoUseCase reativarContrato,
         IExcluirContratoUseCase excluirContrato,
         IRegistrarReajusteUseCase registrarReajuste,
         IListarReajustesUseCase listarReajustes,
@@ -49,8 +45,6 @@ public sealed class ContratosController : ControllerBase
         _listarContratos = listarContratos;
         _obterContratoPorId = obterContratoPorId;
         _atualizarContrato = atualizarContrato;
-        _desativarContrato = desativarContrato;
-        _reativarContrato = reativarContrato;
         _excluirContrato = excluirContrato;
         _registrarReajuste = registrarReajuste;
         _listarReajustes = listarReajustes;
@@ -96,23 +90,6 @@ public sealed class ContratosController : ControllerBase
     public async Task<IActionResult> Atualizar(Guid id, [FromBody] AtualizarContratoRequest request, CancellationToken cancellationToken)
     {
         await _atualizarContrato.ExecutarAsync(id, request, cancellationToken);
-        return NoContent();
-    }
-
-    /// <summary>Soft delete (Ativo=false) — reversível via /reativar.</summary>
-    [RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Alterar)]
-    [HttpPost("{id:guid}/desativar")]
-    public async Task<IActionResult> Desativar(Guid id, CancellationToken cancellationToken)
-    {
-        await _desativarContrato.ExecutarAsync(id, cancellationToken);
-        return NoContent();
-    }
-
-    [RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Alterar)]
-    [HttpPost("{id:guid}/reativar")]
-    public async Task<IActionResult> Reativar(Guid id, CancellationToken cancellationToken)
-    {
-        await _reativarContrato.ExecutarAsync(id, cancellationToken);
         return NoContent();
     }
 

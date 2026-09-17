@@ -16,4 +16,17 @@ public interface ICurrentTenant
     Guid? TenantId { get; }
 
     bool IsResolved { get; }
+
+    /// <summary>
+    /// Pra processos que rodam FORA de uma requisição HTTP (jobs em
+    /// background, ver AutomacaoNotaMensalJob) — não existe Claim pra
+    /// ler nesses casos, então quem dispara o processo já sabe de qual
+    /// Tenant se trata (geralmente resolvido via EmpresaId, com
+    /// .IgnoreQueryFilters()) e define aqui, explicitamente, antes de
+    /// chamar qualquer UseCase que dependa do Global Query Filter.
+    /// Mesma ideia e mesmo nome do AppDbContext.TenantIdOverrideDeSistema,
+    /// pelo mesmo motivo — os dois precisam ser setados juntos (ver
+    /// AutomacaoNotaMensalJob).
+    /// </summary>
+    void DefinirTenantIdDeSistema(Guid tenantId);
 }

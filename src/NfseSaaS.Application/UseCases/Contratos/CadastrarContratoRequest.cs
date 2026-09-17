@@ -18,6 +18,7 @@ public sealed record CadastrarContratoRequest(
     IndiceReajusteContrato? IndiceReajuste,
     int? DiasAlertaOverride,
     string? Observacao,
+    StatusContrato Status,
     DateOnly? DataFim,
     TipoCobrancaContrato TipoCobranca,
     bool PermitirAlterarValorNaEmissao);

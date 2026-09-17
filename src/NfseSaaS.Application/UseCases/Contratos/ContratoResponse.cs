@@ -23,6 +23,5 @@ public sealed record ContratoResponse(
     DateOnly? DataFim,
     TipoCobrancaContrato TipoCobranca,
     bool PermitirAlterarValorNaEmissao,
-    bool Ativo,
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt);

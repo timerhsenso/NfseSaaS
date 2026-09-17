@@ -47,6 +47,7 @@ public sealed class CadastrarContratoUseCase : ICadastrarContratoUseCase
             DiasAlertaOverride = request.DiasAlertaOverride,
             Observacao = request.Observacao,
             DataFim = request.DataFim,
+            Status = request.Status,
             TipoCobranca = request.TipoCobranca,
             PermitirAlterarValorNaEmissao = request.PermitirAlterarValorNaEmissao
         };

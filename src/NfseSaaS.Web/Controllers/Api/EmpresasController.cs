@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using NfseSaaS.Application.Authorization;
+using NfseSaaS.Application.UseCases.AutomacaoNotaMensal;
 using NfseSaaS.Application.UseCases.Certificados;
 using NfseSaaS.Application.UseCases.Empresas;
 using NfseSaaS.Application.UseCases.SincronizacaoSefin;
@@ -25,6 +26,8 @@ public sealed class EmpresasController : ControllerBase
     private readonly IObterStatusCertificadoUseCase _obterStatusCertificado;
     private readonly ITestarConexaoCertificadoUseCase _testarConexaoCertificado;
     private readonly ISincronizarNotasDaSefinUseCase _sincronizarNotasDaSefin;
+    private readonly IObterConfiguracaoAutomacaoNotaMensalUseCase _obterConfiguracaoAutomacao;
+    private readonly IAtualizarConfiguracaoAutomacaoNotaMensalUseCase _atualizarConfiguracaoAutomacao;
 
     public EmpresasController(
         ICadastrarEmpresaUseCase cadastrarEmpresa,
@@ -38,7 +41,9 @@ public sealed class EmpresasController : ControllerBase
         IEnviarCertificadoUseCase enviarCertificado,
         IObterStatusCertificadoUseCase obterStatusCertificado,
         ITestarConexaoCertificadoUseCase testarConexaoCertificado,
-        ISincronizarNotasDaSefinUseCase sincronizarNotasDaSefin)
+        ISincronizarNotasDaSefinUseCase sincronizarNotasDaSefin,
+        IObterConfiguracaoAutomacaoNotaMensalUseCase obterConfiguracaoAutomacao,
+        IAtualizarConfiguracaoAutomacaoNotaMensalUseCase atualizarConfiguracaoAutomacao)
     {
         _cadastrarEmpresa = cadastrarEmpresa;
         _listarEmpresas = listarEmpresas;
@@ -52,6 +57,8 @@ public sealed class EmpresasController : ControllerBase
         _obterStatusCertificado = obterStatusCertificado;
         _testarConexaoCertificado = testarConexaoCertificado;
         _sincronizarNotasDaSefin = sincronizarNotasDaSefin;
+        _obterConfiguracaoAutomacao = obterConfiguracaoAutomacao;
+        _atualizarConfiguracaoAutomacao = atualizarConfiguracaoAutomacao;
     }
 
     [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Incluir)]
@@ -178,5 +185,23 @@ public sealed class EmpresasController : ControllerBase
     {
         var resultado = await _sincronizarNotasDaSefin.ExecutarAsync(id, cancellationToken);
         return Ok(resultado);
+    }
+
+    /// <summary>Configuração da automação de Nota Mensal — devolve um default se a Empresa ainda não tiver salvo nenhuma (ver o use case).</summary>
+    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Alterar)]
+    [HttpGet("{id:guid}/automacao-nota-mensal")]
+    public async Task<IActionResult> ObterConfiguracaoAutomacaoNotaMensal(Guid id, CancellationToken cancellationToken)
+    {
+        var configuracao = await _obterConfiguracaoAutomacao.ExecutarAsync(id, cancellationToken);
+        return Ok(configuracao);
+    }
+
+    /// <summary>Upsert — cria na primeira vez, atualiza depois (ver o use case).</summary>
+    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Alterar)]
+    [HttpPut("{id:guid}/automacao-nota-mensal")]
+    public async Task<IActionResult> AtualizarConfiguracaoAutomacaoNotaMensal(Guid id, [FromBody] AtualizarConfiguracaoAutomacaoNotaMensalRequest request, CancellationToken cancellationToken)
+    {
+        await _atualizarConfiguracaoAutomacao.ExecutarAsync(id, request, cancellationToken);
+        return NoContent();
     }
 }

@@ -57,6 +57,7 @@
                             <li class="nav-item"><button type="button" class="nav-link" data-tab-alvo="tab-endereco-empresa"><i class="bi bi-geo-alt"></i> Endereço</button></li>
                             <li class="nav-item"><button type="button" class="nav-link" data-tab-alvo="tab-regime-empresa"><i class="bi bi-receipt"></i> Regime tributário</button></li>
                             <li class="nav-item"><button type="button" class="nav-link" data-tab-alvo="tab-contratos-empresa"><i class="bi bi-file-earmark-text"></i> Contratos</button></li>
+                            <li class="nav-item"><button type="button" class="nav-link" data-tab-alvo="tab-automacao-empresa"><i class="bi bi-robot"></i> Automação</button></li>
                         </ul>
 
                         <div class="tab-conteudo-empresa" data-tab="tab-dados-empresa">
@@ -227,6 +228,53 @@
                                 <label class="form-label">Alertar reajuste com quantos dias de antecedência</label>
                                 <input type="number" min="1" class="form-control" id="diasAlertaReajusteContratoPadrao" value="30" required />
                                 <div class="form-text">Padrão pra todos os Contratos desta Empresa — cada Contrato pode sobrescrever esse número individualmente.</div>
+                            </div>
+                        </div>
+                        </div>
+
+                        <div class="tab-conteudo-empresa d-none" data-tab="tab-automacao-empresa">
+                        <div class="form-check form-switch mb-3">
+                            <input type="checkbox" class="form-check-input" id="automacaoAtivo" />
+                            <label class="form-check-label" for="automacaoAtivo">Emissão automática de Nota Mensal ativa pra esta Empresa</label>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Frequência</label>
+                                <select class="form-select" id="automacaoFrequencia">
+                                    <option value="0">Diária</option>
+                                    <option value="1">Semanal</option>
+                                    <option value="2" selected>Mensal</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3 d-none" id="campo-automacao-dia-semana">
+                                <label class="form-label">Dia da semana</label>
+                                <select class="form-select" id="automacaoDiaSemana">
+                                    <option value="1">Segunda-feira</option>
+                                    <option value="2">Terça-feira</option>
+                                    <option value="3">Quarta-feira</option>
+                                    <option value="4">Quinta-feira</option>
+                                    <option value="5">Sexta-feira</option>
+                                    <option value="6">Sábado</option>
+                                    <option value="0">Domingo</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3" id="campo-automacao-dia-mes">
+                                <label class="form-label">Dia do mês</label>
+                                <input type="number" min="1" max="28" class="form-control" id="automacaoDiaDoMes" value="1" />
+                                <div class="form-text">Limitado a 1–28 — evita cair num mês que não tem esse dia (fevereiro, por exemplo).</div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Horário</label>
+                                <input type="time" class="form-control" id="automacaoHorario" value="09:00" />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Modo</label>
+                                <select class="form-select" id="automacaoModo">
+                                    <option value="1" selected>Listar para revisão — avisa por e-mail, você confirma o envio</option>
+                                    <option value="0">Automático — emite sozinho, só avisa o resultado</option>
+                                </select>
                             </div>
                         </div>
                         </div>

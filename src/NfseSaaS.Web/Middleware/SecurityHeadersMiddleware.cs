@@ -17,6 +17,15 @@ namespace NfseSaaS.Web.Middleware;
 /// pra tag &lt;style&gt;. Tirar isso exigiria trocar de biblioteca de UI;
 /// injeção de CSS é um vetor bem mais fraco que injeção de JS, então é
 /// uma concessão aceita.
+///
+/// /hangfire (dashboard da automação de Nota Mensal) fica de FORA da
+/// nossa CSP — é biblioteca de terceiro, servida pelo próprio Hangfire,
+/// não escrita pensando numa CSP restritiva feito a nossa; aplicar a
+/// mesma política ali arriscava quebrar o dashboard sem eu conseguir
+/// testar de antemão (mesmo problema que já aconteceu com DataTables e
+/// Bootstrap Icons — dessa vez resolvido antes de virar bug em produção,
+/// não depois). Os outros headers (X-Frame-Options etc.) continuam
+/// valendo normalmente lá também.
 /// </summary>
 public sealed class SecurityHeadersMiddleware
 {
@@ -47,6 +56,10 @@ public sealed class SecurityHeadersMiddleware
 
     public Task InvokeAsync(HttpContext context)
     {
+        // Calculado antes do OnStarting — Request.Path ainda é seguro de
+        // ler nesse ponto (não muda depois que o pipeline avança).
+        var ehDashboardHangfire = context.Request.Path.StartsWithSegments("/hangfire");
+
         // OnStarting (não escrita direta no dicionário antes de _next) pra
         // garantir que os headers saem em toda resposta, mesmo quando ela
         // é gerada mais adiante no pipeline (ex.: ExceptionHandlingMiddleware
@@ -58,7 +71,12 @@ public sealed class SecurityHeadersMiddleware
             headers["X-Frame-Options"] = "DENY";
             headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
             headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=()";
-            headers["Content-Security-Policy"] = ContentSecurityPolicy;
+
+            // Ver comentário da classe — dashboard do Hangfire fica de
+            // fora da nossa CSP, de propósito.
+            if (!ehDashboardHangfire)
+                headers["Content-Security-Policy"] = ContentSecurityPolicy;
+
             return Task.CompletedTask;
         });
 

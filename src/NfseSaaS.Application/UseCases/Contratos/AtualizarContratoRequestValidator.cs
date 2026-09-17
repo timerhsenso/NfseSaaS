@@ -8,6 +8,7 @@ public sealed class AtualizarContratoRequestValidator : AbstractValidator<Atuali
     public AtualizarContratoRequestValidator()
     {
         RuleFor(x => x.Descricao).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.Status).IsInEnum();
 
         // Ver comentário completo em CadastrarContratoRequestValidator —
         // mesmo raciocínio, backstop server-side da regra que o JS já

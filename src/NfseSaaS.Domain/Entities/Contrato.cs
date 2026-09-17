@@ -42,7 +42,17 @@ public sealed class Contrato : BaseEntity, ITenantEntity
 
     public string? Observacao { get; set; }
 
-    /// <summary>Status comercial do Contrato — Fase 6. Persistido, diferente de SituacaoContrato (calculada, só prazo de reajuste).</summary>
+    /// <summary>
+    /// Status comercial do Contrato — ÚNICA fonte de verdade sobre se
+    /// ele está ativo (é o caso Status == Ativo) ou não (Suspenso,
+    /// Encerrado, Cancelado, ou ainda Rascunho). Existia também um
+    /// campo Ativo (bool) separado, criado antes deste enum e nunca
+    /// aposentado — os dois controlavam coisas parecidas por caminhos
+    /// diferentes (o toggle da grade mexia só no bool, sem o Status
+    /// enum saber disso), o que gerava contrato "ativo" numa tela e
+    /// "inativo" na outra ao mesmo tempo. Removido — toda consulta que
+    /// precisar saber se o Contrato está ativo usa só Status == Ativo.
+    /// </summary>
     public StatusContrato Status { get; set; } = StatusContrato.Ativo;
 
     /// <summary>Fim de vigência — nulo enquanto o Contrato não tiver prazo definido ou por tempo indeterminado.</summary>
@@ -65,6 +75,4 @@ public sealed class Contrato : BaseEntity, ITenantEntity
 
     /// <summary>Sobrescreve, só para este Contrato, Empresa.DiasAlertaReajusteContratoPadrao. Nulo = usa o padrão da Empresa.</summary>
     public int? DiasAlertaOverride { get; set; }
-
-    public bool Ativo { get; set; } = true;
 }

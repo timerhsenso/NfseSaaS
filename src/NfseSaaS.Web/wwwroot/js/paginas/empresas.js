@@ -86,6 +86,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (botao) trocarAbaEmpresa(botao.dataset.tabAlvo);
         });
 
+        document.getElementById('automacaoFrequencia').addEventListener('change', aplicarRegraFrequenciaAutomacao);
+
         document.getElementById('tabela-empresas').addEventListener('click', async function (e) {
             const botao = e.target.closest('button');
             if (!botao) return;
@@ -122,6 +124,23 @@ function limparFormularioEmpresa() {
     document.getElementById('empresaId').value = '';
     document.getElementById('erro-empresa').classList.add('d-none');
     trocarAbaEmpresa('tab-dados-empresa');
+
+    document.getElementById('automacaoAtivo').checked = false;
+    document.getElementById('automacaoFrequencia').value = '2';
+    document.getElementById('automacaoDiaSemana').value = '1';
+    document.getElementById('automacaoDiaDoMes').value = '1';
+    document.getElementById('automacaoHorario').value = '09:00';
+    document.getElementById('automacaoModo').value = '1';
+    aplicarRegraFrequenciaAutomacao();
+}
+
+// Mostra só o campo (dia da semana ou dia do mês) que faz sentido pra
+// frequência escolhida — mesmo raciocínio de aplicarRegraTipoCobranca
+// em contratos.js (Avulso/Mensal), aqui pra Diária/Semanal/Mensal.
+function aplicarRegraFrequenciaAutomacao() {
+    const frequencia = document.getElementById('automacaoFrequencia').value; // "0" Diária, "1" Semanal, "2" Mensal
+    document.getElementById('campo-automacao-dia-semana').classList.toggle('d-none', frequencia !== '1');
+    document.getElementById('campo-automacao-dia-mes').classList.toggle('d-none', frequencia !== '2');
 }
 
 // Mesmo padrão de trocarAbaContrato (contratos.js) — troca a aba ativa
@@ -170,6 +189,15 @@ async function abrirModalEditarEmpresa(id) {
         document.getElementById('percentualTotalTributosSimplesNacional').value = empresa.percentualTotalTributosSimplesNacional ?? '';
         document.getElementById('diasAlertaReajusteContratoPadrao').value = empresa.diasAlertaReajusteContratoPadrao;
 
+        const automacao = await apiFetch(`/api/empresas/${id}/automacao-nota-mensal`);
+        document.getElementById('automacaoAtivo').checked = automacao.ativo;
+        document.getElementById('automacaoFrequencia').value = automacao.frequencia;
+        if (automacao.diaSemana !== null) document.getElementById('automacaoDiaSemana').value = automacao.diaSemana;
+        if (automacao.diaDoMes !== null) document.getElementById('automacaoDiaDoMes').value = automacao.diaDoMes;
+        document.getElementById('automacaoHorario').value = automacao.horario.substring(0, 5); // "HH:mm:ss" -> "HH:mm"
+        document.getElementById('automacaoModo').value = automacao.modo;
+        aplicarRegraFrequenciaAutomacao();
+
         modalEmpresa.show();
     } catch (err) {
         mostrarErro(err.message);
@@ -202,6 +230,25 @@ function montarPayloadEmpresa() {
     };
 }
 
+function montarPayloadAutomacao() {
+    const frequencia = document.getElementById('automacaoFrequencia').value;
+
+    return {
+        ativo: document.getElementById('automacaoAtivo').checked,
+        frequencia: parseInt(frequencia, 10),
+        // Só manda o campo que se aplica à frequência escolhida — o
+        // outro vai null (o validador do servidor exige exatamente
+        // isso, ver AtualizarConfiguracaoAutomacaoNotaMensalRequestValidator).
+        diaSemana: frequencia === '1' ? parseInt(document.getElementById('automacaoDiaSemana').value, 10) : null,
+        diaDoMes: frequencia === '2' ? parseInt(document.getElementById('automacaoDiaDoMes').value, 10) : null,
+        // <input type="time"> devolve "HH:mm" — completa com ":00" pra
+        // bater com o formato que o conversor padrão de TimeOnly do
+        // System.Text.Json espera ("HH:mm:ss").
+        horario: `${document.getElementById('automacaoHorario').value}:00`,
+        modo: parseInt(document.getElementById('automacaoModo').value, 10)
+    };
+}
+
 async function salvarEmpresa(e) {
     e.preventDefault();
     ocultarErroFormulario('erro-empresa');
@@ -214,12 +261,23 @@ async function salvarEmpresa(e) {
     const payload = montarPayloadEmpresa();
 
     try {
+        let empresaId = id;
+
         if (id) {
             await apiFetch(`/api/empresas/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
         } else {
             payload.cnpj = document.getElementById('cnpj').value;
-            await apiFetch('/api/empresas', { method: 'POST', body: JSON.stringify(payload) });
+            const resposta = await apiFetch('/api/empresas', { method: 'POST', body: JSON.stringify(payload) });
+            empresaId = resposta.empresaId;
         }
+
+        // Sub-recurso próprio (GET/PUT /api/empresas/{id}/automacao-nota-mensal),
+        // salvo à parte — mesmo empresaId de cima, tanto faz se a Empresa
+        // é nova ou já existia.
+        await apiFetch(`/api/empresas/${empresaId}/automacao-nota-mensal`, {
+            method: 'PUT',
+            body: JSON.stringify(montarPayloadAutomacao())
+        });
 
         modalEmpresa.hide();
         await carregarEmpresas();

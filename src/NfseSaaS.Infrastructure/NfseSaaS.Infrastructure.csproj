@@ -53,6 +53,15 @@
     -->
     <PackageReference Include="QuestPDF" Version="2025.7.1" />
     <PackageReference Include="QRCoder" Version="1.6.0" />
+
+    <!--
+      Motor da automação de Nota Mensal (agendamento por Empresa,
+      configurável pela tela — ver ConfiguracaoAutomacaoNotaMensal).
+      Storage no próprio Postgres (DefaultConnection), sem banco
+      separado — Hangfire cria e gerencia seu próprio schema lá dentro.
+    -->
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.8.24" />
+    <PackageReference Include="Hangfire.PostgreSql" Version="1.21.1" />
   </ItemGroup>
 
 </Project>

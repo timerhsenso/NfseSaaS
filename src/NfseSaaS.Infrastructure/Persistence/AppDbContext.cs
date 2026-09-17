@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Reflection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -48,6 +49,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
     public DbSet<EmailLog> EmailLogs => Set<EmailLog>();
     public DbSet<CodigoTributacaoNacional> CodigosTributacaoNacional => Set<CodigoTributacaoNacional>();
     public DbSet<CodigoNbs> CodigosNbs => Set<CodigoNbs>();
+    public DbSet<ConfiguracaoAutomacaoNotaMensal> ConfiguracoesAutomacaoNotaMensal => Set<ConfiguracaoAutomacaoNotaMensal>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -59,14 +61,48 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
     }
 
     /// <summary>
+    /// Lida pelo filtro global de Tenant (ver ApplyTenantQueryFilters
+    /// abaixo). NUNCA referencie _currentTenant.TenantId direto dentro
+    /// da expressão do filtro — passe sempre por uma propriedade do
+    /// próprio DbContext, como esta.
+    ///
+    /// Motivo (bug real, achado em produção): o modelo do EF Core é
+    /// compilado UMA VEZ e cacheado por TIPO de DbContext, não por
+    /// instância — reaproveitado por TODAS as instâncias de AppDbContext
+    /// pelo resto da vida do processo. Uma referência direta ao OBJETO
+    /// _currentTenant injetado (Expression.Constant(_currentTenant))
+    /// fica CONGELADA na primeira instância que construiu o modelo
+    /// (tipicamente um Seeder do startup, fora de qualquer requisição
+    /// HTTP) — uma mudança de estado num _currentTenant de uma instância
+    /// POSTERIOR (outra requisição, ou
+    /// ICurrentTenant.DefinirTenantIdDeSistema chamado por um job em
+    /// background) nunca chega a afetar o filtro, porque ele está lendo
+    /// de uma instância completamente diferente e congelada.
+    ///
+    /// A correção documentada pela própria Microsoft
+    /// (https://learn.microsoft.com/en-us/ef/core/querying/filters, nota
+    /// "Model-level filters will use the value from the correct context
+    /// instance") é referenciar um campo/propriedade DO PRÓPRIO DbContext
+    /// (via Expression.Constant(this)) em vez do serviço injetado
+    /// diretamente — o EF Core tem tratamento especial que revincula
+    /// Expression.Constant(this) pra instância que está executando a
+    /// consulta de verdade, mesmo com o modelo em cache. Daí esta
+    /// propriedade existir só pra servir de intermediária.
+    /// </summary>
+    private Guid? TenantIdParaFiltro => _currentTenant.TenantId;
+
+    /// <summary>
     /// Aplica, via reflexão, um Global Query Filter (e => e.TenantId ==
-    /// _currentTenant.TenantId) em toda entidade que implementa
+    /// TenantIdParaFiltro) em toda entidade que implementa
     /// ITenantEntity. Centralizado aqui para que nenhuma consulta no
     /// restante da aplicação precise (ou consiga esquecer de) filtrar por
     /// tenant manualmente.
     /// </summary>
     private void ApplyTenantQueryFilters(ModelBuilder modelBuilder)
     {
+        var tenantIdParaFiltroProperty = typeof(AppDbContext).GetProperty(
+            nameof(TenantIdParaFiltro), BindingFlags.NonPublic | BindingFlags.Instance)!;
+
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
             if (!typeof(ITenantEntity).IsAssignableFrom(entityType.ClrType))
@@ -75,11 +111,14 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
             var parameter = Expression.Parameter(entityType.ClrType, "e");
 
             var tenantIdProperty = Expression.Property(parameter, nameof(ITenantEntity.TenantId));
-            var currentTenantId = Expression.Property(
-                Expression.Constant(_currentTenant),
-                nameof(ICurrentTenant.TenantId));
 
-            // e.TenantId == (_currentTenant.TenantId ?? Guid.Empty)
+            // Expression.Constant(this) — não Expression.Constant(_currentTenant).
+            // Ver o comentário completo em TenantIdParaFiltro acima pro motivo.
+            var currentTenantId = Expression.Property(
+                Expression.Constant(this),
+                tenantIdParaFiltroProperty);
+
+            // e.TenantId == (TenantIdParaFiltro ?? Guid.Empty)
             // Quando não há tenant resolvido, o filtro força um resultado
             // vazio (Guid.Empty não corresponde a nenhum registro real) em
             // vez de expor todos os dados de todos os tenants.

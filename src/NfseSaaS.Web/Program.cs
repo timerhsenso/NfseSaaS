@@ -1,4 +1,6 @@
 using System.Threading.RateLimiting;
+using Hangfire;
+using Hangfire.Dashboard;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
@@ -173,6 +175,7 @@ try
     await NfseSaaS.Infrastructure.Persistence.Seeders.EmailPendenteRecuperador.ReenfileirarPendentesAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.CodigoTributacaoNacionalSeeder.SeedAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.CodigoNbsSeeder.SeedAsync(app.Services);
+    await NfseSaaS.Infrastructure.Persistence.Seeders.AutomacaoNotaMensalJobSincronizador.SincronizarAsync(app.Services);
 
     app.UseForwardedHeaders();
     app.UseMiddleware<SecurityHeadersMiddleware>();
@@ -247,6 +250,15 @@ try
     app.MapControllerRoute(
         name: "default",
         pattern: "{controller=Home}/{action=Index}/{id?}");
+
+    // /hangfire — dashboard da automação de Nota Mensal (histórico de
+    // execuções, "rodar agora"). Autorização própria do Hangfire, não
+    // [RequerPermissao] (isto é middleware, não passa pelo pipeline de
+    // MVC) — ver HangfireDashboardAuthorizationFilter.
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = new[] { new HangfireDashboardAuthorizationFilter() }
+    });
 
     app.MapHealthChecks("/health");
 

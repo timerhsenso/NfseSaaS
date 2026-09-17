@@ -1,3 +1,5 @@
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -7,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.UseCases.AuditLogs;
+using NfseSaaS.Application.UseCases.AutomacaoNotaMensal;
 using NfseSaaS.Application.UseCases.Catalogos;
 using NfseSaaS.Application.UseCases.Certificados;
 using NfseSaaS.Application.UseCases.Clientes;
@@ -28,6 +31,7 @@ using NfseSaaS.Infrastructure.Auditing;
 using NfseSaaS.Infrastructure.Certificates;
 using NfseSaaS.Infrastructure.Email;
 using NfseSaaS.Infrastructure.Identity;
+using NfseSaaS.Infrastructure.Jobs;
 using NfseSaaS.Infrastructure.MultiTenancy;
 using NfseSaaS.Infrastructure.Persistence;
 using NfseSaaS.Infrastructure.UseCases;
@@ -57,6 +61,16 @@ public static class DependencyInjection
 
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(connectionString));
+
+        // Motor da automação de Nota Mensal — mesmo Postgres do resto da
+        // app (a mesma connectionString de cima), schema próprio
+        // gerenciado pelo Hangfire, sem precisar de banco separado.
+        // AddHangfireServer roda o worker que processa os jobs
+        // recorrentes; o dashboard (/hangfire) é mapeado no Program.cs
+        // (é middleware de pipeline, não registro de DI).
+        services.AddHangfire(config => config
+            .UsePostgreSqlStorage(c => c.UseNpgsqlConnection(connectionString)));
+        services.AddHangfireServer();
 
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentTenant, CurrentTenant>();
@@ -163,8 +177,6 @@ public static class DependencyInjection
         services.AddScoped<IListarContratosUseCase, ListarContratosUseCase>();
         services.AddScoped<IObterContratoPorIdUseCase, ObterContratoPorIdUseCase>();
         services.AddScoped<IAtualizarContratoUseCase, AtualizarContratoUseCase>();
-        services.AddScoped<IDesativarContratoUseCase, DesativarContratoUseCase>();
-        services.AddScoped<IReativarContratoUseCase, ReativarContratoUseCase>();
         services.AddScoped<IExcluirContratoUseCase, ExcluirContratoUseCase>();
 
         services.AddScoped<IRegistrarReajusteUseCase, RegistrarReajusteUseCase>();
@@ -195,6 +207,10 @@ public static class DependencyInjection
 
         services.AddScoped<IBuscarCodigoTributacaoNacionalUseCase, BuscarCodigoTributacaoNacionalUseCase>();
         services.AddScoped<IBuscarCodigoNbsUseCase, BuscarCodigoNbsUseCase>();
+
+        services.AddScoped<IObterConfiguracaoAutomacaoNotaMensalUseCase, ObterConfiguracaoAutomacaoNotaMensalUseCase>();
+        services.AddScoped<IAtualizarConfiguracaoAutomacaoNotaMensalUseCase, AtualizarConfiguracaoAutomacaoNotaMensalUseCase>();
+        services.AddScoped<IExecutarAutomacaoNotaMensalJob, ExecutarAutomacaoNotaMensalJob>();
 
         services.AddScoped<IListarAuditLogsUseCase, ListarAuditLogsUseCase>();
         services.AddScoped<IObterAuditLogPorIdUseCase, ObterAuditLogPorIdUseCase>();

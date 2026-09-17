@@ -26,6 +26,7 @@ public sealed class CurrentTenant : ICurrentTenant
     public const string TenantIdClaimType = "tenant_id";
 
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private Guid? _tenantIdOverrideDeSistema;
 
     public CurrentTenant(IHttpContextAccessor httpContextAccessor)
     {
@@ -36,6 +37,12 @@ public sealed class CurrentTenant : ICurrentTenant
     {
         get
         {
+            // Override de sistema tem prioridade — quando setado, nem
+            // olha pro Claim (que, fora de uma requisição HTTP, não
+            // existe mesmo). Ver DefinirTenantIdDeSistema.
+            if (_tenantIdOverrideDeSistema.HasValue)
+                return _tenantIdOverrideDeSistema;
+
             var user = _httpContextAccessor.HttpContext?.User;
             var claimValue = user?.FindFirstValue(TenantIdClaimType);
 
@@ -44,4 +51,6 @@ public sealed class CurrentTenant : ICurrentTenant
     }
 
     public bool IsResolved => TenantId.HasValue;
+
+    public void DefinirTenantIdDeSistema(Guid tenantId) => _tenantIdOverrideDeSistema = tenantId;
 }

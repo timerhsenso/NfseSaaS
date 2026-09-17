@@ -54,12 +54,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 const r = ROTULOS_SITUACAO_CONTRATO[v] ?? { texto: 'Desconhecida', cor: 'secondary' };
                 return `<span class="badge text-bg-${r.cor}">${r.texto}</span>`;
             }
-        },
-        {
-            data: 'ativo',
-            render: v => v
-                ? '<span class="badge text-bg-success">Ativo</span>'
-                : '<span class="badge text-bg-secondary">Inativo</span>'
         }
     ];
 
@@ -73,9 +67,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 </button>
                 <button type="button" class="btn btn-sm btn-outline-primary btn-editar" data-id="${contrato.id}">
                     <i class="bi bi-pencil"></i>
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-warning btn-alternar-ativo" data-id="${contrato.id}" data-ativo="${contrato.ativo}">
-                    <i class="bi ${contrato.ativo ? 'bi-toggle-on' : 'bi-toggle-off'}"></i>
                 </button>
                 <button type="button" class="btn btn-sm btn-outline-danger btn-excluir" data-id="${contrato.id}">
                     <i class="bi bi-trash"></i>
@@ -143,7 +134,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             await executarComBotaoDesabilitado(botao, async () => {
                 if (botao.classList.contains('btn-editar')) await abrirModalEditarContrato(id);
-                else if (botao.classList.contains('btn-alternar-ativo')) await alternarAtivoContrato(id, botao.dataset.ativo === 'true');
                 else if (botao.classList.contains('btn-excluir')) await excluirContrato(id);
                 else if (botao.classList.contains('btn-historico')) await abrirModalHistorico(id, botao.dataset.descricao);
             });
@@ -230,8 +220,13 @@ function limparFormularioContrato() {
     // pro ValorAtual antes de existir linhas).
     $('#clienteId').prop('disabled', false);
     document.getElementById('bloco-servicos').classList.remove('d-none');
-    document.getElementById('bloco-status').classList.add('d-none');
     document.getElementById('nota-servicos-nao-editaveis').textContent = '';
+
+    // Status agora é sempre visível (criação e edição) — antes só
+    // aparecia editando, e criar sem escolher status nenhum criava
+    // sempre "Ativo" nos bastidores sem o usuário nem saber que existia
+    // essa opção.
+    document.getElementById('status').value = '1';
 }
 
 // Cliente não entra mais aqui — select2 (ver inicialização acima) busca
@@ -413,7 +408,6 @@ async function abrirModalEditarContrato(id) {
 
         $('#clienteId').prop('disabled', true);
         document.getElementById('bloco-servicos').classList.add('d-none');
-        document.getElementById('bloco-status').classList.remove('d-none');
         document.getElementById('nota-servicos-nao-editaveis').textContent =
             'Cliente e serviços não são editáveis aqui — o valor muda pelo fluxo de reajuste (mantém histórico).';
 
@@ -587,6 +581,7 @@ async function salvarContrato(e) {
                 indiceReajuste: indiceReajuste,
                 diasAlertaOverride: diasAlertaOverride ? parseInt(diasAlertaOverride, 10) : null,
                 observacao: observacao,
+                status: parseInt(document.getElementById('status').value, 10),
                 dataFim: document.getElementById('dataFim').value || null,
                 tipoCobranca: parseInt(document.getElementById('tipoCobranca').value, 10),
                 permitirAlterarValorNaEmissao: document.getElementById('permitirAlterarValorNaEmissao').checked
@@ -599,16 +594,6 @@ async function salvarContrato(e) {
         mostrarToast('Contrato salvo com sucesso.');
     } catch (err) {
         mostrarErroFormulario('erro-contrato', err.message);
-    }
-}
-
-async function alternarAtivoContrato(id, ativoAtualmente) {
-    const acao = ativoAtualmente ? 'desativar' : 'reativar';
-    try {
-        await apiFetch(`/api/contratos/${id}/${acao}`, { method: 'POST' });
-        await carregarContratos();
-    } catch (err) {
-        mostrarErro(err.message);
     }
 }
 
