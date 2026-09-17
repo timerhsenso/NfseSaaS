@@ -35,7 +35,9 @@ public sealed class ObterConfiguracaoAutomacaoNotaMensalUseCase : IObterConfigur
                 DiaSemana: null,
                 DiaDoMes: 1,
                 Horario: new TimeOnly(9, 0),
-                Modo: ModoAutomacaoNotaMensal.ListarParaRevisao);
+                Modo: ModoAutomacaoNotaMensal.ListarParaRevisao,
+                DesligadoPorInatividade: false,
+                CompetenciasSemConfirmacao: 0);
         }
 
         return new ConfiguracaoAutomacaoNotaMensalResponse(
@@ -44,6 +46,8 @@ public sealed class ObterConfiguracaoAutomacaoNotaMensalUseCase : IObterConfigur
             configuracao.DiaSemana,
             configuracao.DiaDoMes,
             configuracao.Horario,
-            configuracao.Modo);
+            configuracao.Modo,
+            configuracao.DesligadoPorInatividade,
+            configuracao.CompetenciasSemConfirmacao);
     }
 }

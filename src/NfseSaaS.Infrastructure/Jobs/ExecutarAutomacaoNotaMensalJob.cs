@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -22,8 +23,11 @@ namespace NfseSaaS.Infrastructure.Jobs;
 /// HTTP, então nada aqui pode contar com um AppDbContext/ICurrentTenant
 /// já resolvidos por fora.
 ///
-/// Modo ListarParaRevisao ainda não está implementado (fase seguinte da
-/// automação) — por enquanto só loga e sai, sem emitir nem avisar nada.
+/// Modo Automatico: lista, emite em lote e avisa por e-mail (ver
+/// ExecutarModoAutomaticoAsync). Modo ListarParaRevisao: só lista e
+/// avisa por e-mail, sem emitir nada sozinho, e mantém o contador de
+/// competências sem confirmação que desliga a automação sozinha depois
+/// de 2 seguidas (ver AvaliarContadorEDesligarSeNecessarioAsync).
 /// </summary>
 public sealed class ExecutarAutomacaoNotaMensalJob : IExecutarAutomacaoNotaMensalJob
 {
@@ -73,7 +77,6 @@ public sealed class ExecutarAutomacaoNotaMensalJob : IExecutarAutomacaoNotaMensa
         currentTenant.DefinirTenantIdDeSistema(empresa.TenantId);
 
         var configuracao = await db.ConfiguracoesAutomacaoNotaMensal
-            .AsNoTracking()
             .FirstOrDefaultAsync(c => c.EmpresaId == empresaId);
 
         if (configuracao is null || !configuracao.Ativo)
@@ -100,7 +103,7 @@ public sealed class ExecutarAutomacaoNotaMensalJob : IExecutarAutomacaoNotaMensa
         }
         else
         {
-            await ExecutarModoListarParaRevisaoAsync(scope.ServiceProvider, empresa, competencia);
+            await ExecutarModoListarParaRevisaoAsync(scope.ServiceProvider, db, empresa, configuracao, competencia);
         }
     }
 
@@ -191,8 +194,13 @@ public sealed class ExecutarAutomacaoNotaMensalJob : IExecutarAutomacaoNotaMensa
             cancellationToken: CancellationToken.None);
     }
 
-    private async Task ExecutarModoListarParaRevisaoAsync(IServiceProvider servicos, Empresa empresa, DateOnly competencia)
+    private async Task ExecutarModoListarParaRevisaoAsync(
+        IServiceProvider servicos, AppDbContext db, Empresa empresa, ConfiguracaoAutomacaoNotaMensal configuracao, DateOnly competencia)
     {
+        var desligou = await AvaliarContadorEDesligarSeNecessarioAsync(servicos, db, empresa, configuracao, competencia);
+        if (desligou)
+            return; // já desligou a automação — não segue pra listar/avisar da competência atual.
+
         var listarCandidatos = servicos.GetRequiredService<IListarCandidatosNotaMensalUseCase>();
         var emailQueue = servicos.GetRequiredService<IEmailQueueService>();
 
@@ -209,6 +217,86 @@ public sealed class ExecutarAutomacaoNotaMensalJob : IExecutarAutomacaoNotaMensa
             return;
 
         await EnviarEmailRevisaoAsync(emailQueue, empresa, competencia, pendentes);
+    }
+
+    /// <summary>
+    /// Contador de "2 competências seguidas sem confirmação" (só faz
+    /// sentido no modo ListarParaRevisao — Automatico não tem
+    /// confirmação pendente nenhuma). Só avalia quando a competência
+    /// mudou desde a última vez (UltimaCompetenciaAvaliada) — evita
+    /// contar a mesma competência mais de uma vez se a Frequencia for
+    /// Diária/Semanal e o job rodar várias vezes dentro do mesmo mês.
+    ///
+    /// "Confirmou" = existe pelo menos uma Nfse Autorizada da Empresa
+    /// na competência ANTERIOR — mesmo que seja de só um dos vários
+    /// contratos avisados, não precisa ser 100% deles (ver decisão do
+    /// usuário no desenho desta automação: qualquer emissão é sinal de
+    /// vida).
+    /// </summary>
+    /// <returns>true se desligou a automação por inatividade nesta chamada.</returns>
+    private async Task<bool> AvaliarContadorEDesligarSeNecessarioAsync(
+        IServiceProvider servicos, AppDbContext db, Empresa empresa, ConfiguracaoAutomacaoNotaMensal configuracao, DateOnly competencia)
+    {
+        _logger.LogInformation(
+            "Automação de Nota Mensal (contador): Empresa {EmpresaId} — UltimaCompetenciaAvaliada={UltimaCompetenciaAvaliada}, CompetenciasSemConfirmacao={CompetenciasSemConfirmacao}, competência atual={Competencia:yyyy-MM}.",
+            empresa.Id, configuracao.UltimaCompetenciaAvaliada, configuracao.CompetenciasSemConfirmacao, competencia);
+
+        if (configuracao.UltimaCompetenciaAvaliada is { } competenciaAnterior && competenciaAnterior != competencia)
+        {
+            var fimMesAnterior = competenciaAnterior.AddMonths(1).AddDays(-1);
+
+            var confirmou = await db.NotasFiscais.AsNoTracking().AnyAsync(n =>
+                n.EmpresaId == empresa.Id
+                && n.DataCompetencia >= competenciaAnterior && n.DataCompetencia <= fimMesAnterior
+                && n.Status == NfseStatus.Autorizada);
+
+            configuracao.CompetenciasSemConfirmacao = confirmou ? 0 : configuracao.CompetenciasSemConfirmacao + 1;
+
+            _logger.LogInformation(
+                "Automação de Nota Mensal (contador): Empresa {EmpresaId} — competência anterior {CompetenciaAnterior:yyyy-MM} a {FimMesAnterior:yyyy-MM-dd}, confirmou={Confirmou}, contador agora={ContadorNovo}.",
+                empresa.Id, competenciaAnterior, fimMesAnterior, confirmou, configuracao.CompetenciasSemConfirmacao);
+
+            if (!confirmou && configuracao.CompetenciasSemConfirmacao >= 2)
+            {
+                configuracao.Ativo = false;
+                configuracao.DesligadoPorInatividade = true;
+                configuracao.UltimaCompetenciaAvaliada = competencia;
+                await db.SaveChangesAsync();
+
+                var recurringJobManager = servicos.GetRequiredService<IRecurringJobManager>();
+                recurringJobManager.RemoveIfExists(AutomacaoNotaMensalJobHelper.ObterJobId(empresa.Id));
+
+                var emailQueue = servicos.GetRequiredService<IEmailQueueService>();
+                await EnviarEmailDesligadoPorInatividadeAsync(emailQueue, empresa);
+
+                _logger.LogInformation(
+                    "Automação de Nota Mensal: Empresa {EmpresaId} desligada automaticamente por inatividade (2 competências seguidas sem confirmação).",
+                    empresa.Id);
+
+                return true;
+            }
+        }
+
+        configuracao.UltimaCompetenciaAvaliada = competencia;
+        await db.SaveChangesAsync();
+        return false;
+    }
+
+    private static async Task EnviarEmailDesligadoPorInatividadeAsync(IEmailQueueService emailQueue, Empresa empresa)
+    {
+        var assunto = $"Automação de Nota Mensal desligada por inatividade — {empresa.RazaoSocial}";
+        var corpo =
+            $"<p>A automação de Nota Mensal de <strong>{WebUtility.HtmlEncode(empresa.RazaoSocial)}</strong> foi desligada automaticamente.</p>" +
+            "<p>Duas competências seguidas foram avisadas por e-mail e nenhuma teve nota autorizada emitida — pra não continuar avisando sem parar.</p>" +
+            "<p>Pra reativar, abra a Empresa no sistema, aba Automação, e ligue o interruptor de novo.</p>";
+
+        await emailQueue.EnfileirarAsync(
+            tipo: "AutomacaoNotaMensalDesligadaPorInatividade",
+            usuarioId: null,
+            destinatario: empresa.Email,
+            assunto: assunto,
+            corpoHtml: corpo,
+            cancellationToken: CancellationToken.None);
     }
 
     private async Task EnviarEmailRevisaoAsync(

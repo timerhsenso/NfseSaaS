@@ -8,4 +8,6 @@ public sealed record ConfiguracaoAutomacaoNotaMensalResponse(
     DayOfWeek? DiaSemana,
     int? DiaDoMes,
     TimeOnly Horario,
-    ModoAutomacaoNotaMensal Modo);
+    ModoAutomacaoNotaMensal Modo,
+    bool DesligadoPorInatividade,
+    int CompetenciasSemConfirmacao);

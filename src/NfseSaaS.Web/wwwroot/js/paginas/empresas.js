@@ -126,6 +126,7 @@ function limparFormularioEmpresa() {
     trocarAbaEmpresa('tab-dados-empresa');
 
     document.getElementById('automacaoAtivo').checked = false;
+    document.getElementById('alerta-automacao-desligada-inatividade').classList.add('d-none');
     document.getElementById('automacaoFrequencia').value = '2';
     document.getElementById('automacaoDiaSemana').value = '1';
     document.getElementById('automacaoDiaDoMes').value = '1';
@@ -191,6 +192,7 @@ async function abrirModalEditarEmpresa(id) {
 
         const automacao = await apiFetch(`/api/empresas/${id}/automacao-nota-mensal`);
         document.getElementById('automacaoAtivo').checked = automacao.ativo;
+        document.getElementById('alerta-automacao-desligada-inatividade').classList.toggle('d-none', !automacao.desligadoPorInatividade);
         document.getElementById('automacaoFrequencia').value = automacao.frequencia;
         if (automacao.diaSemana !== null) document.getElementById('automacaoDiaSemana').value = automacao.diaSemana;
         if (automacao.diaDoMes !== null) document.getElementById('automacaoDiaDoMes').value = automacao.diaDoMes;

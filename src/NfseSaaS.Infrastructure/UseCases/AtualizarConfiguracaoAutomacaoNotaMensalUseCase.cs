@@ -42,11 +42,23 @@ public sealed class AtualizarConfiguracaoAutomacaoNotaMensalUseCase : IAtualizar
         configuracao.Modo = request.Modo;
         configuracao.UpdatedAt = DateTimeOffset.UtcNow;
 
-        // CompetenciasSemConfirmacao/DesligadoPorInatividade NÃO são
-        // tocados aqui de propósito — pertencem à Fase 6 (contador de
-        // automação), que ainda não existe. Editar a configuração agora
-        // não deveria zerar nem mexer num contador que nem existe de
-        // verdade ainda.
+        // Reativar (ligar o switch e salvar, de novo ou pela primeira
+        // vez) é o "clique manual" que zera o contador de inatividade —
+        // ver ConfiguracaoAutomacaoNotaMensal.DesligadoPorInatividade.
+        // UltimaCompetenciaAvaliada volta a null de propósito: sem isso,
+        // reativar meses depois de ter sido desligada faria o job, na
+        // primeira execução, comparar contra uma competência antiga e
+        // possivelmente desligar de novo na hora, sem dar chance
+        // nenhuma pro usuário. Só mexe nisso quando Ativo=true — deixar
+        // como estava se a pessoa está desligando (não tem por que
+        // zerar nada nesse caso).
+        if (request.Ativo)
+        {
+            configuracao.CompetenciasSemConfirmacao = 0;
+            configuracao.DesligadoPorInatividade = false;
+            configuracao.UltimaCompetenciaAvaliada = null;
+        }
+
         await _db.SaveChangesAsync(cancellationToken);
 
         // Reflete a configuração recém-salva no Hangfire — registra (ou

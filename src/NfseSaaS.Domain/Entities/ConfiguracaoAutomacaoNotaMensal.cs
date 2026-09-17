@@ -7,14 +7,15 @@ namespace NfseSaaS.Domain.Entities;
 /// Configuração da automação de Nota Mensal — uma linha por Empresa
 /// (1:1, EmpresaId único). Só os dados; o agendamento em si (calcular
 /// "próxima execução", disparar o job) fica com o motor de scheduling
-/// (Hangfire, adicionado numa fase seguinte) — esta entidade é lida por
-/// ele, não implementa nenhum cálculo de data.
+/// (Hangfire) — esta entidade é lida por ele, não implementa nenhum
+/// cálculo de data.
 ///
-/// CompetenciasSemConfirmacao e DesligadoPorInatividade existem no
-/// schema desde já, mas ainda não são escritos por ninguém nesta fase
-/// (isso é Fase 6 do desenho da automação — o contador de "2
-/// competências seguidas sem confirmação no modo ListarParaRevisao").
-/// Ficam default (0 / false) até lá.
+/// CompetenciasSemConfirmacao, DesligadoPorInatividade e
+/// UltimaCompetenciaAvaliada são escritos só pelo job (modo
+/// ListarParaRevisao) — ver ExecutarAutomacaoNotaMensalJob. No modo
+/// Automatico não existe "confirmação" pendente (a nota já sai
+/// emitida sozinha), então esses três campos não se aplicam e ficam
+/// parados em 0/false/null.
 /// </summary>
 public sealed class ConfiguracaoAutomacaoNotaMensal : BaseEntity, ITenantEntity
 {
@@ -36,9 +37,30 @@ public sealed class ConfiguracaoAutomacaoNotaMensal : BaseEntity, ITenantEntity
 
     public ModoAutomacaoNotaMensal Modo { get; set; }
 
-    /// <summary>Ver comentário da classe — não escrito nesta fase.</summary>
+    /// <summary>
+    /// Quantas competências SEGUIDAS (modo ListarParaRevisao) foram
+    /// avisadas por e-mail sem nenhuma nota Autorizada emitida. Zera
+    /// assim que uma competência tem confirmação; ao chegar em 2,
+    /// desliga a automação sozinha (ver DesligadoPorInatividade).
+    /// </summary>
     public int CompetenciasSemConfirmacao { get; set; }
 
-    /// <summary>Ver comentário da classe — não escrito nesta fase.</summary>
+    /// <summary>
+    /// true quando o próprio job desligou a automação (Ativo=false) por
+    /// 2 competências seguidas sem confirmação — distinto de um usuário
+    /// ter desligado manualmente. A tela usa isto pra explicar o motivo
+    /// em vez de deixar o switch desligado sem explicação nenhuma.
+    /// Reativar (ligar o switch e salvar) zera este campo de novo — ver
+    /// AtualizarConfiguracaoAutomacaoNotaMensalUseCase.
+    /// </summary>
     public bool DesligadoPorInatividade { get; set; }
+
+    /// <summary>
+    /// Último mês (dia 1) que o job já avaliou pra fins do contador
+    /// acima — existe só pra não contar a mesma competência mais de uma
+    /// vez quando a Frequencia é Diária/Semanal e o job roda várias
+    /// vezes dentro do mesmo mês. Null = nunca avaliado ainda (Empresa
+    /// nova na automação, ou acabou de ser reativada).
+    /// </summary>
+    public DateOnly? UltimaCompetenciaAvaliada { get; set; }
 }
