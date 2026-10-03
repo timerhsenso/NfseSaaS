@@ -5,6 +5,7 @@ public sealed record ClienteResponse(
     Guid EmpresaId,
     string CpfCnpj,
     string Nome,
+    string Apelido,
     string? Email,
     string? Telefone,
     string CodigoMunicipio,

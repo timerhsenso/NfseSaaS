@@ -340,12 +340,18 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
             return (clienteExistente.Id, false);
         }
 
-        // 3) realmente novo.
+        // 3) realmente novo. Apelido é obrigatório e o XML não tem um —
+        // gera a partir da razão social (o usuário ajusta depois no
+        // cadastro).
+        var nome = dados.TomadorNome();
+        var apelido = await ApelidoCliente.GerarAPartirDoNomeAsync(_db, empresaId, nome, cpfCnpj, cancellationToken);
+
         var novoCliente = new Cliente
         {
             EmpresaId = empresaId,
             CpfCnpj = cpfCnpj,
-            Nome = dados.TomadorNome(),
+            Nome = nome,
+            Apelido = apelido,
             Email = dados.TomadorEmail(),
             Telefone = dados.TomadorTelefone(),
             CodigoMunicipio = dados.TomadorCodigoMunicipio(),

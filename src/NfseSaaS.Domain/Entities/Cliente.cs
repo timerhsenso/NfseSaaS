@@ -17,6 +17,18 @@ public sealed class Cliente : BaseEntity, ITenantEntity
 
     public string Nome { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Nome curto de exibição, usado no lugar de Nome em TODA tela,
+    /// e-mail interno e nome de arquivo (PDF do DANFSe). Obrigatório e
+    /// único por Empresa (sem diferenciar maiúsculas/minúsculas).
+    ///
+    /// NUNCA entra no documento fiscal (DPS/XML, conteúdo do DANFSe,
+    /// snapshot): ali vale só Nome (razão social), que é o dado oficial.
+    /// </summary>
+    public string Apelido { get; set; } = string.Empty;
+
+    public const int TamanhoMaximoApelido = 40;
+
     public string? Email { get; set; }
 
     public string? Telefone { get; set; }

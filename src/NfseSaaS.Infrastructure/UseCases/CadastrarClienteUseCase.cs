@@ -30,11 +30,15 @@ public sealed class CadastrarClienteUseCase : ICadastrarClienteUseCase
         if (jaExisteClienteComMesmoDocumento)
             throw new RegraNegocioException($"Já existe um cliente com o CPF/CNPJ '{request.CpfCnpj}' cadastrado para esta empresa.");
 
+        var apelido = request.Apelido.Trim();
+        await ApelidoCliente.GarantirUnicoAsync(_db, request.EmpresaId, apelido, clienteIdIgnorado: null, cancellationToken);
+
         var cliente = new Cliente
         {
             EmpresaId = request.EmpresaId,
             CpfCnpj = request.CpfCnpj,
             Nome = request.Nome,
+            Apelido = apelido,
             Email = request.Email,
             Telefone = request.Telefone,
             CodigoMunicipio = request.CodigoMunicipio,
@@ -48,7 +52,7 @@ public sealed class CadastrarClienteUseCase : ICadastrarClienteUseCase
 
         _db.Clientes.Add(cliente);
 
-        _auditLogWriter.Registrar("CadastrarCliente", "Cliente", cliente.Id, new { cliente.EmpresaId, cliente.CpfCnpj, cliente.Nome });
+        _auditLogWriter.Registrar("CadastrarCliente", "Cliente", cliente.Id, new { cliente.EmpresaId, cliente.CpfCnpj, cliente.Nome, cliente.Apelido });
 
         await _db.SaveChangesAsync(cancellationToken);
 

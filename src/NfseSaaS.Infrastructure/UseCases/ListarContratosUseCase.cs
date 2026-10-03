@@ -27,7 +27,9 @@ public sealed class ListarContratosUseCase : IListarContratosUseCase
             from c in _db.Contratos.AsNoTracking()
             where c.EmpresaId == request.EmpresaId
             join cli in _db.Clientes.AsNoTracking() on c.ClienteId equals cli.Id
-            select new { Contrato = c, ClienteNome = cli.Nome };
+            // ClienteNome (nome de exibição) = Apelido; a razão social só
+            // entra na busca.
+            select new { Contrato = c, ClienteNome = cli.Apelido, ClienteRazaoSocial = cli.Nome };
 
         // Ativo (bool) foi removido — Status é a única fonte de verdade
         // agora (ver comentário em Contrato.cs).
@@ -42,7 +44,8 @@ public sealed class ListarContratosUseCase : IListarContratosUseCase
             var busca = request.Busca.Trim();
             query = query.Where(x =>
                 EF.Functions.ILike(x.Contrato.Descricao, $"%{busca}%") ||
-                EF.Functions.ILike(x.ClienteNome, $"%{busca}%"));
+                EF.Functions.ILike(x.ClienteNome, $"%{busca}%") ||
+                EF.Functions.ILike(x.ClienteRazaoSocial, $"%{busca}%"));
         }
 
         var totalCount = await query.CountAsync(cancellationToken);

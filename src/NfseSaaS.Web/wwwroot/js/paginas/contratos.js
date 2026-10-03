@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // (empresaId sempre filtra pra Empresa atual, igual o resto da tela).
         $('#clienteId').select2({
             dropdownParent: $('#modal-contrato'),
-            placeholder: 'Digite o CNPJ/CPF ou o nome do cliente',
+            placeholder: 'Digite o apelido, nome ou CNPJ/CPF do cliente',
             minimumInputLength: 2,
             language: {
                 inputTooShort: () => 'Digite pelo menos 2 caracteres para buscar.',
@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 delay: 300,
                 data: params => ({ empresaId: empresaAtualIdContratos, busca: params.term, pageSize: 20 }),
                 processResults: data => ({
-                    results: data.items.map(c => ({ id: c.id, text: `${c.nome} (${c.cpfCnpj})` }))
+                    results: data.items.map(c => ({ id: c.id, text: `${c.apelido} (${c.cpfCnpj})` }))
                 })
             }
         });

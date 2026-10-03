@@ -268,6 +268,20 @@ function dataLocalIso(data) {
     return `${ano}-${mes}-${dia}`;
 }
 
+/**
+ * Escapa texto pra interpolar com segurança em HTML montado por string
+ * (template literal + innerHTML / render do DataTables) — dado vindo do
+ * cadastro (nome, apelido) pode ter <, &, aspas.
+ */
+function escaparHtml(texto) {
+    return String(texto ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function confirmarAcao(mensagem, opcoes) {
     opcoes = opcoes || {};
     return new Promise(function (resolve) {

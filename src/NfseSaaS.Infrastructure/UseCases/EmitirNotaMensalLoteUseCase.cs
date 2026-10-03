@@ -55,7 +55,7 @@ public sealed class EmitirNotaMensalLoteUseCase : IEmitirNotaMensalLoteUseCase
             }
 
             var cliente = await _db.Clientes.AsNoTracking().FirstOrDefaultAsync(c => c.Id == contrato.ClienteId, cancellationToken);
-            var clienteNome = cliente?.Nome ?? "—";
+            var clienteNome = cliente?.Apelido ?? "—";
 
             var linhas = await (
                 from cs in _db.ContratoServicos.AsNoTracking()

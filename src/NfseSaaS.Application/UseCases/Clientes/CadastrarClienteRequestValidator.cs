@@ -1,4 +1,5 @@
 using FluentValidation;
+using NfseSaaS.Domain.Entities;
 using NfseSaaS.Application.Validation;
 
 namespace NfseSaaS.Application.UseCases.Clientes;
@@ -14,6 +15,12 @@ public sealed class CadastrarClienteRequestValidator : AbstractValidator<Cadastr
             .Must(DocumentoFiscalValidator.CpfOuCnpjValido).WithMessage("CpfCnpj inválido (dígito verificador não confere).");
 
         RuleFor(x => x.Nome).NotEmpty().MaximumLength(200);
+
+        // Medido no texto já aparado — o use case grava com Trim().
+        RuleFor(x => x.Apelido)
+            .NotEmpty().WithMessage("Apelido é obrigatório.")
+            .Must(a => a is null || a.Trim().Length <= Cliente.TamanhoMaximoApelido)
+            .WithMessage($"Apelido deve ter no máximo {Cliente.TamanhoMaximoApelido} caracteres.");
 
         RuleFor(x => x.Email).EmailAddress().When(x => !string.IsNullOrWhiteSpace(x.Email));
         RuleFor(x => x.Telefone).MaximumLength(20);

@@ -37,7 +37,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 render: (d, t, n) => `<input type="checkbox" class="form-check-input check-linha-nfse" data-id="${n.id}" ${nfseSelecionadas.has(n.id) ? 'checked' : ''}>`
             },
             { data: null, render: (d, t, n) => `${n.numeroDps}/${n.serieDps}` },
-            { data: 'clienteId', render: id => clientesPorId[id] ?? id },
+            {
+                // Apelido na grade; razão social na dica (title) do mouse.
+                data: 'clienteId',
+                render: id => {
+                    const c = clientesPorId[id];
+                    return c ? `<span title="${escaparHtml(c.nome)}">${escaparHtml(c.apelido)}</span>` : id;
+                }
+            },
             { data: 'valorServico', render: v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) },
             { data: 'valorLiquido', render: v => v == null ? '—' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) },
             {
@@ -148,7 +155,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // o select2 dispara no <select> por baixo.
         $('#emitir-clienteId').select2({
             dropdownParent: $('#modal-emitir-nfse'),
-            placeholder: 'Digite o CNPJ/CPF ou o nome do cliente',
+            placeholder: 'Digite o apelido, nome ou CNPJ/CPF do cliente',
             minimumInputLength: 2,
             language: {
                 inputTooShort: () => 'Digite pelo menos 2 caracteres para buscar.',
@@ -161,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 delay: 300,
                 data: params => ({ empresaId: empresaAtualIdNfse, busca: params.term, pageSize: 20 }),
                 processResults: data => ({
-                    results: data.items.map(c => ({ id: c.id, text: `${c.nome} (${c.cpfCnpj})` }))
+                    results: data.items.map(c => ({ id: c.id, text: `${c.apelido} (${c.cpfCnpj})` }))
                 })
             }
         });
@@ -238,11 +245,11 @@ async function carregarClientesParaMapa() {
     try {
         const resultado = await apiFetch(`/api/clientes?empresaId=${empresaAtualIdNfse}&pageSize=200&incluirInativos=true`);
         clientesPorId = {};
-        for (const c of resultado.items) clientesPorId[c.id] = c.nome;
+        for (const c of resultado.items) clientesPorId[c.id] = { apelido: c.apelido, nome: c.nome };
 
         const selectFiltroCliente = document.getElementById('filtro-cliente');
         selectFiltroCliente.innerHTML = '<option value="">Todos</option>' +
-            resultado.items.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+            resultado.items.map(c => `<option value="${c.id}">${escaparHtml(c.apelido)}</option>`).join('');
     } catch (err) {
         mostrarErro(err.message);
     }
@@ -332,7 +339,7 @@ async function abrirModalReenvioNfse(id) {
         // Cliente: select2 com fonte AJAX não conhece o texto de um Id
         // só pelo valor — recria a <option> (mesmo padrão dos catálogos).
         const selectCliente = document.getElementById('emitir-clienteId');
-        selectCliente.append(new Option(clientesPorId[nfse.clienteId] ?? nfse.clienteId, nfse.clienteId, true, true));
+        selectCliente.append(new Option(clientesPorId[nfse.clienteId]?.apelido ?? nfse.clienteId, nfse.clienteId, true, true));
         $('#emitir-clienteId').prop('disabled', true).trigger('change');
 
         const campoContrato = document.getElementById('campo-emitir-contrato');

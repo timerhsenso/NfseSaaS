@@ -6,6 +6,7 @@ public sealed record ContratoResponse(
     Guid Id,
     Guid EmpresaId,
     Guid ClienteId,
+    // Nome de EXIBIÇÃO do Cliente = Cliente.Apelido (não a razão social).
     string ClienteNome,
     string Descricao,
     IReadOnlyList<ContratoServicoResponse> Servicos,

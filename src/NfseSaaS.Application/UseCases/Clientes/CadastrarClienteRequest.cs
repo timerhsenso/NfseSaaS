@@ -5,6 +5,7 @@ public sealed record CadastrarClienteRequest(
     Guid EmpresaId,
     string CpfCnpj,
     string Nome,
+    string Apelido,
     string? Email,
     string? Telefone,
     string CodigoMunicipio,

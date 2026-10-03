@@ -39,12 +39,18 @@ public sealed class ObterDanfsePdfUseCase : IObterDanfsePdfUseCase
             throw new RegraNegocioException(
                 $"Só é possível obter o DANFSe de uma Nfse Autorizada ou Cancelada com ChaveAcesso (status atual: {nfse.Status}).");
 
-        var clienteNome = await _db.Clientes.AsNoTracking()
+        var clienteApelido = await _db.Clientes.AsNoTracking()
             .Where(c => c.Id == nfse.ClienteId)
-            .Select(c => c.Nome)
+            .Select(c => c.Apelido)
             .FirstOrDefaultAsync(cancellationToken) ?? "Cliente";
 
-        var nomeArquivo = MontarNomeArquivo(clienteNome, nfse.NumeroDps, nfse.DataEmissao ?? new DateTimeOffset(nfse.DataCompetencia.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero));
+        // Data de emissão no dia de Brasília: DataEmissao é UTC, e uma nota
+        // emitida depois das 21h sairia com o dia seguinte no nome.
+        var dataArquivo = nfse.DataEmissao is { } dataEmissao
+            ? DateOnly.FromDateTime(dataEmissao.ToOffset(OffsetBrasilia).DateTime)
+            : nfse.DataCompetencia;
+
+        var nomeArquivo = MontarNomeArquivo(clienteApelido, nfse.NumeroDps, dataArquivo);
 
         try
         {
@@ -78,8 +84,14 @@ public sealed class ObterDanfsePdfUseCase : IObterDanfsePdfUseCase
             NomeArquivo: nomeArquivo);
     }
 
+    // Fixo o ano todo (sem horário de verão desde 2019) — mesmo critério
+    // de ListarNfseUseCase.
+    private static readonly TimeSpan OffsetBrasilia = TimeSpan.FromHours(-3);
+
     /// <summary>
-    /// {Cliente sem espaço/caractere inválido}_{NumeroDps}_{MêsAno} — o
+    /// {Apelido do Cliente sem espaço/caractere inválido}_{NumeroDps}_{dd-MM-yyyy}
+    /// (ex.: COPENOR_152_02-10-2026.pdf). Apelido e não razão social: é
+    /// curto e é como o usuário identifica o cliente em todas as telas. O
     /// nome da Empresa (prestador) não entra de propósito: quando várias
     /// notas são baixadas juntas (lote), é a mesma Empresa em todas,
     /// então repetir o nome dela em cada arquivo não ajuda a diferenciar
@@ -87,13 +99,13 @@ public sealed class ObterDanfsePdfUseCase : IObterDanfsePdfUseCase
     /// nunca colide (2 notas pro mesmo cliente no mesmo mês viram 2
     /// arquivos diferentes).
     /// </summary>
-    internal static string MontarNomeArquivo(string clienteNome, int numeroDps, DateTimeOffset dataEmissao)
+    internal static string MontarNomeArquivo(string clienteApelido, int numeroDps, DateOnly data)
     {
         var invalidos = Path.GetInvalidFileNameChars();
-        var clienteSanitizado = new string(clienteNome.Where(c => c != ' ' && !invalidos.Contains(c)).ToArray());
+        var clienteSanitizado = new string(clienteApelido.Where(c => c != ' ' && !invalidos.Contains(c)).ToArray());
         if (string.IsNullOrWhiteSpace(clienteSanitizado))
             clienteSanitizado = "Cliente";
 
-        return $"{clienteSanitizado}_{numeroDps}_{dataEmissao:MMyyyy}.pdf";
+        return $"{clienteSanitizado}_{numeroDps}_{data:dd-MM-yyyy}.pdf";
     }
 }

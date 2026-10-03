@@ -20,6 +20,10 @@ public sealed class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
             .HasMaxLength(200)
             .IsRequired();
 
+        builder.Property(c => c.Apelido)
+            .HasMaxLength(Cliente.TamanhoMaximoApelido)
+            .IsRequired();
+
         builder.Property(c => c.Email)
             .HasMaxLength(200);
 
@@ -52,6 +56,13 @@ public sealed class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
         // (ex.: escritório de contabilidade que atende o mesmo cliente
         // final através de mais de uma empresa que gerencia).
         builder.HasIndex(c => new { c.TenantId, c.EmpresaId, c.CpfCnpj })
+            .IsUnique();
+
+        // Apelido único por Empresa. O índice compara exato (case-
+        // sensitive no Postgres) — é só o backstop de banco; a regra de
+        // verdade, sem diferenciar maiúsculas/minúsculas, é checada em
+        // CadastrarClienteUseCase/AtualizarClienteUseCase.
+        builder.HasIndex(c => new { c.TenantId, c.EmpresaId, c.Apelido })
             .IsUnique();
 
         // FK real (sem navigation property — este projeto usa acesso

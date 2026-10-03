@@ -10,6 +10,7 @@ namespace NfseSaaS.Application.UseCases.NotaMensal;
 public sealed record ContratoCandidatoNotaMensalResponse(
     Guid ContratoId,
     Guid ClienteId,
+    // Nome de EXIBIÇÃO do Cliente = Cliente.Apelido (não a razão social).
     string ClienteNome,
     string Descricao,
     IReadOnlyList<LinhaCandidataNotaMensalResponse> Linhas,

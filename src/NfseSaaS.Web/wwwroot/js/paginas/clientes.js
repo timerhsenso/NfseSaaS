@@ -6,6 +6,7 @@ let empresaAtualId;
 
 document.addEventListener('DOMContentLoaded', function () {
     const colunas = [
+        { data: 'apelido' },
         { data: 'nome' },
         { data: 'cpfCnpj' },
         { data: 'codigoMunicipio' },
@@ -102,6 +103,7 @@ async function abrirModalEditarCliente(id) {
         document.getElementById('cpfCnpj').value = cliente.cpfCnpj;
         document.getElementById('cpfCnpj').disabled = true; // não editável, mesma regra da API
         document.getElementById('nome').value = cliente.nome;
+        document.getElementById('apelido').value = cliente.apelido;
         document.getElementById('email').value = cliente.email ?? '';
         document.getElementById('telefone').value = cliente.telefone ?? '';
         document.getElementById('codigoMunicipio').value = cliente.codigoMunicipio;
@@ -122,6 +124,7 @@ function montarPayloadCliente() {
     return {
         empresaId: empresaAtualId,
         nome: document.getElementById('nome').value,
+        apelido: document.getElementById('apelido').value.trim(),
         email: document.getElementById('email').value || null,
         telefone: document.getElementById('telefone').value || null,
         codigoMunicipio: document.getElementById('codigoMunicipio').value,
@@ -204,6 +207,10 @@ async function consultarCnpjCliente() {
         const dados = await apiFetch(`/api/consultas/cnpj/${documento}`);
 
         document.getElementById('nome').value = dados.razaoSocial ?? '';
+        // Sugere o nome fantasia como Apelido só se o campo estiver vazio
+        // — nunca sobrescreve um apelido que o usuário já escolheu.
+        const campoApelido = document.getElementById('apelido');
+        if (!campoApelido.value.trim() && dados.nomeFantasia) campoApelido.value = dados.nomeFantasia.trim().slice(0, 40);
         if (dados.telefone) document.getElementById('telefone').value = dados.telefone;
         if (dados.email) document.getElementById('email').value = dados.email;
         if (dados.codigoMunicipio) document.getElementById('codigoMunicipio').value = dados.codigoMunicipio;

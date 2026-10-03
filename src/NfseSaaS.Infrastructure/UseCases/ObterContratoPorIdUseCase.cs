@@ -22,7 +22,7 @@ public sealed class ObterContratoPorIdUseCase : IObterContratoPorIdUseCase
             where c.Id == id
             join cli in _db.Clientes.AsNoTracking() on c.ClienteId equals cli.Id
             join emp in _db.Empresas.AsNoTracking() on c.EmpresaId equals emp.Id
-            select new { Contrato = c, ClienteNome = cli.Nome, emp.DiasAlertaReajusteContratoPadrao })
+            select new { Contrato = c, ClienteNome = cli.Apelido, emp.DiasAlertaReajusteContratoPadrao })
             .FirstOrDefaultAsync(cancellationToken);
 
         if (resultado is null)

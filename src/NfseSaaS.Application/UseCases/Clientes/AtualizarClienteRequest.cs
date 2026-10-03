@@ -3,6 +3,7 @@ namespace NfseSaaS.Application.UseCases.Clientes;
 /// <summary>CpfCnpj não é editável — mesmo raciocínio do Cnpj da Empresa.</summary>
 public sealed record AtualizarClienteRequest(
     string Nome,
+    string Apelido,
     string? Email,
     string? Telefone,
     string CodigoMunicipio,

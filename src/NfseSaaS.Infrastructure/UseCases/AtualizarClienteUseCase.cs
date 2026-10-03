@@ -24,7 +24,11 @@ public sealed class AtualizarClienteUseCase : IAtualizarClienteUseCase
         if (cliente is null)
             throw new RecursoNaoEncontradoException($"Cliente {id} não encontrado.");
 
+        var apelido = request.Apelido.Trim();
+        await ApelidoCliente.GarantirUnicoAsync(_db, cliente.EmpresaId, apelido, clienteIdIgnorado: cliente.Id, cancellationToken);
+
         cliente.Nome = request.Nome;
+        cliente.Apelido = apelido;
         cliente.Email = request.Email;
         cliente.Telefone = request.Telefone;
         cliente.CodigoMunicipio = request.CodigoMunicipio;
@@ -35,7 +39,7 @@ public sealed class AtualizarClienteUseCase : IAtualizarClienteUseCase
         cliente.Bairro = request.Bairro;
         cliente.Uf = request.Uf;
 
-        _auditLogWriter.Registrar("AtualizarCliente", "Cliente", cliente.Id, new { cliente.Nome });
+        _auditLogWriter.Registrar("AtualizarCliente", "Cliente", cliente.Id, new { cliente.Nome, cliente.Apelido });
 
         await _db.SaveChangesAsync(cancellationToken);
     }

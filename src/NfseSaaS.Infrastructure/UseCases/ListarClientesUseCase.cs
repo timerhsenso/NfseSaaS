@@ -31,17 +31,20 @@ public sealed class ListarClientesUseCase : IListarClientesUseCase
         if (!string.IsNullOrWhiteSpace(request.Busca))
         {
             var busca = request.Busca.Trim();
-            query = query.Where(c => EF.Functions.ILike(c.Nome, $"%{busca}%") || EF.Functions.ILike(c.CpfCnpj, $"%{busca}%"));
+            query = query.Where(c =>
+                EF.Functions.ILike(c.Apelido, $"%{busca}%") ||
+                EF.Functions.ILike(c.Nome, $"%{busca}%") ||
+                EF.Functions.ILike(c.CpfCnpj, $"%{busca}%"));
         }
 
         var totalCount = await query.CountAsync(cancellationToken);
 
         var itens = await query
-            .OrderBy(c => c.Nome)
+            .OrderBy(c => c.Apelido)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(c => new ClienteResponse(
-                c.Id, c.EmpresaId, c.CpfCnpj, c.Nome, c.Email, c.Telefone, c.CodigoMunicipio,
+                c.Id, c.EmpresaId, c.CpfCnpj, c.Nome, c.Apelido, c.Email, c.Telefone, c.CodigoMunicipio,
                 c.Cep, c.Logradouro, c.Numero, c.Complemento, c.Bairro, c.Uf, c.Ativo, c.CreatedAt, c.UpdatedAt))
             .ToListAsync(cancellationToken);
 

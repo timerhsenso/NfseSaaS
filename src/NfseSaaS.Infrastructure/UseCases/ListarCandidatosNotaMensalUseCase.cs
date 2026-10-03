@@ -25,7 +25,7 @@ public sealed class ListarCandidatosNotaMensalUseCase : IListarCandidatosNotaMen
             from c in _db.Contratos.AsNoTracking()
             where c.EmpresaId == empresaId && c.TipoCobranca == TipoCobrancaContrato.Mensal && c.Status == StatusContrato.Ativo
             join cli in _db.Clientes.AsNoTracking() on c.ClienteId equals cli.Id
-            select new { Contrato = c, ClienteNome = cli.Nome })
+            select new { Contrato = c, ClienteNome = cli.Apelido })
             .ToListAsync(cancellationToken);
 
         var contratoIds = contratos.Select(x => x.Contrato.Id).ToList();
