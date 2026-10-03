@@ -29,4 +29,14 @@ public sealed record NfseResponse(
     string? CodigoErro,
     string? MensagemErro,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? UpdatedAt);
+    DateTimeOffset? UpdatedAt,
+    Guid? ServicoId,
+    // Reenvio de nota rejeitada: de qual tentativa esta veio, e (na
+    // rejeitada) qual tentativa a substituiu. PodeReenviar já resolve a
+    // regra inteira no backend (ver Nfse.RejeicaoPermiteReenvio) — a
+    // tela só decide se mostra o botão.
+    Guid? ReenvioDeNfseId,
+    int? ReenvioDeNumeroDps,
+    Guid? ReenviadaComoNfseId,
+    int? ReenviadaComoNumeroDps,
+    bool PodeReenviar);

@@ -21,6 +21,9 @@ let modalMotivoCancelamento;
 let empresaAtualIdNfse;
 let clientesPorId = {};
 let nfseDetalheAtualId;
+// Id da nota Rejeitada sendo reenviada pelo modal de emissão (null =
+// emissão normal). Ver abrirModalReenvioNfse.
+let nfseReenvioAtualId = null;
 let modalNotaMensal;
 let candidatosNotaMensal = []; // estado local da grade (inclui selecionado/valorAjustado/status/mensagem por linha)
 let nfseSelecionadas = new Set(); // ids marcados pra download em lote — sobrevive a paginação/redraw do DataTable, só é limpo quando os filtros mudam
@@ -39,9 +42,12 @@ document.addEventListener('DOMContentLoaded', function () {
             { data: 'valorLiquido', render: v => v == null ? '—' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) },
             {
                 data: 'status',
-                render: v => {
+                render: (v, t, n) => {
                     const r = ROTULOS_STATUS[v] ?? { texto: 'Desconhecido', cor: 'secondary' };
-                    return `<span class="badge text-bg-${r.cor}">${r.texto}</span>`;
+                    const reenviada = n.reenviadaComoNumeroDps != null
+                        ? `<br><small class="text-muted">Reenviada → nº ${n.reenviadaComoNumeroDps}</small>`
+                        : '';
+                    return `<span class="badge text-bg-${r.cor}">${r.texto}</span>${reenviada}`;
                 }
             },
             {
@@ -65,7 +71,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     const botaoPdf = temPdf
                         ? `<a class="btn btn-sm btn-outline-secondary" href="/api/nfse/${n.id}/danfse-pdf" title="Baixar PDF (DANFSe)"><i class="bi bi-file-earmark-pdf"></i></a>`
                         : '';
-                    return `<button type="button" class="btn btn-sm btn-outline-secondary btn-ver-detalhe" data-id="${n.id}"><i class="bi bi-eye"></i> Detalhes</button> ${botaoPdf}`;
+                    // podeReenviar já vem resolvido pelo backend (rejeição
+                    // segura de reenviar + ainda não reenviada) — a tela
+                    // só soma a permissão de emitir.
+                    const botaoReenviar = podeEmitirNfse && n.podeReenviar
+                        ? `<button type="button" class="btn btn-sm btn-outline-warning btn-reenviar-nfse" data-id="${n.id}" title="Reenviar com os dados atuais do cadastro"><i class="bi bi-arrow-repeat"></i> Reenviar</button>`
+                        : '';
+                    return `<button type="button" class="btn btn-sm btn-outline-secondary btn-ver-detalhe" data-id="${n.id}"><i class="bi bi-eye"></i> Detalhes</button> ${botaoPdf} ${botaoReenviar}`;
                 }
             }
         ],
@@ -83,6 +95,9 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('tabela-nfse').addEventListener('click', async function (e) {
         const botao = e.target.closest('.btn-ver-detalhe');
         if (botao) await executarComBotaoDesabilitado(botao, () => abrirDetalheNfse(botao.dataset.id));
+
+        const botaoReenviar = e.target.closest('.btn-reenviar-nfse');
+        if (botaoReenviar) await executarComBotaoDesabilitado(botaoReenviar, () => abrirModalReenvioNfse(botaoReenviar.dataset.id));
     });
 
     document.getElementById('tabela-nfse').addEventListener('change', function (e) {
@@ -151,6 +166,10 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
         document.getElementById('emitir-clienteId').addEventListener('change', function () {
+            // No reenvio, Cliente e Contrato ficam travados nos da nota
+            // original — buscar os Contratos aqui sobrescreveria Serviço/
+            // valor/descrição com os do Contrato (aplicarContratoSelecionado).
+            if (nfseReenvioAtualId) return;
             carregarContratosDoCliente(this.value);
         });
 
@@ -274,6 +293,87 @@ const ROTULOS_SITUACAO_CONTRATO = {
 let contratosDoClienteAtual = [];
 
 async function abrirModalEmitirNfse() {
+    try {
+        await prepararModalEmitirNfse();
+        modalEmitirNfse.show();
+    } catch (err) {
+        mostrarErro(err.message);
+    }
+}
+
+// Reenvio de nota Rejeitada: mesmo modal de emissão, pré-preenchido com
+// Serviço/valor/descrição/competência da tentativa rejeitada. Cliente e
+// Contrato travados (o backend exige os mesmos da original). Empresa,
+// Cliente e Serviço são relidos do cadastro ATUAL no backend ao emitir —
+// é isso que faz a correção feita no cadastro (ex.: CEP) valer.
+async function abrirModalReenvioNfse(id) {
+    try {
+        const nfse = await apiFetch(`/api/nfse/${id}`);
+        await prepararModalEmitirNfse();
+
+        nfseReenvioAtualId = nfse.id;
+        document.getElementById('titulo-modal-emitir-nfse').textContent = `Reenviar nota rejeitada — DPS nº ${nfse.numeroDps}`;
+        document.getElementById('btn-confirmar-emissao').textContent = 'Reenviar';
+
+        // Montado via textContent: a mensagem vem da SEFIN/validação,
+        // nunca entra no innerHTML.
+        const aviso = document.getElementById('aviso-reenvio-nfse');
+        aviso.replaceChildren();
+        const titulo = document.createElement('strong');
+        titulo.textContent = 'Erro da tentativa anterior: ';
+        const erro = document.createElement('span');
+        erro.textContent = `${nfse.codigoErro ?? ''} — ${nfse.mensagemErro ?? 'motivo não informado'}`;
+        const dica = document.createElement('div');
+        dica.className = 'small mt-1';
+        dica.textContent = 'Empresa, Cliente e Serviço serão lidos novamente do cadastro atual. Se o erro veio do cadastro, corrija-o antes de reenviar.';
+        aviso.append(titulo, erro, dica);
+        aviso.classList.remove('d-none');
+
+        // Cliente: select2 com fonte AJAX não conhece o texto de um Id
+        // só pelo valor — recria a <option> (mesmo padrão dos catálogos).
+        const selectCliente = document.getElementById('emitir-clienteId');
+        selectCliente.append(new Option(clientesPorId[nfse.clienteId] ?? nfse.clienteId, nfse.clienteId, true, true));
+        $('#emitir-clienteId').prop('disabled', true).trigger('change');
+
+        const campoContrato = document.getElementById('campo-emitir-contrato');
+        const selectContrato = document.getElementById('emitir-contratoId');
+        if (nfse.contratoId) {
+            selectContrato.innerHTML = `<option value="${nfse.contratoId}">Mesmo contrato da nota original</option>`;
+            selectContrato.disabled = true;
+            campoContrato.classList.remove('d-none');
+        }
+
+        // Serviço da nota original, se ainda existir no catálogo; senão
+        // (nota antiga, sem ServicoId, ou Serviço excluído/inativo) o
+        // usuário escolhe — o campo é obrigatório.
+        const selectServico = document.getElementById('emitir-servicoId');
+        const servicoExiste = nfse.servicoId && [...selectServico.options].some(o => o.value === nfse.servicoId);
+        if (servicoExiste) {
+            selectServico.value = nfse.servicoId;
+        } else {
+            selectServico.insertBefore(new Option('Selecione o serviço…', '', true, true), selectServico.firstChild);
+        }
+
+        document.getElementById('emitir-descricaoServico').value = nfse.descricaoServico;
+        document.getElementById('emitir-valorServico').value = nfse.valorServico;
+        document.getElementById('emitir-dataCompetencia').value = nfse.dataCompetencia;
+
+        modalEmitirNfse.show();
+    } catch (err) {
+        mostrarErro(err.message);
+    }
+}
+
+// Deixa o modal de emissão limpo (modo emissão normal) e com a lista de
+// Serviços carregada. Não abre o modal — quem chama decide.
+async function prepararModalEmitirNfse() {
+    nfseReenvioAtualId = null;
+    document.getElementById('titulo-modal-emitir-nfse').textContent = 'Emitir nota fiscal';
+    document.getElementById('btn-confirmar-emissao').textContent = 'Emitir';
+    document.getElementById('aviso-reenvio-nfse').classList.add('d-none');
+    document.getElementById('emitir-contratoId').disabled = false;
+    $('#emitir-clienteId').prop('disabled', false);
+
     document.getElementById('form-emitir-nfse').reset();
     document.getElementById('erro-emitir-nfse').classList.add('d-none');
     document.getElementById('emitir-dataCompetencia').value = dataLocalIso();
@@ -283,26 +383,20 @@ async function abrirModalEmitirNfse() {
     document.getElementById('emitir-clienteId').innerHTML = '';
     $('#emitir-clienteId').val(null).trigger('change');
 
-    try {
-        const servicos = await apiFetch(`/api/servicos?empresaId=${empresaAtualIdNfse}&pageSize=200`);
+    const servicos = await apiFetch(`/api/servicos?empresaId=${empresaAtualIdNfse}&pageSize=200`);
 
-        const selectServico = document.getElementById('emitir-servicoId');
-        selectServico.innerHTML = servicos.items.map(s => `<option value="${s.id}" data-descricao="${s.descricao}" data-valor="${s.valorPadrao}">${s.descricao}</option>`).join('');
+    const selectServico = document.getElementById('emitir-servicoId');
+    selectServico.innerHTML = servicos.items.map(s => `<option value="${s.id}" data-descricao="${s.descricao}" data-valor="${s.valorPadrao}">${s.descricao}</option>`).join('');
 
-        // Ao trocar o serviço MANUALMENTE, pré-preenche descrição/valor
-        // com o padrão do catálogo — só entra em jogo quando não há
-        // Contrato selecionado (ver selectContrato.onchange abaixo, que
-        // sobrescreve isso quando o usuário escolhe um Contrato).
-        selectServico.onchange = function () {
-            const opcao = selectServico.selectedOptions[0];
-            document.getElementById('emitir-descricaoServico').value = opcao?.dataset.descricao ?? '';
-            document.getElementById('emitir-valorServico').value = opcao?.dataset.valor ?? '';
-        };
-
-        modalEmitirNfse.show();
-    } catch (err) {
-        mostrarErro(err.message);
-    }
+    // Ao trocar o serviço MANUALMENTE, pré-preenche descrição/valor
+    // com o padrão do catálogo — só entra em jogo quando não há
+    // Contrato selecionado (ver selectContrato.onchange abaixo, que
+    // sobrescreve isso quando o usuário escolhe um Contrato).
+    selectServico.onchange = function () {
+        const opcao = selectServico.selectedOptions[0];
+        document.getElementById('emitir-descricaoServico').value = opcao?.dataset.descricao ?? '';
+        document.getElementById('emitir-valorServico').value = opcao?.dataset.valor ?? '';
+    };
 }
 
 async function carregarContratosDoCliente(clienteId) {
@@ -406,7 +500,8 @@ async function emitirNfse(e) {
         // Chave de idempotência própria desta tentativa de clique — se o
         // usuário reenviar (ex.: timeout + segundo clique acidental), a
         // API reconhece a mesma tentativa e não duplica a nota.
-        idempotencyKey: crypto.randomUUID()
+        idempotencyKey: crypto.randomUUID(),
+        reenvioDeNfseId: nfseReenvioAtualId
     };
 
     try {
@@ -449,6 +544,8 @@ async function abrirDetalheNfse(id) {
                 ${nfse.valorLiquido == null ? '—' : Number(nfse.valorLiquido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </dd>
             <dt class="col-sm-4">Erro</dt><dd class="col-sm-8">${nfse.mensagemErro ? `${nfse.codigoErro ?? ''} — ${nfse.mensagemErro}` : '—'}</dd>
+            ${nfse.reenvioDeNumeroDps != null ? `<dt class="col-sm-4">Reenvio de</dt><dd class="col-sm-8">DPS nº ${nfse.reenvioDeNumeroDps} (rejeitada)</dd>` : ''}
+            ${nfse.reenviadaComoNumeroDps != null ? `<dt class="col-sm-4">Reenviada como</dt><dd class="col-sm-8">DPS nº ${nfse.reenviadaComoNumeroDps}</dd>` : ''}
         `;
 
         document.getElementById('detalhe-nfse-eventos').innerHTML = eventos.length
@@ -527,6 +624,7 @@ async function sincronizarComSefin() {
 
         mostrarToast(
             `Sincronização concluída — importadas: ${resultado.notasImportadas}, já existentes: ${resultado.notasJaExistentes}, ` +
+            `canceladas/substituídas atualizadas: ${resultado.notasAtualizadasPorEvento}, ` +
             `ignoradas por conflito: ${resultado.notasIgnoradasPorConflitoNumeracao}, clientes criados: ${resultado.clientesCriados}.`,
             'sucesso'
         );

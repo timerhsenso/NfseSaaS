@@ -10,6 +10,7 @@ public sealed class EmitirNfseRequestValidator : AbstractValidator<EmitirNfseReq
         RuleFor(x => x.ClienteId).NotEmpty();
         RuleFor(x => x.ServicoId).NotEmpty();
         RuleFor(x => x.ContratoId).NotEqual(Guid.Empty).When(x => x.ContratoId.HasValue);
+        RuleFor(x => x.ReenvioDeNfseId).NotEqual(Guid.Empty).When(x => x.ReenvioDeNfseId.HasValue);
 
         RuleFor(x => x.ValorServico).GreaterThan(0);
 

@@ -126,5 +126,27 @@ public sealed class NfseConfiguration : IEntityTypeConfiguration<Nfse>
             .WithMany()
             .HasForeignKey(n => n.ContratoId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // SET NULL (não Restrict): ServicoId é só referência pro reenvio
+        // de nota rejeitada — a nota em si vive do snapshot fiscal.
+        // Excluir um Servico continua permitido como sempre foi (ver
+        // ExcluirServicoUseCase); a nota só perde a referência.
+        builder.HasOne<Servico>()
+            .WithMany()
+            .HasForeignKey(n => n.ServicoId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Auto-referência: reenvio aponta pra tentativa rejeitada.
+        // Único (filtrado): uma rejeitada nunca gera dois reenvios —
+        // backstop real contra clique duplo, além da checagem amigável
+        // em EmitirNfseUseCase.
+        builder.HasOne<Nfse>()
+            .WithMany()
+            .HasForeignKey(n => n.ReenvioDeNfseId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(n => n.ReenvioDeNfseId)
+            .IsUnique()
+            .HasFilter("\"ReenvioDeNfseId\" IS NOT NULL");
     }
 }

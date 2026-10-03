@@ -1,5 +1,7 @@
 using System.Text.Json;
+using System.Xml;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.SincronizacaoSefin;
@@ -11,6 +13,7 @@ using NfseSaaS.Infrastructure.Persistence;
 using NfseSaaS.Infrastructure.SincronizacaoSefin;
 using NfseSaaS.Nacional.Clients;
 using NfseSaaS.Nacional.Helpers;
+using NfseSaaS.Nacional.Models;
 
 namespace NfseSaaS.Infrastructure.UseCases;
 
@@ -24,6 +27,13 @@ namespace NfseSaaS.Infrastructure.UseCases;
 /// (tornar ClienteId anulável pra "notas externas") espalharia essa
 /// exceção por toda a UI/relatórios que hoje assumem Cliente sempre
 /// presente — o find-or-create é a opção de menor ondulação.
+///
+/// Situação da nota: o XML da NFS-e é imutável (assinado na geração), então
+/// toda nota importada nasce Autorizada. Cancelamento/substituição chegam
+/// pelo ADN como documentos de EVENTO separados, com NSU próprio, e são
+/// aplicados por AplicarEventoAsync — inclusive sobre notas importadas em
+/// sincronizações anteriores ou emitidas por este próprio sistema e
+/// canceladas depois no portal.
 /// </summary>
 public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUseCase
 {
@@ -31,17 +41,20 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
     private readonly IAdnDistribuicaoClient _adnClient;
     private readonly IAuditLogWriter _auditLogWriter;
     private readonly INfseEventoWriter _nfseEventoWriter;
+    private readonly ILogger<SincronizarNotasDaSefinUseCase> _logger;
 
     public SincronizarNotasDaSefinUseCase(
         AppDbContext db,
         IAdnDistribuicaoClient adnClient,
         IAuditLogWriter auditLogWriter,
-        INfseEventoWriter nfseEventoWriter)
+        INfseEventoWriter nfseEventoWriter,
+        ILogger<SincronizarNotasDaSefinUseCase> logger)
     {
         _db = db;
         _adnClient = adnClient;
         _auditLogWriter = auditLogWriter;
         _nfseEventoWriter = nfseEventoWriter;
+        _logger = logger;
     }
 
     public async Task<SincronizacaoSefinResponse> ExecutarAsync(Guid empresaId, CancellationToken cancellationToken)
@@ -52,7 +65,7 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
         var ultimoNsu = empresa.UltimoNsuDistribuicao ?? 0;
         var lote = await _adnClient.ConsultarPorNsuAsync(empresaId, empresa.TipoAmbiente.ParaTpAmb(), ultimoNsu, cancellationToken);
 
-        int importadas = 0, jaExistentes = 0, ignoradasPorConflito = 0, clientesCriados = 0;
+        int importadas = 0, jaExistentes = 0, ignoradasPorConflito = 0, clientesCriados = 0, atualizadasPorEvento = 0;
         var maiorNsu = ultimoNsu;
 
         // Cache em memória dos Clientes criados NESTA execução — sem
@@ -77,10 +90,28 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
         // separadamente), preservando as demais.
         var numeracaoJaVista = new HashSet<(int NumeroDps, string SerieDps)>();
 
-        foreach (var item in lote.LoteDFe.Where(d => d.TipoDocumento == "NFSE").OrderBy(d => d.NSU))
+        // Notas adicionadas NESTA execução (ainda não salvas), por
+        // ChaveAcesso — um evento de cancelamento pode vir no mesmo lote
+        // da própria nota (NSU maior), antes do SaveChanges final.
+        var notasNestaExecucao = new Dictionary<string, Nfse>();
+
+        // TODOS os documentos do lote, não só NFSE: o cursor de NSU
+        // precisa avançar sobre eventos também, e os eventos precisam ser
+        // processados. Antes o filtro "NFSE" descartava os eventos e o
+        // cursor passava por cima deles — o cancelamento nunca era visto.
+        // Ordem por NSU garante que a nota é processada antes dos seus
+        // eventos quando os dois vêm no mesmo lote.
+        foreach (var item in lote.LoteDFe.OrderBy(d => d.NSU))
         {
             if (item.NSU > maiorNsu)
                 maiorNsu = item.NSU;
+
+            if (item.TipoDocumento != "NFSE")
+            {
+                if (await AplicarEventoAsync(empresaId, item, notasNestaExecucao, cancellationToken))
+                    atualizadasPorEvento++;
+                continue;
+            }
 
             var jaExiste = await _db.NotasFiscais.AsNoTracking()
                 .AnyAsync(n => n.EmpresaId == empresaId && n.ChaveAcesso == item.ChaveAcesso, cancellationToken);
@@ -110,13 +141,6 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
             var (clienteId, clienteFoiCriado) = await ObterOuCriarClienteAsync(empresaId, dados, clientesNestaExecucao, cancellationToken);
             if (clienteFoiCriado)
                 clientesCriados++;
-
-            var status = dados.CStat() switch
-            {
-                "101" => NfseStatus.Cancelada,
-                "102" => NfseStatus.Substituida,
-                _ => NfseStatus.Autorizada
-            };
 
             var snapshot = new NfseSnapshotFiscal(
                 Versao: 1,
@@ -159,7 +183,11 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
                 ValorLiquido = dados.ValorLiquido(),
                 XmlNfse = xml,
                 SnapshotFiscalJson = JsonSerializer.Serialize(snapshot),
-                Status = status,
+                // Sempre Autorizada aqui: o XML da NFS-e não muda depois de
+                // gerado (cStat dele não reflete cancelamento posterior).
+                // Cancelamento/substituição vêm pelos eventos do ADN — ver
+                // AplicarEventoAsync.
+                Status = NfseStatus.Autorizada,
                 // Simplificação conhecida: usa o ambiente ATUAL da
                 // Empresa, não o tpAmb original gravado no XML importado
                 // (NfseXmlImportDados ainda não expõe esse campo). Numa
@@ -172,6 +200,7 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
             };
 
             _db.NotasFiscais.Add(nfse);
+            notasNestaExecucao[item.ChaveAcesso] = nfse;
             _nfseEventoWriter.Registrar(nfse.Id, NfseEventoTipo.ImportadaDaSefin, mensagem: $"NSU {item.NSU}, via Distribuição de DF-e (ADN).");
             importadas++;
         }
@@ -179,7 +208,7 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
         empresa.UltimoNsuDistribuicao = maiorNsu;
 
         _auditLogWriter.Registrar("SincronizarNotasDaSefin", "Empresa", empresaId,
-            new { importadas, jaExistentes, ignoradasPorConflito, clientesCriados, ultimoNsu = maiorNsu });
+            new { importadas, jaExistentes, ignoradasPorConflito, clientesCriados, atualizadasPorEvento, ultimoNsu = maiorNsu });
 
         await _db.SaveChangesAsync(cancellationToken);
 
@@ -198,7 +227,83 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
         // tabela, não só o lote de agora.
         await AlinharContadorDpsAsync(empresaId, cancellationToken);
 
-        return new SincronizacaoSefinResponse(importadas, jaExistentes, ignoradasPorConflito, clientesCriados, maiorNsu);
+        return new SincronizacaoSefinResponse(importadas, jaExistentes, ignoradasPorConflito, clientesCriados, atualizadasPorEvento, maiorNsu);
+    }
+
+    /// <summary>
+    /// Aplica um documento de evento do ADN sobre a NFS-e correspondente.
+    /// Só cancelamento (101101), cancelamento por ofício (305101) e
+    /// cancelamento por substituição (105102) mudam a situação da nota;
+    /// os demais tipos são só registrados no log.
+    ///
+    /// Idempotente: nota já Cancelada/Substituida não é tocada de novo —
+    /// cobre tanto reprocessar o mesmo NSU quanto o cancelamento feito
+    /// por este próprio sistema (CancelarNfseUseCase), que também volta
+    /// pelo ADN como evento.
+    /// </summary>
+    /// <returns>true se a situação da nota foi alterada.</returns>
+    private async Task<bool> AplicarEventoAsync(
+        Guid empresaId, DfeItem item, Dictionary<string, Nfse> notasNestaExecucao, CancellationToken cancellationToken)
+    {
+        NfseEventoXmlImportDados evento;
+        try
+        {
+            evento = new NfseEventoXmlImportDados(GZipHelper.DescomprimirDeBase64(item.ArquivoXml));
+        }
+        catch (XmlException ex)
+        {
+            _logger.LogWarning(ex,
+                "Sincronização SEFIN: Empresa {EmpresaId}, NSU {Nsu} (TipoDocumento {TipoDocumento}) com XML ilegível — ignorado.",
+                empresaId, item.NSU, item.TipoDocumento);
+            return false;
+        }
+
+        var codigoEvento = evento.CodigoTipoEvento();
+        var novoStatus = NfseEventoXmlImportDados.StatusResultante(codigoEvento);
+
+        if (novoStatus is null)
+        {
+            _logger.LogInformation(
+                "Sincronização SEFIN: Empresa {EmpresaId}, NSU {Nsu} (TipoDocumento {TipoDocumento}, evento {CodigoEvento}) não altera a situação da nota — ignorado.",
+                empresaId, item.NSU, item.TipoDocumento, codigoEvento ?? "(sem grupo de evento)");
+            return false;
+        }
+
+        var chaveAcesso = evento.ChaveAcesso() ?? item.ChaveAcesso;
+
+        if (!notasNestaExecucao.TryGetValue(chaveAcesso, out var nfse))
+        {
+            nfse = await _db.NotasFiscais
+                .FirstOrDefaultAsync(n => n.EmpresaId == empresaId && n.ChaveAcesso == chaveAcesso, cancellationToken);
+        }
+
+        if (nfse is null)
+        {
+            // Nota não existe aqui (ex.: foi pulada por conflito de
+            // numeração) — não há o que atualizar.
+            _logger.LogWarning(
+                "Sincronização SEFIN: Empresa {EmpresaId}, NSU {Nsu} — evento {CodigoEvento} para a chave {ChaveAcesso}, mas a nota não existe neste sistema — ignorado.",
+                empresaId, item.NSU, codigoEvento, chaveAcesso);
+            return false;
+        }
+
+        if (nfse.Status is NfseStatus.Cancelada or NfseStatus.Substituida)
+            return false;
+
+        nfse.Status = novoStatus.Value;
+
+        var tipoEvento = novoStatus == NfseStatus.Cancelada ? NfseEventoTipo.Cancelada : NfseEventoTipo.Substituida;
+        var mensagem = $"Registrado na SEFIN (NSU {item.NSU}, via Distribuição de DF-e/ADN). {evento.Motivo()}".Trim();
+        if (mensagem.Length > 1000)
+            mensagem = mensagem[..1000];
+
+        _nfseEventoWriter.Registrar(nfse.Id, tipoEvento, codigoEvento, mensagem);
+
+        _logger.LogInformation(
+            "Sincronização SEFIN: Empresa {EmpresaId}, NSU {Nsu} — Nfse {NfseId} ({ChaveAcesso}) passou para {Status} pelo evento {CodigoEvento}.",
+            empresaId, item.NSU, nfse.Id, chaveAcesso, nfse.Status, codigoEvento);
+
+        return true;
     }
 
     private async Task AlinharContadorDpsAsync(Guid empresaId, CancellationToken cancellationToken)

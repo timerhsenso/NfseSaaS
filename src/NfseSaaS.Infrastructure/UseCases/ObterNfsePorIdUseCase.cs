@@ -21,9 +21,27 @@ public sealed class ObterNfsePorIdUseCase : IObterNfsePorIdUseCase
         if (nfse is null)
             throw new RecursoNaoEncontradoException($"Nfse {id} não encontrada.");
 
+        int? reenvioDeNumeroDps = nfse.ReenvioDeNfseId is { } origemId
+            ? await _db.NotasFiscais.AsNoTracking()
+                .Where(o => o.Id == origemId)
+                .Select(o => (int?)o.NumeroDps)
+                .FirstOrDefaultAsync(cancellationToken)
+            : null;
+
+        var reenviadaComo = await _db.NotasFiscais.AsNoTracking()
+            .Where(r => r.ReenvioDeNfseId == nfse.Id)
+            .Select(r => new { r.Id, r.NumeroDps })
+            .FirstOrDefaultAsync(cancellationToken);
+
         return new NfseResponse(
             nfse.Id, nfse.EmpresaId, nfse.ClienteId, nfse.ContratoId, nfse.NumeroDps, nfse.SerieDps, nfse.NumeroNfse, nfse.ChaveAcesso,
             nfse.DataCompetencia, nfse.DataEmissao, nfse.ValorServico, nfse.ValorLiquido, nfse.DescricaoServico, nfse.Status,
-            nfse.TipoAmbiente, nfse.CodigoErro, nfse.MensagemErro, nfse.CreatedAt, nfse.UpdatedAt);
+            nfse.TipoAmbiente, nfse.CodigoErro, nfse.MensagemErro, nfse.CreatedAt, nfse.UpdatedAt,
+            nfse.ServicoId,
+            nfse.ReenvioDeNfseId,
+            reenvioDeNumeroDps,
+            reenviadaComo?.Id,
+            reenviadaComo?.NumeroDps,
+            nfse.RejeicaoPermiteReenvio() && reenviadaComo is null);
     }
 }

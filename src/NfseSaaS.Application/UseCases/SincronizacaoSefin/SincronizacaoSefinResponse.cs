@@ -5,4 +5,5 @@ public sealed record SincronizacaoSefinResponse(
     int NotasJaExistentes,
     int NotasIgnoradasPorConflitoNumeracao,
     int ClientesCriados,
+    int NotasAtualizadasPorEvento,
     long UltimoNsuProcessado);

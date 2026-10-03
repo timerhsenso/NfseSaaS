@@ -24,6 +24,25 @@ public sealed class Nfse : BaseEntity, ITenantEntity
     /// </summary>
     public Guid? ContratoId { get; set; }
 
+    /// <summary>
+    /// Servico do catálogo usado na emissão. Só REFERÊNCIA, usada pelo
+    /// reenvio de nota rejeitada (pra reler a classificação fiscal atual
+    /// do cadastro) — os dados fiscais desta nota continuam sendo o
+    /// snapshot gravado nos campos abaixo, nunca relidos daqui. Nulo em
+    /// notas importadas do ADN, em notas anteriores a este campo e quando
+    /// o Servico é excluído depois (FK com SET NULL).
+    /// </summary>
+    public Guid? ServicoId { get; set; }
+
+    /// <summary>
+    /// Quando esta Nfse é um reenvio: Id da tentativa rejeitada que ela
+    /// substitui. Cada reenvio é uma Nfse NOVA (novo NumeroDps, snapshot
+    /// novo de Empresa/Cliente/Servico); a rejeitada fica intacta no
+    /// histórico. Índice único: uma rejeitada só pode ser reenviada uma
+    /// vez (se o reenvio também for rejeitado, reenvia-se ele).
+    /// </summary>
+    public Guid? ReenvioDeNfseId { get; set; }
+
     public int NumeroDps { get; set; }
 
     public string SerieDps { get; set; } = string.Empty;
@@ -129,4 +148,31 @@ public sealed class Nfse : BaseEntity, ITenantEntity
     /// atual da Empresa.
     /// </summary>
     public TipoAmbiente TipoAmbiente { get; set; }
+
+    /// <summary>
+    /// CodigoErro de uma DPS reprovada na validação local, ANTES de
+    /// qualquer envio à SEFIN (não é um código oficial da SEFIN).
+    /// </summary>
+    public const string CodigoErroValidacaoLocal = "VALIDACAO-LOCAL";
+
+    /// <summary>
+    /// CodigoErro de uma falha de certificado digital, também ANTES de
+    /// qualquer envio à SEFIN (não é um código oficial da SEFIN).
+    /// </summary>
+    public const string CodigoErroCertificado = "CERTIFICADO";
+
+    /// <summary>
+    /// Uma nota Rejeitada só pode ser reenviada quando é CERTO que a
+    /// SEFIN não gerou NFS-e nenhuma pra ela: rejeição fiscal devolvida
+    /// pela própria SEFIN, ou falha local antes do envio — nos dois casos
+    /// há CodigoErro. Rejeitada SEM CodigoErro = falha de comunicação
+    /// (timeout etc.): a SEFIN pode ter autorizado sem a resposta chegar,
+    /// e reenviar com um NumeroDps novo poderia gerar nota em duplicidade.
+    ///
+    /// ATENÇÃO: a mesma regra está escrita em LINQ em ListarNfseUseCase e
+    /// ObterNfsePorIdUseCase (campo PodeReenviar) — método de instância
+    /// não traduz pra SQL. Mudou aqui, muda lá.
+    /// </summary>
+    public bool RejeicaoPermiteReenvio() =>
+        Status == NfseStatus.Rejeitada && !string.IsNullOrEmpty(CodigoErro);
 }

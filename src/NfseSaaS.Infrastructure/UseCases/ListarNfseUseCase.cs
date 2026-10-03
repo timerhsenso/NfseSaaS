@@ -84,10 +84,22 @@ public sealed class ListarNfseUseCase : IListarNfseUseCase
             .OrderByDescending(n => n.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
+            // Subconsultas correlacionadas pro vínculo de reenvio (nos dois
+            // sentidos) — viram subselect no SQL, sem N+1. PodeReenviar
+            // repete em LINQ a regra de Nfse.RejeicaoPermiteReenvio
+            // (método de instância não traduz pra SQL) + "ainda não foi
+            // reenviada".
             .Select(n => new NfseResponse(
                 n.Id, n.EmpresaId, n.ClienteId, n.ContratoId, n.NumeroDps, n.SerieDps, n.NumeroNfse, n.ChaveAcesso,
                 n.DataCompetencia, n.DataEmissao, n.ValorServico, n.ValorLiquido, n.DescricaoServico, n.Status,
-                n.TipoAmbiente, n.CodigoErro, n.MensagemErro, n.CreatedAt, n.UpdatedAt))
+                n.TipoAmbiente, n.CodigoErro, n.MensagemErro, n.CreatedAt, n.UpdatedAt,
+                n.ServicoId,
+                n.ReenvioDeNfseId,
+                _db.NotasFiscais.Where(o => o.Id == n.ReenvioDeNfseId).Select(o => (int?)o.NumeroDps).FirstOrDefault(),
+                _db.NotasFiscais.Where(r => r.ReenvioDeNfseId == n.Id).Select(r => (Guid?)r.Id).FirstOrDefault(),
+                _db.NotasFiscais.Where(r => r.ReenvioDeNfseId == n.Id).Select(r => (int?)r.NumeroDps).FirstOrDefault(),
+                n.Status == NfseStatus.Rejeitada && n.CodigoErro != null && n.CodigoErro != ""
+                    && !_db.NotasFiscais.Any(r => r.ReenvioDeNfseId == n.Id)))
             .ToListAsync(cancellationToken);
 
         return new PagedResult<NfseResponse>

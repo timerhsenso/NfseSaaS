@@ -6,6 +6,13 @@ namespace NfseSaaS.Application.UseCases.Nfse;
 /// (ex.: retry após timeout de rede), a emissão original é retornada em
 /// vez de criar uma segunda Nfse.
 /// </param>
+/// <param name="ReenvioDeNfseId">
+/// Opcional. Id de uma Nfse Rejeitada que esta emissão está reenviando.
+/// Gera uma Nfse NOVA (novo NumeroDps), relendo Empresa/Cliente/Servico do
+/// cadastro atual; Cliente e Contrato precisam ser os mesmos da original.
+/// Só aceito quando a rejeição permite reenvio (ver
+/// Nfse.RejeicaoPermiteReenvio).
+/// </param>
 public sealed record EmitirNfseRequest(
     Guid EmpresaId,
     Guid ClienteId,
@@ -14,4 +21,5 @@ public sealed record EmitirNfseRequest(
     string DescricaoServico,
     DateOnly DataCompetencia,
     Guid? ContratoId = null,
-    string? IdempotencyKey = null);
+    string? IdempotencyKey = null,
+    Guid? ReenvioDeNfseId = null);

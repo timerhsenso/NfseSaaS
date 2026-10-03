@@ -33,5 +33,12 @@ public enum NfseEventoTipo
     /// este SaaS depois. Distingue de DpsEnviada/Autorizada, que só se
     /// aplicam a notas emitidas através deste próprio sistema.
     /// </summary>
-    ImportadaDaSefin = 6
+    ImportadaDaSefin = 6,
+
+    /// <summary>
+    /// NFS-e cancelada por substituição (evento e105102, registrado na
+    /// SEFIN Nacional e trazido via Distribuição de DF-e/ADN) — outra
+    /// NFS-e passou a valer no lugar desta.
+    /// </summary>
+    Substituida = 7
 }

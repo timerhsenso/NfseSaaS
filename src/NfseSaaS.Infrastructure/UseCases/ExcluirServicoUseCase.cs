@@ -8,11 +8,12 @@ namespace NfseSaaS.Infrastructure.UseCases;
 
 /// <summary>
 /// Exclusão REAL de Servico — sem checagem de vínculo com Nfse, DE
-/// PROPÓSITO: a entidade Nfse não guarda ServicoId. No momento da emissão,
-/// Descricao/Valor são copiados do Servico para dentro da própria Nfse
-/// (ver EmitirNfseUseCase) — decisão deliberada para que o histórico
-/// fiscal nunca mude retroativamente se o catálogo de Servico for editado
-/// ou excluído depois.
+/// PROPÓSITO: no momento da emissão, Descricao/Valor/classificação
+/// fiscal são copiados do Servico para dentro da própria Nfse (ver
+/// EmitirNfseUseCase) — decisão deliberada para que o histórico fiscal
+/// nunca mude retroativamente se o catálogo de Servico for editado ou
+/// excluído depois. Nfse.ServicoId existe só como referência pro reenvio
+/// de nota rejeitada, com FK ON DELETE SET NULL — não bloqueia exclusão.
 ///
 /// JÁ NÃO é sempre seguro, porém: ContratoServico (Fase 6) tem uma FK
 /// real pra Servico (cada linha herda a classificação fiscal de lá) —
