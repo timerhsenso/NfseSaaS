@@ -70,6 +70,18 @@ public class CadastrarEmpresaRequestValidatorCodigosTests
         Assert.Contains(resultado.Errors, e => e.PropertyName == campo);
     }
 
+    [Theory]
+    [InlineData("(71) 3508-5171", true)]
+    [InlineData("7135085171", true)]
+    [InlineData("12345", false)]          // menos de 6 dígitos
+    [InlineData("(71) ramal", false)]
+    public void Telefone_deve_ter_entre_6_e_20_digitos_com_ou_sem_mascara(string telefone, bool valido)
+    {
+        var resultado = Validator.Validate(RequestValido() with { Telefone = telefone });
+
+        Assert.Equal(valido, !resultado.Errors.Any(e => e.PropertyName == nameof(CadastrarEmpresaRequest.Telefone)));
+    }
+
     private static CadastrarEmpresaRequest RequestValido() => new(
         Cnpj: "04747304000178",
         RazaoSocial: "Empresa Teste",

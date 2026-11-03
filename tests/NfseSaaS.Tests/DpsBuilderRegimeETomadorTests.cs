@@ -91,6 +91,16 @@ public class DpsBuilderRegimeETomadorTests
         Assert.DoesNotContain("<email", xml);
     }
 
+    [Fact]
+    public void Telefone_do_prestador_com_mascara_deve_sair_so_com_digitos()
+    {
+        var request = RequestBase() with { Prestador = RequestBase().Prestador with { Telefone = "(71) 3508-5171" } };
+
+        var xml = ConstruirValidando(request);
+
+        Assert.Contains("<fone>7135085171</fone>", xml);
+    }
+
     private static DpsRequest RequestBase() => DpsRequestFactory.CriarRequestDeTeste() with { TpAmb = "2" };
 
     private static string ConstruirValidando(DpsRequest request)

@@ -18,6 +18,29 @@ public static class TelaSeeder
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
+        // Telas que viraram exclusivas do operador da plataforma (Logs,
+        // Sobre): apaga as permissões de TODOS os tenants ligadas a elas e
+        // depois a própria Tela. ExecuteDelete + IgnoreQueryFilters de
+        // propósito — é limpeza de sistema, cruza tenants, e não passa
+        // pelo SaveChanges (que exige um tenant atual). Idempotente: na
+        // segunda subida não acha mais nada pra apagar.
+        var descontinuadas = TelaCatalogo.Descontinuadas;
+        var idsDescontinuadas = await db.Telas
+            .Where(t => descontinuadas.Contains(t.Codigo))
+            .Select(t => t.Id)
+            .ToListAsync();
+
+        if (idsDescontinuadas.Count > 0)
+        {
+            await db.GrupoTelas.IgnoreQueryFilters()
+                .Where(gt => idsDescontinuadas.Contains(gt.TelaId))
+                .ExecuteDeleteAsync();
+
+            await db.Telas
+                .Where(t => idsDescontinuadas.Contains(t.Id))
+                .ExecuteDeleteAsync();
+        }
+
         var codigosExistentes = await db.Telas.Select(t => t.Codigo).ToListAsync();
 
         foreach (var (codigo, nome, ordem) in TelaCatalogo.Todas)

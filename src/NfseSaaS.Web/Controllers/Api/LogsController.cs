@@ -1,6 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using NfseSaaS.Application.Authorization;
-using NfseSaaS.Domain.Enums;
 using NfseSaaS.Web.Filters;
 using NfseSaaS.Web.Services;
 
@@ -8,13 +6,13 @@ namespace NfseSaaS.Web.Controllers.Api;
 
 /// <summary>
 /// Só leitura, por design — mesma lógica do AuditLogsController: não
-/// existe (e não deve existir) escrita aqui. Restrito a quem tem
-/// Consultar em Logs — hoje só o grupo Administrador (ver
-/// GrupoProvisionamentoService), porque isto pode conter stack trace de
-/// infraestrutura, não é dado de negócio do Tenant.
+/// existe (e não deve existir) escrita aqui.
+/// Restrito ao operador da plataforma: o log do Serilog é GLOBAL (todos
+/// os tenants no mesmo arquivo) — liberar pro Administrador de um tenant
+/// expunha dados dos outros. Ver RequerOperadorPlataformaAttribute.
 /// </summary>
 [ApiController]
-[RequerPermissao(TelaCatalogo.Logs, AcaoPermissao.Consultar)]
+[RequerOperadorPlataforma]
 [Route("api/logs")]
 public sealed class LogsController : ControllerBase
 {

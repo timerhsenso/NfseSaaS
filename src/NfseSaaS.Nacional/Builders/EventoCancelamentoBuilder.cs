@@ -43,7 +43,12 @@ public sealed class EventoCancelamentoBuilder : IEventoCancelamentoBuilder
         // que apontou exatamente esse Id como inválido.
         var infPedRegId = "PRE" + request.ChaveAcesso + TipoEvento;
 
-        var agora = DateTimeOffset.Now;
+        // Mesma regra do dhEmi no DpsBuilder: DateTimeOffset.Now usa o fuso
+        // do SERVIDOR (UTC no container de produção), e a SEFIN lê os
+        // dígitos como horário de Brasília — o evento parecia ~3h no
+        // futuro (E0008). Fixo em -03:00 e 5s no passado pra absorver
+        // desvio de relógio.
+        var agora = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-3)) - TimeSpan.FromSeconds(5);
 
         var doc = new XmlDocument { PreserveWhitespace = true };
 

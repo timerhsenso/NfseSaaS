@@ -131,7 +131,9 @@ public sealed class DpsBuilder : IDpsBuilder
         // podem virar elemento vazio — <IM></IM> quebra o Pattern do tipo
         // (E1235). Mesmo motivo do pTotTribSN/regApTribSN abaixo.
         AddOpcional(doc, prest, "IM", request.Prestador.InscricaoMunicipal);
-        AddOpcional(doc, prest, "fone", request.Prestador.Telefone);
+        // TSTelefone é [0-9]{6,20}: "(71) 3333-4444" digitado com máscara
+        // no cadastro quebrava TODA nota da Empresa (E1235). Vai só dígito.
+        AddOpcional(doc, prest, "fone", new string((request.Prestador.Telefone ?? string.Empty).Where(char.IsDigit).ToArray()));
         AddOpcional(doc, prest, "email", request.Prestador.Email);
 
         var regTrib = AddNode(doc, prest, "regTrib");

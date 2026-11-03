@@ -80,6 +80,7 @@ public static class DependencyInjection
         services.AddScoped<INfseEventoWriter, NfseEventoWriter>();
 
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
+        services.Configure<PlataformaOptions>(configuration.GetSection(PlataformaOptions.SectionName));
         services.AddScoped<IEmailSender, SmtpEmailSender>();
         services.AddSingleton<IBackgroundEmailQueue, BackgroundEmailQueue>();
         services.AddScoped<IEmailQueueService, EmailQueueService>();
@@ -110,6 +111,16 @@ public static class DependencyInjection
             .AddEntityFrameworkStores<AppDbContext>()
             .AddDefaultTokenProviders()
             .AddClaimsPrincipalFactory<ApplicationUserClaimsPrincipalFactory>();
+
+        // A cada 1 minuto (padrão do Identity: 30) o cookie é revalidado
+        // contra o banco: o SecurityStamp do usuário é conferido e os
+        // Claims são regerados pelo ApplicationUserClaimsPrincipalFactory.
+        // Efeito: bloquear um usuário (que troca o SecurityStamp) derruba a
+        // sessão dele em até 1 minuto, e mudanças de Grupo/permissão passam
+        // a valer em até 1 minuto sem precisar relogar. Custo: uma consulta
+        // por usuário ativo por minuto — irrelevante neste porte.
+        services.Configure<SecurityStampValidatorOptions>(options =>
+            options.ValidationInterval = TimeSpan.FromMinutes(1));
 
         // Por padrão, o cookie do Identity REDIRECIONA (302) para uma
         // página de login em caso de falha de autenticação — faz sentido
@@ -239,17 +250,61 @@ public static class DependencyInjection
         var certOptions = configuration.GetSection(CertificateStorageOptions.SectionName).Get<CertificateStorageOptions>()
             ?? new CertificateStorageOptions();
 
+        var protecao = configuration.GetSection(ProtecaoChavesOptions.SectionName).Get<ProtecaoChavesOptions>()
+            ?? new ProtecaoChavesOptions();
+
         var dataProtectionBuilder = services.AddDataProtection().SetApplicationName("NfseSaaS");
 
-        if (!string.IsNullOrWhiteSpace(certOptions.BasePath))
+        // Pasta das chaves: DataProtection:KeysPath, ou o padrão histórico
+        // {CertificateStorage:BasePath}/dp-keys. Vazio nos dois = pasta
+        // padrão do próprio ASP.NET (Linux: ~/.aspnet/DataProtection-Keys)
+        // — o Program.cs avisa no log onde as chaves estão.
+        var keysPath = !string.IsNullOrWhiteSpace(protecao.KeysPath)
+            ? protecao.KeysPath
+            : !string.IsNullOrWhiteSpace(certOptions.BasePath) ? Path.Combine(certOptions.BasePath, "dp-keys") : string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(keysPath))
         {
-            var keysPath = Path.Combine(certOptions.BasePath, "dp-keys");
             Directory.CreateDirectory(keysPath);
             dataProtectionBuilder.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
         }
 
-        if (OperatingSystem.IsWindows())
+        // Criptografia das chaves em disco:
+        //  - certificado configurado (qualquer SO): chaves NOVAS saem
+        //    criptografadas com ele. Chaves antigas gravadas sem
+        //    criptografia continuam legíveis — o Data Protection lê as duas
+        //    formas, então ligar isto não perde nenhum certificado já enviado.
+        //    Quando a chave atual vencer (90 dias), a nova já nasce protegida.
+        //  - sem certificado, no Windows: DPAPI de máquina (como antes).
+        //  - sem certificado, fora do Windows: SEM criptografia (como antes) —
+        //    o Program.cs registra um aviso na subida.
+        string mecanismo;
+        if (!string.IsNullOrWhiteSpace(protecao.CertificadoPfxPath))
+        {
+            // EphemeralKeySet fora do Windows: a chave privada fica só em
+            // memória, sem cópia persistida em disco pelo runtime.
+            var certificadoProtecao = new System.Security.Cryptography.X509Certificates.X509Certificate2(
+                protecao.CertificadoPfxPath, protecao.CertificadoSenha,
+                OperatingSystem.IsWindows()
+                    ? System.Security.Cryptography.X509Certificates.X509KeyStorageFlags.DefaultKeySet
+                    : System.Security.Cryptography.X509Certificates.X509KeyStorageFlags.EphemeralKeySet);
+
+            dataProtectionBuilder
+                .ProtectKeysWithCertificate(certificadoProtecao)
+                .UnprotectKeysWithAnyCertificate(certificadoProtecao);
+            mecanismo = $"certificado {certificadoProtecao.Thumbprint}";
+        }
+        else if (OperatingSystem.IsWindows())
+        {
             dataProtectionBuilder.ProtectKeysWithDpapi(protectToLocalMachine: true);
+            mecanismo = "DPAPI (máquina)";
+        }
+        else
+        {
+            mecanismo = "nenhum";
+        }
+
+        services.AddSingleton(new ProtecaoChavesStatus(keysPath, mecanismo != "nenhum", mecanismo));
 
         services.AddScoped<CertificateFileStore>();
         services.AddScoped<ICertificateProvider, FileCertificateProvider>();

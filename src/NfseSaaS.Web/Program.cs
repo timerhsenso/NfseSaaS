@@ -168,6 +168,31 @@ try
 
     var app = builder.Build();
 
+    // Chaves do Data Protection (abrem os certificados de TODOS os clientes
+    // e assinam o cookie de login) — ver ProtecaoChavesOptions.
+    var protecaoChaves = app.Services.GetRequiredService<NfseSaaS.Infrastructure.Certificates.ProtecaoChavesStatus>();
+    if (string.IsNullOrWhiteSpace(protecaoChaves.CaminhoChaves))
+    {
+        // Sem pasta configurada, o ASP.NET usa a pasta PADRÃO dele
+        // (Linux: ~/.aspnet/DataProtection-Keys; Windows/IIS: perfil do
+        // usuário ou registro). Funciona, mas a localização fica implícita
+        // — e é ela que precisa estar num volume persistente e no backup.
+        app.Logger.LogWarning(
+            "Chaves do Data Protection na pasta PADRÃO do ASP.NET (Linux: ~/.aspnet/DataProtection-Keys), protegidas por {Mecanismo}. Confirme que essa pasta está num volume persistente e no backup, ou defina DataProtection:KeysPath.",
+            protecaoChaves.MecanismoCriptografia);
+    }
+    else if (!protecaoChaves.ChavesCriptografadas)
+    {
+        app.Logger.LogWarning(
+            "Chaves do Data Protection gravadas SEM criptografia em {CaminhoChaves}. Configure DataProtection:CertificadoPfxPath/CertificadoSenha para criptografá-las.",
+            protecaoChaves.CaminhoChaves);
+    }
+    else
+    {
+        app.Logger.LogInformation("Chaves do Data Protection em {CaminhoChaves}, protegidas por {Mecanismo}.",
+            protecaoChaves.CaminhoChaves, protecaoChaves.MecanismoCriptografia);
+    }
+
     await NfseSaaS.Infrastructure.Identity.IdentitySeeder.SeedRolesAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.TelaSeeder.SeedTelasAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.GrupoBackfillSeeder.BackfillAsync(app.Services);

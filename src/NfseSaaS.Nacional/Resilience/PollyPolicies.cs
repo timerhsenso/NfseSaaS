@@ -15,6 +15,9 @@ namespace NfseSaaS.Nacional.Resilience;
 /// o circuit breaker só conta como "1 falha" uma chamada que já esgotou
 /// todas as tentativas de retry — e não cada tentativa individual, o que
 /// abriria o circuito prematuramente por ruído.
+///
+/// O retry só é aplicado a GET (ver DependencyInjection.cs): envio de DPS e
+/// de evento (POST) passa só pelo circuit breaker, sem reenvio automático.
 /// </summary>
 public static class PollyPolicies
 {

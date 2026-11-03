@@ -1,35 +1,26 @@
-using System.Security.Claims;
 using Hangfire.Dashboard;
-using NfseSaaS.Application.Authorization;
-using NfseSaaS.Infrastructure.Identity;
+using NfseSaaS.Web.Authorization;
 
 namespace NfseSaaS.Web.Filters;
 
 /// <summary>
-/// Autorização do dashboard do Hangfire (/hangfire). Mesma checagem de
-/// ValidacaoAntiforgeryFilter/RequerPermissaoAttribute (lê o Claim de
-/// permissão já carregado no login, sem chamada ao banco), mas
-/// implementando a interface própria do Hangfire — o dashboard é
-/// middleware puro, não passa pelo pipeline de MVC, então
-/// [RequerPermissao] não se aplica aqui.
+/// Autorização do dashboard do Hangfire (/hangfire): SÓ o operador da
+/// plataforma (ver PlataformaClaims/PlataformaOptions).
 ///
-/// Reaproveita a permissão de TelaCatalogo.Logs (Consultar) em vez de
-/// criar uma Tela nova só pra isto: dashboard de jobs é a mesma
-/// categoria de "visibilidade de infraestrutura" que a tela de Logs já
-/// é — hoje só o grupo Administrador tem Consultar em Logs (ver
-/// GrupoProvisionamentoService), então já nasce restrito do jeito certo
-/// sem precisar mexer em seed nem em matriz de permissão.
+/// O dashboard é GLOBAL — mostra e deixa disparar ("Trigger now") os jobs
+/// de TODOS os tenants, inclusive a automação de Nota Mensal que emite
+/// NFS-e com o certificado de cada Empresa. Antes ele reaproveitava a
+/// permissão de Logs do tenant, que todo grupo Administrador recebe no
+/// auto-cadastro: qualquer pessoa que se registrasse conseguia disparar
+/// emissão na Empresa de outro cliente.
+///
+/// O dashboard é middleware puro, não passa pelo pipeline de MVC, por
+/// isso a checagem é esta interface do Hangfire e não
+/// RequerOperadorPlataformaAttribute — a regra é a mesma
+/// (ClaimsPrincipalExtensions.EhOperadorPlataforma).
 /// </summary>
 public sealed class HangfireDashboardAuthorizationFilter : IDashboardAuthorizationFilter
 {
-    public bool Authorize(DashboardContext context)
-    {
-        var user = context.GetHttpContext().User;
-
-        if (user.Identity?.IsAuthenticated != true)
-            return false;
-
-        var valor = user.FindFirstValue(ApplicationUserClaimsPrincipalFactory.PermissaoClaimTypePrefix + TelaCatalogo.Logs);
-        return valor is not null && valor.Contains('C');
-    }
+    public bool Authorize(DashboardContext context) =>
+        context.GetHttpContext().User.EhOperadorPlataforma();
 }

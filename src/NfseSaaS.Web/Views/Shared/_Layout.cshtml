@@ -112,11 +112,11 @@
                     {
                         <a href="/Emails" class="@Ativo("/Emails")"><span class="nav-icon bi bi-envelope-paper"></span>E-mails</a>
                     }
-                    @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Logs))
+                    @if (User.EhOperadorPlataforma())
                     {
                         <a href="/Logs" class="@Ativo("/Logs")"><span class="nav-icon bi bi-terminal"></span>Logs</a>
                     }
-                    @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Sobre))
+                    @if (User.EhOperadorPlataforma())
                     {
                         <a href="/Sobre" class="@Ativo("/Sobre")"><span class="nav-icon bi bi-info-circle"></span>Sobre</a>
                     }

@@ -5,7 +5,42 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Segurança
+- Painel `/hangfire`, tela Logs e tela Sobre agora são exclusivos do
+  operador da plataforma (`Plataforma:UsuariosOperadoresIds`). Antes
+  qualquer Administrador de tenant — inclusive quem acabou de se cadastrar
+  — via os logs de todos os clientes e podia disparar jobs (inclusive
+  emissão) de outros tenants. As telas Logs e Sobre saem da matriz de
+  permissões dos grupos (removidas na subida, em bancos existentes).
+- Bloquear um usuário derruba a sessão aberta dele em até 1 minuto
+  (antes valia até o cookie expirar), e "esqueci a senha" não desfaz mais
+  um bloqueio feito pelo Administrador. Mudanças de grupo/permissão passam
+  a valer em até 1 minuto, sem relogar.
+- Emissão e cadastro de Contrato conferem se Cliente e Serviço pertencem
+  à mesma Empresa.
+- Chaves do Data Protection (que abrem os certificados dos clientes)
+  podem ser criptografadas com um certificado próprio
+  (`DataProtection:CertificadoPfxPath`/`CertificadoSenha`) e ter pasta
+  própria (`DataProtection:KeysPath`). Compatível com as chaves atuais; a
+  subida registra no log onde estão as chaves e se estão protegidas.
+
 ### Corrigido
+- Envio de DPS e de evento de cancelamento não é mais reenviado
+  automaticamente em falha de rede (retry só em consultas GET). Reenviar
+  às cegas depois de um timeout podia gerar NFS-e em duplicidade.
+- Sincronização ADN: nota que ficou em "falha de comunicação" mas foi
+  autorizada pela SEFIN agora é confirmada com os dados oficiais (antes a
+  nota autorizada era descartada como conflito de numeração). Notas em
+  que a Empresa não é a emitente (ex.: recebidas de fornecedor) deixam de
+  ser importadas.
+- Cadastro de nova conta: Tenant e usuário são criados numa transação só
+  (antes uma senha recusada deixava o CNPJ travado com erro 500), com CNPJ
+  validado e mensagem clara para CNPJ já cadastrado. Novo
+  `Plataforma:CadastroAberto` para fechar o auto-cadastro.
+- Telefone da Empresa com máscara quebrava toda DPS (E1235); agora vai só
+  com dígitos e o cadastro valida 6 a 20 dígitos.
+- Evento de cancelamento usava o horário do servidor (UTC no container),
+  mesmo problema que causava E0008 na emissão.
 - Emissão em Homologação rejeitada com E1235 ("invalid child element
   'cLocEmi' ... expected: 'cMotivoEmisTI, finNFSe'") desde que a
   Produção Restrita passou a exigir o leiaute da NT 009 (esquemas de

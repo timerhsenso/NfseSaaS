@@ -1,13 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
-using NfseSaaS.Application.Authorization;
-using NfseSaaS.Domain.Enums;
 using NfseSaaS.Web.Filters;
 using NfseSaaS.Web.Services;
 
 namespace NfseSaaS.Web.Controllers.Api;
 
 [ApiController]
-[RequerPermissao(TelaCatalogo.Sobre, AcaoPermissao.Consultar)]
+/// <summary>Versão/commit do deploy — informação de operação, restrita ao operador da plataforma.</summary>
+[RequerOperadorPlataforma]
 [Route("api/sobre")]
 public sealed class SobreController : ControllerBase
 {

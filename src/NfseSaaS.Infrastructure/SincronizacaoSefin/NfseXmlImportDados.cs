@@ -36,6 +36,12 @@ internal sealed class NfseXmlImportDados
 
     public string? NumeroNfse() => Texto("//n:NFSe/n:infNFSe/n:nNFSe");
 
+    /// <summary>CNPJ (ou CPF) do prestador declarado na DPS — quem EMITIU a nota.</summary>
+    public string PrestadorDocumento() =>
+        Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:prest/n:CNPJ")
+        ?? Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:prest/n:CPF")
+        ?? string.Empty;
+
     public DateOnly DataCompetencia() =>
         DateOnly.TryParse(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:dCompet"), CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
             ? d

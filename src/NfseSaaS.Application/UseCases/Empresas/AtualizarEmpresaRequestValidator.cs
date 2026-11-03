@@ -16,7 +16,13 @@ public sealed class AtualizarEmpresaRequestValidator : AbstractValidator<Atualiz
             .NotEmpty()
             .Matches(@"^\d{7}$").WithMessage("CodigoMunicipio deve ser o código IBGE com 7 dígitos.");
 
-        RuleFor(x => x.Telefone).NotEmpty().MaximumLength(20);
+        // A DPS exige 6 a 20 dígitos (TSTelefone). Máscara é aceita na
+        // digitação — o DpsBuilder manda só os dígitos.
+        RuleFor(x => x.Telefone)
+            .NotEmpty()
+            .MaximumLength(20)
+            .Must(t => t.Count(char.IsDigit) is >= 6 and <= 20)
+            .WithMessage("Telefone deve ter entre 6 e 20 dígitos (DDD + número).");
         RuleFor(x => x.Email).NotEmpty().EmailAddress();
 
         RuleFor(x => x.OpSimpNac)

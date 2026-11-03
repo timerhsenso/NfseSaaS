@@ -49,8 +49,20 @@ public static class DependencyInjection
         // propósito: o circuit breaker precisa manter estado (contagem de
         // falhas/tempo aberto) entre chamadas — criar uma política nova a
         // cada requisição nunca abriria o circuito de verdade.
-        var resilienciaHttp = PollyPolicies.CriarCircuitBreaker().WrapAsync(PollyPolicies.CriarRetry());
-        services.ConfigureHttpClientDefaults(http => http.AddPolicyHandler(resilienciaHttp));
+        //
+        // Retry SÓ em GET (consultas: ADN, DANFSe, status). POST — envio de
+        // DPS e de evento de cancelamento — nunca é reenviado
+        // automaticamente: num timeout a SEFIN pode ter AUTORIZADO sem a
+        // resposta chegar, e reenviar às cegas é o caminho pra nota em
+        // duplicidade. POST com falha de comunicação vira
+        // NfseEventoTipo.FalhaComunicacao (não reenviável pela tela) e é
+        // conciliado pela sincronização ADN (SincronizarNotasDaSefinUseCase).
+        // O circuit breaker é a MESMA instância nos dois caminhos — ele
+        // precisa enxergar todas as falhas pra abrir.
+        var circuitBreaker = PollyPolicies.CriarCircuitBreaker();
+        var comRetry = circuitBreaker.WrapAsync(PollyPolicies.CriarRetry());
+        services.ConfigureHttpClientDefaults(http => http.AddPolicyHandler(request =>
+            request.Method == HttpMethod.Get ? comRetry : circuitBreaker));
 
         services.AddScoped<IDpsValidator, DpsValidator>();
         services.AddScoped<IDpsBuilder, DpsBuilder>();

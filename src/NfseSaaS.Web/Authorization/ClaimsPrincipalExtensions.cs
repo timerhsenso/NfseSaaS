@@ -27,6 +27,11 @@ public static class ClaimsPrincipalExtensions
     public static bool TemAcesso(this ClaimsPrincipal user, string tela) =>
         !string.IsNullOrEmpty(user.FindFirstValue(ApplicationUserClaimsPrincipalFactory.PermissaoClaimTypePrefix + tela));
 
+    /// <summary>Operador da plataforma (dono do SaaS) — ver PlataformaClaims. Não vem da matriz de Grupos do tenant.</summary>
+    public static bool EhOperadorPlataforma(this ClaimsPrincipal user) =>
+        user.Identity?.IsAuthenticated == true
+        && user.HasClaim(NfseSaaS.Application.Authorization.PlataformaClaims.Operador, "true");
+
     private static bool TemLetra(ClaimsPrincipal user, string tela, char letra)
     {
         var valor = user.FindFirstValue(ApplicationUserClaimsPrincipalFactory.PermissaoClaimTypePrefix + tela);

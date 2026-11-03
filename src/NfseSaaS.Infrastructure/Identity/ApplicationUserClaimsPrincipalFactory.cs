@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using NfseSaaS.Application.Authorization;
 using NfseSaaS.Infrastructure.MultiTenancy;
 using NfseSaaS.Infrastructure.Persistence;
 
@@ -16,10 +17,9 @@ namespace NfseSaaS.Infrastructure.Identity;
 /// (login, registro) — mecanismo de extensão padrão do próprio Identity,
 /// não uma customização por fora dele.
 ///
-/// A permissão fica "congelada" no cookie até o próximo login — mudou a
-/// permissão de um Grupo, quem já está logado só pega a mudança
-/// relogando. Decisão deliberada (consistência com o próprio
-/// RhSensoERP), não uma limitação técnica.
+/// Também roda na revalidação periódica do cookie (SecurityStampValidator,
+/// a cada 1 minuto — ver DependencyInjection): mudança de Grupo ou de
+/// permissão chega a quem já está logado em até 1 minuto, sem relogar.
 /// </summary>
 public sealed class ApplicationUserClaimsPrincipalFactory
     : UserClaimsPrincipalFactory<ApplicationUser, IdentityRole<Guid>>
@@ -28,21 +28,29 @@ public sealed class ApplicationUserClaimsPrincipalFactory
     public const string PermissaoClaimTypePrefix = "perm:";
 
     private readonly AppDbContext _db;
+    private readonly PlataformaOptions _plataforma;
 
     public ApplicationUserClaimsPrincipalFactory(
         UserManager<ApplicationUser> userManager,
         RoleManager<IdentityRole<Guid>> roleManager,
         IOptions<IdentityOptions> options,
-        AppDbContext db)
+        AppDbContext db,
+        IOptions<PlataformaOptions> plataforma)
         : base(userManager, roleManager, options)
     {
         _db = db;
+        _plataforma = plataforma.Value;
     }
 
     protected override async Task<ClaimsIdentity> GenerateClaimsAsync(ApplicationUser user)
     {
         var identity = await base.GenerateClaimsAsync(user);
         identity.AddClaim(new Claim(CurrentTenant.TenantIdClaimType, user.TenantId.ToString()));
+
+        // Operador da plataforma (dono do SaaS): fora da matriz do tenant,
+        // decidido só pela configuração — ver PlataformaOptions.
+        if (_plataforma.UsuariosOperadoresIds.Contains(user.Id))
+            identity.AddClaim(new Claim(PlataformaClaims.Operador, "true"));
 
         if (user.GrupoId is { } grupoId)
         {

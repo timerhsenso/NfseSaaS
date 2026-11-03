@@ -109,11 +109,15 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
         var empresa = await _db.Empresas.FirstOrDefaultAsync(e => e.Id == request.EmpresaId, cancellationToken)
             ?? throw new RecursoNaoEncontradoException($"Empresa {request.EmpresaId} não encontrada.");
 
-        var cliente = await _db.Clientes.FirstOrDefaultAsync(c => c.Id == request.ClienteId, cancellationToken)
-            ?? throw new RecursoNaoEncontradoException($"Cliente {request.ClienteId} não encontrado.");
+        // Cliente e Serviço precisam ser da MESMA Empresa emissora — o
+        // filtro de tenant sozinho não garante isso quando o tenant tem
+        // várias Empresas (nota da Empresa A para um Cliente cadastrado na
+        // Empresa B).
+        var cliente = await _db.Clientes.FirstOrDefaultAsync(c => c.Id == request.ClienteId && c.EmpresaId == request.EmpresaId, cancellationToken)
+            ?? throw new RecursoNaoEncontradoException($"Cliente {request.ClienteId} não encontrado nesta Empresa.");
 
-        var servico = await _db.Servicos.FirstOrDefaultAsync(s => s.Id == request.ServicoId, cancellationToken)
-            ?? throw new RecursoNaoEncontradoException($"Serviço {request.ServicoId} não encontrado.");
+        var servico = await _db.Servicos.FirstOrDefaultAsync(s => s.Id == request.ServicoId && s.EmpresaId == request.EmpresaId, cancellationToken)
+            ?? throw new RecursoNaoEncontradoException($"Serviço {request.ServicoId} não encontrado nesta Empresa.");
 
         // Contrato é opcional (nota pode ser avulsa, fora de qualquer
         // Contrato) — mas se informado, precisa realmente pertencer a

@@ -24,12 +24,13 @@ public sealed class CadastrarContratoUseCase : ICadastrarContratoUseCase
         if (!empresaExiste)
             throw new RecursoNaoEncontradoException($"Empresa {request.EmpresaId} não encontrada.");
 
-        var clienteExiste = await _db.Clientes.AnyAsync(c => c.Id == request.ClienteId, cancellationToken);
+        // Cliente e Serviços da MESMA Empresa do Contrato (ver EmitirNfseUseCase).
+        var clienteExiste = await _db.Clientes.AnyAsync(c => c.Id == request.ClienteId && c.EmpresaId == request.EmpresaId, cancellationToken);
         if (!clienteExiste)
             throw new RecursoNaoEncontradoException($"Cliente {request.ClienteId} não encontrado.");
 
         var servicoIds = request.Servicos.Select(s => s.ServicoId).Distinct().ToList();
-        var totalServicosEncontrados = await _db.Servicos.CountAsync(s => servicoIds.Contains(s.Id), cancellationToken);
+        var totalServicosEncontrados = await _db.Servicos.CountAsync(s => servicoIds.Contains(s.Id) && s.EmpresaId == request.EmpresaId, cancellationToken);
         if (totalServicosEncontrados != servicoIds.Count)
             throw new RecursoNaoEncontradoException("Um ou mais Serviços informados não foram encontrados.");
 

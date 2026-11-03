@@ -1,15 +1,15 @@
 using Microsoft.AspNetCore.Mvc;
-using NfseSaaS.Application.Authorization;
-using NfseSaaS.Domain.Enums;
 using NfseSaaS.Web.Filters;
 
 namespace NfseSaaS.Web.Controllers;
 
 /// <summary>
-/// Só serve a view — dados vêm via fetch do api/logs. Restrito a quem
-/// tem Consultar em Logs (hoje só Administrador).
+/// Só serve a view — dados vêm via fetch do api/logs.
+/// Restrito ao operador da plataforma: o log do Serilog é GLOBAL (todos
+/// os tenants no mesmo arquivo) — liberar pro Administrador de um tenant
+/// expunha dados dos outros. Ver RequerOperadorPlataformaAttribute.
 /// </summary>
-[RequerPermissao(TelaCatalogo.Logs, AcaoPermissao.Consultar)]
+[RequerOperadorPlataforma]
 public sealed class LogsController : Controller
 {
     public IActionResult Index() => View();

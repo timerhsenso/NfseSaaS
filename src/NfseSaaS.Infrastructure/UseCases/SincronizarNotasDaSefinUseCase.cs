@@ -66,6 +66,8 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
         var lote = await _adnClient.ConsultarPorNsuAsync(empresaId, empresa.TipoAmbiente.ParaTpAmb(), ultimoNsu, cancellationToken);
 
         int importadas = 0, jaExistentes = 0, ignoradasPorConflito = 0, clientesCriados = 0, atualizadasPorEvento = 0;
+        int confirmadasAposFalha = 0, ignoradasOutroEmitente = 0;
+        var documentoEmpresa = SomenteAlfanumerico(empresa.Cnpj);
         var maiorNsu = ultimoNsu;
 
         // Cache em memória dos Clientes criados NESTA execução — sem
@@ -125,12 +127,55 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
             var xml = GZipHelper.DescomprimirDeBase64(item.ArquivoXml);
             var dados = new NfseXmlImportDados(xml);
 
+            // O ADN distribui ao contribuinte as notas em que ele aparece
+            // em QUALQUER papel (prestador, tomador, intermediário). Só as
+            // que a própria Empresa EMITIU entram como nota dela — uma nota
+            // recebida de fornecedor importada aqui viraria receita e
+            // Cliente falsos.
+            if (SomenteAlfanumerico(dados.PrestadorDocumento()) != documentoEmpresa)
+            {
+                ignoradasOutroEmitente++;
+                continue;
+            }
+
             var numeroDps = dados.NumeroDps();
             var serieDps = dados.SerieDps();
 
             var conflitaNoLote = !numeracaoJaVista.Add((numeroDps, serieDps));
             var conflitaNoBanco = !conflitaNoLote && await _db.NotasFiscais.AsNoTracking()
                 .AnyAsync(n => n.EmpresaId == empresaId && n.NumeroDps == numeroDps && n.SerieDps == serieDps, cancellationToken);
+
+            if (conflitaNoBanco)
+            {
+                // Mesma numeração de uma nota NOSSA que ficou em falha de
+                // comunicação (Rejeitada SEM CodigoErro — ver
+                // Nfse.RejeicaoPermiteReenvio): a SEFIN autorizou, mas a
+                // resposta não chegou. É a MESMA nota, não um conflito —
+                // confirma a local com os dados oficiais em vez de descartar
+                // a autorizada (antes ela era pulada e a nota real nunca
+                // aparecia no sistema).
+                var pendente = await _db.NotasFiscais.FirstOrDefaultAsync(n =>
+                    n.EmpresaId == empresaId && n.NumeroDps == numeroDps && n.SerieDps == serieDps
+                    && n.Status == NfseStatus.Rejeitada && n.CodigoErro == null && n.ChaveAcesso == null,
+                    cancellationToken);
+
+                if (pendente is not null)
+                {
+                    pendente.Status = NfseStatus.Autorizada;
+                    pendente.ChaveAcesso = item.ChaveAcesso;
+                    pendente.NumeroNfse = dados.NumeroNfse();
+                    pendente.XmlNfse = xml;
+                    pendente.ValorLiquido = dados.ValorLiquido();
+                    pendente.DataEmissao = dados.DataEmissao() ?? pendente.DataEmissao;
+                    pendente.MensagemErro = null;
+
+                    notasNestaExecucao[item.ChaveAcesso] = pendente;
+                    _nfseEventoWriter.Registrar(pendente.Id, NfseEventoTipo.Autorizada,
+                        mensagem: $"Autorização confirmada pela sincronização (NSU {item.NSU}): a resposta da emissão não tinha chegado.");
+                    confirmadasAposFalha++;
+                    continue;
+                }
+            }
 
             if (conflitaNoLote || conflitaNoBanco)
             {
@@ -208,7 +253,7 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
         empresa.UltimoNsuDistribuicao = maiorNsu;
 
         _auditLogWriter.Registrar("SincronizarNotasDaSefin", "Empresa", empresaId,
-            new { importadas, jaExistentes, ignoradasPorConflito, clientesCriados, atualizadasPorEvento, ultimoNsu = maiorNsu });
+            new { importadas, jaExistentes, ignoradasPorConflito, clientesCriados, atualizadasPorEvento, confirmadasAposFalha, ignoradasOutroEmitente, ultimoNsu = maiorNsu });
 
         await _db.SaveChangesAsync(cancellationToken);
 
@@ -227,8 +272,13 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
         // tabela, não só o lote de agora.
         await AlinharContadorDpsAsync(empresaId, cancellationToken);
 
-        return new SincronizacaoSefinResponse(importadas, jaExistentes, ignoradasPorConflito, clientesCriados, atualizadasPorEvento, maiorNsu);
+        // Confirmações de falha de comunicação contam como "atualizadas":
+        // é uma nota que já existia e mudou de situação.
+        return new SincronizacaoSefinResponse(importadas, jaExistentes, ignoradasPorConflito, clientesCriados, atualizadasPorEvento + confirmadasAposFalha, maiorNsu);
     }
+
+    private static string SomenteAlfanumerico(string? documento) =>
+        new((documento ?? string.Empty).Where(char.IsLetterOrDigit).Select(char.ToUpperInvariant).ToArray());
 
     /// <summary>
     /// Aplica um documento de evento do ADN sobre a NFS-e correspondente.

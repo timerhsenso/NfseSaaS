@@ -9,6 +9,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Authorization;
+using NfseSaaS.Application.Validation;
 using NfseSaaS.Domain.Entities;
 using NfseSaaS.Domain.Enums;
 using NfseSaaS.Infrastructure.Email;
@@ -82,6 +83,7 @@ public sealed class AuthController : ControllerBase
     private readonly IEmailQueueService _emailQueueService;
     private readonly EmailOptions _emailOptions;
     private readonly IHostEnvironment _environment;
+    private readonly PlataformaOptions _plataforma;
 
     public AuthController(
         AppDbContext db,
@@ -93,7 +95,8 @@ public sealed class AuthController : ControllerBase
         IGrupoProvisionamentoService grupoProvisionamento,
         IEmailQueueService emailQueueService,
         IOptions<EmailOptions> emailOptions,
-        IHostEnvironment environment)
+        IHostEnvironment environment,
+        IOptions<PlataformaOptions> plataforma)
     {
         _db = db;
         _userManager = userManager;
@@ -105,6 +108,7 @@ public sealed class AuthController : ControllerBase
         _emailQueueService = emailQueueService;
         _emailOptions = emailOptions.Value;
         _environment = environment;
+        _plataforma = plataforma.Value;
     }
 
     /// <summary>Cria um novo Tenant, provisiona os 5 grupos padrão e cria o primeiro usuário (grupo Administrador), já autenticado (cookie com o Claim tenant_id).</summary>
@@ -112,10 +116,41 @@ public sealed class AuthController : ControllerBase
     [HttpPost("registrar")]
     public async Task<IActionResult> Registrar([FromBody] RegistrarRequest request, CancellationToken cancellationToken)
     {
+        // Beta fechado: o operador pode fechar o auto-cadastro por
+        // configuração (Plataforma:CadastroAberto=false) sem deploy.
+        if (!_plataforma.CadastroAberto)
+            return StatusCode(StatusCodes.Status403Forbidden, new { erro = "O cadastro de novas contas está fechado no momento. Fale com o suporte para receber um convite." });
+
+        var erros = new List<string>();
+        if (string.IsNullOrWhiteSpace(request.RazaoSocialTenant))
+            erros.Add("Razão social é obrigatória.");
+        if (!DocumentoFiscalValidator.CnpjValido(request.CnpjTenant))
+            erros.Add("CNPJ inválido (dígito verificador não confere).");
+        if (string.IsNullOrWhiteSpace(request.Email))
+            erros.Add("E-mail é obrigatório.");
+        if (erros.Count > 0)
+            return BadRequest(erros);
+
+        // Mesma normalização do CNPJ alfanumérico usada na DPS: tira só a
+        // máscara, mantém letras. Sem isso "12.345.678/0001-90" e
+        // "12345678000190" virariam dois Tenants diferentes.
+        var cnpj = new string(request.CnpjTenant.Where(char.IsLetterOrDigit).Select(char.ToUpperInvariant).ToArray());
+
+        if (await _db.Tenants.AnyAsync(t => t.Cnpj == cnpj, cancellationToken))
+            return Conflict(new { erro = "Já existe uma conta para este CNPJ. Se ela é da sua empresa, peça um convite ao administrador dela ou fale com o suporte." });
+
+        // Tenant, grupos padrão e primeiro usuário numa transação só. Antes
+        // o Tenant era gravado primeiro: se o Identity recusasse a senha ou
+        // o e-mail, sobrava um Tenant sem usuário — e, como o CNPJ é único,
+        // a segunda tentativa com o mesmo CNPJ caía em erro 500 para sempre.
+        // O UserManager grava pelo mesmo AppDbContext (AddEntityFrameworkStores),
+        // então participa desta mesma transação.
+        await using var transacao = await _db.Database.BeginTransactionAsync(cancellationToken);
+
         var tenant = new Tenant
         {
-            Cnpj = request.CnpjTenant,
-            RazaoSocial = request.RazaoSocialTenant
+            Cnpj = cnpj,
+            RazaoSocial = request.RazaoSocialTenant.Trim()
         };
 
         _db.Tenants.Add(tenant);
@@ -134,7 +169,12 @@ public sealed class AuthController : ControllerBase
         var resultado = await _userManager.CreateAsync(user, request.Senha);
 
         if (!resultado.Succeeded)
+        {
+            await transacao.RollbackAsync(cancellationToken);
             return BadRequest(resultado.Errors.Select(e => e.Description));
+        }
+
+        await transacao.CommitAsync(cancellationToken);
 
         await _signInManager.SignInAsync(user, isPersistent: false);
 
@@ -275,6 +315,16 @@ public sealed class AuthController : ControllerBase
         var usuario = await _userManager.FindByEmailAsync(request.Email);
         if (usuario is null)
             return BadRequest(new { erro = "Link inválido ou expirado." });
+
+        // Bloqueio feito pelo Administrador (LockoutEnd = MaxValue, ver
+        // Bloquear) NÃO é desfeito por "esqueci a senha" — senão o
+        // ex-funcionário bloqueado voltava a entrar só pedindo uma senha
+        // nova. Só o bloqueio temporário por tentativas erradas (15 min) é
+        // limpo. Comparação por "mais de 100 anos" e não "== MaxValue": o
+        // Postgres guarda microssegundos, então o MaxValue gravado não volta
+        // idêntico na leitura.
+        if (usuario.LockoutEnd > DateTimeOffset.UtcNow.AddYears(100))
+            return StatusCode(StatusCodes.Status423Locked, new { erro = "Seu acesso foi bloqueado pelo administrador da sua empresa. Fale com ele para liberar." });
 
         var resultado = await _userManager.ResetPasswordAsync(usuario, request.Token, request.NovaSenha);
         if (!resultado.Succeeded)
@@ -486,6 +536,11 @@ public sealed class AuthController : ControllerBase
             return Conflict(new { erro = "Este é o único Administrador do Tenant — não é possível bloqueá-lo." });
 
         await _userManager.SetLockoutEndDateAsync(usuario, DateTimeOffset.MaxValue);
+
+        // O Lockout só impede NOVOS logins. Trocar o SecurityStamp é o que
+        // invalida o cookie já emitido: na próxima revalidação (até 1
+        // minuto, ver SecurityStampValidatorOptions) a sessão aberta cai.
+        await _userManager.UpdateSecurityStampAsync(usuario);
 
         _auditLogWriter.Registrar("BloquearUsuario", "ApplicationUser", usuario.Id, new { usuario.Email });
         await _db.SaveChangesAsync(cancellationToken);

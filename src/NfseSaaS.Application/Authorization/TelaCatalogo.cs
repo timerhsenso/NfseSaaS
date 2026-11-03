@@ -18,8 +18,6 @@ public static class TelaCatalogo
     public const string Auditoria = "Auditoria";
     public const string Grupos = "Grupos";
     public const string Emails = "Emails";
-    public const string Logs = "Logs";
-    public const string Sobre = "Sobre";
 
     public static readonly (string Codigo, string Nome, int Ordem)[] Todas =
     {
@@ -31,8 +29,15 @@ public static class TelaCatalogo
         (Usuarios, "Usuários", 6),
         (Grupos, "Grupos de permissão", 7),
         (Auditoria, "Auditoria", 8),
-        (Emails, "E-mails", 9),
-        (Logs, "Logs do sistema", 10),
-        (Sobre, "Sobre / Versão", 11)
+        (Emails, "E-mails", 9)
     };
+
+    /// <summary>
+    /// Telas que deixaram de ser do tenant e passaram a ser exclusivas do
+    /// operador da plataforma (ver PlataformaClaims): o log do Serilog e o
+    /// painel do Hangfire são GLOBAIS — liberá-los ao Administrador de um
+    /// tenant expunha dados de todos os outros. O TelaSeeder apaga estas
+    /// Telas (e as permissões ligadas a elas) em bancos já existentes.
+    /// </summary>
+    public static readonly string[] Descontinuadas = { "Logs", "Sobre" };
 }
