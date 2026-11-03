@@ -75,7 +75,15 @@ internal sealed class DanfseXmlDados
 
     public string Situacao() => CodigosNfse.DescricaoCStat(Texto("//n:NFSe/n:infNFSe/n:cStat"));
 
-    public string Finalidade() => CodigosNfse.DescricaoFinNfse(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:IBSCBS/n:finNFSe"));
+    /// <summary>
+    /// finNFSe mudou de lugar na NT 009: antes ficava dentro de IBSCBS,
+    /// agora fica na raiz do infDPS (entre tpEmit e cLocEmi). Lê primeiro
+    /// o caminho novo e cai pro antigo — notas já emitidas no leiaute
+    /// anterior continuam com o DANFSe igual ao de antes.
+    /// </summary>
+    public string Finalidade() => CodigosNfse.DescricaoFinNfse(
+        Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:finNFSe")
+        ?? Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:IBSCBS/n:finNFSe"));
 
     // ---- Prestador ----
 

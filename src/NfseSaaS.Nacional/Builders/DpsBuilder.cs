@@ -37,6 +37,13 @@ public sealed class DpsBuilder : IDpsBuilder
     // de ajuste de crédito/débito (1/2) ainda não foram liberadas.
     private const string FinNfseRegular = "0";
 
+    // opSimpNac = 3: Optante pelo Simples Nacional ME/EPP (exceto MEI).
+    private const string OpSimpNacMeEpp = "3";
+
+    // indTotTrib = 0: "Não informar nenhum valor estimado para os Tributos"
+    // (Decreto 8.264/2014) — único valor aceito pelo TSTipoIndTotTrib.
+    private const string IndTotTribNaoInformar = "0";
+
     private readonly NfseNacionalOptions _options;
 
     public DpsBuilder(IOptions<NfseNacionalOptions> options)
@@ -119,17 +126,31 @@ public sealed class DpsBuilder : IDpsBuilder
 
         var prest = AddNode(doc, infDps, "prest");
         Add(doc, prest, "CNPJ", request.Prestador.Cnpj);
-        Add(doc, prest, "IM", request.Prestador.InscricaoMunicipal);
-        Add(doc, prest, "fone", request.Prestador.Telefone);
-        Add(doc, prest, "email", request.Prestador.Email);
+
+        // IM, fone e email são opcionais no XSD (minOccurs=0). Vazios, NÃO
+        // podem virar elemento vazio — <IM></IM> quebra o Pattern do tipo
+        // (E1235). Mesmo motivo do pTotTribSN/regApTribSN abaixo.
+        AddOpcional(doc, prest, "IM", request.Prestador.InscricaoMunicipal);
+        AddOpcional(doc, prest, "fone", request.Prestador.Telefone);
+        AddOpcional(doc, prest, "email", request.Prestador.Email);
 
         var regTrib = AddNode(doc, prest, "regTrib");
         Add(doc, regTrib, "opSimpNac", request.Prestador.OpSimpNac);
-        Add(doc, regTrib, "regApTribSN", request.Prestador.RegApTribSN);
+
+        // regApTribSN só existe pra optante ME/EPP (opSimpNac = 3) — texto
+        // do próprio XSD (TSRegimeApuracaoSimpNac). Pra Não optante e MEI
+        // o elemento não vai, mesmo que o cadastro da Empresa tenha valor.
+        if (request.Prestador.OpSimpNac == OpSimpNacMeEpp)
+            AddOpcional(doc, regTrib, "regApTribSN", request.Prestador.RegApTribSN);
+
         Add(doc, regTrib, "regEspTrib", request.Prestador.RegEspTrib);
 
+        // Tomador: CPF (11) ou CNPJ (14, numérico ou alfanumérico) — o
+        // elemento muda conforme o documento. Antes era sempre <CNPJ>, e
+        // tomador pessoa física quebrava o Pattern [0-9A-Z]{14} (E1235).
         var toma = AddNode(doc, infDps, "toma");
-        Add(doc, toma, "CNPJ", request.Tomador.CnpjOuCpf);
+        var documentoTomador = NormalizarDocumento(request.Tomador.CnpjOuCpf);
+        Add(doc, toma, documentoTomador.Length == 11 ? "CPF" : "CNPJ", documentoTomador);
         Add(doc, toma, "xNome", request.Tomador.Nome);
 
         var end = AddNode(doc, toma, "end");
@@ -175,25 +196,38 @@ public sealed class DpsBuilder : IDpsBuilder
         Add(doc, piscofins, "CST", request.Tributacao.CstPisCofins);
         Add(doc, piscofins, "tpRetPisCofins", request.Tributacao.TpRetPisCofins);
 
-        // <totTrib> só existe pra carregar pTotTribSN — se não tem valor
-        // (Empresa Não optante, "1"), omite o grupo inteiro em vez de
-        // deixar <totTrib></totTrib> vazio; mesmo raciocínio do pTotTribSN
-        // abaixo, aplicado um nível acima por precaução.
-        if (!string.IsNullOrWhiteSpace(request.Tributacao.PercentualTotalTributosSimplesNacional))
-        {
-            var totTrib = AddNode(doc, trib, "totTrib");
-
-            // pTotTribSN é opcional de verdade no XSD (minOccurs=0) pra
-            // Empresa Não optante ("1") — mesma regra que já vale no
-            // DpsValidator. Se o valor vier vazio, o elemento NÃO pode
-            // aparecer no XML: um <pTotTribSN></pTotTribSN> vazio quebra
-            // o Pattern do tipo TSDec2V2 na SEFIN (E1235 "Falha no esquema
-            // XML do DF-e"), mesmo a validação local deixando passar por
-            // considerar o campo dispensável nesse caso.
+        // <totTrib> é OBRIGATÓRIO no XSD (TCInfoTributacao), com um choice
+        // de exatamente 1 filho: vTotTrib | pTotTrib | indTotTrib | pTotTribSN.
+        // Antes o grupo era omitido pra Não optante — DPS inválida (E1235).
+        //   - Optante (MEI "2" ou ME/EPP "3"): pTotTribSN, já exigido pelo
+        //     DpsValidator pra esses regimes.
+        //   - Não optante ("1"): indTotTrib=0 ("não informar valor estimado
+        //     dos tributos", Decreto 8.264/2014) — único valor do tipo
+        //     TSTipoIndTotTrib. O SaaS não calcula tributo aproximado (Lei
+        //     12.741) pra Empresa fora do Simples; se isso virar demanda,
+        //     o caminho é pTotTrib/vTotTrib, não este.
+        var totTrib = AddNode(doc, trib, "totTrib");
+        if (request.Prestador.OpSimpNac is "2" or OpSimpNacMeEpp)
             Add(doc, totTrib, "pTotTribSN", request.Tributacao.PercentualTotalTributosSimplesNacional);
-        }
+        else
+            Add(doc, totTrib, "indTotTrib", IndTotTribNaoInformar);
 
         return (XmlSerializationHelper.ToXmlString(doc), infDpsId);
+    }
+
+    /// <summary>
+    /// Remove só a máscara (ponto, barra, hífen, espaço) e põe em maiúsculo —
+    /// NÃO usa "somente dígitos", porque o CNPJ alfanumérico (NT 009, item
+    /// 2.1) tem letras que precisam chegar intactas na SEFIN.
+    /// </summary>
+    private static string NormalizarDocumento(string documento) =>
+        new(documento.Where(char.IsLetterOrDigit).Select(char.ToUpperInvariant).ToArray());
+
+    /// <summary>Elemento opcional (minOccurs=0): valor vazio = elemento ausente, nunca elemento vazio.</summary>
+    private static void AddOpcional(XmlDocument doc, XmlElement parent, string nome, string? valor)
+    {
+        if (!string.IsNullOrWhiteSpace(valor))
+            Add(doc, parent, nome, valor);
     }
 
     private static XmlElement AddNode(XmlDocument doc, XmlElement parent, string nome)

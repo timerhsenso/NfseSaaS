@@ -30,15 +30,16 @@ internal static class CodigosNfse
         _ => "-"
     };
 
+    /// <summary>Textos do tipo TSRegEspTrib do XSD oficial da SEFIN (tiposSimples_v1.01.xsd).</summary>
     public static string DescricaoRegEspTrib(string? codigo) => codigo switch
     {
         "0" => "Nenhum",
-        "1" => "Estimativa",
-        "2" => "Sociedade de Profissionais",
-        "3" => "Cooperativa",
-        "4" => "Microempresário Individual (MEI)",
-        "5" => "Microempresário e Empresa de Pequeno Porte (ME/EPP)",
-        "6" => "Profissional Autônomo",
+        "1" => "Ato Cooperado (Cooperativa)",
+        "2" => "Estimativa",
+        "3" => "Microempresa Municipal",
+        "4" => "Notário ou Registrador",
+        "5" => "Profissional Autônomo",
+        "6" => "Sociedade de Profissionais",
         "9" => "Outros",
         _ => "-"
     };
@@ -64,8 +65,18 @@ internal static class CodigosNfse
     {
         var texto = codigo switch
         {
+            // Textos do TSTipoRetPISCofins (XSD oficial). Antes só havia 0 e 1
+            // (com o texto do 1 errado) — qualquer outro código saía "-" no PDF.
             "0" => "PIS/COFINS/CSLL Não Retidos",
-            "1" => "PIS/COFINS/CSLL Retido",
+            "1" => "PIS/COFINS Retidos",
+            "2" => "PIS/COFINS Não Retidos",
+            "3" => "PIS/COFINS/CSLL Retidos",
+            "4" => "PIS/COFINS Retidos, CSLL Não Retido",
+            "5" => "PIS Retido, COFINS/CSLL Não Retido",
+            "6" => "COFINS Retido, PIS/CSLL Não Retido",
+            "7" => "PIS Não Retido, COFINS/CSLL Retidos",
+            "8" => "PIS/COFINS Não Retidos, CSLL Retido",
+            "9" => "COFINS Não Retido, PIS/CSLL Retidos",
             _ => null
         };
         return texto is null ? "-" : $"{codigo} - {texto}";

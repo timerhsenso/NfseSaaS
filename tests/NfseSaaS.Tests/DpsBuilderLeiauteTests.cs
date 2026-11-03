@@ -1,6 +1,4 @@
-using System.Xml;
 using System.Xml.Linq;
-using System.Xml.Schema;
 using NfseSaaS.Nacional.Options;
 using NfseSaaS.Tests.TestData;
 using Xunit;
@@ -23,9 +21,6 @@ public class DpsBuilderLeiauteTests
 {
     private const string Ns = "http://www.sped.fazenda.gov.br/nfse";
 
-    private static readonly string PastaXsdProducaoRestrita =
-        Path.Combine(AppContext.BaseDirectory, "Schemas", "ProducaoRestrita_20261020");
-
     [Fact]
     public void Defaults_devem_ser_Nt009_em_homologacao_e_Nt004_em_producao()
     {
@@ -43,7 +38,7 @@ public class DpsBuilderLeiauteTests
 
         var (xml, _) = builder.Construir(request);
 
-        var erros = ValidarContraXsd(xml, PastaXsdProducaoRestrita);
+        var erros = DpsXsdValidator.Validar(xml, DpsXsdValidator.PastaProducaoRestrita20261020);
         Assert.True(erros.Count == 0, "DPS inválida no XSD de Produção Restrita:\n" + string.Join("\n", erros));
     }
 
@@ -104,37 +99,4 @@ public class DpsBuilderLeiauteTests
             .Elements()
             .Select(e => e.Name.LocalName)
             .ToList();
-
-    private static List<string> ValidarContraXsd(string xml, string pastaXsd)
-    {
-        var erros = new List<string>();
-
-        // xmldsig-core-schema.xsd (W3C) declara um DOCTYPE — sem
-        // DtdProcessing.Parse o XmlSchemaSet recusa carregá-lo. É arquivo
-        // local, versionado no repo; nada é buscado na rede (XmlResolver
-        // restrito ao disco).
-        var leituraXsd = new XmlReaderSettings
-        {
-            DtdProcessing = DtdProcessing.Parse,
-            XmlResolver = new XmlUrlResolver()
-        };
-
-        var schemas = new XmlSchemaSet { XmlResolver = new XmlUrlResolver() };
-        using (var reader = XmlReader.Create(Path.Combine(pastaXsd, "DPS_v1.01.xsd"), leituraXsd))
-            schemas.Add(Ns, reader);
-        schemas.Compile();
-
-        var leituraXml = new XmlReaderSettings
-        {
-            ValidationType = ValidationType.Schema,
-            Schemas = schemas
-        };
-        leituraXml.ValidationEventHandler += (_, e) =>
-            erros.Add($"[{e.Severity}] linha {e.Exception?.LineNumber}: {e.Message}");
-
-        using var xmlReader = XmlReader.Create(new StringReader(xml), leituraXml);
-        while (xmlReader.Read()) { }
-
-        return erros;
-    }
 }

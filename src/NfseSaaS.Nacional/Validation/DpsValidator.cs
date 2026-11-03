@@ -53,6 +53,12 @@ public sealed class DpsValidator : IDpsValidator
         // de cadastro, não algo que a SEFIN vá aceitar.
         if (prestador.OpSimpNac is not ("1" or "2" or "3"))
             erros.Add($"OpSimpNac do prestador deve ser '1', '2' ou '3': '{prestador.OpSimpNac}'.");
+
+        // regApTribSN só é enviado pra ME/EPP ("3") — ver DpsBuilder. Pra
+        // esse regime ele precisa estar preenchido com 1, 2 ou 3; pros
+        // demais, o valor do cadastro é ignorado (não vai pro XML).
+        if (prestador.OpSimpNac == "3" && prestador.RegApTribSN is not ("1" or "2" or "3"))
+            erros.Add($"RegApTribSN deve ser '1', '2' ou '3' para Empresa optante ME/EPP (OpSimpNac '3'): '{prestador.RegApTribSN}'.");
     }
 
     private static void ValidarTomador(TomadorDps tomador, List<string> erros)

@@ -11,6 +11,29 @@ versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH)
   Produção Restrita passou a exigir o leiaute da NT 009 (esquemas de
   20/10/2026). A DPS agora sai com `finNFSe=0` (NFS-e regular) entre
   `tpEmit` e `cLocEmi`, e com `xDescServ` como último elemento de `cServ`.
+- Tomador pessoa física (CPF) gerava `<CNPJ>` com 11 dígitos e a DPS era
+  rejeitada (E1235). Agora sai `<CPF>`; CPF/CNPJ com máscara são limpos
+  antes de ir pro XML (letras do CNPJ alfanumérico são preservadas).
+- Empresa Não optante pelo Simples não conseguia emitir: o grupo
+  obrigatório `totTrib` era omitido. Agora sai `indTotTrib=0`; optantes
+  (MEI e ME/EPP) continuam com `pTotTribSN`.
+- `regApTribSN` só é enviado para optante ME/EPP (antes ia para qualquer
+  regime, inclusive vazio), e passou a ser obrigatório nesse caso.
+- Inscrição municipal, telefone e e-mail do prestador vazios não geram
+  mais elemento vazio no XML.
+- Cadastro de Empresa: a lista "Regime especial de tributação" tinha os
+  textos trocados em relação aos códigos enviados à SEFIN (ex.: "Sociedade
+  de Profissionais" mandava o código 2, que é "Estimativa"). Textos agora
+  seguem o XSD oficial (`TSRegEspTrib`), também no DANFSe, e o cadastro só
+  aceita os códigos 0–6 e 9.
+- Cadastro de Empresa: "CST PIS/COFINS" só oferecia 00–04; agora traz
+  todos os CSTs de saída da tabela oficial (00–09, 49 e 99). Tributação
+  e retenção de ISSQN e PIS/COFINS passaram a ser validadas contra os
+  códigos do XSD.
+- DANFSe: "Retenção PIS/COFINS" só reconhecia os códigos 0 e 1 (com texto
+  errado no 1); demais saíam "-". Agora cobre 0–9 conforme o XSD.
+- DANFSe: campo "Finalidade" lê `finNFSe` da nova posição (raiz do
+  `infDPS`, NT 009), com fallback para o local antigo em notas anteriores.
 
 ### Adicionado
 - Leiaute da DPS configurável por ambiente

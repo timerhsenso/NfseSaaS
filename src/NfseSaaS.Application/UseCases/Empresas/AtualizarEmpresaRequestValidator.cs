@@ -5,8 +5,6 @@ namespace NfseSaaS.Application.UseCases.Empresas;
 /// <summary>Mesmas regras do cadastro, exceto Cnpj (não editável, nem faz parte deste DTO).</summary>
 public sealed class AtualizarEmpresaRequestValidator : AbstractValidator<AtualizarEmpresaRequest>
 {
-    private static readonly string[] OpcoesSimplesNacional = { "1", "2", "3" };
-
     public AtualizarEmpresaRequestValidator()
     {
         RuleFor(x => x.RazaoSocial).NotEmpty().MaximumLength(200);
@@ -23,15 +21,30 @@ public sealed class AtualizarEmpresaRequestValidator : AbstractValidator<Atualiz
 
         RuleFor(x => x.OpSimpNac)
             .NotEmpty()
-            .Must(v => OpcoesSimplesNacional.Contains(v))
+            .Must(v => CodigosFiscaisEmpresa.OpcoesSimplesNacional.Contains(v))
             .WithMessage("OpSimpNac deve ser '1' (Não optante), '2' (Optante MEI) ou '3' (Optante Simples Nacional exceto MEI).");
 
         RuleFor(x => x.RegApTribSN).NotEmpty();
-        RuleFor(x => x.RegEspTrib).NotEmpty();
-        RuleFor(x => x.TribIssqn).NotEmpty();
-        RuleFor(x => x.TpRetIssqn).NotEmpty();
-        RuleFor(x => x.CstPisCofins).NotEmpty();
-        RuleFor(x => x.TpRetPisCofins).NotEmpty();
+        RuleFor(x => x.RegEspTrib)
+            .NotEmpty()
+            .Must(v => CodigosFiscaisEmpresa.RegimesEspeciais.Contains(v))
+            .WithMessage("RegEspTrib deve ser um dos códigos do XSD da SEFIN: 0, 1, 2, 3, 4, 5, 6 ou 9.");
+        RuleFor(x => x.TribIssqn)
+            .NotEmpty()
+            .Must(v => CodigosFiscaisEmpresa.TributacoesIssqn.Contains(v))
+            .WithMessage("TribIssqn deve ser 1, 2, 3 ou 4 (XSD da SEFIN).");
+        RuleFor(x => x.TpRetIssqn)
+            .NotEmpty()
+            .Must(v => CodigosFiscaisEmpresa.RetencoesIssqn.Contains(v))
+            .WithMessage("TpRetIssqn deve ser 1, 2 ou 3 (XSD da SEFIN).");
+        RuleFor(x => x.CstPisCofins)
+            .NotEmpty()
+            .Must(v => CodigosFiscaisEmpresa.CstsPisCofins.Contains(v))
+            .WithMessage("CstPisCofins deve ser um CST de saída válido: 00 a 09, 49 ou 99.");
+        RuleFor(x => x.TpRetPisCofins)
+            .NotEmpty()
+            .Must(v => CodigosFiscaisEmpresa.RetencoesPisCofins.Contains(v))
+            .WithMessage("TpRetPisCofins deve ser de 0 a 9 (XSD da SEFIN).");
 
         // Mesma regra do DpsValidator (módulo Nacional) — ver comentário
         // equivalente em CadastrarEmpresaRequestValidator.

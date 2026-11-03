@@ -137,6 +137,32 @@ public class DpsValidatorTests
         Assert.DoesNotContain(erros, e => e.Contains("PercentualTotalTributosSimplesNacional"));
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("4")]
+    public void Validar_deve_exigir_RegApTribSN_valido_quando_optante_ME_EPP(string regApTribSN)
+    {
+        var original = DpsRequestFactory.CriarRequestDeTeste();
+        var request = original with { Prestador = original.Prestador with { OpSimpNac = "3", RegApTribSN = regApTribSN } };
+
+        var erros = Validator.Validar(request);
+
+        Assert.Contains(erros, e => e.Contains("RegApTribSN"));
+    }
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("2")]
+    public void Validar_nao_deve_exigir_RegApTribSN_fora_de_ME_EPP(string opSimpNac)
+    {
+        var original = DpsRequestFactory.CriarRequestDeTeste();
+        var request = original with { Prestador = original.Prestador with { OpSimpNac = opSimpNac, RegApTribSN = "" } };
+
+        var erros = Validator.Validar(request);
+
+        Assert.DoesNotContain(erros, e => e.Contains("RegApTribSN"));
+    }
+
     private static DpsRequest ComPrestador(DpsRequest original, string? cnpj = null, string? opSimpNac = null) =>
         original with
         {

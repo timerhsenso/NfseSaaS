@@ -154,18 +154,16 @@
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Regime especial de tributação</label>
                                 <select class="form-select" id="regEspTrib" required>
+                                    @* Códigos e textos do tipo TSRegEspTrib do XSD oficial da SEFIN (tiposSimples_v1.01.xsd). *@
                                     <option value="0">Nenhum</option>
-                                    <option value="1">Estimativa</option>
-                                    <option value="2">Sociedade de Profissionais</option>
-                                    <option value="3">Cooperativa</option>
-                                    <option value="4">Microempresário Individual (MEI)</option>
-                                    <option value="5">Microempresário e Empresa de Pequeno Porte (ME/EPP)</option>
-                                    <option value="6">Profissional Autônomo</option>
+                                    <option value="1">Ato Cooperado (Cooperativa)</option>
+                                    <option value="2">Estimativa</option>
+                                    <option value="3">Microempresa Municipal</option>
+                                    <option value="4">Notário ou Registrador</option>
+                                    <option value="5">Profissional Autônomo</option>
+                                    <option value="6">Sociedade de Profissionais</option>
                                     <option value="9">Outros</option>
                                 </select>
-                                <div class="form-text text-warning">
-                                    <i class="bi bi-exclamation-triangle"></i> Lista não confirmada contra o Emissor Web oficial — achei uma fonte municipal que diz o contrário (4=cartório, 5=autônomo, 6=ISS Fixo). Confira o valor certo pro seu caso antes de emitir.
-                                </div>
                             </div>
                         </div>
                         <div class="row">
@@ -194,10 +192,15 @@
                                     <option value="02">02 - Operação Tributável com Alíquota Diferenciada</option>
                                     <option value="03">03 - Operação Tributável com Alíquota por Unidade de Medida de Produto</option>
                                     <option value="04">04 - Operação Tributável monofásica - Revenda a Alíquota Zero</option>
+                                    <option value="05">05 - Operação Tributável por Substituição Tributária</option>
+                                    <option value="06">06 - Operação Tributável a Alíquota Zero</option>
+                                    <option value="07">07 - Operação Isenta da Contribuição</option>
+                                    <option value="08">08 - Operação sem Incidência da Contribuição</option>
+                                    <option value="09">09 - Operação com Suspensão da Contribuição</option>
+                                    <option value="49">49 - Outras Operações de Saída</option>
+                                    <option value="99">99 - Outras Operações</option>
+                                    @* Códigos de saída do TSTipoCST (XSD oficial). 50–75 e 98 são de entrada/aquisição e ficam de fora de propósito — ver CodigosFiscaisEmpresa. *@
                                 </select>
-                                <div class="form-text text-warning">
-                                    <i class="bi bi-exclamation-triangle"></i> Só os 5 primeiros da tabela oficial (a lista continua no Emissor Web — 05, 06... até 99). Se o seu código não estiver aqui, me manda mais um print que eu completo.
-                                </div>
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label class="form-label">Retenção PIS/COFINS</label>
