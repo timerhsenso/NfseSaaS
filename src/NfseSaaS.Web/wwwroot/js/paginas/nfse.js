@@ -172,7 +172,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
             }
         });
-        document.getElementById('emitir-clienteId').addEventListener('change', function () {
+        // Tem que ser .on() do jQuery, NÃO addEventListener: o select2
+        // dispara o 'change' via jQuery .trigger(), que só chama handlers
+        // registrados pelo jQuery — um listener nativo nunca era chamado,
+        // e por isso os Contratos do Cliente não carregavam nunca.
+        $('#emitir-clienteId').on('change', function () {
             // No reenvio, Cliente e Contrato ficam travados nos da nota
             // original — buscar os Contratos aqui sobrescreveria Serviço/
             // valor/descrição com os do Contrato (aplicarContratoSelecionado).
@@ -395,11 +399,17 @@ async function prepararModalEmitirNfse() {
     const selectServico = document.getElementById('emitir-servicoId');
     selectServico.innerHTML = servicos.items.map(s => `<option value="${s.id}" data-descricao="${s.descricao}" data-valor="${s.valorPadrao}">${s.descricao}</option>`).join('');
 
-    // Ao trocar o serviço MANUALMENTE, pré-preenche descrição/valor
-    // com o padrão do catálogo — só entra em jogo quando não há
-    // Contrato selecionado (ver selectContrato.onchange abaixo, que
-    // sobrescreve isso quando o usuário escolhe um Contrato).
+    // Ao trocar o serviço MANUALMENTE, pré-preenche descrição/valor.
+    // Com Contrato selecionado e o serviço sendo uma linha dele, usa os
+    // valores da LINHA do Contrato; caso contrário, o padrão do catálogo.
     selectServico.onchange = function () {
+        const contrato = contratoSelecionado();
+        const linha = contrato?.servicos.find(s => s.servicoId === selectServico.value);
+        if (linha) {
+            preencherComLinhaDoContrato(contrato, linha);
+            return;
+        }
+
         const opcao = selectServico.selectedOptions[0];
         document.getElementById('emitir-descricaoServico').value = opcao?.dataset.descricao ?? '';
         document.getElementById('emitir-valorServico').value = opcao?.dataset.valor ?? '';
@@ -419,6 +429,7 @@ async function carregarContratosDoCliente(clienteId) {
         campoContrato.classList.add('d-none');
         selectContrato.innerHTML = '';
         document.getElementById('aviso-reajuste-contrato').classList.add('d-none');
+        document.getElementById('aviso-contrato-multiplos-servicos').classList.add('d-none');
         return;
     }
 
@@ -432,6 +443,7 @@ async function carregarContratosDoCliente(clienteId) {
             campoContrato.classList.add('d-none');
             selectContrato.innerHTML = '';
             document.getElementById('aviso-reajuste-contrato').classList.add('d-none');
+        document.getElementById('aviso-contrato-multiplos-servicos').classList.add('d-none');
             selectServico.onchange();
             return;
         }
@@ -454,6 +466,20 @@ async function carregarContratosDoCliente(clienteId) {
     }
 }
 
+function contratoSelecionado() {
+    const contratoId = document.getElementById('emitir-contratoId').value;
+    return contratoId ? contratosDoClienteAtual.find(c => c.id === contratoId) : undefined;
+}
+
+// Contrato com 1 serviço: descrição do Contrato (comportamento de sempre).
+// Com vários: descrição do serviço da linha, pra nota não descrever o
+// contrato inteiro quando cobra só uma parte dele.
+function preencherComLinhaDoContrato(contrato, linha) {
+    document.getElementById('emitir-descricaoServico').value =
+        contrato.servicos.length > 1 ? linha.servicoDescricao : contrato.descricao;
+    document.getElementById('emitir-valorServico').value = linha.valorTotal;
+}
+
 function aplicarContratoSelecionado() {
     const selectContrato = document.getElementById('emitir-contratoId');
     const avisoDiv = document.getElementById('aviso-reajuste-contrato');
@@ -462,6 +488,7 @@ function aplicarContratoSelecionado() {
     if (!contratoId) {
         // "Nenhum (nota avulsa)" — volta pro fluxo manual de Serviço.
         avisoDiv.classList.add('d-none');
+        document.getElementById('aviso-contrato-multiplos-servicos').classList.add('d-none');
         document.getElementById('emitir-servicoId').onchange();
         return;
     }
@@ -469,9 +496,26 @@ function aplicarContratoSelecionado() {
     const contrato = contratosDoClienteAtual.find(c => c.id === contratoId);
     if (!contrato) return;
 
-    document.getElementById('emitir-servicoId').value = contrato.servicoId;
-    document.getElementById('emitir-descricaoServico').value = contrato.descricao;
-    document.getElementById('emitir-valorServico').value = contrato.valorAtual;
+    // Desde a Fase 6 o Contrato tem N linhas de serviço (contrato.servicos),
+    // não mais um servicoId único — o código antigo lia contrato.servicoId
+    // (undefined), deixava o Serviço em branco e a emissão caía num 400.
+    // A SEFIN aceita 1 cServ por nota, então a nota avulsa sai pra UMA
+    // linha: a primeira por padrão; o usuário troca no combo de Serviço.
+    const linha = contrato.servicos[0];
+    if (linha) {
+        document.getElementById('emitir-servicoId').value = linha.servicoId;
+        preencherComLinhaDoContrato(contrato, linha);
+    }
+
+    const avisoMultiplos = document.getElementById('aviso-contrato-multiplos-servicos');
+    if (contrato.servicos.length > 1) {
+        avisoMultiplos.textContent =
+            `Este contrato tem ${contrato.servicos.length} serviços. A nota avulsa sai para o serviço selecionado abaixo ` +
+            `(valor da linha do contrato). Para faturar o contrato inteiro, use "Nota Mensal".`;
+        avisoMultiplos.classList.remove('d-none');
+    } else {
+        avisoMultiplos.classList.add('d-none');
+    }
 
     if (contrato.situacao === 0) {
         avisoDiv.classList.add('d-none');

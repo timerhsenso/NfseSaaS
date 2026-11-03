@@ -30,6 +30,14 @@ versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH)
   todos os CSTs de saída da tabela oficial (00–09, 49 e 99). Tributação
   e retenção de ISSQN e PIS/COFINS passaram a ser validadas contra os
   códigos do XSD.
+- Emitir nota: ao escolher o Cliente, os Contratos dele não carregavam
+  (o campo "Contrato" ficava vazio). O select2 dispara `change` via jQuery,
+  que não chega a listener nativo (`addEventListener`). Agora usa `.on()`.
+- Emitir nota: escolher um Contrato deixava o Serviço em branco (lia
+  `contrato.servicoId`, que não existe desde que o Contrato passou a ter
+  várias linhas de serviço). Agora seleciona a primeira linha, com o valor
+  da linha; com mais de um serviço, avisa que a nota avulsa sai para o
+  serviço escolhido e indica a Nota Mensal para faturar o contrato inteiro.
 - DANFSe: "Retenção PIS/COFINS" só reconhecia os códigos 0 e 1 (com texto
   errado no 1); demais saíam "-". Agora cobre 0–9 conforme o XSD.
 - DANFSe: campo "Finalidade" lê `finNFSe` da nova posição (raiz do
