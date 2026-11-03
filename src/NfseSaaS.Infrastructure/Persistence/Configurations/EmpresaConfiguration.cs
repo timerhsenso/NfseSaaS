@@ -70,8 +70,8 @@ public sealed class EmpresaConfiguration : IEntityTypeConfiguration<Empresa>
         builder.Property(e => e.TribIssqn)
             .HasMaxLength(1);
 
-        builder.Property(e => e.TpRetIssqn)
-            .HasMaxLength(1);
+        builder.Property(e => e.AliquotaIss)
+            .HasPrecision(5, 2);
 
         builder.Property(e => e.CstPisCofins)
             .HasMaxLength(2);

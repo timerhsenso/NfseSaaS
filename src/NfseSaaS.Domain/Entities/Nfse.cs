@@ -78,7 +78,11 @@ public sealed class Nfse : BaseEntity, ITenantEntity
     /// <summary>tribISSQN efetivamente usado nesta DPS — copiado do regime tributário da Empresa na emissão.</summary>
     public string TribIssqn { get; set; } = string.Empty;
 
+    /// <summary>tpRetISSQN desta DPS: "1" não retido, "2" retido pelo tomador — resolvido na emissão (nota → Cliente.RetemIss).</summary>
     public string TpRetIssqn { get; set; } = string.Empty;
+
+    /// <summary>pAliq (%) enviado na DPS — obrigatório quando o ISS é retido. Nulo = não enviado.</summary>
+    public decimal? AliquotaIss { get; set; }
 
     public string CstPisCofins { get; set; } = string.Empty;
 

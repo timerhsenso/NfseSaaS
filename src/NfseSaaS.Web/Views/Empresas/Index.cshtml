@@ -171,18 +171,16 @@
                                 <label class="form-label">Tributação ISSQN</label>
                                 <select class="form-select" id="tribIssqn" required>
                                     <option value="1">Operação Tributável</option>
-                                    <option value="2">Imune</option>
-                                    <option value="3">Exportação de Serviço</option>
-                                    <option value="4">Não Incidência</option>
+                                    @* Imunidade, exportação e não incidência exigem grupos que a DPS ainda não monta — ver CodigosFiscaisEmpresa. *@
+                                    <option value="2" disabled>Imune (em breve)</option>
+                                    <option value="3" disabled>Exportação de Serviço (em breve)</option>
+                                    <option value="4" disabled>Não Incidência (em breve)</option>
                                 </select>
                             </div>
                             <div class="col-md-3 mb-3">
-                                <label class="form-label">Retenção ISSQN</label>
-                                <select class="form-select" id="tpRetIssqn" required>
-                                    <option value="1">Não Retido</option>
-                                    <option value="2">Retido pelo Tomador</option>
-                                    <option value="3">Retido pelo Intermediário</option>
-                                </select>
+                                <label class="form-label" for="aliquotaIss">Alíquota de ISS (%)</label>
+                                <input type="number" class="form-control" id="aliquotaIss" min="0.01" max="5" step="0.01" placeholder="Ex.: 2.01" />
+                                <div class="form-text">Usada quando o cliente retém o ISS. No Simples, é a alíquota efetiva da sua faixa de faturamento.</div>
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label class="form-label">CST PIS/COFINS</label>

@@ -12,4 +12,5 @@ public sealed record AtualizarClienteRequest(
     string Numero,
     string? Complemento,
     string Bairro,
-    string Uf);
+    string Uf,
+    bool RetemIss = false);

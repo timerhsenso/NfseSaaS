@@ -20,6 +20,11 @@ public sealed class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
             .HasMaxLength(200)
             .IsRequired();
 
+        // HasDefaultValue: a migration preenche os Clientes existentes com
+        // "não retém" (mesma cautela de todo campo novo neste projeto).
+        builder.Property(c => c.RetemIss)
+            .HasDefaultValue(false);
+
         builder.Property(c => c.Apelido)
             .HasMaxLength(Cliente.TamanhoMaximoApelido)
             .IsRequired();

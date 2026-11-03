@@ -168,7 +168,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 delay: 300,
                 data: params => ({ empresaId: empresaAtualIdNfse, busca: params.term, pageSize: 20 }),
                 processResults: data => ({
-                    results: data.items.map(c => ({ id: c.id, text: `${c.apelido} (${c.cpfCnpj})` }))
+                    // retemIss vai junto no item do select2 pra marcar
+                    // "ISS retido" com o padrão do Cliente ao escolhê-lo.
+                    results: data.items.map(c => ({ id: c.id, text: `${c.apelido} (${c.cpfCnpj})`, retemIss: c.retemIss }))
                 })
             }
         });
@@ -181,7 +183,13 @@ document.addEventListener('DOMContentLoaded', function () {
             // original — buscar os Contratos aqui sobrescreveria Serviço/
             // valor/descrição com os do Contrato (aplicarContratoSelecionado).
             if (nfseReenvioAtualId) return;
+            const selecionado = $('#emitir-clienteId').select2('data')[0];
+            definirIssRetido(selecionado?.retemIss === true);
             carregarContratosDoCliente(this.value);
+        });
+
+        document.getElementById('emitir-issRetido').addEventListener('change', function () {
+            definirIssRetido(this.checked);
         });
 
         modalNotaMensal = new bootstrap.Modal(document.getElementById('modal-nota-mensal'));
@@ -249,7 +257,7 @@ async function carregarClientesParaMapa() {
     try {
         const resultado = await apiFetch(`/api/clientes?empresaId=${empresaAtualIdNfse}&pageSize=200&incluirInativos=true`);
         clientesPorId = {};
-        for (const c of resultado.items) clientesPorId[c.id] = { apelido: c.apelido, nome: c.nome };
+        for (const c of resultado.items) clientesPorId[c.id] = { apelido: c.apelido, nome: c.nome, retemIss: c.retemIss };
 
         const selectFiltroCliente = document.getElementById('filtro-cliente');
         selectFiltroCliente.innerHTML = '<option value="">Todos</option>' +
@@ -368,6 +376,9 @@ async function abrirModalReenvioNfse(id) {
         document.getElementById('emitir-descricaoServico').value = nfse.descricaoServico;
         document.getElementById('emitir-valorServico').value = nfse.valorServico;
         document.getElementById('emitir-dataCompetencia').value = nfse.dataCompetencia;
+        // Reenvio relê o cadastro atual (ver aviso acima): retenção pelo
+        // padrão ATUAL do Cliente — corrigir o cadastro e reenviar funciona.
+        definirIssRetido(clientesPorId[nfse.clienteId]?.retemIss === true);
 
         modalEmitirNfse.show();
     } catch (err) {
@@ -388,6 +399,7 @@ async function prepararModalEmitirNfse() {
     document.getElementById('form-emitir-nfse').reset();
     document.getElementById('erro-emitir-nfse').classList.add('d-none');
     document.getElementById('emitir-dataCompetencia').value = dataLocalIso();
+    definirIssRetido(false);
 
     // select2 não some sozinho no form.reset() — limpa manualmente,
     // senão reabrir o modal mostra o cliente da vez anterior.
@@ -464,6 +476,15 @@ async function carregarContratosDoCliente(clienteId) {
     } catch (err) {
         mostrarErro(err.message);
     }
+}
+
+// Marca/desmarca "ISS retido" e mostra a alíquota só quando retido. Ao
+// desmarcar, limpa a alíquota digitada (sem retenção ela não vai na DPS).
+function definirIssRetido(retido) {
+    document.getElementById('emitir-issRetido').checked = retido;
+    document.getElementById('campo-emitir-aliquotaIss').classList.toggle('d-none', !retido);
+    if (!retido)
+        document.getElementById('emitir-aliquotaIss').value = '';
 }
 
 function contratoSelecionado() {
@@ -552,7 +573,13 @@ async function emitirNfse(e) {
         // usuário reenviar (ex.: timeout + segundo clique acidental), a
         // API reconhece a mesma tentativa e não duplica a nota.
         idempotencyKey: crypto.randomUUID(),
-        reenvioDeNfseId: nfseReenvioAtualId
+        reenvioDeNfseId: nfseReenvioAtualId,
+        // Sempre explícito (true/false): o que está na tela é o que vale
+        // pra esta nota. Alíquota em branco = a da Empresa (backend).
+        issRetido: document.getElementById('emitir-issRetido').checked,
+        aliquotaIss: document.getElementById('emitir-issRetido').checked && document.getElementById('emitir-aliquotaIss').value !== ''
+            ? parseFloat(document.getElementById('emitir-aliquotaIss').value)
+            : null
     };
 
     try {

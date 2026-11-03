@@ -113,6 +113,7 @@ async function abrirModalEditarCliente(id) {
         document.getElementById('complemento').value = cliente.complemento ?? '';
         document.getElementById('bairro').value = cliente.bairro;
         document.getElementById('uf').value = cliente.uf;
+        document.getElementById('retemIss').checked = cliente.retemIss === true;
 
         modalCliente.show();
     } catch (err) {
@@ -133,7 +134,8 @@ function montarPayloadCliente() {
         numero: document.getElementById('numero').value,
         complemento: document.getElementById('complemento').value || null,
         bairro: document.getElementById('bairro').value,
-        uf: document.getElementById('uf').value.toUpperCase()
+        uf: document.getElementById('uf').value.toUpperCase(),
+        retemIss: document.getElementById('retemIss').checked
     };
 }
 

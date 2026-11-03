@@ -42,11 +42,11 @@ public sealed class CadastrarEmpresaRequestValidator : AbstractValidator<Cadastr
         RuleFor(x => x.TribIssqn)
             .NotEmpty()
             .Must(v => CodigosFiscaisEmpresa.TributacoesIssqn.Contains(v))
-            .WithMessage("TribIssqn deve ser 1, 2, 3 ou 4 (XSD da SEFIN).");
-        RuleFor(x => x.TpRetIssqn)
-            .NotEmpty()
-            .Must(v => CodigosFiscaisEmpresa.RetencoesIssqn.Contains(v))
-            .WithMessage("TpRetIssqn deve ser 1, 2 ou 3 (XSD da SEFIN).");
+            .WithMessage("Por enquanto só é suportada a tributação \"Operação tributável\" (imunidade, exportação e não incidência ainda não são emitidas por este sistema).");
+        RuleFor(x => x.AliquotaIss)
+            .InclusiveBetween(CodigosFiscaisEmpresa.AliquotaIssMinima, CodigosFiscaisEmpresa.AliquotaIssMaxima)
+            .When(x => x.AliquotaIss.HasValue)
+            .WithMessage("Alíquota de ISS deve estar entre 0,01% e 5,00%.");
         RuleFor(x => x.CstPisCofins)
             .NotEmpty()
             .Must(v => CodigosFiscaisEmpresa.CstsPisCofins.Contains(v))

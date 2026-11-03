@@ -50,4 +50,12 @@ public sealed class Cliente : BaseEntity, ITenantEntity
     public string Uf { get; set; } = string.Empty;
 
     public bool Ativo { get; set; } = true;
+
+    /// <summary>
+    /// Este tomador retém o ISS na fonte (órgão público, PJ que a lei
+    /// municipal define como substituta tributária etc.). É o padrão da nota
+    /// emitida pra ele — dá pra mudar na hora de emitir. Quem decide a
+    /// retenção é o tomador, por isso fica no Cliente e não na Empresa.
+    /// </summary>
+    public bool RetemIss { get; set; }
 }

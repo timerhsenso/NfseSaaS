@@ -222,6 +222,7 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
                 CodigoNbs = dados.CodigoNbs(),
                 TribIssqn = dados.TribIssqn(),
                 TpRetIssqn = dados.TpRetIssqn(),
+                AliquotaIss = dados.AliquotaIss(),
                 CstPisCofins = dados.CstPisCofins(),
                 TpRetPisCofins = dados.TpRetPisCofins(),
                 PercentualTotalTributosSimplesNacional = dados.PercentualTotalTributosSimplesNacional(),

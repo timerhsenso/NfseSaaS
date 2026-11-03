@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Alterado
+- Retenção de ISS passou da Empresa para o Cliente ("Este cliente retém o
+  ISS na fonte") e pode ser ajustada em cada nota. Com ISS retido, a DPS
+  passa a enviar a alíquota (`pAliq`), da nota ou da nova "Alíquota de ISS
+  (%)" da Empresa — antes uma Empresa marcada como "retido" emitia TODAS as
+  notas retidas e sem alíquota. Nota Mensal e automação usam o padrão do
+  Cliente. A migration `RetencaoIssPorCliente` marca como "retém ISS" os
+  Clientes de Empresas que estavam com retenção.
+- Tributação ISSQN restrita a "Operação tributável": imunidade, exportação
+  e não incidência exigem grupos que a DPS ainda não monta (toda nota dessas
+  Empresas seria rejeitada). Retenção pelo intermediário também bloqueada.
+
 ### Segurança
 - Painel `/hangfire`, tela Logs e tela Sobre agora são exclusivos do
   operador da plataforma (`Plataforma:UsuariosOperadoresIds`). Antes

@@ -22,4 +22,10 @@ public sealed record EmitirNfseRequest(
     DateOnly DataCompetencia,
     Guid? ContratoId = null,
     string? IdempotencyKey = null,
-    Guid? ReenvioDeNfseId = null);
+    Guid? ReenvioDeNfseId = null,
+    // ISS retido pelo tomador NESTA nota. Nulo = padrão do Cliente
+    // (Cliente.RetemIss) — é o que a Nota Mensal e a automação usam.
+    bool? IssRetido = null,
+    // Alíquota de ISS (%) NESTA nota. Nula = alíquota da Empresa
+    // (Empresa.AliquotaIss). Obrigatória (por um dos dois) quando retido.
+    decimal? AliquotaIss = null);

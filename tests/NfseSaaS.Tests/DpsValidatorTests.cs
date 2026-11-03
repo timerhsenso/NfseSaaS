@@ -163,6 +163,36 @@ public class DpsValidatorTests
         Assert.DoesNotContain(erros, e => e.Contains("RegApTribSN"));
     }
 
+    [Fact]
+    public void Validar_deve_exigir_aliquota_quando_ISS_retido()
+    {
+        var original = DpsRequestFactory.CriarRequestDeTeste();
+        var request = original with { Tributacao = original.Tributacao with { TpRetIssqn = "2", AliquotaIss = "" } };
+
+        Assert.Contains(Validator.Validar(request), e => e.Contains("obrigatória quando o ISS é retido"));
+    }
+
+    [Theory]
+    [InlineData("5.01")]
+    [InlineData("2")]
+    [InlineData("0.00")]
+    public void Validar_deve_reprovar_aliquota_fora_da_faixa_ou_do_formato(string aliquota)
+    {
+        var original = DpsRequestFactory.CriarRequestDeTeste();
+        var request = original with { Tributacao = original.Tributacao with { TpRetIssqn = "2", AliquotaIss = aliquota } };
+
+        Assert.Contains(Validator.Validar(request), e => e.Contains("Alíquota de ISS deve estar entre"));
+    }
+
+    [Fact]
+    public void Validar_deve_reprovar_retencao_pelo_intermediario()
+    {
+        var original = DpsRequestFactory.CriarRequestDeTeste();
+        var request = original with { Tributacao = original.Tributacao with { TpRetIssqn = "3" } };
+
+        Assert.Contains(Validator.Validar(request), e => e.Contains("TpRetIssqn"));
+    }
+
     private static DpsRequest ComPrestador(DpsRequest original, string? cnpj = null, string? opSimpNac = null) =>
         original with
         {

@@ -72,6 +72,12 @@ internal sealed class NfseXmlImportDados
 
     public string TpRetIssqn() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:valores/n:trib/n:tribMun/n:tpRetISSQN") ?? string.Empty;
 
+    /// <summary>pAliq declarado na DPS (só existe quando o emissor informou — tipicamente com ISS retido).</summary>
+    public decimal? AliquotaIss() =>
+        decimal.TryParse(Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:valores/n:trib/n:tribMun/n:pAliq"), NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var v)
+            ? v
+            : null;
+
     public string CstPisCofins() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:valores/n:trib/n:tribFed/n:piscofins/n:CST") ?? string.Empty;
 
     public string TpRetPisCofins() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:valores/n:trib/n:tribFed/n:piscofins/n:tpRetPisCofins") ?? string.Empty;

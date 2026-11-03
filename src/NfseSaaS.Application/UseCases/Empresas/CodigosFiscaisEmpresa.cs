@@ -17,11 +17,21 @@ internal static class CodigosFiscaisEmpresa
     /// <summary>TSRegEspTrib.</summary>
     public static readonly string[] RegimesEspeciais = { "0", "1", "2", "3", "4", "5", "6", "9" };
 
-    /// <summary>TSTribISSQN: 1 Tributável, 2 Imunidade, 3 Exportação, 4 Não incidência.</summary>
-    public static readonly string[] TributacoesIssqn = { "1", "2", "3", "4" };
+    /// <summary>
+    /// TSTribISSQN aceito HOJE: só 1 (operação tributável). O XSD também
+    /// tem 2 Imunidade, 3 Exportação e 4 Não incidência, mas cada um exige
+    /// grupos que a DPS ainda não monta (tpImunidade, cPaisResult/comExt) —
+    /// aceitá-los no cadastro fazia toda nota da Empresa ser rejeitada.
+    /// Reabrir junto com o suporte a esses grupos.
+    /// </summary>
+    public static readonly string[] TributacoesIssqn = { "1" };
 
-    /// <summary>TSTipoRetISSQN: 1 Não retido, 2 Retido pelo tomador, 3 Retido pelo intermediário.</summary>
-    public static readonly string[] RetencoesIssqn = { "1", "2", "3" };
+    /// <summary>
+    /// Faixa da alíquota de ISS (%) enviada em pAliq. TSDec1V2 aceita até
+    /// 9.99; o teto legal do ISS é 5% (LC 116, art. 8º). Piso não validado
+    /// aqui de propósito (alíquota efetiva do Simples varia por faixa).
+    /// </summary>
+    public const decimal AliquotaIssMinima = 0.01m, AliquotaIssMaxima = 5.00m;
 
     /// <summary>
     /// TSTipoCST — só os códigos de SAÍDA (00–09, 49, 99). O XSD também

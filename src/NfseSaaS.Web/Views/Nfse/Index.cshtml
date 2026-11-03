@@ -121,6 +121,20 @@
                                 <input type="date" class="form-control" id="emitir-dataCompetencia" required />
                             </div>
                         </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3 d-flex align-items-center">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="emitir-issRetido" />
+                                    <label class="form-check-label" for="emitir-issRetido">ISS retido pelo tomador</label>
+                                </div>
+                            </div>
+                            @* Só aparece com ISS retido — é quando a alíquota vai pra DPS (pAliq). *@
+                            <div class="col-md-6 mb-3 d-none" id="campo-emitir-aliquotaIss">
+                                <label class="form-label" for="emitir-aliquotaIss">Alíquota de ISS (%)</label>
+                                <input type="number" step="0.01" min="0.01" max="5" class="form-control" id="emitir-aliquotaIss" placeholder="Alíquota da Empresa" />
+                                <div class="form-text">Em branco, usa a alíquota cadastrada na Empresa.</div>
+                            </div>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>

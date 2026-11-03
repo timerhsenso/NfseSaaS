@@ -93,8 +93,25 @@ public sealed class DpsValidator : IDpsValidator
         if (string.IsNullOrWhiteSpace(tributacao.TribIssqn) || tributacao.TribIssqn.Length != 1)
             erros.Add($"TribIssqn deve ter 1 caractere: '{tributacao.TribIssqn}'.");
 
-        if (string.IsNullOrWhiteSpace(tributacao.TpRetIssqn) || tributacao.TpRetIssqn.Length != 1)
-            erros.Add($"TpRetIssqn deve ter 1 caractere: '{tributacao.TpRetIssqn}'.");
+        // Só "1" (não retido) e "2" (retido pelo tomador): "3" (retido pelo
+        // intermediário) exige o grupo interm, que a DPS ainda não monta.
+        if (tributacao.TpRetIssqn is not ("1" or "2"))
+            erros.Add($"TpRetIssqn deve ser '1' (não retido) ou '2' (retido pelo tomador): '{tributacao.TpRetIssqn}'.");
+
+        // pAliq: obrigatório com ISS retido; quando vier, formato TSDec1V2
+        // ("0.00" a "9.99") e no máximo 5% (teto legal do ISS).
+        if (!string.IsNullOrWhiteSpace(tributacao.AliquotaIss))
+        {
+            var aliquotaValida = System.Text.RegularExpressions.Regex.IsMatch(tributacao.AliquotaIss, @"^\d\.\d{2}$")
+                && decimal.TryParse(tributacao.AliquotaIss, System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var aliquota)
+                && aliquota > 0 && aliquota <= 5.00m;
+            if (!aliquotaValida)
+                erros.Add($"Alíquota de ISS deve estar entre 0.01 e 5.00 (formato '2.00'): '{tributacao.AliquotaIss}'.");
+        }
+        else if (tributacao.TpRetIssqn == "2")
+        {
+            erros.Add("Alíquota de ISS é obrigatória quando o ISS é retido pelo tomador.");
+        }
 
         if (string.IsNullOrWhiteSpace(tributacao.CstPisCofins) || tributacao.CstPisCofins.Length != 2)
             erros.Add($"CstPisCofins deve ter 2 caracteres: '{tributacao.CstPisCofins}'.");

@@ -101,6 +101,26 @@ public class DpsBuilderRegimeETomadorTests
         Assert.Contains("<fone>7135085171</fone>", xml);
     }
 
+    [Fact]
+    public void ISS_retido_deve_gerar_tpRetISSQN_2_e_pAliq_logo_depois()
+    {
+        var request = RequestBase() with { Tributacao = RequestBase().Tributacao with { TpRetIssqn = "2", AliquotaIss = "2.01" } };
+
+        var xml = ConstruirValidando(request);
+
+        var tribMun = XDocument.Parse(xml).Descendants(XName.Get("tribMun", Ns)).Single().Elements().Select(e => e.Name.LocalName).ToList();
+        Assert.Equal(new[] { "tribISSQN", "tpRetISSQN", "pAliq" }, tribMun);
+        Assert.Contains("<pAliq>2.01</pAliq>", xml);
+    }
+
+    [Fact]
+    public void ISS_nao_retido_sem_aliquota_nao_deve_gerar_pAliq()
+    {
+        var xml = ConstruirValidando(RequestBase());
+
+        Assert.DoesNotContain("pAliq", xml);
+    }
+
     private static DpsRequest RequestBase() => DpsRequestFactory.CriarRequestDeTeste() with { TpAmb = "2" };
 
     private static string ConstruirValidando(DpsRequest request)

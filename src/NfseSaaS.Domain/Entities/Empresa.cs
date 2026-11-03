@@ -56,7 +56,14 @@ public sealed class Empresa : BaseEntity, ITenantEntity
 
     public string TribIssqn { get; set; } = string.Empty;
 
-    public string TpRetIssqn { get; set; } = string.Empty;
+    /// <summary>
+    /// Alíquota de ISS (%) que vai na DPS quando o tomador retém o ISS.
+    /// Pra ME/EPP do Simples é a alíquota efetiva da faixa de faturamento
+    /// (RBT12, Anexo III/IV/V da LC 123) — muda com o faturamento, por isso
+    /// é editável aqui e pode ser sobrescrita na própria nota. A retenção
+    /// em si é decidida pelo Cliente (Cliente.RetemIss), não pela Empresa.
+    /// </summary>
+    public decimal? AliquotaIss { get; set; }
 
     public string CstPisCofins { get; set; } = string.Empty;
 

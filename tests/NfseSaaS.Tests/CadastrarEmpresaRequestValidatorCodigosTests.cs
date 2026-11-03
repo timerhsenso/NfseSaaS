@@ -54,14 +54,12 @@ public class CadastrarEmpresaRequestValidatorCodigosTests
 
     [Theory]
     [InlineData(nameof(CadastrarEmpresaRequest.TribIssqn), "5")]
-    [InlineData(nameof(CadastrarEmpresaRequest.TpRetIssqn), "4")]
     [InlineData(nameof(CadastrarEmpresaRequest.TpRetPisCofins), "10")]
     public void Deve_reprovar_codigos_de_tributacao_fora_do_XSD(string campo, string valor)
     {
         var request = campo switch
         {
             nameof(CadastrarEmpresaRequest.TribIssqn) => RequestValido() with { TribIssqn = valor },
-            nameof(CadastrarEmpresaRequest.TpRetIssqn) => RequestValido() with { TpRetIssqn = valor },
             _ => RequestValido() with { TpRetPisCofins = valor }
         };
 
@@ -82,6 +80,30 @@ public class CadastrarEmpresaRequestValidatorCodigosTests
         Assert.Equal(valido, !resultado.Errors.Any(e => e.PropertyName == nameof(CadastrarEmpresaRequest.Telefone)));
     }
 
+    [Theory]
+    [InlineData("2")] // imunidade
+    [InlineData("3")] // exportação
+    [InlineData("4")] // não incidência
+    public void Deve_reprovar_tributacao_ISSQN_que_a_DPS_ainda_nao_monta(string tribIssqn)
+    {
+        var resultado = Validator.Validate(RequestValido() with { TribIssqn = tribIssqn });
+
+        Assert.Contains(resultado.Errors, e => e.PropertyName == nameof(CadastrarEmpresaRequest.TribIssqn));
+    }
+
+    [Theory]
+    [InlineData(null, true)]
+    [InlineData(2.00, true)]
+    [InlineData(5.00, true)]
+    [InlineData(0.00, false)]
+    [InlineData(5.01, false)]
+    public void Aliquota_de_ISS_deve_ser_vazia_ou_entre_0_01_e_5(double? aliquota, bool valida)
+    {
+        var resultado = Validator.Validate(RequestValido() with { AliquotaIss = (decimal?)aliquota });
+
+        Assert.Equal(valida, !resultado.Errors.Any(e => e.PropertyName == nameof(CadastrarEmpresaRequest.AliquotaIss)));
+    }
+
     private static CadastrarEmpresaRequest RequestValido() => new(
         Cnpj: "04747304000178",
         RazaoSocial: "Empresa Teste",
@@ -100,7 +122,7 @@ public class CadastrarEmpresaRequestValidatorCodigosTests
         RegApTribSN: "1",
         RegEspTrib: "0",
         TribIssqn: "1",
-        TpRetIssqn: "1",
+        AliquotaIss: 2.00m,
         CstPisCofins: "00",
         TpRetPisCofins: "0",
         PercentualTotalTributosSimplesNacional: "3.00");

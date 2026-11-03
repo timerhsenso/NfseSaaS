@@ -21,7 +21,7 @@ public sealed record EmpresaResponse(
     string RegApTribSN,
     string RegEspTrib,
     string TribIssqn,
-    string TpRetIssqn,
+    decimal? AliquotaIss,
     string CstPisCofins,
     string TpRetPisCofins,
     string PercentualTotalTributosSimplesNacional,

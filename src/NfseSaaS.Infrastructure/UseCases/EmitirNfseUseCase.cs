@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using NfseSaaS.Application.Abstractions;
@@ -135,6 +136,20 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
                 throw new RegraNegocioException($"Contrato {request.ContratoId} não encontrado para este Cliente/Empresa.");
         }
 
+        // Retenção de ISS: decidida pelo TOMADOR (Cliente.RetemIss), com
+        // ajuste por nota. Alíquota: da nota, senão a da Empresa. Validado
+        // ANTES de reservar o número da DPS — erro de cadastro não queima
+        // numeração.
+        var issRetido = request.IssRetido ?? cliente.RetemIss;
+        var aliquotaIss = request.AliquotaIss ?? empresa.AliquotaIss;
+
+        if (issRetido && aliquotaIss is null)
+            throw new RegraNegocioException(
+                $"O ISS desta nota é retido pelo tomador, então a alíquota de ISS é obrigatória. Informe-a na nota ou cadastre a alíquota na Empresa \"{empresa.RazaoSocial}\".");
+
+        if (aliquotaIss is { } aliquotaInformada && (aliquotaInformada <= 0 || aliquotaInformada > 5.00m))
+            throw new RegraNegocioException("Alíquota de ISS deve estar entre 0,01% e 5,00%.");
+
         var numeroDps = await ProximoNumeroDpsAsync(request.EmpresaId, cancellationToken);
 
         // Grava como "Processando" ANTES de chamar a SEFIN — se a chamada
@@ -195,7 +210,10 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
             CodigoTributacaoNacional = servico.CodigoTributacaoNacional,
             CodigoNbs = servico.CodigoNbs,
             TribIssqn = empresa.TribIssqn,
-            TpRetIssqn = empresa.TpRetIssqn,
+            TpRetIssqn = issRetido ? "2" : "1",
+            // Alíquota só vai pra DPS quando há retenção — sem retenção o
+            // ISS é recolhido no DAS e a SEFIN calcula o resto.
+            AliquotaIss = issRetido ? aliquotaIss : null,
             CstPisCofins = empresa.CstPisCofins,
             TpRetPisCofins = empresa.TpRetPisCofins,
             PercentualTotalTributosSimplesNacional = empresa.PercentualTotalTributosSimplesNacional,
@@ -240,7 +258,8 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
                 TpRetIssqn: nfse.TpRetIssqn,
                 CstPisCofins: nfse.CstPisCofins,
                 TpRetPisCofins: nfse.TpRetPisCofins,
-                PercentualTotalTributosSimplesNacional: nfse.PercentualTotalTributosSimplesNacional),
+                PercentualTotalTributosSimplesNacional: nfse.PercentualTotalTributosSimplesNacional,
+                AliquotaIss: nfse.AliquotaIss?.ToString("0.00", CultureInfo.InvariantCulture) ?? string.Empty),
             NumeroDps: numeroDps,
             SerieDps: SerieDps,
             DataCompetencia: request.DataCompetencia,

@@ -184,7 +184,7 @@ async function abrirModalEditarEmpresa(id) {
         document.getElementById('regApTribSN').value = empresa.regApTribSN;
         document.getElementById('regEspTrib').value = empresa.regEspTrib;
         document.getElementById('tribIssqn').value = empresa.tribIssqn;
-        document.getElementById('tpRetIssqn').value = empresa.tpRetIssqn;
+        document.getElementById('aliquotaIss').value = empresa.aliquotaIss ?? '';
         document.getElementById('cstPisCofins').value = empresa.cstPisCofins;
         document.getElementById('tpRetPisCofins').value = empresa.tpRetPisCofins;
         document.getElementById('percentualTotalTributosSimplesNacional').value = empresa.percentualTotalTributosSimplesNacional ?? '';
@@ -224,7 +224,7 @@ function montarPayloadEmpresa() {
         regApTribSN: document.getElementById('regApTribSN').value,
         regEspTrib: document.getElementById('regEspTrib').value,
         tribIssqn: document.getElementById('tribIssqn').value,
-        tpRetIssqn: document.getElementById('tpRetIssqn').value,
+        aliquotaIss: document.getElementById('aliquotaIss').value === '' ? null : parseFloat(document.getElementById('aliquotaIss').value),
         cstPisCofins: document.getElementById('cstPisCofins').value,
         tpRetPisCofins: document.getElementById('tpRetPisCofins').value,
         percentualTotalTributosSimplesNacional: document.getElementById('percentualTotalTributosSimplesNacional').value || '',

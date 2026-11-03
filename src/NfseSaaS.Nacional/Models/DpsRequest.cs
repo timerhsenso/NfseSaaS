@@ -38,7 +38,10 @@ public sealed record TributacaoDps(
     string TpRetIssqn,
     string CstPisCofins,
     string TpRetPisCofins,
-    string PercentualTotalTributosSimplesNacional);
+    string PercentualTotalTributosSimplesNacional,
+    // pAliq (%) no formato "0.00" — obrigatório quando TpRetIssqn = "2"
+    // (ISS retido pelo tomador). Vazio = elemento não enviado.
+    string AliquotaIss = "");
 
 /// <summary>
 /// Dados necessários para gerar uma DPS. Modelo próprio do módulo

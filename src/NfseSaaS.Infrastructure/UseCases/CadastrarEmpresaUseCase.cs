@@ -43,7 +43,7 @@ public sealed class CadastrarEmpresaUseCase : ICadastrarEmpresaUseCase
             RegApTribSN = request.RegApTribSN,
             RegEspTrib = request.RegEspTrib,
             TribIssqn = request.TribIssqn,
-            TpRetIssqn = request.TpRetIssqn,
+            AliquotaIss = request.AliquotaIss,
             CstPisCofins = request.CstPisCofins,
             TpRetPisCofins = request.TpRetPisCofins,
             PercentualTotalTributosSimplesNacional = request.PercentualTotalTributosSimplesNacional

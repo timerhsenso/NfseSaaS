@@ -40,7 +40,7 @@ public sealed class AtualizarEmpresaUseCase : IAtualizarEmpresaUseCase
         empresa.RegApTribSN = request.RegApTribSN;
         empresa.RegEspTrib = request.RegEspTrib;
         empresa.TribIssqn = request.TribIssqn;
-        empresa.TpRetIssqn = request.TpRetIssqn;
+        empresa.AliquotaIss = request.AliquotaIss;
         empresa.CstPisCofins = request.CstPisCofins;
         empresa.TpRetPisCofins = request.TpRetPisCofins;
         empresa.PercentualTotalTributosSimplesNacional = request.PercentualTotalTributosSimplesNacional;

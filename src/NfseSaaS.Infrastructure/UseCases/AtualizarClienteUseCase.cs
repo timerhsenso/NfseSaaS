@@ -38,6 +38,7 @@ public sealed class AtualizarClienteUseCase : IAtualizarClienteUseCase
         cliente.Complemento = request.Complemento;
         cliente.Bairro = request.Bairro;
         cliente.Uf = request.Uf;
+        cliente.RetemIss = request.RetemIss;
 
         _auditLogWriter.Registrar("AtualizarCliente", "Cliente", cliente.Id, new { cliente.Nome, cliente.Apelido });
 

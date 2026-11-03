@@ -193,6 +193,11 @@ public sealed class DpsBuilder : IDpsBuilder
         Add(doc, tribMun, "tribISSQN", request.Tributacao.TribIssqn);
         Add(doc, tribMun, "tpRetISSQN", request.Tributacao.TpRetIssqn);
 
+        // pAliq vem DEPOIS de tpRetISSQN no TCTribMunicipal. Só vai quando
+        // informado — obrigatório com ISS retido (o tomador precisa saber
+        // quanto reter); vazio, o elemento fica de fora.
+        AddOpcional(doc, tribMun, "pAliq", request.Tributacao.AliquotaIss);
+
         var tribFed = AddNode(doc, trib, "tribFed");
         var piscofins = AddNode(doc, tribFed, "piscofins");
         Add(doc, piscofins, "CST", request.Tributacao.CstPisCofins);

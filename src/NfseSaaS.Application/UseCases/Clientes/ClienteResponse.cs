@@ -16,5 +16,6 @@ public sealed record ClienteResponse(
     string Bairro,
     string Uf,
     bool Ativo,
+    bool RetemIss,
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt);

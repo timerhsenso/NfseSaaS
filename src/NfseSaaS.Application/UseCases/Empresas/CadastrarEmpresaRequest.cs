@@ -19,7 +19,7 @@ public sealed record CadastrarEmpresaRequest(
     string RegApTribSN,
     string RegEspTrib,
     string TribIssqn,
-    string TpRetIssqn,
+    decimal? AliquotaIss,
     string CstPisCofins,
     string TpRetPisCofins,
     string PercentualTotalTributosSimplesNacional);
