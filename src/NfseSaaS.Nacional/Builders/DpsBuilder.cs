@@ -1,7 +1,9 @@
 using System.Globalization;
 using System.Xml;
+using Microsoft.Extensions.Options;
 using NfseSaaS.Nacional.Helpers;
 using NfseSaaS.Nacional.Models;
+using NfseSaaS.Nacional.Options;
 
 namespace NfseSaaS.Nacional.Builders;
 
@@ -21,9 +23,27 @@ namespace NfseSaaS.Nacional.Builders;
 /// um valor global (mesmo ambiente fiscal pra toda empresa do sistema);
 /// hoje é decidido por Empresa (Empresa.TipoAmbiente), resolvido em
 /// EmitirNfseUseCase antes de chegar aqui.
+///
+/// A ÚNICA coisa que este builder ainda lê de NfseNacionalOptions é o
+/// leiaute (<see cref="LeiauteDps"/>) — e mesmo assim resolvido a partir
+/// do tpAmb do request, nunca um valor global. Motivo: durante a transição
+/// da NT 009, Homologação e Produção exigem XMLs incompatíveis; isso é
+/// propriedade do AMBIENTE da SEFIN, não da Empresa.
 /// </summary>
 public sealed class DpsBuilder : IDpsBuilder
 {
+    // Finalidade da NFS-e (NT 009, item 2.2): 0 = NFS-e regular. O XSD de
+    // Produção Restrita de 20/10/2026 (TSRTCFinNFSe) só aceita "0" — notas
+    // de ajuste de crédito/débito (1/2) ainda não foram liberadas.
+    private const string FinNfseRegular = "0";
+
+    private readonly NfseNacionalOptions _options;
+
+    public DpsBuilder(IOptions<NfseNacionalOptions> options)
+    {
+        _options = options.Value;
+    }
+
     private const string Ns = "http://www.sped.fazenda.gov.br/nfse";
 
     // tpEmit=1 (emissão com aplicativo próprio) exige série na faixa
@@ -61,6 +81,8 @@ public sealed class DpsBuilder : IDpsBuilder
         // independente do fuso do servidor onde isto roda.
         var agora = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-3)) - MargemSegurancaDhEmi;
 
+        var leiaute = _options.ObterLeiauteDps(request.TpAmb);
+
         var infDpsId =
             "DPS" +
             request.Prestador.CodigoMunicipio +
@@ -86,6 +108,13 @@ public sealed class DpsBuilder : IDpsBuilder
         Add(doc, infDps, "nDPS", request.NumeroDps.ToString(CultureInfo.InvariantCulture));
         Add(doc, infDps, "dCompet", request.DataCompetencia.ToString("yyyy-MM-dd"));
         Add(doc, infDps, "tpEmit", TpEmit);
+
+        // NT 009: finNFSe é obrigatório e fica entre tpEmit (/cMotivoEmisTI,
+        // que não usamos) e cLocEmi. No leiaute NT 004 o elemento não existe
+        // e quebraria o schema de Produção.
+        if (leiaute == LeiauteDps.Nt009)
+            Add(doc, infDps, "finNFSe", FinNfseRegular);
+
         Add(doc, infDps, "cLocEmi", request.Prestador.CodigoMunicipio);
 
         var prest = AddNode(doc, infDps, "prest");
@@ -117,8 +146,20 @@ public sealed class DpsBuilder : IDpsBuilder
 
         var cServ = AddNode(doc, serv, "cServ");
         Add(doc, cServ, "cTribNac", request.CodigoTributacaoNacional);
-        Add(doc, cServ, "xDescServ", request.DescricaoServico);
-        Add(doc, cServ, "cNBS", request.CodigoNbs);
+
+        // Ordem do cServ mudou na NT 009: xDescServ passou a ser o ÚLTIMO
+        // elemento (cTribNac, cTribMun?, cNBS?, cIntContrib?, xDescServ).
+        // Na NT 004 continua cTribNac → xDescServ → cNBS.
+        if (leiaute == LeiauteDps.Nt009)
+        {
+            Add(doc, cServ, "cNBS", request.CodigoNbs);
+            Add(doc, cServ, "xDescServ", request.DescricaoServico);
+        }
+        else
+        {
+            Add(doc, cServ, "xDescServ", request.DescricaoServico);
+            Add(doc, cServ, "cNBS", request.CodigoNbs);
+        }
 
         var valores = AddNode(doc, infDps, "valores");
         var vServPrest = AddNode(doc, valores, "vServPrest");

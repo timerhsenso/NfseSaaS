@@ -34,7 +34,7 @@ public class DpsSignerTests
     [Fact]
     public void Assinar_deve_incluir_um_elemento_Signature_referenciando_o_infDpsId()
     {
-        var builder = new DpsBuilder();
+        var builder = DpsBuilderFactory.Criar();
         var signer = new DpsSigner();
 
         var request = DpsRequestFactory.CriarRequestDeTeste();
@@ -50,7 +50,7 @@ public class DpsSignerTests
     [Fact]
     public void Assinar_sem_chave_privada_deve_lancar_NfseCertificateException()
     {
-        var builder = new DpsBuilder();
+        var builder = DpsBuilderFactory.Criar();
         var signer = new DpsSigner();
 
         var request = DpsRequestFactory.CriarRequestDeTeste();

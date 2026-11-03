@@ -21,6 +21,11 @@
     </PackageReference>
   </ItemGroup>
 
+  <!-- XSDs oficiais da SEFIN, usados pra validar a DPS gerada nos testes. -->
+  <ItemGroup>
+    <None Update="Schemas\**\*.xsd" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\src\NfseSaaS.Domain\NfseSaaS.Domain.csproj" />
     <ProjectReference Include="..\..\src\NfseSaaS.Application\NfseSaaS.Application.csproj" />

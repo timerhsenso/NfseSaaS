@@ -4,6 +4,23 @@ Todas as mudanças relevantes do NfseSaaS são registradas aqui, por versão.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
+## [Não lançado]
+### Corrigido
+- Emissão em Homologação rejeitada com E1235 ("invalid child element
+  'cLocEmi' ... expected: 'cMotivoEmisTI, finNFSe'") desde que a
+  Produção Restrita passou a exigir o leiaute da NT 009 (esquemas de
+  20/10/2026). A DPS agora sai com `finNFSe=0` (NFS-e regular) entre
+  `tpEmit` e `cLocEmi`, e com `xDescServ` como último elemento de `cServ`.
+
+### Adicionado
+- Leiaute da DPS configurável por ambiente
+  (`NfseNacional:LeiauteDpsHomologacao` / `NfseNacional:LeiauteDpsProducao`,
+  valores `Nt004` ou `Nt009`). Padrão: Homologação `Nt009`, Produção
+  `Nt004`. Na entrada da NT 009 em Produção (previsão 01/12/2026), trocar
+  só `LeiauteDpsProducao` para `Nt009`, sem deploy.
+- Teste que valida a DPS gerada contra os XSDs oficiais de Produção
+  Restrita (`tests/NfseSaaS.Tests/Schemas/ProducaoRestrita_20261020`).
+
 ## [1.2.0] - 2026-09-16
 ### Adicionado
 - Snapshot fiscal da nota, na tela de detalhe, agora é colapsável
