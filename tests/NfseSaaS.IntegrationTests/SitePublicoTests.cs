@@ -1,0 +1,99 @@
+using System.Net;
+using Microsoft.AspNetCore.Mvc.Testing;
+using NfseSaaS.Application.Rejeicoes;
+using Xunit;
+
+namespace NfseSaaS.IntegrationTests;
+
+/// <summary>
+/// Site público (sem login): página inicial, erros da NFS-e explicados,
+/// sitemap e robots. Nada disso pode exigir login nem aceite de termos.
+/// </summary>
+[Collection(AplicacaoEmMemoriaCollection.Nome)]
+public class SitePublicoTests
+{
+    private readonly WebApplicationFactory<Program> _factory;
+
+    public SitePublicoTests(WebApplicationFactory<Program> factory)
+    {
+        _factory = factory;
+    }
+
+    private HttpClient Cliente() => _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+    [Fact]
+    public async Task Inicio_sem_login_mostra_a_pagina_publica()
+    {
+        var resposta = await Cliente().GetAsync("/");
+
+        Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
+        var html = await resposta.Content.ReadAsStringAsync();
+        Assert.Contains("Criar conta grátis", html);
+        Assert.Contains("/Account/Registrar", html);
+    }
+
+    [Fact]
+    public async Task Indice_de_erros_lista_todos_os_codigos()
+    {
+        var html = await (await Cliente().GetComStatus200Async("/erros-nfse")).Content.ReadAsStringAsync();
+
+        foreach (var codigo in CatalogoRejeicoesSefin.Codigos)
+            Assert.Contains($"/erros-nfse/{codigo}\"", html);
+    }
+
+    [Fact]
+    public async Task Pagina_do_erro_explica_o_codigo()
+    {
+        var codigo = CatalogoRejeicoesSefin.Todas[0].Codigo;
+
+        var resposta = await Cliente().GetAsync($"/erros-nfse/{codigo}");
+
+        Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
+        var html = await resposta.Content.ReadAsStringAsync();
+        Assert.Contains("Como resolver", html);
+        Assert.Contains($"<link rel=\"canonical\" href=\"http://localhost/erros-nfse/{codigo}\"", html);
+    }
+
+    [Fact]
+    public async Task Codigo_em_minusculas_redireciona_para_o_endereco_oficial()
+    {
+        var codigo = CatalogoRejeicoesSefin.Todas[0].Codigo;
+
+        var resposta = await Cliente().GetAsync($"/erros-nfse/{codigo.ToLowerInvariant()}");
+
+        Assert.Equal(HttpStatusCode.MovedPermanently, resposta.StatusCode);
+        Assert.Equal($"/erros-nfse/{codigo}", resposta.Headers.Location?.OriginalString);
+    }
+
+    [Fact]
+    public async Task Codigo_inexistente_responde_404_com_pagina_amigavel()
+    {
+        var resposta = await Cliente().GetAsync("/erros-nfse/E9999");
+
+        Assert.Equal(HttpStatusCode.NotFound, resposta.StatusCode);
+        Assert.Contains("Não encontramos o código", await resposta.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task Sitemap_e_robots_apontam_para_as_paginas_publicas()
+    {
+        var sitemap = await (await Cliente().GetComStatus200Async("/sitemap.xml")).Content.ReadAsStringAsync();
+        Assert.Contains("<loc>http://localhost/erros-nfse</loc>", sitemap);
+        Assert.Equal(CatalogoRejeicoesSefin.Quantidade + 4, sitemap.Split("<loc>").Length - 1);
+
+        var robots = await (await Cliente().GetComStatus200Async("/robots.txt")).Content.ReadAsStringAsync();
+        Assert.Contains("Sitemap: http://localhost/sitemap.xml", robots);
+        Assert.Contains("Disallow: /", robots);
+    }
+}
+
+internal static class HttpClientTesteExtensions
+{
+    /// <summary>GET que falha o teste se a resposta não for 200.</summary>
+    public static async Task<HttpResponseMessage> GetComStatus200Async(this HttpClient cliente, string url)
+    {
+        var resposta = await cliente.GetAsync(url);
+        Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
+        return resposta;
+    }
+}

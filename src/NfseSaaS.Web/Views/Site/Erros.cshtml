@@ -1,0 +1,56 @@
+@model NfseSaaS.Web.Controllers.ErrosNfseViewModel
+@{
+    Layout = "_SiteLayout";
+    ViewData["Title"] = "Erros da NFS-e Nacional explicados: todos os códigos de rejeição";
+    ViewData["Descricao"] = $"Os {Model.Rejeicoes.Count} códigos de rejeição da NFS-e Nacional (SEFIN) explicados em português simples: o que significam e como resolver.";
+    ViewData["Canonical"] = "/erros-nfse";
+
+    var grupos = Model.Rejeicoes
+        .GroupBy(r => r.OndeCorrigir)
+        .OrderBy(g => g.Min(r => (int)r.Area))
+        .ToList();
+}
+
+<section class="site-secao site-erros">
+    <div class="site-container">
+        <nav class="site-trilha" aria-label="Você está em"><a href="/">Início</a> <span aria-hidden="true">›</span> Erros da NFS-e</nav>
+        <h1>Erros da NFS-e Nacional explicados</h1>
+        <p class="site-secao-sub site-erros-sub">
+            O Emissor Nacional recusou a sua nota com um código como <strong>E0312</strong>? Procure o código abaixo para ver
+            o que ele significa e como resolver. São os @Model.Rejeicoes.Count códigos dos anexos oficiais da NFS-e Nacional.
+        </p>
+
+        <div class="site-busca">
+            <i class="bi bi-search" aria-hidden="true"></i>
+            <label for="busca-erro" class="visually-hidden">Buscar código ou palavra</label>
+            <input type="search" id="busca-erro" class="form-control form-control-lg" placeholder="Digite o código (ex.: E0312) ou uma palavra (ex.: tomador)" autocomplete="off" />
+        </div>
+        <p id="busca-vazia" class="site-busca-vazia d-none">Nenhum código encontrado. Confira se digitou certo (a letra E seguida de 4 números).</p>
+
+        @foreach (var grupo in grupos)
+        {
+            <div class="site-erros-grupo" data-grupo>
+                <h2>@grupo.Key <small>(@grupo.Count())</small></h2>
+                <ul class="site-erros-lista">
+                    @foreach (var r in grupo.OrderBy(r => r.Codigo, StringComparer.Ordinal))
+                    {
+                        <li data-busca="@($"{r.Codigo} {r.MensagemOficial}".ToLowerInvariant())">
+                            <a href="/erros-nfse/@r.Codigo"><strong>@r.Codigo</strong> <span>@r.MensagemOficial</span></a>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+</section>
+
+<section class="site-cta">
+    <div class="site-container site-cta-inner">
+        <h2>No micoempresa, o erro já vem explicado, com atalho para a tela certa.</h2>
+        <a href="/Account/Registrar" class="btn btn-light btn-lg">Criar conta grátis</a>
+    </div>
+</section>
+
+@section Scripts {
+    <script src="~/js/paginas/site-erros.js" asp-append-version="true"></script>
+}

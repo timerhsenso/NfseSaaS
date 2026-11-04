@@ -5,6 +5,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (site público)
+- Página inicial pública em "/" para quem não está logado: apresentação,
+  recursos, como funciona, preços (Mico e Empresa, com preço de fundador e
+  beta gratuito), dúvidas frequentes e cadastro. Quem está logado continua
+  vendo o painel.
+- **Erros da NFS-e explicados**: `/erros-nfse` (lista com busca) e
+  `/erros-nfse/{codigo}` (uma página por código, com a mensagem oficial, o
+  campo, o anexo de origem, como resolver e erros relacionados). São os 579
+  códigos do catálogo oficial, com título, descrição e endereço canônico para
+  o Google. Código em minúsculas redireciona para o endereço oficial.
+- `/sitemap.xml` e `/robots.txt` (só as páginas públicas são indexáveis).
+- E-mail da nota ao tomador ganha uma linha de divulgação do micoempresa no
+  rodapé.
+
+### Testes
+- Testes de integração das páginas públicas. Os testes que sobem a
+  aplicação em memória agora compartilham um único host (duas instâncias em
+  paralelo disputavam o logger de bootstrap do Serilog e falhavam às vezes).
+
 ### Segurança (chaves do Data Protection)
 - Plataforma › Contas, cartão **Proteção das chaves**: mostra se as chaves que
   abrem os certificados A1 estão criptografadas e oferece **Proteger chaves

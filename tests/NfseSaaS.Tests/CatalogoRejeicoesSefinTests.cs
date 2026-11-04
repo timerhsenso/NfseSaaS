@@ -84,4 +84,23 @@ public class CatalogoRejeicoesSefinTests
     {
         Assert.Equal(esperada, CatalogoRejeicoesSefin.ClassificarPorCampo(caminho, campo));
     }
+
+    [Fact]
+    public void Todas_traz_cada_codigo_uma_vez_em_ordem()
+    {
+        var codigos = CatalogoRejeicoesSefin.Todas.Select(r => r.Codigo).ToList();
+
+        Assert.Equal(CatalogoRejeicoesSefin.Quantidade, codigos.Count);
+        Assert.Equal(codigos.OrderBy(c => c, StringComparer.Ordinal), codigos);
+        Assert.All(CatalogoRejeicoesSefin.Todas, r => Assert.True(r.NoCatalogo));
+    }
+
+    [Fact]
+    public void Origem_oficial_identifica_o_anexo_de_cada_codigo()
+    {
+        Assert.All(CatalogoRejeicoesSefin.Codigos, codigo =>
+            Assert.NotNull(CatalogoRejeicoesSefin.OrigemOficial(codigo).Documento));
+
+        Assert.Equal((null, null), CatalogoRejeicoesSefin.OrigemOficial("E9999"));
+    }
 }

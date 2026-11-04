@@ -1,0 +1,23 @@
+@model string
+@{
+    Layout = "_SiteLayout";
+    ViewData["Title"] = "Código de erro não encontrado";
+    ViewData["Descricao"] = "Esse código não está nos anexos oficiais da NFS-e Nacional. Veja a lista completa de erros explicados.";
+    ViewData["Canonical"] = "/erros-nfse";
+}
+
+<section class="site-secao site-erro">
+    <div class="site-container site-erro-inner">
+        <nav class="site-trilha" aria-label="Você está em">
+            <a href="/">Início</a> <span aria-hidden="true">›</span>
+            <a href="/erros-nfse">Erros da NFS-e</a>
+        </nav>
+        <h1>Não encontramos o código "@Model"</h1>
+        <p>
+            Esse código não está nos anexos oficiais da NFS-e Nacional que conhecemos. Confira se digitou certo: os códigos
+            de rejeição são a letra E seguida de 4 números (ex.: E0312). Se ele é novo, a mensagem que veio junto com a
+            rejeição é a melhor pista do que corrigir.
+        </p>
+        <p><a href="/erros-nfse" class="btn btn-primary">Ver todos os códigos</a></p>
+    </div>
+</section>

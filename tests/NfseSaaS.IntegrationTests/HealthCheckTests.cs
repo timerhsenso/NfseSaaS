@@ -10,7 +10,8 @@ namespace NfseSaaS.IntegrationTests;
 /// para retornar Healthy; ainda assim, o endpoint deve responder mesmo que
 /// o banco esteja fora do ar (retornará Unhealthy, não erro 500).
 /// </summary>
-public class HealthCheckTests : IClassFixture<WebApplicationFactory<Program>>
+[Collection(AplicacaoEmMemoriaCollection.Nome)]
+public class HealthCheckTests
 {
     private readonly WebApplicationFactory<Program> _factory;
 

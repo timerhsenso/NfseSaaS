@@ -17,6 +17,10 @@ namespace NfseSaaS.Infrastructure.UseCases;
 /// </summary>
 public sealed class EnviarNfsePorEmailUseCase : IEnviarNfsePorEmailUseCase
 {
+    // Rodapé de divulgação no e-mail da nota (o tomador muitas vezes também
+    // presta serviço). "origem" identifica de onde veio o cadastro.
+    private static readonly string LinkDivulgacao = $"https://{NfseSaaS.Domain.Legal.DocumentosLegais.Site}/?origem=email-nota";
+
     private static readonly CultureInfo PtBr = CultureInfo.GetCultureInfo("pt-BR");
     private static readonly TimeSpan OffsetBrasilia = TimeSpan.FromHours(-3);
 
@@ -100,6 +104,7 @@ public sealed class EnviarNfsePorEmailUseCase : IEnviarNfsePorEmailUseCase
             {(linkConsulta is null ? "" : $"""<p>Você pode conferir a autenticidade da nota na <a href="{linkConsulta}">consulta pública da NFS-e</a>.</p>""")}
             <p>Dúvidas sobre a nota? Fale com {WebUtility.HtmlEncode(dados.EmpresaNome)}{(string.IsNullOrWhiteSpace(dados.EmpresaEmail) ? "" : $" pelo e-mail {WebUtility.HtmlEncode(dados.EmpresaEmail)}")}.</p>
             <p style="color:#64748b;font-size:12px">Enviado pela plataforma micoempresa em nome do emissor. Não responda a este e-mail.</p>
+            <p style="color:#64748b;font-size:12px">Você também presta serviço? Emita suas notas com o <a href="{LinkDivulgacao}" style="color:#2563eb">micoempresa</a>: nota mensal automática e nota enviada por e-mail ao seu cliente. Crie sua conta grátis.</p>
             """;
 
         var emailLogId = await _emailQueue.EnfileirarAsync(

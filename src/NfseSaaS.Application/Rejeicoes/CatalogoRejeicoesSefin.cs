@@ -59,6 +59,36 @@ public static class CatalogoRejeicoesSefin
     /// <summary>Todos os códigos do catálogo oficial.</summary>
     public static IEnumerable<string> Codigos => Itens.Value.Keys;
 
+    private static readonly Lazy<IReadOnlyList<RejeicaoSefinTraduzida>> TodasOrdenadas = new(() =>
+        Itens.Value.Keys
+            .OrderBy(c => c, StringComparer.Ordinal)
+            .Select(c => Traduzir(c, null)!)
+            .ToList());
+
+    /// <summary>Todas as rejeições do catálogo já explicadas, em ordem de código (páginas públicas /erros-nfse).</summary>
+    public static IReadOnlyList<RejeicaoSefinTraduzida> Todas => TodasOrdenadas.Value;
+
+    /// <summary>
+    /// Campo XML da regra e documento oficial de onde ela veio (ex.: "Anexo I
+    /// – DPS e NFS-e"). Null nos dois quando o código não está no catálogo.
+    /// </summary>
+    public static (string? Campo, string? Documento) OrigemOficial(string codigo)
+    {
+        if (!Itens.Value.TryGetValue(codigo.Trim(), out var item))
+            return (null, null);
+
+        var fonte = (item.Fonte ?? string.Empty).ToLowerInvariant();
+        var documento = fonte switch
+        {
+            _ when fonte.StartsWith("anexo_ii", StringComparison.Ordinal) => "Anexo II – Eventos (cancelamento)",
+            _ when fonte.StartsWith("anexo_i", StringComparison.Ordinal) => "Anexo I – DPS e NFS-e",
+            _ when fonte.StartsWith("anexovi", StringComparison.Ordinal) => "Anexo VI – IBS/CBS (reforma tributária)",
+            _ => null
+        };
+
+        return (string.IsNullOrWhiteSpace(item.Campo) ? null : item.Campo, documento);
+    }
+
     /// <summary>
     /// Explica um código de erro da SEFIN (ex.: "E0312"). Null quando não é
     /// um código da SEFIN (vazio, ou erro local como "VALIDACAO-LOCAL" e

@@ -7,7 +7,18 @@ namespace NfseSaaS.Web.Controllers;
 [Authorize]
 public sealed class HomeController : Controller
 {
-    public IActionResult Index() => View();
+    /// <summary>
+    /// "/": quem está logado vê o painel; quem não está vê a página
+    /// inicial pública do micoempresa (apresentação, preços e cadastro).
+    /// </summary>
+    [AllowAnonymous]
+    public IActionResult Index()
+    {
+        if (User.Identity?.IsAuthenticated != true)
+            return View("~/Views/Site/Inicio.cshtml");
+
+        return View();
+    }
 
     /// <summary>
     /// Página de erro amigável pra requisições de tela (MVC/Razor).

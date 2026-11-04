@@ -1,0 +1,78 @@
+@model NfseSaaS.Web.Controllers.ErroNfseViewModel
+@{
+    Layout = "_SiteLayout";
+    var r = Model.Rejeicao;
+    var mensagem = r.MensagemOficial ?? "Rejeição da NFS-e Nacional";
+    var mensagemCurta = mensagem.Length > 90 ? mensagem[..87].TrimEnd() + "…" : mensagem;
+    ViewData["Title"] = $"Erro {r.Codigo} na NFS-e Nacional: {mensagemCurta}";
+    var descricao = $"Erro {r.Codigo} da NFS-e Nacional: {mensagem} Veja o que significa e como resolver.";
+    ViewData["Descricao"] = descricao.Length > 160 ? descricao[..157].TrimEnd() + "…" : descricao;
+    ViewData["Canonical"] = $"/erros-nfse/{r.Codigo}";
+}
+
+<section class="site-secao site-erro">
+    <div class="site-container site-erro-inner">
+        <nav class="site-trilha" aria-label="Você está em">
+            <a href="/">Início</a> <span aria-hidden="true">›</span>
+            <a href="/erros-nfse">Erros da NFS-e</a> <span aria-hidden="true">›</span>
+            @r.Codigo
+        </nav>
+
+        <span class="site-erro-codigo">@r.Codigo</span>
+        <h1>@mensagem</h1>
+
+        <div class="site-erro-bloco">
+            <h2>O que significa</h2>
+            <p>
+                O Emissor Nacional da NFS-e recusou a nota (ou o cancelamento) porque uma regra de validação não foi atendida.
+                A mensagem oficial da SEFIN para o código <strong>@r.Codigo</strong> é:
+            </p>
+            <blockquote class="site-erro-oficial">@mensagem</blockquote>
+            <dl class="site-erro-dados">
+                <dt>Onde está o problema</dt>
+                <dd>@r.OndeCorrigir</dd>
+                @if (Model.CampoXml is not null)
+                {
+                    <dt>Campo da nota</dt>
+                    <dd><code>@Model.CampoXml</code></dd>
+                }
+                @if (Model.DocumentoOficial is not null)
+                {
+                    <dt>Regra oficial</dt>
+                    <dd>@Model.DocumentoOficial, documentação técnica da NFS-e Nacional</dd>
+                }
+            </dl>
+        </div>
+
+        <div class="site-erro-bloco">
+            <h2>Como resolver</h2>
+            <p>@r.OQueFazer</p>
+            <p class="site-erro-obs">
+                As telas citadas acima são as do micoempresa. Se você emite pelo portal do governo, corrija o mesmo dado
+                no formulário de emissão de lá ou no cadastro da empresa no município.
+            </p>
+        </div>
+
+        <div class="site-erro-cta">
+            <div>
+                <strong>Cansou de decifrar erro da SEFIN?</strong>
+                <p>No micoempresa, a rejeição já aparece explicada, com atalho para a tela onde se corrige. E as notas do mês saem sozinhas.</p>
+            </div>
+            <a href="/Account/Registrar" class="btn btn-primary">Criar conta grátis</a>
+        </div>
+
+        @if (Model.Relacionadas.Count > 0)
+        {
+            <div class="site-erro-bloco">
+                <h2>Outros erros em "@r.OndeCorrigir"</h2>
+                <ul class="site-erros-lista">
+                    @foreach (var outra in Model.Relacionadas)
+                    {
+                        <li><a href="/erros-nfse/@outra.Codigo"><strong>@outra.Codigo</strong> <span>@outra.MensagemOficial</span></a></li>
+                    }
+                </ul>
+                <p><a href="/erros-nfse">Ver todos os códigos de rejeição</a></p>
+            </div>
+        }
+    </div>
+</section>
