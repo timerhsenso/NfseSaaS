@@ -5,6 +5,33 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Alterado (visual)
+- Novo visual e nova marca: **micoempresa** (NFS-e passa a ser um módulo).
+  Tema refeito: cores com contraste AA, campos de 40px com asterisco
+  automático nos obrigatórios, status em pílulas suaves com ponto, tabelas
+  sem listras e com as ações lado a lado (antes empilhavam e cada linha
+  ficava enorme), abas sublinhadas nos modais, select2 alinhado aos demais
+  campos, paginação/busca do DataTables no mesmo estilo, tema escuro revisado.
+- Menu lateral reorganizado: Notas fiscais (NFS-e) · Cadastros e referência
+  · Administração. Chip de ambiente: Homologação em âmbar, Produção em verde.
+- Tela de login dividida: marca e benefícios à esquerda, formulário à direita.
+- Botão do menu sempre visível: no computador recolhe o menu lateral para só
+  ícones (com dica ao passar o mouse; a escolha fica salva no navegador); no
+  celular abre o menu por cima da tela. Tabelas largas rolam dentro do card,
+  abas dos modais rolam de lado no celular.
+- Modal de Empresa: seções num menu lateral com ✓ (completa) e ! (falta campo
+  obrigatório), cabeçalho com CNPJ, situação e ambiente; código IBGE do
+  município passou para a seção Endereço.
+- Modal de Cliente: uma tela só, em seções (Identificação, Contato, Endereço,
+  Fiscal), com "Retém ISS" em cartão com interruptor.
+- Modal de Contrato: cabeçalho com cliente e contrato, abas com ícones e um
+  resumo fixo à direita (valor, situação, próximo reajuste, índice, regra do
+  aniversário e o reajuste pendente com atalho "Decidir agora").
+- Empresa e Cliente: digitar o CEP preenche rua, bairro, UF e o código IBGE
+  do município (ViaCEP), e o nome do município aparece ao lado do código
+  (API do IBGE, com cache). Consultas feitas pelo servidor e fora do circuit
+  breaker da SEFIN.
+
 ### Adicionado
 - Reajuste automático no aniversário do contrato: todo dia (10:10) o sistema
   calcula o acumulado de 12 meses do índice do contrato e cria o reajuste no

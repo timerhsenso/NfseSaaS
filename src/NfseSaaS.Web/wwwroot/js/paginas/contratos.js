@@ -404,8 +404,62 @@ function recalcularValorAtualCalculado() {
     document.getElementById('valorAtualCalculado').textContent = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+// Resumo fixo à direita do modal (só na edição): valor, situação, próximo
+// reajuste e o reajuste pendente, se houver — o contexto do contrato fica
+// à vista em qualquer aba.
+function renderizarResumoContrato(contrato) {
+    const resumo = document.getElementById('resumo-contrato');
+    if (!contrato) {
+        resumo.classList.add('d-none');
+        return;
+    }
+
+    const situacao = ROTULOS_SITUACAO_CONTRATO[contrato.situacao] ?? { texto: '—', cor: 'secondary' };
+    const status = ROTULOS_STATUS_CONTRATO[contrato.status] ?? { texto: '—', cor: 'secondary' };
+    const qtdServicos = (contrato.servicos ?? []).length;
+    const aprovacao = contrato.reajusteAutomatico == null
+        ? 'Padrão da empresa'
+        : contrato.reajusteAutomatico ? 'Aplica automaticamente' : 'Aguarda aprovação';
+
+    document.getElementById('resumo-valor-contrato').textContent = formatarReais(contrato.valorAtual);
+    document.getElementById('resumo-detalhe-contrato').textContent =
+        `${qtdServicos} serviço(s) · ${ROTULOS_TIPO_COBRANCA[contrato.tipoCobranca] ?? ''} · desde ${new Date(contrato.dataInicioContrato + 'T00:00:00').toLocaleDateString('pt-BR')}`;
+    document.getElementById('resumo-situacao-contrato').innerHTML =
+        `<span class="badge text-bg-${status.cor}">${status.texto}</span>`;
+    const avulso = contrato.tipoCobranca === 0;
+    document.getElementById('resumo-proximo-contrato').innerHTML = avulso
+        ? '—'
+        : `${new Date(contrato.dataProximoReajuste + 'T00:00:00').toLocaleDateString('pt-BR')} <span class="badge text-bg-${situacao.cor}">${situacao.texto}</span>`;
+    document.getElementById('resumo-indice-contrato').textContent =
+        contrato.indiceReajuste != null ? (ROTULOS_INDICE_REAJUSTE[contrato.indiceReajuste] ?? '—') : '—';
+    document.getElementById('resumo-ultimo-contrato').textContent = contrato.dataUltimoReajuste
+        ? new Date(contrato.dataUltimoReajuste + 'T00:00:00').toLocaleDateString('pt-BR')
+        : '—';
+    document.getElementById('resumo-aprovacao-contrato').textContent = avulso ? '—' : aprovacao;
+
+    const pendente = document.getElementById('resumo-pendente-contrato');
+    pendente.classList.toggle('d-none', !contrato.reajustePendenteId);
+    if (contrato.reajustePendenteId) {
+        pendente.innerHTML =
+            `<strong>Reajuste aguardando aprovação</strong>` +
+            `<span>Aniversário em ${new Date(contrato.reajustePendenteVigencia + 'T00:00:00').toLocaleDateString('pt-BR')}.</span>` +
+            `<button type="button" class="btn btn-sm btn-outline-warning" data-id="${contrato.id}" data-descricao="${escaparHtml(contrato.descricao)}" id="btn-resumo-decidir-reajuste">Decidir agora</button>`;
+        document.getElementById('btn-resumo-decidir-reajuste').addEventListener('click', () => {
+            // Abre o Histórico só depois que este modal terminou de fechar
+            // (dois modais do Bootstrap ao mesmo tempo quebram o fundo escuro).
+            document.getElementById('modal-contrato').addEventListener('hidden.bs.modal',
+                () => abrirModalHistorico(contrato.id, contrato.descricao), { once: true });
+            modalContrato.hide();
+        });
+    }
+
+    resumo.classList.remove('d-none');
+}
+
 async function abrirModalNovoContrato() {
     limparFormularioContrato();
+    renderizarResumoContrato(null);
+    document.getElementById('cliente-modal-contrato').textContent = 'Novo contrato';
     document.getElementById('titulo-modal-contrato').textContent = 'Novo contrato';
     document.getElementById('dataInicioContrato').value = dataLocalIso();
 
@@ -420,10 +474,14 @@ async function abrirModalNovoContrato() {
 
 async function abrirModalEditarContrato(id) {
     limparFormularioContrato();
+    renderizarResumoContrato(null);
     document.getElementById('titulo-modal-contrato').textContent = 'Editar contrato';
 
     try {
         const contrato = await apiFetch(`/api/contratos/${id}`);
+        document.getElementById('cliente-modal-contrato').textContent = contrato.clienteNome;
+        document.getElementById('titulo-modal-contrato').textContent = contrato.descricao;
+        renderizarResumoContrato(contrato);
         await carregarServicosContrato();
         preencherClienteAtual(contrato.clienteId, contrato.clienteNome);
 

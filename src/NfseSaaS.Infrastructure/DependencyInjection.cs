@@ -221,6 +221,11 @@ public static class DependencyInjection
         services.AddScoped<IRegistrarExportacaoUseCase, RegistrarExportacaoUseCase>();
         services.AddHttpClient("BrasilApi");
         services.AddScoped<IConsultarCnpjUseCase, BrasilApiCnpjClient>();
+        services.AddMemoryCache();
+        services.AddHttpClient("ConsultaEndereco");
+        services.AddScoped<ConsultaEnderecoClient>();
+        services.AddScoped<IConsultarCepUseCase>(sp => sp.GetRequiredService<ConsultaEnderecoClient>());
+        services.AddScoped<IConsultarMunicipioUseCase>(sp => sp.GetRequiredService<ConsultaEnderecoClient>());
 
         services.AddScoped<IBuscarCodigoTributacaoNacionalUseCase, BuscarCodigoTributacaoNacionalUseCase>();
         services.AddScoped<IBuscarCodigoNbsUseCase, BuscarCodigoNbsUseCase>();

@@ -4,23 +4,56 @@
 // próprio Razor, e dataset devolve a string decodificada direto.
 window.usuarioAtual = document.body.dataset.usuarioAtual;
 
-// Sidebar em telas pequenas — substitui o toggle que vinha do AdminLTE
-// (removido junto com o resto da lib).
+// Botão do menu (☰), sempre visível:
+// - computador (> 992px): recolhe/expande o menu lateral para só ícones;
+//   a escolha fica salva neste navegador (tema-inicial.js aplica cedo);
+// - celular/tablet (≤ 992px): abre/fecha o menu por cima da tela.
 (function () {
     var sidebar = document.getElementById('sidebar');
     var overlay = document.getElementById('overlaySidebar');
     var botao = document.getElementById('botaoMenu');
+    var raiz = document.documentElement;
+    var telaPequena = window.matchMedia('(max-width: 992px)');
 
-    function fechar() {
+    // Com o menu recolhido, o nome de cada item vira dica (tooltip nativo).
+    sidebar?.querySelectorAll('.sidebar-nav a').forEach(function (a) {
+        if (!a.title) a.title = a.textContent.trim();
+    });
+
+    function fecharMobile() {
         sidebar.classList.remove('open');
         overlay.classList.remove('show');
+        botao?.setAttribute('aria-expanded', 'false');
+    }
+
+    function atualizarRotulo() {
+        if (!botao) return;
+        var aberto = telaPequena.matches ? sidebar.classList.contains('open') : !raiz.classList.contains('menu-recolhido');
+        botao.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+        botao.setAttribute('aria-label', aberto ? 'Recolher menu' : 'Mostrar menu');
+        botao.title = aberto ? 'Recolher menu' : 'Mostrar menu';
     }
 
     botao?.addEventListener('click', function () {
-        sidebar.classList.toggle('open');
-        overlay.classList.toggle('show');
+        if (telaPequena.matches) {
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('show');
+        } else {
+            var recolher = !raiz.classList.contains('menu-recolhido');
+            raiz.classList.toggle('menu-recolhido', recolher);
+            try { localStorage.setItem('micoempresa-menu', recolher ? 'recolhido' : 'aberto'); } catch (e) { }
+        }
+        atualizarRotulo();
     });
-    overlay?.addEventListener('click', fechar);
+
+    overlay?.addEventListener('click', function () { fecharMobile(); atualizarRotulo(); });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && sidebar.classList.contains('open')) { fecharMobile(); atualizarRotulo(); }
+    });
+    // Voltou para tela grande com o menu móvel aberto: fecha o painel.
+    telaPequena.addEventListener('change', function () { fecharMobile(); atualizarRotulo(); });
+
+    atualizarRotulo();
 })();
 
 // Logout: chama a mesma API usada pelo Swagger/clients externos — a

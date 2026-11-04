@@ -7,6 +7,15 @@
 // o parsing até rodar, senão o efeito de evitar o flash se perde (é
 // exatamente o mesmo motivo pelo qual isto era inline antes).
 (function () {
-    var tema = localStorage.getItem('nfsesaas-tema') || 'light';
+    var tema = 'light';
+    var menuRecolhido = false;
+    try {
+        tema = localStorage.getItem('nfsesaas-tema') || 'light';
+        menuRecolhido = localStorage.getItem('micoempresa-menu') === 'recolhido';
+    } catch (e) { /* navegação privada sem storage: usa o padrão */ }
+
     document.documentElement.setAttribute('data-theme', tema);
+    // Menu lateral recolhido (só ícones) no computador — mesma lógica de
+    // evitar o "pulo" do layout: a classe já existe antes do CSS aplicar.
+    if (menuRecolhido) document.documentElement.classList.add('menu-recolhido');
 })();

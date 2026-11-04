@@ -48,24 +48,31 @@
 
 @if (podeEditar)
 {
-    <div class="modal fade" id="modal-contrato" tabindex="-1">
-        <div class="modal-dialog modal-lg">
+    <div class="modal fade" id="modal-contrato" tabindex="-1" aria-labelledby="titulo-modal-contrato">
+        <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <form id="form-contrato" novalidate>
                     <div class="modal-header">
-                        <h5 class="modal-title" id="titulo-modal-contrato">Novo contrato</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <div class="modal-cabecalho-entidade">
+                            <div class="entidade-avatar" aria-hidden="true"><i class="bi bi-file-earmark-text"></i></div>
+                            <div>
+                                <div class="modal-subtitulo" id="cliente-modal-contrato">Novo contrato</div>
+                                <h5 class="modal-title" id="titulo-modal-contrato">Novo contrato</h5>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                     </div>
-                    <div class="modal-body">
+                    <div class="modal-body modal-body-com-resumo">
+                        <div class="modal-coluna-principal">
                         <div id="erro-contrato" class="alert alert-danger d-none"></div>
                         <input type="hidden" id="contratoId" />
 
                         <ul class="nav nav-tabs mb-3" id="tabs-contrato">
-                            <li class="nav-item"><button type="button" class="nav-link active" data-tab-alvo="tab-dados">Dados do contrato</button></li>
-                            <li class="nav-item"><button type="button" class="nav-link" data-tab-alvo="tab-servico">Serviço</button></li>
-                            <li class="nav-item"><button type="button" class="nav-link" data-tab-alvo="tab-cobranca">Cobrança</button></li>
-                            <li class="nav-item"><button type="button" class="nav-link" data-tab-alvo="tab-documentos">Documentos</button></li>
-                            <li class="nav-item"><button type="button" class="nav-link" data-tab-alvo="tab-historico">Histórico</button></li>
+                            <li class="nav-item"><button type="button" class="nav-link active" data-tab-alvo="tab-dados"><i class="bi bi-card-text"></i> Dados</button></li>
+                            <li class="nav-item"><button type="button" class="nav-link" data-tab-alvo="tab-servico"><i class="bi bi-list-ul"></i> Serviços</button></li>
+                            <li class="nav-item"><button type="button" class="nav-link" data-tab-alvo="tab-cobranca"><i class="bi bi-arrow-repeat"></i> Cobrança e reajuste</button></li>
+                            <li class="nav-item"><button type="button" class="nav-link" data-tab-alvo="tab-documentos"><i class="bi bi-paperclip"></i> Documentos</button></li>
+                            <li class="nav-item"><button type="button" class="nav-link" data-tab-alvo="tab-historico"><i class="bi bi-clock-history"></i> Histórico</button></li>
                         </ul>
 
                         <div class="tab-conteudo-contrato" data-tab="tab-dados">
@@ -239,9 +246,28 @@
                                 <tbody></tbody>
                             </table>
                         </div>
+                        </div>
+
+                        @* Resumo fixo à direita — só em edição (preenchido por renderizarResumoContrato em contratos.js). *@
+                        <aside class="modal-resumo d-none" id="resumo-contrato" aria-label="Resumo do contrato">
+                            <div>
+                                <div class="resumo-rotulo">Valor mensal</div>
+                                <div class="resumo-valor" id="resumo-valor-contrato">—</div>
+                                <div class="resumo-detalhe" id="resumo-detalhe-contrato"></div>
+                            </div>
+                            <div class="resumo-alerta d-none" id="resumo-pendente-contrato"></div>
+                            <dl class="resumo-lista">
+                                <dt>Situação</dt><dd id="resumo-situacao-contrato">—</dd>
+                                <dt>Próximo reajuste</dt><dd id="resumo-proximo-contrato">—</dd>
+                                <dt>Índice</dt><dd id="resumo-indice-contrato">—</dd>
+                                <dt>Último reajuste</dt><dd id="resumo-ultimo-contrato">—</dd>
+                                <dt>No aniversário</dt><dd id="resumo-aprovacao-contrato">—</dd>
+                            </dl>
+                        </aside>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <span class="modal-rodape-info">Campos com <span class="text-danger">*</span> são obrigatórios</span>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                         <button type="submit" class="btn btn-primary">Salvar</button>
                     </div>
                 </form>

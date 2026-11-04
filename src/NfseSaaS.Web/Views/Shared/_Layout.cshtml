@@ -17,7 +17,9 @@
     // continua sendo montado no cliente (empresa-atual.js), então o
     // nome/CNPJ das opções não precisa ser buscado de novo aqui.
     string? rotuloAmbienteEmpresa = null;
-    string corAmbienteEmpresa = "secondary";
+    // Produção é o estado normal (verde discreto); homologação avisa (âmbar):
+    // nota de homologação não tem valor fiscal.
+    string classeAmbienteEmpresa = "chip-ambiente-homologacao";
 
     if (Guid.TryParse(Context.Request.Cookies["EmpresaAtualId"], out var empresaAtualId))
     {
@@ -26,7 +28,7 @@
             var empresaAtual = await ObterEmpresaPorIdUseCase.ExecutarAsync(empresaAtualId, Context.RequestAborted);
             var emProducao = empresaAtual.TipoAmbiente == NfseSaaS.Domain.Enums.TipoAmbiente.Producao;
             rotuloAmbienteEmpresa = emProducao ? "Produção" : "Homologação";
-            corAmbienteEmpresa = emProducao ? "danger" : "warning";
+            classeAmbienteEmpresa = emProducao ? "chip-ambiente-producao" : "chip-ambiente-homologacao";
         }
         catch (NfseSaaS.Application.Exceptions.RecursoNaoEncontradoException)
         {
@@ -42,7 +44,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - NfseSaaS</title>
+    <title>@ViewData["Title"] · micoempresa</title>
 
     <script src="~/js/tema-inicial.js" asp-append-version="true"></script>
 
@@ -59,49 +61,53 @@
 <body data-usuario-atual="@nomeUsuario">
     <div class="app">
         <aside class="sidebar" id="sidebar">
-            <div class="brand">
-                <div class="brand-mark">N</div>
+            <a href="/" class="brand" aria-label="micoempresa — início">
+                <div class="brand-mark" aria-hidden="true">m</div>
                 <div>
-                    <strong>NfseSaaS</strong>
-                    <span>Gestão de notas fiscais</span>
+                    <strong>micoempresa<small>.com.br</small></strong>
+                    <span>Gestão simplificada</span>
                 </div>
-            </div>
+            </a>
 
-            <div class="nav-label">Principal</div>
-            <nav class="sidebar-nav">
-                <a href="/" class="@Ativo("")"><span class="nav-icon bi bi-speedometer2"></span>Dashboard</a>
-                @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Empresas))
+            <nav class="sidebar-nav" aria-label="Início">
+                <a href="/" class="@Ativo("")"><span class="nav-icon bi bi-grid-1x2"></span>Dashboard</a>
+            </nav>
+
+            @* Módulo de NFS-e — o primeiro módulo do micoempresa. *@
+            <div class="nav-label">Notas fiscais (NFS-e)</div>
+            <nav class="sidebar-nav" aria-label="Notas fiscais">
+                @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Nfse))
                 {
-                    <a href="/Empresas" class="@Ativo("/Empresas")"><span class="nav-icon bi bi-building"></span>Empresas</a>
+                    <a href="/Nfse" class="@Ativo("/Nfse")"><span class="nav-icon bi bi-receipt"></span>Notas fiscais</a>
+                }
+                @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Contratos))
+                {
+                    <a href="/Contratos" class="@Ativo("/Contratos")"><span class="nav-icon bi bi-file-earmark-text"></span>Contratos</a>
                 }
                 @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Clientes))
                 {
                     <a href="/Clientes" class="@Ativo("/Clientes")"><span class="nav-icon bi bi-people"></span>Clientes</a>
                 }
-                @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Contratos))
-                {
-                    <a href="/Contratos" class="@Ativo("/Contratos")"><span class="nav-icon bi bi-file-earmark-ruled"></span>Contratos</a>
-                }
                 @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Servicos))
                 {
-                    <a href="/Servicos" class="@Ativo("/Servicos")"><span class="nav-icon bi bi-list-check"></span>Serviços</a>
+                    <a href="/Servicos" class="@Ativo("/Servicos")"><span class="nav-icon bi bi-list-ul"></span>Serviços</a>
                 }
-                @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Nfse))
+            </nav>
+
+            <div class="nav-label">Cadastros e referência</div>
+            <nav class="sidebar-nav" aria-label="Cadastros">
+                @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Empresas))
                 {
-                    <a href="/Nfse" class="@Ativo("/Nfse")"><span class="nav-icon bi bi-file-earmark-text"></span>Notas fiscais</a>
+                    <a href="/Empresas" class="@Ativo("/Empresas")"><span class="nav-icon bi bi-building"></span>Empresas</a>
                 }
                 @* Referência pública (tabela global): qualquer usuário autenticado vê. *@
                 <a href="/Indices" class="@Ativo("/Indices")"><span class="nav-icon bi bi-graph-up-arrow"></span>Índices econômicos</a>
             </nav>
 
-            @if (papelAdministrador)
+            @if (papelAdministrador || User.EhOperadorPlataforma())
             {
                 <div class="nav-label">Administração</div>
-                <nav class="sidebar-nav">
-                    @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Auditoria))
-                    {
-                        <a href="/AuditLogs" class="@Ativo("/AuditLogs")"><span class="nav-icon bi bi-shield-check"></span>Auditoria</a>
-                    }
+                <nav class="sidebar-nav" aria-label="Administração">
                     @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Usuarios))
                     {
                         <a href="/Usuarios" class="@Ativo("/Usuarios")"><span class="nav-icon bi bi-person-plus"></span>Usuários</a>
@@ -110,16 +116,17 @@
                     {
                         <a href="/Grupos" class="@Ativo("/Grupos")"><span class="nav-icon bi bi-diagram-3"></span>Grupos de permissão</a>
                     }
+                    @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Auditoria))
+                    {
+                        <a href="/AuditLogs" class="@Ativo("/AuditLogs")"><span class="nav-icon bi bi-shield-check"></span>Auditoria</a>
+                    }
                     @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Emails))
                     {
-                        <a href="/Emails" class="@Ativo("/Emails")"><span class="nav-icon bi bi-envelope-paper"></span>E-mails</a>
+                        <a href="/Emails" class="@Ativo("/Emails")"><span class="nav-icon bi bi-envelope"></span>E-mails enviados</a>
                     }
                     @if (User.EhOperadorPlataforma())
                     {
                         <a href="/Logs" class="@Ativo("/Logs")"><span class="nav-icon bi bi-terminal"></span>Logs</a>
-                    }
-                    @if (User.EhOperadorPlataforma())
-                    {
                         <a href="/Sobre" class="@Ativo("/Sobre")"><span class="nav-icon bi bi-info-circle"></span>Sobre</a>
                     }
                 </nav>
@@ -138,20 +145,19 @@
         <main class="main">
             <header class="topbar">
                 <div class="top-left">
-                    <button class="menu-btn" id="botaoMenu" aria-label="Abrir menu">
-                        <i class="bi bi-list"></i>
+                    <button type="button" class="menu-btn" id="botaoMenu" aria-label="Recolher menu" aria-controls="sidebar" aria-expanded="true">
+                        <i class="bi bi-layout-sidebar" aria-hidden="true"></i>
                     </button>
                     <div class="breadcrumb"><strong>@ViewData["Title"]</strong></div>
                 </div>
 
                 <div class="d-flex align-items-center gap-2">
-                    <select id="seletor-empresa-topo" class="form-select form-select-sm" style="width:auto" title="Empresa selecionada — vale pra todas as telas"></select>
+                    <select id="seletor-empresa-topo" class="form-select" style="width:auto" aria-label="Empresa selecionada" title="Empresa selecionada — vale pra todas as telas"></select>
 
                     @if (rotuloAmbienteEmpresa is not null)
                     {
-                        <span class="badge text-bg-@corAmbienteEmpresa" id="badge-ambiente-empresa" title="Ambiente da Empresa selecionada no topo">
-                            <i class="bi bi-hdd-network"></i> @rotuloAmbienteEmpresa
-                        </span>
+                        <span class="chip-ambiente @classeAmbienteEmpresa" id="badge-ambiente-empresa"
+                              title="@(rotuloAmbienteEmpresa == "Homologação" ? "Ambiente de testes da SEFIN: as notas não têm valor fiscal" : "Notas com valor fiscal")">@rotuloAmbienteEmpresa</span>
                     }
 
                     <button class="btn-tema" id="botaoTema" aria-label="Alternar tema claro/escuro" title="Alternar tema">

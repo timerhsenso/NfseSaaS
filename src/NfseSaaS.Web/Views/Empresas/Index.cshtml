@@ -43,119 +43,137 @@
 {
     <!-- Modal de criar/editar — mesma modal serve pra ambos: Cnpj fica
          readonly em modo edição (a API nem aceita alterá-lo). -->
-    <div class="modal fade" id="modal-empresa" tabindex="-1">
-        <div class="modal-dialog modal-lg">
+    <div class="modal fade" id="modal-empresa" tabindex="-1" aria-labelledby="titulo-modal-empresa">
+        <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <form id="form-empresa" novalidate>
                     <div class="modal-header">
-                        <h5 class="modal-title" id="titulo-modal-empresa">Nova empresa</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <div class="modal-cabecalho-entidade">
+                            <div class="entidade-avatar" id="avatar-modal-empresa" aria-hidden="true"><i class="bi bi-building"></i></div>
+                            <div>
+                                <h5 class="modal-title" id="titulo-modal-empresa">Nova empresa</h5>
+                                <div class="modal-subtitulo" id="subtitulo-modal-empresa">Preencha as seções; o ✓ aparece quando cada uma estiver completa.</div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                     </div>
-                    <div class="modal-body">
-                        <div id="erro-empresa" class="alert alert-danger d-none"></div>
+                    <div class="modal-body modal-body-secoes">
                         <input type="hidden" id="empresaId" />
 
-                        <ul class="nav nav-tabs mb-3" id="tabs-empresa">
-                            <li class="nav-item"><button type="button" class="nav-link active" data-tab-alvo="tab-dados-empresa"><i class="bi bi-building"></i> Dados gerais</button></li>
-                            <li class="nav-item"><button type="button" class="nav-link" data-tab-alvo="tab-endereco-empresa"><i class="bi bi-geo-alt"></i> Endereço</button></li>
-                            <li class="nav-item"><button type="button" class="nav-link" data-tab-alvo="tab-regime-empresa"><i class="bi bi-receipt"></i> Regime tributário</button></li>
-                            <li class="nav-item"><button type="button" class="nav-link" data-tab-alvo="tab-contratos-empresa"><i class="bi bi-file-earmark-text"></i> Contratos</button></li>
-                            <li class="nav-item"><button type="button" class="nav-link" data-tab-alvo="tab-automacao-empresa"><i class="bi bi-robot"></i> Automação</button></li>
-                        </ul>
+                        <nav class="modal-secoes" id="tabs-empresa" aria-label="Seções da empresa">
+                            <button type="button" class="nav-link active" data-tab-alvo="tab-dados-empresa"><i class="bi bi-building"></i><span>Dados gerais</span><span class="secao-status" aria-hidden="true"></span></button>
+                            <button type="button" class="nav-link" data-tab-alvo="tab-endereco-empresa"><i class="bi bi-geo-alt"></i><span>Endereço</span><span class="secao-status" aria-hidden="true"></span></button>
+                            <button type="button" class="nav-link" data-tab-alvo="tab-regime-empresa"><i class="bi bi-receipt"></i><span>Regime tributário</span><span class="secao-status" aria-hidden="true"></span></button>
+                            <button type="button" class="nav-link" data-tab-alvo="tab-contratos-empresa"><i class="bi bi-file-earmark-text"></i><span>Contratos e reajustes</span><span class="secao-status" aria-hidden="true"></span></button>
+                            <button type="button" class="nav-link" data-tab-alvo="tab-automacao-empresa"><i class="bi bi-calendar-check"></i><span>Nota Mensal automática</span><span class="secao-status" aria-hidden="true"></span></button>
+                        </nav>
+
+                        <div class="modal-secoes-conteudo">
+                        <div id="erro-empresa" class="alert alert-danger d-none"></div>
 
                         <div class="tab-conteudo-empresa" data-tab="tab-dados-empresa">
+                        <div class="secao-cabecalho">
+                            <h3>Dados gerais</h3>
+                            <p>Como a empresa aparece como prestadora na nota (DPS) e no PDF.</p>
+                        </div>
                         <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">CNPJ</label>
+                            <div class="col-md-5 mb-3">
+                                <label class="form-label" for="cnpj">CNPJ</label>
                                 <div class="input-group">
-                                    <input type="text" class="form-control" id="cnpj" maxlength="14" required />
-                                    <button type="button" class="btn btn-outline-secondary" id="btn-consultar-cnpj" title="Buscar dados na Receita Federal">
-                                        <i class="bi bi-search"></i>
+                                    <input type="text" class="form-control" id="cnpj" maxlength="14" required inputmode="numeric" placeholder="Somente números" />
+                                    <button type="button" class="btn btn-outline-primary" id="btn-consultar-cnpj" title="Buscar dados na Receita Federal">
+                                        <i class="bi bi-search"></i> Receita
                                     </button>
                                 </div>
+                                <div class="form-text">Preenche razão social, endereço e contato pela Receita Federal.</div>
                             </div>
-                            <div class="col-md-8 mb-3">
-                                <label class="form-label">Razão social</label>
+                            <div class="col-md-7 mb-3">
+                                <label class="form-label" for="razaoSocial">Razão social</label>
                                 <input type="text" class="form-control" id="razaoSocial" maxlength="200" required />
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Nome fantasia</label>
+                            <div class="col-md-7 mb-3">
+                                <label class="form-label" for="nomeFantasia">Nome fantasia</label>
                                 <input type="text" class="form-control" id="nomeFantasia" maxlength="200" />
                             </div>
-                            <div class="col-md-3 mb-3">
-                                <label class="form-label">Inscrição municipal</label>
+                            <div class="col-md-5 mb-3">
+                                <label class="form-label" for="inscricaoMunicipal">Inscrição municipal</label>
                                 <input type="text" class="form-control" id="inscricaoMunicipal" maxlength="30" required />
-                            </div>
-                            <div class="col-md-3 mb-3">
-                                <label class="form-label">Município (código IBGE)</label>
-                                <input type="text" class="form-control" id="codigoMunicipio" maxlength="7" required />
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Telefone</label>
-                                <input type="text" class="form-control" id="telefone" maxlength="20" required />
+                            <div class="col-md-5 mb-3">
+                                <label class="form-label" for="telefone">Telefone</label>
+                                <input type="text" class="form-control" id="telefone" maxlength="20" required inputmode="tel" />
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">E-mail</label>
+                            <div class="col-md-7 mb-3">
+                                <label class="form-label" for="email">E-mail</label>
                                 <input type="email" class="form-control" id="email" required />
+                                <div class="form-text">Recebe os avisos do sistema (reajustes a aprovar, automação da Nota Mensal).</div>
                             </div>
                         </div>
                         </div>
 
                         <div class="tab-conteudo-empresa d-none" data-tab="tab-endereco-empresa">
+                        <div class="secao-cabecalho">
+                            <h3>Endereço</h3>
+                            <p>Digite o CEP: rua, bairro, UF e município são preenchidos sozinhos.</p>
+                        </div>
                         <div class="row">
-                            <div class="col-md-3 mb-3">
-                                <label class="form-label">CEP</label>
-                                <input type="text" class="form-control" id="cep" maxlength="8" required placeholder="Somente números" />
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label" for="cep">CEP</label>
+                                <input type="text" class="form-control" id="cep" maxlength="9" required inputmode="numeric" placeholder="00000-000" />
+                                <div class="form-text" id="status-cep-empresa"></div>
                             </div>
-                            <div class="col-md-7 mb-3">
-                                <label class="form-label">Logradouro</label>
+                            <div class="col-md-8 mb-3">
+                                <label class="form-label" for="codigoMunicipio">Município (código IBGE)</label>
+                                <input type="text" class="form-control" id="codigoMunicipio" maxlength="7" required inputmode="numeric" />
+                                <div class="form-text" id="nome-municipio-empresa">Preenchido pelo CEP.</div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-9 mb-3">
+                                <label class="form-label" for="logradouro">Logradouro</label>
                                 <input type="text" class="form-control" id="logradouro" maxlength="200" required />
                             </div>
-                            <div class="col-md-2 mb-3">
-                                <label class="form-label">Número</label>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label" for="numero">Número</label>
                                 <input type="text" class="form-control" id="numero" maxlength="20" required />
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-md-5 mb-3">
-                                <label class="form-label">Complemento</label>
-                                <input type="text" class="form-control" id="complemento" maxlength="100" />
+                                <label class="form-label" for="complemento">Complemento</label>
+                                <input type="text" class="form-control" id="complemento" maxlength="100" placeholder="Sala, bloco, andar" />
                             </div>
                             <div class="col-md-5 mb-3">
-                                <label class="form-label">Bairro</label>
+                                <label class="form-label" for="bairro">Bairro</label>
                                 <input type="text" class="form-control" id="bairro" maxlength="100" required />
                             </div>
                             <div class="col-md-2 mb-3">
-                                <label class="form-label">UF</label>
+                                <label class="form-label" for="uf">UF</label>
                                 <input type="text" class="form-control" id="uf" maxlength="2" required placeholder="BA" />
                             </div>
                         </div>
                         </div>
 
                         <div class="tab-conteudo-empresa d-none" data-tab="tab-regime-empresa">
+                        <div class="secao-cabecalho">
+                            <h3>Regime tributário</h3>
+                            <p>Vai em cada nota emitida. Na dúvida, confirme com o seu contador.</p>
+                        </div>
                         <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Opção pelo Simples Nacional</label>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label" for="opSimpNac">Opção pelo Simples Nacional</label>
                                 <select class="form-select" id="opSimpNac" required>
                                     <option value="1">Não Optante</option>
                                     <option value="2">Optante - Microempreendedor Individual (MEI)</option>
                                     <option value="3">Optante - Microempresa ou Empresa de Pequeno Porte (Simples Nacional)</option>
                                 </select>
                             </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Regime de apuração (Simples)</label>
-                                <select class="form-select" id="regApTribSN" required>
-                                    <option value="1">Regime de apuração dos tributos federais e municipal pelo Simples Nacional</option>
-                                    <option value="2">Regime de apuração dos tributos federais pelo Simples Nacional e o ISSQN pela NFS-e conforme respectiva legislação municipal do tributo</option>
-                                    <option value="3">Regime de apuração dos tributos federais e municipal pela NFS-e conforme respectivas legislações federal e municipal de cada tributo</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Regime especial de tributação</label>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label" for="regEspTrib">Regime especial de tributação</label>
                                 <select class="form-select" id="regEspTrib" required>
                                     @* Códigos e textos do tipo TSRegEspTrib do XSD oficial da SEFIN (tiposSimples_v1.01.xsd). *@
                                     <option value="0">Nenhum</option>
@@ -170,8 +188,18 @@
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-md-3 mb-3">
-                                <label class="form-label">Tributação ISSQN</label>
+                            <div class="col-12 mb-3">
+                                <label class="form-label" for="regApTribSN">Regime de apuração (Simples)</label>
+                                <select class="form-select" id="regApTribSN" required>
+                                    <option value="1">Regime de apuração dos tributos federais e municipal pelo Simples Nacional</option>
+                                    <option value="2">Regime de apuração dos tributos federais pelo Simples Nacional e o ISSQN pela NFS-e conforme respectiva legislação municipal do tributo</option>
+                                    <option value="3">Regime de apuração dos tributos federais e municipal pela NFS-e conforme respectivas legislações federal e municipal de cada tributo</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label" for="tribIssqn">Tributação ISSQN</label>
                                 <select class="form-select" id="tribIssqn" required>
                                     <option value="1">Operação Tributável</option>
                                     @* Imunidade, exportação e não incidência exigem grupos que a DPS ainda não monta — ver CodigosFiscaisEmpresa. *@
@@ -180,13 +208,20 @@
                                     <option value="4" disabled>Não Incidência (em breve)</option>
                                 </select>
                             </div>
-                            <div class="col-md-3 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label class="form-label" for="aliquotaIss">Alíquota de ISS (%)</label>
                                 <input type="number" class="form-control" id="aliquotaIss" min="0.01" max="5" step="0.01" placeholder="Ex.: 2.01" />
-                                <div class="form-text">Usada quando o cliente retém o ISS. No Simples, é a alíquota efetiva da sua faixa de faturamento.</div>
+                                <div class="form-text">Usada quando o cliente retém o ISS. No Simples, é a alíquota efetiva da sua faixa.</div>
                             </div>
-                            <div class="col-md-3 mb-3">
-                                <label class="form-label">CST PIS/COFINS</label>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label" for="percentualTotalTributosSimplesNacional">% total de tributos (Simples)</label>
+                                <input type="text" class="form-control" id="percentualTotalTributosSimplesNacional" placeholder="ex.: 3.00" />
+                                <div class="form-text">Obrigatório para optante (MEI ou Simples Nacional).</div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label" for="cstPisCofins">CST PIS/COFINS</label>
                                 <select class="form-select" id="cstPisCofins" required>
                                     <option value="00">00 - Nenhum</option>
                                     <option value="01">01 - Operação Tributável com Alíquota Básica</option>
@@ -203,8 +238,8 @@
                                     @* Códigos de saída do TSTipoCST (XSD oficial). 50–75 e 98 são de entrada/aquisição e ficam de fora de propósito — ver CodigosFiscaisEmpresa. *@
                                 </select>
                             </div>
-                            <div class="col-md-3 mb-3">
-                                <label class="form-label">Retenção PIS/COFINS</label>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label" for="tpRetPisCofins">Retenção PIS/COFINS</label>
                                 <select class="form-select" id="tpRetPisCofins" required>
                                     <option value="0">0 - PIS/COFINS/CSLL Não Retidos</option>
                                     <option value="3">3 - PIS/COFINS/CSLL Retidos</option>
@@ -217,44 +252,51 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">% total tributos (Simples Nacional)</label>
-                                <input type="text" class="form-control" id="percentualTotalTributosSimplesNacional" placeholder="ex.: 3.00" />
-                                <div class="form-text">Obrigatório se "Optante" (MEI ou Simples Nacional).</div>
-                            </div>
-                        </div>
                         </div>
 
                         <div class="tab-conteudo-empresa d-none" data-tab="tab-contratos-empresa">
+                        <div class="secao-cabecalho">
+                            <h3>Contratos e reajustes</h3>
+                            <p>Padrões para os contratos desta empresa — cada contrato pode escolher diferente.</p>
+                        </div>
                         <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Alertar reajuste com quantos dias de antecedência</label>
-                                <input type="number" min="1" class="form-control" id="diasAlertaReajusteContratoPadrao" value="30" required />
-                                <div class="form-text">Padrão pra todos os Contratos desta Empresa — cada Contrato pode sobrescrever esse número individualmente.</div>
-                            </div>
-                            <div class="col-md-8 mb-3">
-                                <div class="form-check form-switch mt-md-4">
-                                    <input type="checkbox" class="form-check-input" id="aplicarReajusteAutomatico" />
-                                    <label class="form-check-label" for="aplicarReajusteAutomatico">Aplicar reajustes pelo índice automaticamente no aniversário</label>
+                            <div class="col-md-5 mb-3">
+                                <label class="form-label" for="diasAlertaReajusteContratoPadrao">Avisar do reajuste com antecedência de</label>
+                                <div class="input-group">
+                                    <input type="number" min="1" class="form-control" id="diasAlertaReajusteContratoPadrao" value="30" required />
+                                    <span class="input-group-text">dias</span>
                                 </div>
-                                <div class="form-text">Desligado: o reajuste calculado fica "aguardando aprovação" (aplicar, negociar ou não reajustar). Cada Contrato pode escolher diferente.</div>
                             </div>
                         </div>
+                        <label class="cartao-opcao" for="aplicarReajusteAutomatico">
+                            <span class="form-check form-switch m-0">
+                                <input type="checkbox" class="form-check-input" id="aplicarReajusteAutomatico" />
+                            </span>
+                            <span>
+                                <strong>Aplicar reajustes pelo índice automaticamente no aniversário</strong>
+                                <span class="d-block form-text mt-1">Desligado: o reajuste calculado fica "aguardando aprovação" — você aplica, negocia outro valor ou não reajusta.</span>
+                            </span>
+                        </label>
                         </div>
 
                         <div class="tab-conteudo-empresa d-none" data-tab="tab-automacao-empresa">
+                        <div class="secao-cabecalho">
+                            <h3>Nota Mensal automática</h3>
+                            <p>No dia e hora marcados, o sistema emite as notas dos contratos mensais — ou só lista para você revisar.</p>
+                        </div>
                         <div class="alert alert-warning d-none" id="alerta-automacao-desligada-inatividade">
                             <i class="bi bi-exclamation-triangle"></i>
                             Esta automação foi <strong>desligada automaticamente</strong>: 2 competências seguidas foram avisadas por e-mail (modo "Listar para revisão") sem nenhuma nota confirmada. Ligue o interruptor abaixo e salve para reativar.
                         </div>
-                        <div class="form-check form-switch mb-3">
-                            <input type="checkbox" class="form-check-input" id="automacaoAtivo" />
-                            <label class="form-check-label" for="automacaoAtivo">Emissão automática de Nota Mensal ativa pra esta Empresa</label>
-                        </div>
+                        <label class="cartao-opcao mb-3" for="automacaoAtivo">
+                            <span class="form-check form-switch m-0">
+                                <input type="checkbox" class="form-check-input" id="automacaoAtivo" />
+                            </span>
+                            <span><strong>Emissão automática de Nota Mensal ativa para esta empresa</strong></span>
+                        </label>
                         <div class="row">
                             <div class="col-md-4 mb-3">
-                                <label class="form-label">Frequência</label>
+                                <label class="form-label" for="automacaoFrequencia">Frequência</label>
                                 <select class="form-select" id="automacaoFrequencia">
                                     <option value="0">Diária</option>
                                     <option value="1">Semanal</option>
@@ -262,7 +304,7 @@
                                 </select>
                             </div>
                             <div class="col-md-4 mb-3 d-none" id="campo-automacao-dia-semana">
-                                <label class="form-label">Dia da semana</label>
+                                <label class="form-label" for="automacaoDiaSemana">Dia da semana</label>
                                 <select class="form-select" id="automacaoDiaSemana">
                                     <option value="1">Segunda-feira</option>
                                     <option value="2">Terça-feira</option>
@@ -274,18 +316,18 @@
                                 </select>
                             </div>
                             <div class="col-md-4 mb-3" id="campo-automacao-dia-mes">
-                                <label class="form-label">Dia do mês</label>
+                                <label class="form-label" for="automacaoDiaDoMes">Dia do mês</label>
                                 <input type="number" min="1" max="28" class="form-control" id="automacaoDiaDoMes" value="1" />
-                                <div class="form-text">Limitado a 1–28 — evita cair num mês que não tem esse dia (fevereiro, por exemplo).</div>
+                                <div class="form-text">De 1 a 28 — todo mês tem esse dia.</div>
                             </div>
                             <div class="col-md-4 mb-3">
-                                <label class="form-label">Horário</label>
+                                <label class="form-label" for="automacaoHorario">Horário</label>
                                 <input type="time" class="form-control" id="automacaoHorario" value="09:00" />
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Modo</label>
+                            <div class="col-md-8 mb-3">
+                                <label class="form-label" for="automacaoModo">Modo</label>
                                 <select class="form-select" id="automacaoModo">
                                     <option value="1" selected>Listar para revisão — avisa por e-mail, você confirma o envio</option>
                                     <option value="0">Automático — emite sozinho, só avisa o resultado</option>
@@ -293,9 +335,11 @@
                             </div>
                         </div>
                         </div>
+                        </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <span class="modal-rodape-info" id="rodape-info-empresa">Campos com <span class="text-danger">*</span> são obrigatórios</span>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                         <button type="submit" class="btn btn-primary">Salvar</button>
                     </div>
                 </form>

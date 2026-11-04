@@ -298,6 +298,101 @@ function mostrarQuadroResultado(idDiv, html, tipo, segundos) {
     }, 100);
 }
 
+/**
+ * Marca cada seção de um modal com ✓ (completa) ou ! (falta campo
+ * obrigatório), olhando os campos :invalid de cada painel. painelSeletor:
+ * os painéis (com data-tab); navSeletor: o container dos botões
+ * (data-tab-alvo) com um .secao-status dentro.
+ */
+function atualizarStatusSecoes(formId, painelSeletor, navSeletor) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+    form.querySelectorAll(painelSeletor).forEach(painel => {
+        const botao = document.querySelector(`${navSeletor} [data-tab-alvo="${painel.dataset.tab}"]`);
+        const status = botao?.querySelector('.secao-status');
+        if (!status) return;
+        const temObrigatorio = painel.querySelector('[required]') !== null;
+        const pendente = painel.querySelector(':invalid') !== null;
+        status.className = 'secao-status' + (!temObrigatorio ? '' : pendente ? ' pendente' : ' ok');
+        status.textContent = !temObrigatorio ? '' : pendente ? '!' : '';
+        status.title = !temObrigatorio ? '' : pendente ? 'Falta preencher campo obrigatório' : 'Completa';
+    });
+}
+
+/** Mostra "Salvador — BA" abaixo do código IBGE (consulta no servidor, com cache). */
+async function mostrarNomeMunicipio(idCodigo, idRotulo) {
+    const rotulo = document.getElementById(idRotulo);
+    const codigo = (document.getElementById(idCodigo)?.value ?? '').replace(/\D/g, '');
+    if (!rotulo) return;
+    rotulo.classList.remove('text-danger');
+
+    if (codigo.length !== 7) {
+        rotulo.textContent = 'Preenchido pelo CEP (código IBGE de 7 dígitos).';
+        return;
+    }
+
+    try {
+        const m = await apiFetch(`/api/consultas/municipio/${codigo}`);
+        rotulo.innerHTML = `<i class="bi bi-geo-alt-fill text-primary"></i> <strong>${escaparHtml(m.nome)}${m.uf ? ' — ' + escaparHtml(m.uf) : ''}</strong>`;
+    } catch {
+        // Sem o nome (serviço do IBGE fora do ar), o código continua valendo.
+        rotulo.textContent = `Código IBGE ${codigo} — nome do município indisponível agora.`;
+    }
+}
+
+/**
+ * CEP → preenche logradouro, bairro, UF e código IBGE do município
+ * (ViaCEP, via /api/consultas/cep). ids: { cep, logradouro, bairro,
+ * complemento, uf, codigoMunicipio, nomeMunicipio, statusCep, numero,
+ * aoPreencher }. Busca sozinho ao completar 8 dígitos.
+ */
+function configurarBuscaCep(ids) {
+    const campoCep = document.getElementById(ids.cep);
+    const campoCodigo = document.getElementById(ids.codigoMunicipio);
+    const status = document.getElementById(ids.statusCep);
+    if (!campoCep) return;
+
+    let ultimoBuscado = null;
+
+    async function buscar() {
+        const cep = campoCep.value.replace(/\D/g, '');
+        if (cep.length !== 8 || cep === ultimoBuscado) return;
+        ultimoBuscado = cep;
+
+        if (status) { status.classList.remove('text-danger'); status.textContent = 'Buscando endereço…'; }
+        try {
+            const e = await apiFetch(`/api/consultas/cep/${cep}`);
+            const definir = (id, valor) => { const c = document.getElementById(id); if (c && valor) c.value = valor; };
+            definir(ids.logradouro, e.logradouro);
+            definir(ids.bairro, e.bairro);
+            definir(ids.uf, e.uf);
+            definir(ids.codigoMunicipio, e.codigoMunicipio);
+            const complemento = document.getElementById(ids.complemento);
+            if (complemento && !complemento.value && e.complemento) complemento.value = e.complemento;
+
+            if (status) status.textContent = `${e.municipio} — ${e.uf}`;
+            await mostrarNomeMunicipio(ids.codigoMunicipio, ids.nomeMunicipio);
+            if (ids.numero) document.getElementById(ids.numero)?.focus();
+            ids.aoPreencher?.();
+        } catch (err) {
+            ultimoBuscado = null;
+            if (status) { status.textContent = err.message; status.classList.add('text-danger'); }
+        }
+    }
+
+    // Aceita colar "40170-120": guarda só os dígitos (a API espera 8).
+    campoCep.addEventListener('input', () => {
+        const digitos = campoCep.value.replace(/\D/g, '').slice(0, 8);
+        if (campoCep.value !== digitos) campoCep.value = digitos;
+        if (digitos.length === 8) buscar();
+    });
+    campoCep.addEventListener('blur', buscar);
+
+    campoCodigo?.addEventListener('change', () => mostrarNomeMunicipio(ids.codigoMunicipio, ids.nomeMunicipio));
+
+    return { reiniciar: () => { ultimoBuscado = null; if (status) { status.textContent = ''; status.classList.remove('text-danger'); } } };
+}
+
 function ocultarResultado(idDiv) {
     const div = document.getElementById(idDiv);
     if (!div) return;

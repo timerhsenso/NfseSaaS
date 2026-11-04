@@ -88,6 +88,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
         document.getElementById('automacaoFrequencia').addEventListener('change', aplicarRegraFrequenciaAutomacao);
 
+        buscaCepEmpresa = configurarBuscaCep({
+            cep: 'cep', logradouro: 'logradouro', bairro: 'bairro', complemento: 'complemento', uf: 'uf',
+            codigoMunicipio: 'codigoMunicipio', nomeMunicipio: 'nome-municipio-empresa', statusCep: 'status-cep-empresa',
+            numero: 'numero', aoPreencher: atualizarStatusSecoesEmpresa
+        });
+
+        // ✓ / ! em cada seção conforme o preenchimento.
+        const formEmpresa = document.getElementById('form-empresa');
+        formEmpresa.addEventListener('input', atualizarStatusSecoesEmpresa);
+        formEmpresa.addEventListener('change', atualizarStatusSecoesEmpresa);
+
         document.getElementById('tabela-empresas').addEventListener('click', async function (e) {
             const botao = e.target.closest('button');
             if (!botao) return;
@@ -119,8 +130,28 @@ async function carregarEmpresas() {
     }
 }
 
+let buscaCepEmpresa = null;
+
+function atualizarStatusSecoesEmpresa() {
+    atualizarStatusSecoes('form-empresa', '.tab-conteudo-empresa', '#tabs-empresa');
+}
+
+function iniciaisEmpresa(nome) {
+    return (nome || '').split(/\s+/).filter(p => p.length > 2).slice(0, 2).map(p => p[0].toUpperCase()).join('') || '?';
+}
+
+function formatarCnpj(cnpj) {
+    const d = (cnpj || '').replace(/\D/g, '');
+    return d.length === 14 ? d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5') : cnpj;
+}
+
 function limparFormularioEmpresa() {
     document.getElementById('form-empresa').reset();
+    buscaCepEmpresa?.reiniciar();
+    document.getElementById('nome-municipio-empresa').textContent = 'Preenchido pelo CEP.';
+    document.getElementById('avatar-modal-empresa').innerHTML = '<i class="bi bi-building"></i>';
+    document.getElementById('subtitulo-modal-empresa').textContent = 'Preencha as seções; o ✓ aparece quando cada uma estiver completa.';
+    document.querySelectorAll('#tabs-empresa .secao-status').forEach(s => { s.className = 'secao-status'; s.textContent = ''; });
     document.getElementById('empresaId').value = '';
     document.getElementById('erro-empresa').classList.add('d-none');
     trocarAbaEmpresa('tab-dados-empresa');
@@ -200,6 +231,15 @@ async function abrirModalEditarEmpresa(id) {
         document.getElementById('automacaoHorario').value = automacao.horario.substring(0, 5); // "HH:mm:ss" -> "HH:mm"
         document.getElementById('automacaoModo').value = automacao.modo;
         aplicarRegraFrequenciaAutomacao();
+
+        document.getElementById('avatar-modal-empresa').textContent = iniciaisEmpresa(empresa.nomeFantasia || empresa.razaoSocial);
+        document.getElementById('titulo-modal-empresa').textContent = empresa.nomeFantasia || empresa.razaoSocial;
+        document.getElementById('subtitulo-modal-empresa').innerHTML =
+            `${escaparHtml(formatarCnpj(empresa.cnpj))} · ` +
+            (empresa.ativo ? '<span class="badge text-bg-success">Ativa</span>' : '<span class="badge text-bg-secondary">Inativa</span>') + ' ' +
+            (empresa.tipoAmbiente === AMBIENTE_HOMOLOGACAO ? '<span class="badge text-bg-warning">Homologação</span>' : '<span class="badge text-bg-success">Produção</span>');
+        atualizarStatusSecoesEmpresa();
+        mostrarNomeMunicipio('codigoMunicipio', 'nome-municipio-empresa');
 
         modalEmpresa.show();
     } catch (err) {
@@ -486,6 +526,8 @@ async function consultarCnpj() {
         document.getElementById('complemento').value = dados.complemento ?? '';
         document.getElementById('bairro').value = dados.bairro ?? '';
         if (dados.uf) document.getElementById('uf').value = dados.uf;
+        mostrarNomeMunicipio('codigoMunicipio', 'nome-municipio-empresa');
+        atualizarStatusSecoesEmpresa();
 
         mostrarToast(
             `Dados preenchidos a partir da Receita Federal${dados.situacaoCadastral ? ' — situação: ' + dados.situacaoCadastral : ''}. ` +

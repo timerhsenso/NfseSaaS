@@ -48,6 +48,11 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('btn-novo-cliente').addEventListener('click', abrirModalNovoCliente);
         document.getElementById('form-cliente').addEventListener('submit', salvarCliente);
         document.getElementById('btn-consultar-cnpj-cliente').addEventListener('click', consultarCnpjCliente);
+        buscaCepCliente = configurarBuscaCep({
+            cep: 'cep', logradouro: 'logradouro', bairro: 'bairro', complemento: 'complemento', uf: 'uf',
+            codigoMunicipio: 'codigoMunicipio', nomeMunicipio: 'nome-municipio-cliente', statusCep: 'status-cep-cliente',
+            numero: 'numero'
+        });
 
         document.getElementById('tabela-clientes').addEventListener('click', async function (e) {
             const botao = e.target.closest('button');
@@ -79,8 +84,14 @@ async function carregarClientes() {
     }
 }
 
+let buscaCepCliente = null;
+
 function limparFormularioCliente() {
     document.getElementById('form-cliente').reset();
+    buscaCepCliente?.reiniciar();
+    document.getElementById('nome-municipio-cliente').textContent = 'Preenchido pelo CEP.';
+    document.getElementById('avatar-modal-cliente').innerHTML = '<i class="bi bi-person"></i>';
+    document.getElementById('subtitulo-modal-cliente').textContent = 'O tomador do serviço — como sai na nota.';
     document.getElementById('clienteId').value = '';
     document.getElementById('erro-cliente').classList.add('d-none');
 }
@@ -114,6 +125,18 @@ async function abrirModalEditarCliente(id) {
         document.getElementById('bairro').value = cliente.bairro;
         document.getElementById('uf').value = cliente.uf;
         document.getElementById('retemIss').checked = cliente.retemIss === true;
+
+        const nomeExibicao = cliente.apelido || cliente.nome;
+        document.getElementById('titulo-modal-cliente').textContent = nomeExibicao;
+        document.getElementById('avatar-modal-cliente').textContent =
+            nomeExibicao.split(/\s+/).filter(p => p.length > 1).slice(0, 2).map(p => p[0].toUpperCase()).join('') || '?';
+        const doc = (cliente.cpfCnpj || '').replace(/\D/g, '');
+        const docFormatado = doc.length === 14
+            ? doc.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')
+            : doc.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        document.getElementById('subtitulo-modal-cliente').innerHTML =
+            `${escaparHtml(docFormatado)} · ${cliente.ativo === false ? '<span class="badge text-bg-secondary">Inativo</span>' : '<span class="badge text-bg-success">Ativo</span>'}`;
+        mostrarNomeMunicipio('codigoMunicipio', 'nome-municipio-cliente');
 
         modalCliente.show();
     } catch (err) {
@@ -222,6 +245,7 @@ async function consultarCnpjCliente() {
         document.getElementById('complemento').value = dados.complemento ?? '';
         document.getElementById('bairro').value = dados.bairro ?? '';
         if (dados.uf) document.getElementById('uf').value = dados.uf;
+        mostrarNomeMunicipio('codigoMunicipio', 'nome-municipio-cliente');
 
         mostrarToast(
             `Endereço preenchido a partir da Receita Federal${dados.situacaoCadastral ? ' — situação: ' + dados.situacaoCadastral : ''}. Confira antes de salvar.`

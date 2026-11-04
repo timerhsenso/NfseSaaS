@@ -3,27 +3,36 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - NfseSaaS</title>
+    <title>@ViewData["Title"] · micoempresa</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
-<body class="auth-page d-flex align-items-center" style="min-height: 100vh;">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-5">
-                <div class="text-center mb-4">
-                    <i class="bi bi-receipt-cutoff text-primary" style="font-size: 2.5rem;"></i>
-                    <div class="h3 fw-semibold mt-2 mb-0">NfseSaaS</div>
-                </div>
-                <div class="card auth-card shadow-sm">
+<body class="auth-page">
+    <div class="auth-split">
+        <aside class="auth-marca">
+            <div class="brand">
+                <div class="brand-mark" aria-hidden="true">m</div>
+                <strong>micoempresa</strong>
+            </div>
+            <h2>Nota fiscal de serviço sem complicação para a sua empresa.</h2>
+            <ul>
+                <li><i class="bi bi-lightning-charge" aria-hidden="true"></i><span>Emita NFS-e no padrão nacional em segundos, direto na SEFIN.</span></li>
+                <li><i class="bi bi-calendar-check" aria-hidden="true"></i><span>Nota Mensal: todos os contratos do mês faturados de uma vez.</span></li>
+                <li><i class="bi bi-graph-up-arrow" aria-hidden="true"></i><span>Reajuste por IPCA, IGP-M e outros índices, calculado sozinho no aniversário.</span></li>
+            </ul>
+            <small>micoempresa.com.br</small>
+        </aside>
+        <main class="auth-form">
+            <div class="auth-form-inner">
+                <div class="card auth-card">
                     <div class="card-body p-4">
                         @RenderBody()
                     </div>
                 </div>
             </div>
-        </div>
+        </main>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>

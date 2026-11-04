@@ -40,91 +40,127 @@
 
 @if (podeEditar)
 {
-    <div class="modal fade" id="modal-cliente" tabindex="-1">
+    <div class="modal fade" id="modal-cliente" tabindex="-1" aria-labelledby="titulo-modal-cliente">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <form id="form-cliente">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="titulo-modal-cliente">Novo cliente</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <div class="modal-cabecalho-entidade">
+                            <div class="entidade-avatar entidade-avatar-redondo" id="avatar-modal-cliente" aria-hidden="true"><i class="bi bi-person"></i></div>
+                            <div>
+                                <h5 class="modal-title" id="titulo-modal-cliente">Novo cliente</h5>
+                                <div class="modal-subtitulo" id="subtitulo-modal-cliente">O tomador do serviço — como sai na nota.</div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                     </div>
                     <div class="modal-body">
                         <div id="erro-cliente" class="alert alert-danger d-none"></div>
                         <input type="hidden" id="clienteId" />
 
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">CPF/CNPJ</label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control" id="cpfCnpj" maxlength="14" required placeholder="Somente números" />
-                                    <button type="button" class="btn btn-outline-secondary" id="btn-consultar-cnpj-cliente" title="Buscar endereço na Receita Federal (só CNPJ, 14 dígitos)">
-                                        <i class="bi bi-search"></i>
-                                    </button>
+                        <section class="form-secao">
+                            <div class="form-secao-titulo">
+                                <h3>Identificação</h3>
+                                <p>CNPJ ou CPF e o nome que vai na nota.</p>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" for="cpfCnpj">CPF ou CNPJ</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="cpfCnpj" maxlength="14" required inputmode="numeric" placeholder="Somente números" />
+                                        <button type="button" class="btn btn-outline-primary" id="btn-consultar-cnpj-cliente" title="Buscar dados na Receita Federal (só CNPJ, 14 dígitos)">
+                                            <i class="bi bi-search"></i> Receita
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" for="apelido">Apelido</label>
+                                    <input type="text" class="form-control" id="apelido" maxlength="40" required
+                                           title="Nome curto usado nas telas e no nome do PDF. Não aparece na nota fiscal." />
+                                </div>
+                                <div class="col-12 mb-3">
+                                    <label class="form-label" for="nome">Nome / razão social</label>
+                                    <input type="text" class="form-control" id="nome" maxlength="200" required />
+                                    <div class="form-text">A nota sai com este nome; o apelido aparece só nas telas e no nome do PDF.</div>
                                 </div>
                             </div>
-                            <div class="col-md-8 mb-3">
-                                <label class="form-label">Nome (razão social)</label>
-                                <input type="text" class="form-control" id="nome" maxlength="200" required />
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Apelido</label>
-                                <input type="text" class="form-control" id="apelido" maxlength="40" required
-                                       title="Nome curto usado nas telas e no nome do PDF. Não aparece na nota fiscal." />
-                                <div class="form-text">Usado nas telas e no nome do PDF. A nota sai com a razão social.</div>
-                            </div>
-                            <div class="col-md-5 mb-3">
-                                <label class="form-label">E-mail</label>
-                                <input type="email" class="form-control" id="email" />
-                            </div>
-                            <div class="col-md-3 mb-3">
-                                <label class="form-label">Telefone</label>
-                                <input type="text" class="form-control" id="telefone" maxlength="20" />
-                            </div>
-                        </div>
+                        </section>
 
-                        <h6 class="text-muted">Endereço</h6>
-                        <div class="row">
-                            <div class="col-md-3 mb-3">
-                                <label class="form-label">Município (código IBGE)</label>
-                                <input type="text" class="form-control" id="codigoMunicipio" maxlength="7" required />
+                        <section class="form-secao">
+                            <div class="form-secao-titulo">
+                                <h3>Contato</h3>
+                                <p>Para onde vai o PDF da nota.</p>
                             </div>
-                            <div class="col-md-3 mb-3">
-                                <label class="form-label">CEP</label>
-                                <input type="text" class="form-control" id="cep" maxlength="8" required placeholder="Somente números" />
+                            <div class="row">
+                                <div class="col-md-7 mb-3">
+                                    <label class="form-label" for="email">E-mail</label>
+                                    <input type="email" class="form-control" id="email" />
+                                </div>
+                                <div class="col-md-5 mb-3">
+                                    <label class="form-label" for="telefone">Telefone</label>
+                                    <input type="text" class="form-control" id="telefone" maxlength="20" inputmode="tel" />
+                                </div>
                             </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Logradouro</label>
-                                <input type="text" class="form-control" id="logradouro" maxlength="200" required />
+                        </section>
+
+                        <section class="form-secao">
+                            <div class="form-secao-titulo">
+                                <h3>Endereço</h3>
+                                <p>Digite o CEP: rua, bairro, UF e município vêm sozinhos.</p>
                             </div>
-                            <div class="col-md-2 mb-3">
-                                <label class="form-label">Número</label>
-                                <input type="text" class="form-control" id="numero" maxlength="20" required />
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label" for="cep">CEP</label>
+                                    <input type="text" class="form-control" id="cep" maxlength="9" required inputmode="numeric" placeholder="00000-000" />
+                                    <div class="form-text" id="status-cep-cliente"></div>
+                                </div>
+                                <div class="col-md-8 mb-3">
+                                    <label class="form-label" for="codigoMunicipio">Município (código IBGE)</label>
+                                    <input type="text" class="form-control" id="codigoMunicipio" maxlength="7" required inputmode="numeric" />
+                                    <div class="form-text" id="nome-municipio-cliente">Preenchido pelo CEP.</div>
+                                </div>
+                                <div class="col-md-9 mb-3">
+                                    <label class="form-label" for="logradouro">Logradouro</label>
+                                    <input type="text" class="form-control" id="logradouro" maxlength="200" required />
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label" for="numero">Número</label>
+                                    <input type="text" class="form-control" id="numero" maxlength="20" required />
+                                </div>
+                                <div class="col-md-5 mb-3">
+                                    <label class="form-label" for="complemento">Complemento</label>
+                                    <input type="text" class="form-control" id="complemento" maxlength="100" placeholder="Sala, bloco, andar" />
+                                </div>
+                                <div class="col-md-5 mb-3">
+                                    <label class="form-label" for="bairro">Bairro</label>
+                                    <input type="text" class="form-control" id="bairro" maxlength="100" required />
+                                </div>
+                                <div class="col-md-2 mb-3">
+                                    <label class="form-label" for="uf">UF</label>
+                                    <input type="text" class="form-control" id="uf" maxlength="2" required placeholder="BA" />
+                                </div>
                             </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-5 mb-3">
-                                <label class="form-label">Complemento</label>
-                                <input type="text" class="form-control" id="complemento" maxlength="100" />
+                        </section>
+
+                        <section class="form-secao">
+                            <div class="form-secao-titulo">
+                                <h3>Fiscal</h3>
+                                <p>Padrão das notas para este cliente.</p>
                             </div>
-                            <div class="col-md-5 mb-3">
-                                <label class="form-label">Bairro</label>
-                                <input type="text" class="form-control" id="bairro" maxlength="100" required />
-                            </div>
-                            <div class="col-md-2 mb-3">
-                                <label class="form-label">UF</label>
-                                <input type="text" class="form-control" id="uf" maxlength="2" required placeholder="BA" />
-                            </div>
-                        </div>
-                        <div class="form-check mb-1">
-                            <input class="form-check-input" type="checkbox" id="retemIss" />
-                            <label class="form-check-label" for="retemIss">Este cliente retém o ISS na fonte</label>
-                        </div>
-                        <div class="form-text mb-3">Marque para órgão público ou empresa que a prefeitura obriga a reter ISS. As notas para este cliente já saem com ISS retido (dá para mudar na hora de emitir).</div>
+                            <label class="cartao-opcao" for="retemIss">
+                                <span class="form-check form-switch m-0">
+                                    <input class="form-check-input" type="checkbox" id="retemIss" />
+                                </span>
+                                <span>
+                                    <strong>Retém o ISS na fonte</strong>
+                                    <span class="d-block form-text mt-1">Órgão público ou empresa que a prefeitura obriga a reter. As notas para este cliente já saem com ISS retido (dá para mudar na hora de emitir).</span>
+                                </span>
+                            </label>
+                        </section>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <span class="modal-rodape-info">Campos com <span class="text-danger">*</span> são obrigatórios</span>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                         <button type="submit" class="btn btn-primary">Salvar</button>
                     </div>
                 </form>
