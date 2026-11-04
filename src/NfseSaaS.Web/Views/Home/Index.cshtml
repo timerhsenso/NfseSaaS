@@ -2,6 +2,19 @@
     ViewData["Title"] = "Dashboard";
 }
 
+<div class="card onboarding d-none" id="card-onboarding">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-flag" aria-hidden="true"></i> Primeiros passos <small class="text-muted ms-1" id="onboarding-contagem"></small></span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-ocultar-onboarding">Ocultar por agora</button>
+    </div>
+    <div class="card-body">
+        <div class="progress onboarding-progresso" role="progressbar" aria-label="Progresso dos primeiros passos" aria-valuemin="0" aria-valuemax="100">
+            <div class="progress-bar" id="onboarding-barra"></div>
+        </div>
+        <ol class="onboarding-passos" id="onboarding-passos"></ol>
+    </div>
+</div>
+
 <div class="stats">
     <a href="/Empresas" class="stat">
         <div class="stat-top">

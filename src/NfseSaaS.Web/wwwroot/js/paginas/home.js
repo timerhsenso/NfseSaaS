@@ -156,4 +156,68 @@ function renderizarResumoStatus(notas) {
         }).join('');
 }
 
+// "Primeiros passos": some sozinho quando a conta completa todos os passos.
+// "Ocultar por agora" vale só neste navegador e volta quando um passo novo
+// for concluído (a chave guarda quantos estavam concluídos ao ocultar).
+const CHAVE_ONBOARDING_OCULTO = 'micoempresa.onboarding.ocultoEm';
+
+function lerOcultoEm() {
+    try { return parseInt(localStorage.getItem(CHAVE_ONBOARDING_OCULTO) ?? '', 10); } catch { return NaN; }
+}
+
+function gravarOcultoEm(valor) {
+    try { localStorage.setItem(CHAVE_ONBOARDING_OCULTO, String(valor)); } catch { /* sem armazenamento: só não lembra */ }
+}
+
+async function carregarOnboarding() {
+    const card = document.getElementById('card-onboarding');
+    let progresso;
+    try {
+        progresso = await apiFetch('/api/onboarding');
+    } catch {
+        return; // o painel continua funcionando sem o "Primeiros passos"
+    }
+
+    if (!progresso || progresso.completo || lerOcultoEm() === progresso.concluidos) {
+        card.classList.add('d-none');
+        return;
+    }
+
+    const total = progresso.passos.length;
+    document.getElementById('onboarding-contagem').textContent = `${progresso.concluidos} de ${total}`;
+    const barra = document.getElementById('onboarding-barra');
+    barra.style.width = `${Math.round(progresso.concluidos * 100 / total)}%`;
+    barra.parentElement.setAttribute('aria-valuenow', String(Math.round(progresso.concluidos * 100 / total)));
+
+    const proximaChave = progresso.proximo?.chave;
+    document.getElementById('onboarding-passos').innerHTML = progresso.passos.map(p => {
+        const proximo = p.chave === proximaChave;
+        const icone = p.concluido
+            ? '<i class="bi bi-check-circle-fill onboarding-ok" aria-hidden="true"></i>'
+            : `<i class="bi ${proximo ? 'bi-arrow-right-circle-fill onboarding-proximo' : 'bi-circle onboarding-pendente'}" aria-hidden="true"></i>`;
+        const acoes = proximo
+            ? `<div class="onboarding-acoes">
+                   <a href="${p.link}" class="btn btn-primary btn-sm">${escaparHtml(p.textoBotao)}</a>
+                   ${p.linkAjuda ? `<a href="${p.linkAjuda}" target="_blank" rel="noopener" class="btn btn-link btn-sm">Como conseguir?</a>` : ''}
+               </div>`
+            : '';
+        return `<li class="${p.concluido ? 'concluido' : ''} ${proximo ? 'atual' : ''}">
+                    ${icone}
+                    <div>
+                        <strong>${escaparHtml(p.titulo)}</strong><span class="visually-hidden">${p.concluido ? ' (concluído)' : ''}</span>
+                        ${proximo ? `<p>${escaparHtml(p.descricao)}</p>` : ''}
+                        ${acoes}
+                    </div>
+                </li>`;
+    }).join('');
+
+    document.getElementById('btn-ocultar-onboarding').onclick = function () {
+        gravarOcultoEm(progresso.concluidos);
+        card.classList.add('d-none');
+    };
+
+    card.classList.remove('d-none');
+}
+
 carregarDashboard();
+carregarOnboarding();

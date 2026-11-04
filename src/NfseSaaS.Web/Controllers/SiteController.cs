@@ -23,6 +23,9 @@ public sealed class SiteController : Controller
 {
     private const int MaxRelacionadas = 6;
 
+    /// <summary>Páginas públicas fora das de erro (entram no sitemap).</summary>
+    public static readonly string[] PaginasFixas = { "/", "/erros-nfse", "/ajuda/certificado-digital-a1", "/termos", "/privacidade" };
+
     [AcceptVerbs("GET", "HEAD", Route = "/erros-nfse")]
     public IActionResult Erros() => View(new ErrosNfseViewModel(CatalogoRejeicoesSefin.Todas));
 
@@ -54,6 +57,10 @@ public sealed class SiteController : Controller
         return View(new ErroNfseViewModel(rejeicao, campo, documento, relacionadas));
     }
 
+    /// <summary>Como conseguir o certificado digital A1 (.pfx): o passo que mais trava quem começa.</summary>
+    [AcceptVerbs("GET", "HEAD", Route = "/ajuda/certificado-digital-a1")]
+    public IActionResult AjudaCertificado() => View();
+
     [AcceptVerbs("GET", "HEAD", Route = "/sitemap.xml")]
     public IActionResult Sitemap()
     {
@@ -62,7 +69,7 @@ public sealed class SiteController : Controller
         sb.AppendLine("""<?xml version="1.0" encoding="UTF-8"?>""");
         sb.AppendLine("""<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">""");
 
-        foreach (var caminho in new[] { "/", "/erros-nfse", "/termos", "/privacidade" })
+        foreach (var caminho in PaginasFixas)
             sb.AppendLine($"  <url><loc>{WebUtility.HtmlEncode(baseUrl + caminho)}</loc></url>");
 
         foreach (var rejeicao in CatalogoRejeicoesSefin.Todas)

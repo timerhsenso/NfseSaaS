@@ -128,6 +128,10 @@ public sealed class CertificateFileStore
         return certificado;
     }
 
+    /// <summary>A Empresa tem certificado guardado (sem abrir nem descriptografar o arquivo).</summary>
+    public bool ExisteCertificado(Guid empresaId) =>
+        !string.IsNullOrWhiteSpace(_options.BasePath) && File.Exists(CaminhoArquivo(empresaId));
+
     /// <summary>Empresas que têm certificado guardado (arquivos "{empresaId}.cert.json" da pasta).</summary>
     public IReadOnlyList<Guid> ListarEmpresasComCertificado()
     {

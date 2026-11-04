@@ -33,6 +33,14 @@ public class SitePublicoTests
     }
 
     [Fact]
+    public async Task Ajuda_do_certificado_e_publica()
+    {
+        var html = await (await Cliente().GetComStatus200Async("/ajuda/certificado-digital-a1")).Content.ReadAsStringAsync();
+        Assert.Contains("Exportar", html);
+        Assert.Contains("A3", html);
+    }
+
+    [Fact]
     public async Task Indice_de_erros_lista_todos_os_codigos()
     {
         var html = await (await Cliente().GetComStatus200Async("/erros-nfse")).Content.ReadAsStringAsync();
@@ -79,7 +87,7 @@ public class SitePublicoTests
     {
         var sitemap = await (await Cliente().GetComStatus200Async("/sitemap.xml")).Content.ReadAsStringAsync();
         Assert.Contains("<loc>http://localhost/erros-nfse</loc>", sitemap);
-        Assert.Equal(CatalogoRejeicoesSefin.Quantidade + 4, sitemap.Split("<loc>").Length - 1);
+        Assert.Equal(CatalogoRejeicoesSefin.Quantidade + NfseSaaS.Web.Controllers.SiteController.PaginasFixas.Length, sitemap.Split("<loc>").Length - 1);
 
         var robots = await (await Cliente().GetComStatus200Async("/robots.txt")).Content.ReadAsStringAsync();
         Assert.Contains("Sitemap: http://localhost/sitemap.xml", robots);
@@ -97,5 +105,25 @@ internal static class HttpClientTesteExtensions
         var resposta = await cliente.GetAsync(url);
         Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
         return resposta;
+    }
+}
+
+[Collection(AplicacaoEmMemoriaCollection.Nome)]
+public class OnboardingApiTests
+{
+    private readonly WebApplicationFactory<Program> _factory;
+
+    public OnboardingApiTests(WebApplicationFactory<Program> factory)
+    {
+        _factory = factory;
+    }
+
+    [Fact]
+    public async Task Primeiros_passos_exige_login()
+    {
+        var resposta = await _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false })
+            .GetAsync("/api/onboarding");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, resposta.StatusCode);
     }
 }

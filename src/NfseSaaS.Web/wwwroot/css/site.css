@@ -2850,3 +2850,110 @@ html[data-theme="dark"] .list-group-item {
         margin-bottom: 8px;
     }
 }
+
+/* "Primeiros passos" do painel (Home) */
+
+.onboarding {
+    margin-bottom: 20px;
+    border-color: var(--primary);
+}
+
+.onboarding-progresso {
+    height: 6px;
+    margin-bottom: 16px;
+}
+
+.onboarding-passos {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 10px;
+}
+
+.onboarding-passos li {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    color: var(--muted);
+}
+
+.onboarding-passos li > i {
+    font-size: 18px;
+    line-height: 1.2;
+}
+
+.onboarding-passos li.concluido strong {
+    color: var(--subtle);
+    text-decoration: line-through;
+    font-weight: 500;
+}
+
+.onboarding-passos li.atual {
+    background: var(--primary-soft);
+    border-radius: var(--radius-field);
+    padding: 12px;
+    color: var(--text-2);
+}
+
+.onboarding-passos li.atual strong {
+    color: var(--text);
+}
+
+.onboarding-passos li p {
+    margin: 4px 0 8px;
+}
+
+.onboarding-ok {
+    color: var(--success);
+}
+
+.onboarding-proximo {
+    color: var(--primary);
+}
+
+.onboarding-pendente {
+    color: var(--field-line);
+}
+
+.onboarding-acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+}
+
+/* Páginas de ajuda do site público */
+
+.site-ajuda ul,
+.site-ajuda ol {
+    padding-left: 22px;
+}
+
+.site-ajuda li {
+    margin-bottom: 8px;
+}
+
+.site-ajuda-sub {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 20px 0 8px;
+}
+
+.site-ajuda kbd {
+    background: var(--surface-3);
+    color: var(--text);
+    border: 1px solid var(--line);
+    font-size: 12px;
+}
+
+.sidebar-footer .support a {
+    color: var(--sidebar-text);
+    text-decoration: none;
+}
+
+.sidebar-footer .support a:hover {
+    color: #fff;
+    text-decoration: underline;
+}

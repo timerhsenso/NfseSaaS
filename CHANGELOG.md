@@ -5,6 +5,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (onboarding)
+- **Primeiros passos** no painel: da conta nova até a primeira nota em
+  produção, em 6 passos (empresa, certificado A1, serviço, cliente, nota de
+  teste, produção), com barra de progresso, o próximo passo em destaque e
+  botão para a tela certa. Cada passo é deduzido do que já existe na conta
+  (sem migration) e o cartão some quando tudo está feito. "Ocultar por
+  agora" vale no navegador até o próximo passo ser concluído.
+  Endpoint `GET /api/onboarding`.
+- Página pública **Certificado digital A1** (`/ajuda/certificado-digital-a1`):
+  qual certificado serve (A1, não A3), onde comprar, como exportar o .pfx no
+  Windows, como enviar e os problemas comuns. Linkada no "Primeiros
+  passos", no modal do certificado em Empresas, no menu lateral e no rodapé
+  do site; entra no sitemap.
+
 ### Corrigido
 - `robots.txt` bloqueava o próprio `/sitemap.xml` (o Search Console acusava
   "Bloqueada pelo robots.txt" e "Erro de HTTP geral"). Agora libera o site e

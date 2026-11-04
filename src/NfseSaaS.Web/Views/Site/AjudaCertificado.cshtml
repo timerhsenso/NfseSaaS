@@ -1,0 +1,96 @@
+@{
+    Layout = "_SiteLayout";
+    ViewData["Title"] = "Certificado digital A1 para emitir NFS-e: como conseguir o arquivo .pfx";
+    ViewData["Descricao"] = "O que é o certificado digital A1, como comprar, como exportar o arquivo .pfx no Windows e os erros mais comuns ao usar o certificado para emitir NFS-e.";
+    ViewData["Canonical"] = "/ajuda/certificado-digital-a1";
+}
+
+<section class="site-secao site-erro">
+    <div class="site-container site-erro-inner site-ajuda">
+        <nav class="site-trilha" aria-label="Você está em">
+            <a href="/">Início</a> <span aria-hidden="true">›</span> Ajuda <span aria-hidden="true">›</span> Certificado digital A1
+        </nav>
+
+        <h1>Certificado digital A1: como conseguir o arquivo .pfx</h1>
+        <p class="site-secao-sub">
+            Para emitir NFS-e por um sistema, a nota precisa ser assinada com o certificado digital da empresa.
+            Aqui está o caminho, do zero até o arquivo pronto para enviar.
+        </p>
+
+        <div class="site-erro-bloco">
+            <h2>1. Qual certificado serve</h2>
+            <ul>
+                <li><strong>e-CNPJ do tipo A1.</strong> É um arquivo (.pfx ou .p12) protegido por senha, em nome do CNPJ que vai emitir as notas.</li>
+                <li><strong>O A3 não serve.</strong> O A3 fica num cartão ou token USB e não deixa copiar a chave para outro lugar, então nenhum sistema na internet consegue usá-lo.</li>
+                <li>O A1 costuma valer 1 ano. Antes de vencer, é preciso renovar e enviar o arquivo novo.</li>
+            </ul>
+        </div>
+
+        <div class="site-erro-bloco">
+            <h2>2. Onde comprar</h2>
+            <p>
+                Em qualquer Autoridade Certificadora credenciada na ICP-Brasil (a lista oficial fica no site do ITI).
+                Peça um <strong>e-CNPJ A1</strong>. A validação da identidade do responsável pela empresa é feita por
+                videoconferência ou presencialmente, conforme a certificadora. Seu contador costuma indicar uma.
+            </p>
+        </div>
+
+        <div class="site-erro-bloco">
+            <h2>3. Como ter o arquivo .pfx</h2>
+            <p>Depende de como a certificadora entregou:</p>
+            <ul>
+                <li><strong>Baixou um arquivo .pfx ou .p12:</strong> pronto, é esse arquivo. A senha é a que você criou na emissão.</li>
+                <li><strong>O certificado foi instalado no Windows:</strong> é preciso exportar, como abaixo.</li>
+            </ul>
+
+            <h3 class="site-ajuda-sub">Exportar no Windows</h3>
+            <ol>
+                <li>Aperte <kbd>Windows</kbd> + <kbd>R</kbd>, digite <code>certmgr.msc</code> e tecle Enter.</li>
+                <li>Abra <strong>Pessoal › Certificados</strong> e encontre o certificado com o nome da empresa e o CNPJ.</li>
+                <li>Clique com o botão direito nele e escolha <strong>Todas as Tarefas › Exportar</strong>.</li>
+                <li>Escolha <strong>Sim, exportar a chave privada</strong>.</li>
+                <li>Marque o formato <strong>.PFX</strong> e a opção <strong>Incluir todos os certificados no caminho de certificação, se possível</strong>.</li>
+                <li>Crie uma senha (anote: ela será pedida no envio) e salve o arquivo.</li>
+            </ol>
+            <p class="site-erro-obs">
+                Se a opção "Sim, exportar a chave privada" estiver apagada, o certificado foi instalado sem permissão de exportação.
+                Fale com a certificadora para instalar de novo permitindo a exportação.
+            </p>
+        </div>
+
+        <div class="site-erro-bloco">
+            <h2>4. Enviar para o micoempresa</h2>
+            <ol>
+                <li>Abra <strong>Empresas</strong> e, na linha da empresa, clique no botão do certificado (ícone de arquivo com cadeado).</li>
+                <li>Escolha o arquivo .pfx, digite a senha e clique em <strong>Enviar certificado</strong>.</li>
+                <li>Clique em <strong>Testar conexão</strong>: se der certo, a empresa já pode emitir.</li>
+            </ol>
+            <p>
+                O arquivo é conferido (senha, chave e validade) e guardado criptografado. Ele só é usado para assinar e cancelar
+                as notas da sua empresa, e você recebe aviso por e-mail 30, 15 e 7 dias antes de ele vencer.
+            </p>
+        </div>
+
+        <div class="site-erro-bloco">
+            <h2>Problemas comuns</h2>
+            <dl class="site-erro-dados">
+                <dt>Senha incorreta</dt>
+                <dd>Use a senha criada na emissão ou na exportação do arquivo, não a senha do site da certificadora.</dd>
+                <dt>Certificado vencido</dt>
+                <dd>Renove com a certificadora e envie o arquivo novo.</dd>
+                <dt>CNPJ diferente</dt>
+                <dd>O certificado tem que ser do mesmo CNPJ da empresa que emite. Certificado de outra empresa, ou e-CPF, é recusado na emissão.</dd>
+                <dt>Arquivo sem chave privada</dt>
+                <dd>Arquivos .cer ou .crt não têm a chave. Exporte de novo como .pfx, com "Sim, exportar a chave privada".</dd>
+            </dl>
+        </div>
+
+        <div class="site-erro-cta">
+            <div>
+                <strong>Com o certificado em mãos, a primeira nota sai em minutos.</strong>
+                <p>Comece em homologação, sem valor fiscal, e passe para produção quando estiver tudo certo.</p>
+            </div>
+            <a href="/Account/Registrar" class="btn btn-primary">Criar conta grátis</a>
+        </div>
+    </div>
+</section>
