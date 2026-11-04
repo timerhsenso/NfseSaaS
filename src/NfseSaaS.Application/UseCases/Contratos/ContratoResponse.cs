@@ -25,4 +25,10 @@ public sealed record ContratoResponse(
     TipoCobrancaContrato TipoCobranca,
     bool PermitirAlterarValorNaEmissao,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? UpdatedAt);
+    DateTimeOffset? UpdatedAt,
+    bool? ReajusteAutomatico,
+    bool AplicarIndiceNegativo,
+    // Reajuste do aniversário aguardando aprovação (nulo se não há) — a
+    // tela de Contratos mostra o selo e o Histórico de valores, a decisão.
+    Guid? ReajustePendenteId,
+    DateOnly? ReajustePendenteVigencia);

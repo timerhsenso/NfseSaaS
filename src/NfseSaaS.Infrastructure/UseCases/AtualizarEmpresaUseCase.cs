@@ -45,6 +45,7 @@ public sealed class AtualizarEmpresaUseCase : IAtualizarEmpresaUseCase
         empresa.TpRetPisCofins = request.TpRetPisCofins;
         empresa.PercentualTotalTributosSimplesNacional = request.PercentualTotalTributosSimplesNacional;
         empresa.DiasAlertaReajusteContratoPadrao = request.DiasAlertaReajusteContratoPadrao;
+        empresa.AplicarReajusteAutomatico = request.AplicarReajusteAutomatico;
 
         _auditLogWriter.Registrar("AtualizarEmpresa", "Empresa", empresa.Id, new { empresa.RazaoSocial });
 

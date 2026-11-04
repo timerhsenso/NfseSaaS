@@ -112,6 +112,27 @@ public sealed class ContratosController : ControllerBase
         return Ok(new { reajusteId });
     }
 
+    /// <summary>Aprova (pelo índice ou negociado) ou recusa um reajuste de aniversário aguardando aprovação.</summary>
+    [RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Alterar)]
+    [HttpPost("{id:guid}/reajustes/{movimentacaoId:guid}/decisao")]
+    public async Task<IActionResult> DecidirReajuste(
+        Guid id, Guid movimentacaoId, [FromBody] DecidirReajusteRequest request,
+        [FromServices] IDecidirReajusteUseCase decidirReajuste, CancellationToken cancellationToken)
+    {
+        await decidirReajuste.ExecutarAsync(id, movimentacaoId, request, cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Roda agora, para a Empresa, o mesmo cálculo do job diário dos
+    /// reajustes de aniversário (10:10) — para não esperar o dia seguinte.
+    /// </summary>
+    [RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Alterar)]
+    [HttpPost("reajustes/verificar")]
+    public async Task<IActionResult> VerificarReajustes(
+        [FromQuery] Guid empresaId, [FromServices] IGerarReajustesAniversarioUseCase gerarReajustes, CancellationToken cancellationToken)
+        => Ok(await gerarReajustes.ExecutarAsync(empresaId, cancellationToken));
+
     /// <summary>Histórico de valores do Contrato: valor inicial, reajustes e alterações de escopo, do mais recente pro mais antigo.</summary>
     [HttpGet("{id:guid}/historico-valores")]
     public async Task<IActionResult> ListarHistoricoValores(Guid id, CancellationToken cancellationToken)

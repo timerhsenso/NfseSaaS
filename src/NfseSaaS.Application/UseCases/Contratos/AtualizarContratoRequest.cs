@@ -35,4 +35,6 @@ public sealed record AtualizarContratoRequest(
     // e por quê.
     TipoMovimentacaoValor? TipoAlteracaoServicos = null,
     DateOnly? VigenciaAlteracaoServicos = null,
-    string? MotivoAlteracaoServicos = null);
+    string? MotivoAlteracaoServicos = null,
+    bool? ReajusteAutomatico = null,
+    bool AplicarIndiceNegativo = false);

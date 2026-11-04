@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NfseSaaS.Application.Common;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.Contratos;
+using NfseSaaS.Domain.Enums;
 using NfseSaaS.Infrastructure.Persistence;
 
 namespace NfseSaaS.Infrastructure.UseCases;
@@ -35,7 +36,13 @@ public sealed class ObterContratoPorIdUseCase : IObterContratoPorIdUseCase
             select new ContratoServicoResponse(cs.Id, cs.ServicoId, srv.Descricao, cs.Quantidade, cs.ValorUnitario, cs.ValorTotal))
             .ToListAsync(cancellationToken);
 
-        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+        var pendente = await _db.MovimentacoesValorContrato.AsNoTracking()
+            .Where(m => m.ContratoId == id && m.Status == StatusMovimentacaoValor.Pendente)
+            .OrderBy(m => m.DataVigencia)
+            .Select(m => new { m.Id, m.DataVigencia })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var hoje = DataBrasilia.Hoje();
         var dataProximoReajuste = SituacaoContratoCalculator.CalcularDataProximoReajuste(resultado.Contrato);
         var diasAlertaEfetivo = SituacaoContratoCalculator.DiasAlertaEfetivo(resultado.Contrato, resultado.DiasAlertaReajusteContratoPadrao);
         var situacao = SituacaoContratoCalculator.CalcularSituacao(resultado.Contrato, resultado.DiasAlertaReajusteContratoPadrao, hoje);
@@ -46,6 +53,7 @@ public sealed class ObterContratoPorIdUseCase : IObterContratoPorIdUseCase
             resultado.Contrato.DataInicioContrato, resultado.Contrato.PeriodicidadeReajusteMeses, resultado.Contrato.IndiceReajuste,
             resultado.Contrato.DataUltimoReajuste, resultado.Contrato.DiasAlertaOverride, diasAlertaEfetivo, resultado.Contrato.Observacao,
             dataProximoReajuste, situacao, resultado.Contrato.Status, resultado.Contrato.DataFim, resultado.Contrato.TipoCobranca,
-            resultado.Contrato.PermitirAlterarValorNaEmissao, resultado.Contrato.CreatedAt, resultado.Contrato.UpdatedAt);
+            resultado.Contrato.PermitirAlterarValorNaEmissao, resultado.Contrato.CreatedAt, resultado.Contrato.UpdatedAt,
+            resultado.Contrato.ReajusteAutomatico, resultado.Contrato.AplicarIndiceNegativo, pendente?.Id, pendente?.DataVigencia);
     }
 }

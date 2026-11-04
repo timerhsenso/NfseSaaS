@@ -16,4 +16,8 @@ public sealed record ContratoCandidatoNotaMensalResponse(
     IReadOnlyList<LinhaCandidataNotaMensalResponse> Linhas,
     decimal ValorTotal,
     bool PermitirAlterarValorNaEmissao,
-    bool JaEmitidoNestaCompetencia);
+    bool JaEmitidoNestaCompetencia,
+    // Reajuste que afeta ESTA competência e que o valor acima não reflete:
+    // aguardando aprovação com vigência até o fim do mês, ou já aplicado com
+    // vigência depois dele (nota de competência antiga emitida atrasada).
+    string? AvisoReajuste = null);

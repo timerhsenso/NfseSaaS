@@ -35,6 +35,8 @@ public sealed class AtualizarContratoUseCase : IAtualizarContratoUseCase
         contrato.DataFim = request.DataFim;
         contrato.TipoCobranca = request.TipoCobranca;
         contrato.PermitirAlterarValorNaEmissao = request.PermitirAlterarValorNaEmissao;
+        contrato.ReajusteAutomatico = request.ReajusteAutomatico;
+        contrato.AplicarIndiceNegativo = request.AplicarIndiceNegativo;
 
         if (request.Servicos is not null)
             await AtualizarServicosAsync(contrato, request, cancellationToken);
@@ -75,6 +77,12 @@ public sealed class AtualizarContratoUseCase : IAtualizarContratoUseCase
 
         if (request.VigenciaAlteracaoServicos is not { } vigencia)
             throw new RegraNegocioException("Informe a data de vigência da mudança nos serviços.");
+
+        // Reajuste pelas linhas com um reajuste do aniversário aguardando
+        // aprovação seriam dois reajustes concorrentes. Alteração de escopo
+        // pode: a aprovação depois aplica o % sobre o valor já alterado.
+        if (request.TipoAlteracaoServicos == TipoMovimentacaoValor.Reajuste)
+            await ReajusteContrato.GarantirSemPendenteAsync(_db, contrato.Id, cancellationToken);
 
         var motivo = request.MotivoAlteracaoServicos?.Trim();
         if (request.TipoAlteracaoServicos == TipoMovimentacaoValor.Alteracao && string.IsNullOrEmpty(motivo))

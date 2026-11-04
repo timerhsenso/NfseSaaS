@@ -21,4 +21,6 @@ public sealed record CadastrarContratoRequest(
     StatusContrato Status,
     DateOnly? DataFim,
     TipoCobrancaContrato TipoCobranca,
-    bool PermitirAlterarValorNaEmissao);
+    bool PermitirAlterarValorNaEmissao,
+    bool? ReajusteAutomatico = null,
+    bool AplicarIndiceNegativo = false);

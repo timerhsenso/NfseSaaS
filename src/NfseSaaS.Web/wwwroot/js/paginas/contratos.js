@@ -39,6 +39,8 @@ function normalizarLinhas(linhas) {
 }
 let empresaAtualIdContratos;
 let contratoAtualParaHistorico;
+// Evento "aguardando aprovação" do contrato aberto no Histórico de valores.
+let reajustePendenteAtual = null;
 let catalogoServicosContratos = []; // cache do combo, reaproveitado nas linhas dinâmicas
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -61,9 +63,12 @@ document.addEventListener('DOMContentLoaded', function () {
         { data: 'dataProximoReajuste', render: v => v ? new Date(v + 'T00:00:00').toLocaleDateString('pt-BR') : '—' },
         {
             data: 'situacao',
-            render: v => {
+            render: (v, type, contrato) => {
                 const r = ROTULOS_SITUACAO_CONTRATO[v] ?? { texto: 'Desconhecida', cor: 'secondary' };
-                return `<span class="badge text-bg-${r.cor}">${r.texto}</span>`;
+                const pendente = contrato.reajustePendenteId
+                    ? ` <span class="badge text-bg-warning" title="Abra o Histórico de valores para aplicar, negociar ou recusar">Reajuste a aprovar</span>`
+                    : '';
+                return `<span class="badge text-bg-${r.cor}">${r.texto}</span>${pendente}`;
             }
         }
     ];
@@ -99,6 +104,8 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('btn-novo-contrato').addEventListener('click', abrirModalNovoContrato);
         document.getElementById('form-contrato').addEventListener('submit', salvarContrato);
         document.getElementById('form-reajuste').addEventListener('submit', registrarReajuste);
+        document.getElementById('btn-verificar-reajustes').addEventListener('click', verificarReajustes);
+        configurarPainelReajustePendente();
         document.getElementById('btn-add-linha-servico').addEventListener('click', () => adicionarLinhaServico());
         document.getElementById('btn-upload-documento').addEventListener('click', enviarDocumentoContrato);
 
@@ -188,6 +195,11 @@ function aplicarRegraTipoCobranca() {
     const indice = document.getElementById('indiceReajuste');
     const diasAlerta = document.getElementById('diasAlertaOverride');
     const permitirAlterar = document.getElementById('permitirAlterarValorNaEmissao');
+    const reajusteAutomatico = document.getElementById('reajusteAutomatico');
+    const aplicarIndiceNegativo = document.getElementById('aplicarIndiceNegativo');
+
+    reajusteAutomatico.disabled = avulso;
+    aplicarIndiceNegativo.disabled = avulso;
 
     periodicidade.disabled = avulso;
     periodicidade.required = !avulso;
@@ -201,6 +213,8 @@ function aplicarRegraTipoCobranca() {
         indice.value = '';
         diasAlerta.value = '';
         permitirAlterar.checked = true;
+        reajusteAutomatico.value = '';
+        aplicarIndiceNegativo.checked = false;
     }
 }
 
@@ -423,6 +437,8 @@ async function abrirModalEditarContrato(id) {
         document.getElementById('indiceReajuste').value = contrato.indiceReajuste ?? '';
         document.getElementById('diasAlertaOverride').value = contrato.diasAlertaOverride ?? '';
         document.getElementById('permitirAlterarValorNaEmissao').checked = contrato.permitirAlterarValorNaEmissao;
+        document.getElementById('reajusteAutomatico').value = contrato.reajusteAutomatico == null ? '' : String(contrato.reajusteAutomatico);
+        document.getElementById('aplicarIndiceNegativo').checked = contrato.aplicarIndiceNegativo;
         document.getElementById('observacao').value = contrato.observacao ?? '';
         aplicarRegraTipoCobranca();
 
@@ -600,7 +616,8 @@ async function salvarContrato(e) {
                 dataFim: document.getElementById('dataFim').value || null,
                 tipoCobranca: parseInt(document.getElementById('tipoCobranca').value, 10),
                 permitirAlterarValorNaEmissao: document.getElementById('permitirAlterarValorNaEmissao').checked,
-                servicos: linhasServico
+                servicos: linhasServico,
+                ...lerOpcoesReajusteAutomatico()
             };
 
             // Composição mudou → vira evento do Histórico de valores:
@@ -638,7 +655,8 @@ async function salvarContrato(e) {
                 status: parseInt(document.getElementById('status').value, 10),
                 dataFim: document.getElementById('dataFim').value || null,
                 tipoCobranca: parseInt(document.getElementById('tipoCobranca').value, 10),
-                permitirAlterarValorNaEmissao: document.getElementById('permitirAlterarValorNaEmissao').checked
+                permitirAlterarValorNaEmissao: document.getElementById('permitirAlterarValorNaEmissao').checked,
+                ...lerOpcoesReajusteAutomatico()
             };
             await apiFetch('/api/contratos', { method: 'POST', body: JSON.stringify(payload) });
         }
@@ -722,6 +740,7 @@ async function carregarHistorico(contratoId) {
 
     try {
         const eventos = await apiFetch(`/api/contratos/${contratoId}/historico-valores`);
+        renderizarPainelReajustePendente(eventos.find(e => e.status === 2) ?? null);
 
         if (eventos.length === 0) {
             corpo.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Nenhum valor registrado ainda.</td></tr>';
@@ -741,7 +760,7 @@ async function carregarHistorico(contratoId) {
                     <td><span class="badge ${tipo.classe}">${tipo.texto}</span>${status ? `<div class="small text-warning">${status}</div>` : ''}</td>
                     <td class="text-end">${formatarReais(e.valorAnterior)}</td>
                     <td class="text-end">${formatarReais(e.valorNovo)}</td>
-                    <td class="text-end">${e.percentualAplicado != null ? Number(e.percentualAplicado).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%' : '—'}</td>
+                    <td class="text-end">${(e.percentualAplicado ?? e.percentualCalculado) != null ? Number(e.percentualAplicado ?? e.percentualCalculado).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%' : '—'}${e.automatico ? '<div class="small text-muted">automático</div>' : ''}</td>
                     <td>${e.indice != null ? (ROTULOS_INDICE_REAJUSTE[e.indice] ?? '—') : '—'}</td>
                     <td>${e.motivo ? escaparHtml(e.motivo) : '—'}</td>
                 </tr>
@@ -778,4 +797,183 @@ async function registrarReajuste(e) {
     } catch (err) {
         mostrarErroFormulario('erro-reajuste', err.message);
     }
+}
+
+// ---------------------------------------------------------------------
+// Reajuste do aniversário (índice): opções do contrato, verificação sob
+// demanda e decisão do reajuste "aguardando aprovação".
+// ---------------------------------------------------------------------
+
+function lerOpcoesReajusteAutomatico() {
+    const valor = document.getElementById('reajusteAutomatico').value;
+    return {
+        reajusteAutomatico: valor === '' ? null : valor === 'true',
+        aplicarIndiceNegativo: document.getElementById('aplicarIndiceNegativo').checked
+    };
+}
+
+function formatarPercentualContrato(valor) {
+    return Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + '%';
+}
+
+function formatarCompetenciaContrato(iso) {
+    const [ano, mes] = String(iso).split('-');
+    return `${mes}/${ano}`;
+}
+
+function formatarDataContrato(iso) {
+    return new Date(iso + 'T00:00:00').toLocaleDateString('pt-BR');
+}
+
+// Percentual que "Aplicar" usaria: o calculado, ou 0% se for negativo e o
+// contrato não permitir reduzir (mesma regra do servidor).
+function percentualEfetivoPendente(evento) {
+    const calculado = Number(evento.percentualCalculado ?? 0);
+    return calculado < 0 && !contratoAtualParaHistorico?.aplicarIndiceNegativo ? 0 : calculado;
+}
+
+function renderizarPainelReajustePendente(evento) {
+    reajustePendenteAtual = evento;
+    const painel = document.getElementById('painel-reajuste-pendente');
+    const formManual = document.getElementById('form-reajuste');
+
+    ocultarErroFormulario('erro-decisao-reajuste');
+    document.getElementById('bloco-negociar').classList.add('d-none');
+    document.getElementById('bloco-recusar').classList.add('d-none');
+
+    painel.classList.toggle('d-none', !evento);
+    // Com um reajuste pendente, registrar outro manualmente é bloqueado no servidor.
+    formManual.classList.toggle('d-none', !!evento);
+    if (!evento) return;
+
+    const valorAtual = contratoAtualParaHistorico?.valorAtual ?? evento.valorAnterior;
+    const percentual = percentualEfetivoPendente(evento);
+    const valorNovo = Math.round(valorAtual * (1 + percentual / 100) * 100) / 100;
+    const nomeIndice = ROTULOS_INDICE_REAJUSTE[evento.indice] ?? 'Índice';
+
+    document.getElementById('pendente-resumo').innerHTML =
+        `Aniversário em <strong>${formatarDataContrato(evento.dataVigencia)}</strong>: ` +
+        `${nomeIndice} acumulado <strong>${formatarPercentualContrato(evento.percentualCalculado)}</strong> — ` +
+        `${formatarReais(valorAtual)} → <strong>${formatarReais(valorNovo)}</strong>` +
+        (percentual !== Number(evento.percentualCalculado) ? ' <span class="text-muted">(índice negativo: valor mantido, conforme o contrato)</span>' : '');
+
+    document.getElementById('pendente-janela').textContent = evento.competenciaIndiceInicio
+        ? `Meses do índice: ${formatarCompetenciaContrato(evento.competenciaIndiceInicio)} a ${formatarCompetenciaContrato(evento.competenciaIndiceFim)} (12 últimos publicados até o aniversário).`
+        : '';
+    document.getElementById('pendente-percentual-botao').textContent = formatarPercentualContrato(percentual);
+
+    document.getElementById('negociado-percentual').value = '';
+    document.getElementById('negociado-valor').value = '';
+    document.getElementById('negociado-motivo').value = '';
+    document.getElementById('recusa-motivo').value = '';
+}
+
+function configurarPainelReajustePendente() {
+    const campoPercentual = document.getElementById('negociado-percentual');
+    const campoValor = document.getElementById('negociado-valor');
+    const base = () => contratoAtualParaHistorico?.valorAtual ?? 0;
+
+    // % e valor se calculam um a partir do outro; o servidor recebe só o que foi digitado por último.
+    let ultimoDigitado = 'percentual';
+    campoPercentual.addEventListener('input', () => {
+        ultimoDigitado = 'percentual';
+        if (campoPercentual.value === '') return;
+        campoValor.value = (base() * (1 + parseFloat(campoPercentual.value) / 100)).toFixed(2);
+    });
+    campoValor.addEventListener('input', () => {
+        ultimoDigitado = 'valor';
+        if (campoValor.value === '' || !base()) return;
+        campoPercentual.value = ((parseFloat(campoValor.value) / base() - 1) * 100).toFixed(2);
+    });
+
+    document.getElementById('btn-mostrar-negociar').addEventListener('click', () => {
+        document.getElementById('bloco-recusar').classList.add('d-none');
+        document.getElementById('bloco-negociar').classList.toggle('d-none');
+        campoPercentual.focus();
+    });
+    document.getElementById('btn-mostrar-recusar').addEventListener('click', () => {
+        document.getElementById('bloco-negociar').classList.add('d-none');
+        document.getElementById('bloco-recusar').classList.toggle('d-none');
+        document.getElementById('recusa-motivo').focus();
+    });
+
+    document.getElementById('btn-aplicar-calculado').addEventListener('click', e =>
+        executarComBotaoDesabilitado(e.currentTarget, () => decidirReajuste({ acao: 1 })));
+
+    document.getElementById('btn-confirmar-negociado').addEventListener('click', e =>
+        executarComBotaoDesabilitado(e.currentTarget, () => {
+            const percentual = campoPercentual.value === '' ? null : parseFloat(campoPercentual.value);
+            const valor = campoValor.value === '' ? null : parseFloat(campoValor.value);
+            return decidirReajuste({
+                acao: 2,
+                percentualNegociado: ultimoDigitado === 'percentual' ? percentual : null,
+                valorNovoNegociado: ultimoDigitado === 'valor' ? valor : null,
+                motivo: document.getElementById('negociado-motivo').value.trim() || null
+            });
+        }));
+
+    document.getElementById('btn-confirmar-recusa').addEventListener('click', e =>
+        executarComBotaoDesabilitado(e.currentTarget, () => decidirReajuste({
+            acao: 3,
+            motivo: document.getElementById('recusa-motivo').value.trim() || null
+        })));
+}
+
+async function decidirReajuste(corpo) {
+    if (!reajustePendenteAtual || !contratoAtualParaHistorico) return;
+    ocultarErroFormulario('erro-decisao-reajuste');
+
+    const contratoId = contratoAtualParaHistorico.id;
+    try {
+        await apiFetch(`/api/contratos/${contratoId}/reajustes/${reajustePendenteAtual.id}/decisao`, {
+            method: 'POST',
+            body: JSON.stringify({ percentualNegociado: null, valorNovoNegociado: null, motivo: null, ...corpo })
+        });
+
+        contratoAtualParaHistorico = await apiFetch(`/api/contratos/${contratoId}`);
+        await carregarHistorico(contratoId);
+        await carregarContratos();
+        mostrarToast(corpo.acao === 3 ? 'Reajuste não aplicado neste ciclo.' : 'Reajuste aplicado.');
+    } catch (err) {
+        mostrarErroFormulario('erro-decisao-reajuste', err.message);
+    }
+}
+
+const ROTULOS_RESULTADO_REAJUSTE = {
+    1: 'aguardando sua aprovação',
+    2: 'aplicado automaticamente',
+    3: 'aguardando o índice',
+    4: 'atrasado — registre manualmente'
+};
+
+async function verificarReajustes() {
+    const botao = document.getElementById('btn-verificar-reajustes');
+    await executarComBotaoDesabilitado(botao, async function () {
+        try {
+            const r = await apiFetch(`/api/contratos/reajustes/verificar?empresaId=${empresaAtualIdContratos}`, { method: 'POST' });
+            const itens = r.itens ?? [];
+
+            if (itens.length === 0) {
+                mostrarQuadroResultado('resultado-verificar-reajustes',
+                    'Nenhum contrato com aniversário de reajuste pendente de cálculo.', 'success');
+                return;
+            }
+
+            const html = itens.map(i => {
+                const valores = i.valorNovo != null
+                    ? ` — ${formatarPercentualContrato(i.percentualCalculado)}: ${formatarReais(i.valorAnterior)} → ${formatarReais(i.valorNovo)}`
+                    : '';
+                const detalhe = i.detalhe ? `<div class="small text-muted">${escaparHtml(i.detalhe)}</div>` : '';
+                return `<div class="mb-1"><strong>${escaparHtml(i.descricao)}</strong> (aniversário ${formatarDataContrato(i.aniversario)}, ` +
+                    `${ROTULOS_INDICE_REAJUSTE[i.indice] ?? ''}): ${ROTULOS_RESULTADO_REAJUSTE[i.resultado] ?? i.resultado}${valores}${detalhe}</div>`;
+            }).join('');
+
+            // Algo para o usuário agir (aprovar, índice faltando, atrasado) → não some sozinho.
+            const precisaAcao = itens.some(i => i.resultado !== 2);
+            mostrarQuadroResultado('resultado-verificar-reajustes', html, precisaAcao ? 'warning' : 'success');
+            await carregarContratos();
+        } catch (err) {
+            mostrarErro(err.message);
+        }
+    });
 }

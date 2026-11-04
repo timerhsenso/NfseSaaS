@@ -308,6 +308,7 @@ const ROTULOS_SITUACAO_CONTRATO = {
     1: { texto: 'vencendo em breve', classe: 'alert-warning' },
     2: { texto: 'vencido', classe: 'alert-danger' }
 };
+const ROTULOS_INDICE_NFSE = { 0: 'IPCA', 1: 'IGP-M', 2: 'INCC', 3: 'INPC', 4: 'Selic', 5: 'CDI', 99: 'Outro' };
 
 let contratosDoClienteAtual = [];
 
@@ -546,8 +547,10 @@ function aplicarContratoSelecionado() {
         avisoDiv.className = `alert ${rotulo.classe}`;
         avisoDiv.innerHTML =
             `<i class="bi bi-exclamation-triangle"></i> Este contrato está <strong>${rotulo.texto}</strong> ` +
-            `pro reajuste (previsto para ${dataFormatada}${contrato.indiceReajuste ? ', índice ' + contrato.indiceReajuste : ''}). ` +
-            `Confirme se o valor abaixo já está atualizado.`;
+            `pro reajuste (previsto para ${dataFormatada}${contrato.indiceReajuste != null ? ', índice ' + (ROTULOS_INDICE_NFSE[contrato.indiceReajuste] ?? '') : ''}). ` +
+            (contrato.reajustePendenteId
+                ? `Há um reajuste <strong>aguardando aprovação</strong> — o valor abaixo ainda é o anterior.`
+                : `Confirme se o valor abaixo já está atualizado.`);
         avisoDiv.classList.remove('d-none');
     }
 }
@@ -782,7 +785,8 @@ function renderizarLinhasNotaMensal() {
             <tr>
                 <td><input type="checkbox" class="form-check-input nm-check" data-i="${i}" ${c.selecionado ? 'checked' : ''} ${c.status === 'sucesso' ? 'disabled' : ''}></td>
                 <td>${c.clienteNome}</td>
-                <td>${c.descricao}<br><small class="text-muted">${servicos}</small></td>
+                <td>${c.descricao}<br><small class="text-muted">${servicos}</small>${c.avisoReajuste
+                    ? `<div class="small text-warning-emphasis mt-1"><i class="bi bi-exclamation-triangle"></i> ${escaparHtml(c.avisoReajuste)}</div>` : ''}</td>
                 <td>
                     <input type="number" step="0.01" min="0.01" class="form-control form-control-sm nm-valor" data-i="${i}"
                         value="${c.valorAjustado}" ${podeEditarValor ? '' : 'readonly'}>

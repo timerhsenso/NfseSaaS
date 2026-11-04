@@ -97,4 +97,12 @@ public sealed class Empresa : BaseEntity, ITenantEntity
     /// mercado razoável: 30.
     /// </summary>
     public int DiasAlertaReajusteContratoPadrao { get; set; } = 30;
+
+    /// <summary>
+    /// Padrão dos Contratos desta Empresa no aniversário: true aplica o
+    /// reajuste calculado pelo índice na hora (sem aprovação); false deixa
+    /// "aguardando aprovação". Cada Contrato pode sobrescrever
+    /// (Contrato.ReajusteAutomatico).
+    /// </summary>
+    public bool AplicarReajusteAutomatico { get; set; }
 }

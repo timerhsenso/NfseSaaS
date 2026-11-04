@@ -14,6 +14,10 @@ namespace NfseSaaS.Infrastructure.Persistence.Seeders;
 /// ficaria vazia até as 09:40 do dia seguinte. Mesmo cuidado do
 /// AutomacaoNotaMensalJobSincronizador: Hangfire via DI, nunca a fachada
 /// estática (JobStorage.Current ainda não existe antes de app.Run()).
+///
+/// Também agenda o job diário dos reajustes de aniversário dos Contratos
+/// (10:10), que depende desta tabela — sempre ligado: sem índice
+/// disponível ele só não faz nada.
 /// </summary>
 public static class IndicesEconomicosJobSincronizador
 {
@@ -22,6 +26,12 @@ public static class IndicesEconomicosJobSincronizador
         using var scope = services.CreateScope();
         var options = scope.ServiceProvider.GetRequiredService<IOptions<IndicesEconomicosOptions>>().Value;
         var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+
+        recurringJobManager.AddOrUpdate<IGerarReajustesAniversarioJob>(
+            GerarReajustesAniversarioJob.JobId,
+            job => job.ExecutarAsync(),
+            GerarReajustesAniversarioJob.Cron,
+            new RecurringJobOptions { TimeZone = AutomacaoNotaMensalJobHelper.FusoBrasilia });
 
         if (!options.ImportacaoAutomatica)
         {

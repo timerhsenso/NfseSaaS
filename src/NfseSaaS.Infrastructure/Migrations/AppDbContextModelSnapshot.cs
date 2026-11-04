@@ -432,6 +432,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("AplicarIndiceNegativo")
+                        .HasColumnType("boolean");
+
                     b.Property<Guid>("ClienteId")
                         .HasColumnType("uuid");
 
@@ -469,6 +472,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasColumnType("integer");
 
                     b.Property<bool>("PermitirAlterarValorNaEmissao")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool?>("ReajusteAutomatico")
                         .HasColumnType("boolean");
 
                     b.Property<int>("Status")
@@ -650,6 +656,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<decimal?>("AliquotaIss")
                         .HasPrecision(5, 2)
                         .HasColumnType("numeric(5,2)");
+
+                    b.Property<bool>("AplicarReajusteAutomatico")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("Ativo")
                         .HasColumnType("boolean");

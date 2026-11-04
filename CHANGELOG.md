@@ -6,6 +6,26 @@ versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH)
 
 ## [Não lançado]
 ### Adicionado
+- Reajuste automático no aniversário do contrato: todo dia (10:10) o sistema
+  calcula o acumulado de 12 meses do índice do contrato e cria o reajuste no
+  Histórico de valores. Empresa define o padrão (aplicar automaticamente ou
+  aguardar aprovação) e cada contrato pode escolher diferente. Aguardando
+  aprovação: aplicar o índice, negociar outro % ou valor (com motivo) ou não
+  reajustar neste ciclo (com motivo). Índice acumulado negativo mantém o valor,
+  a menos que o contrato marque "índice negativo reduz o valor". Botão
+  "Verificar reajustes" na tela de Contratos roda o cálculo na hora; selo
+  "Reajuste a aprovar" na lista e contagem no Dashboard. Aniversários com mais
+  de 60 dias de atraso ficam para o reajuste manual.
+- Nota Mensal avisa quando o contrato tem reajuste aguardando aprovação na
+  competência, ou quando o valor já inclui um reajuste com vigência posterior.
+- Quadros de resultado ("Importar agora", "Verificar reajustes") com botão de
+  fechar; sucesso fecha sozinho em 10 s com contador (pausa com o mouse em cima).
+
+### Corrigido (reajuste)
+- Com um reajuste aguardando aprovação, registrar outro reajuste (manual ou
+  pelas linhas de serviço) é bloqueado — eram dois valores novos concorrentes.
+- Aviso de reajuste na emissão avulsa mostrava o índice como número (e o IPCA
+  sumia da mensagem).
 - Tela "Índices econômicos" (menu lateral): variação mensal de IPCA, IGP-M,
   INCC, INPC, Selic e CDI, importada todo dia (09:40) da API SGS do Banco
   Central — 24 meses na primeira vez. Mostra o acumulado dos 12 últimos meses

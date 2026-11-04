@@ -52,7 +52,9 @@ public sealed class CadastrarContratoUseCase : ICadastrarContratoUseCase
             DataFim = request.DataFim,
             Status = request.Status,
             TipoCobranca = request.TipoCobranca,
-            PermitirAlterarValorNaEmissao = request.PermitirAlterarValorNaEmissao
+            PermitirAlterarValorNaEmissao = request.PermitirAlterarValorNaEmissao,
+            ReajusteAutomatico = request.ReajusteAutomatico,
+            AplicarIndiceNegativo = request.AplicarIndiceNegativo
         };
 
         _db.Contratos.Add(contrato);

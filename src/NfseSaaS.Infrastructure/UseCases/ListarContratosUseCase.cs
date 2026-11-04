@@ -56,9 +56,15 @@ public sealed class ListarContratosUseCase : IListarContratosUseCase
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
-        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+        var hoje = DataBrasilia.Hoje();
 
         var contratoIdsDaPagina = itens.Select(x => x.Contrato.Id).ToList();
+        var pendentes = (await _db.MovimentacoesValorContrato.AsNoTracking()
+            .Where(m => contratoIdsDaPagina.Contains(m.ContratoId) && m.Status == StatusMovimentacaoValor.Pendente)
+            .Select(m => new { m.ContratoId, m.Id, m.DataVigencia })
+            .ToListAsync(cancellationToken))
+            .GroupBy(m => m.ContratoId)
+            .ToDictionary(g => g.Key, g => g.OrderBy(m => m.DataVigencia).First());
         var linhasPorContrato = await (
             from cs in _db.ContratoServicos.AsNoTracking()
             where contratoIdsDaPagina.Contains(cs.ContratoId)
@@ -77,13 +83,16 @@ public sealed class ListarContratosUseCase : IListarContratosUseCase
                 .Select(l => new ContratoServicoResponse(l.Linha.Id, l.Linha.ServicoId, l.ServicoDescricao, l.Linha.Quantidade, l.Linha.ValorUnitario, l.Linha.ValorTotal))
                 .ToList();
 
+            pendentes.TryGetValue(x.Contrato.Id, out var pendente);
+
             return new ContratoResponse(
                 x.Contrato.Id, x.Contrato.EmpresaId, x.Contrato.ClienteId, x.ClienteNome,
                 x.Contrato.Descricao, servicos, x.Contrato.ValorAtual,
                 x.Contrato.DataInicioContrato, x.Contrato.PeriodicidadeReajusteMeses, x.Contrato.IndiceReajuste,
                 x.Contrato.DataUltimoReajuste, x.Contrato.DiasAlertaOverride, diasAlertaEfetivo, x.Contrato.Observacao,
                 dataProximoReajuste, situacao, x.Contrato.Status, x.Contrato.DataFim, x.Contrato.TipoCobranca,
-                x.Contrato.PermitirAlterarValorNaEmissao, x.Contrato.CreatedAt, x.Contrato.UpdatedAt);
+                x.Contrato.PermitirAlterarValorNaEmissao, x.Contrato.CreatedAt, x.Contrato.UpdatedAt,
+                x.Contrato.ReajusteAutomatico, x.Contrato.AplicarIndiceNegativo, pendente?.Id, pendente?.DataVigencia);
         }).ToList();
 
         return new PagedResult<ContratoResponse>

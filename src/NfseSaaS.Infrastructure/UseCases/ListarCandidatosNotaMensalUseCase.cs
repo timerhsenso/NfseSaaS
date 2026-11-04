@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.NotaMensal;
@@ -60,6 +61,28 @@ public sealed class ListarCandidatosNotaMensalUseCase : IListarCandidatosNotaMen
             .ToListAsync(cancellationToken);
         var setComNota = contratosComNotaNaCompetencia.ToHashSet();
 
+        var eventosQueAfetam = await _db.MovimentacoesValorContrato.AsNoTracking()
+            .Where(m => contratoIds.Contains(m.ContratoId)
+                && ((m.Status == StatusMovimentacaoValor.Pendente && m.DataVigencia <= fimMes)
+                    || (m.Status == StatusMovimentacaoValor.Aplicado && m.Tipo != TipoMovimentacaoValor.ValorInicial && m.DataVigencia > fimMes)))
+            .Select(m => new { m.ContratoId, m.Status, m.DataVigencia })
+            .ToListAsync(cancellationToken);
+
+        string? Aviso(Guid contratoId)
+        {
+            var eventos = eventosQueAfetam.Where(e => e.ContratoId == contratoId).ToList();
+            var pendente = eventos.Where(e => e.Status == StatusMovimentacaoValor.Pendente).OrderBy(e => e.DataVigencia).FirstOrDefault();
+            if (pendente is not null)
+                return $"Reajuste aguardando aprovação desde {Data(pendente.DataVigencia)} — o valor ainda é o anterior. Decida em Contratos › Histórico de valores.";
+
+            var posterior = eventos.OrderBy(e => e.DataVigencia).FirstOrDefault();
+            return posterior is null
+                ? null
+                : $"O valor já inclui mudança com vigência em {Data(posterior.DataVigencia)}, depois desta competência — confira o valor.";
+        }
+
+        static string Data(DateOnly d) => d.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+
         return contratos.Select(x =>
         {
             var linhas = linhasPorContrato
@@ -71,7 +94,7 @@ public sealed class ListarCandidatosNotaMensalUseCase : IListarCandidatosNotaMen
             return new ContratoCandidatoNotaMensalResponse(
                 x.Contrato.Id, x.Contrato.ClienteId, x.ClienteNome, x.Contrato.Descricao,
                 linhas, x.Contrato.ValorAtual, x.Contrato.PermitirAlterarValorNaEmissao,
-                setComNota.Contains(x.Contrato.Id));
+                setComNota.Contains(x.Contrato.Id), Aviso(x.Contrato.Id));
         }).ToList();
     }
 }

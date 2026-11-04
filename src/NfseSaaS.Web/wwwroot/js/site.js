@@ -246,6 +246,58 @@ function mostrarResultado(idDiv, sucesso, mensagem) {
     div.classList.remove('d-none');
 }
 
+/**
+ * Quadro de resultado (ex.: "Importar agora", "Verificar reajustes") com X
+ * para fechar. Sucesso fecha sozinho depois de `segundos` (padrão 10), com
+ * contador "fecha em Ns" e uma barra que encolhe — e pausa enquanto o mouse
+ * está em cima, pra dar tempo de ler. Aviso/erro NÃO fecha sozinho: quem
+ * precisa agir não pode perder a mensagem. `html` já deve vir escapado.
+ */
+function mostrarQuadroResultado(idDiv, html, tipo, segundos) {
+    const div = document.getElementById(idDiv);
+    if (!div) return;
+
+    if (div._quadroTimer) clearInterval(div._quadroTimer);
+    div._quadroTimer = null;
+
+    const autoFechar = tipo === 'success';
+    const total = segundos ?? 10;
+    div.className = `alert alert-${tipo} quadro-resultado position-relative pe-5`;
+    div.innerHTML = `
+        <button type="button" class="btn-close position-absolute top-0 end-0 m-2" aria-label="Fechar"></button>
+        <div>${html}</div>
+        ${autoFechar ? `<div class="small text-muted mt-2 quadro-resultado-contador">fecha em ${total}s…</div>
+                        <div class="quadro-resultado-barra" style="width:100%"></div>` : ''}`;
+
+    function fechar() {
+        if (div._quadroTimer) clearInterval(div._quadroTimer);
+        div._quadroTimer = null;
+        div.classList.add('d-none');
+        div.innerHTML = '';
+    }
+
+    div.querySelector('.btn-close').addEventListener('click', fechar);
+    if (!autoFechar) return;
+
+    let restante = total * 10; // décimos de segundo — barra suave
+    let pausado = false;
+    div.onmouseenter = () => { pausado = true; };
+    div.onmouseleave = () => { pausado = false; };
+
+    const contador = div.querySelector('.quadro-resultado-contador');
+    const barra = div.querySelector('.quadro-resultado-barra');
+    div._quadroTimer = setInterval(() => {
+        if (pausado) {
+            contador.textContent = 'pausado — tire o mouse para continuar';
+            return;
+        }
+        restante--;
+        contador.textContent = `fecha em ${Math.ceil(restante / 10)}s…`;
+        barra.style.width = `${(restante / (total * 10)) * 100}%`;
+        if (restante <= 0) fechar();
+    }, 100);
+}
+
 function ocultarResultado(idDiv) {
     const div = document.getElementById(idDiv);
     if (!div) return;

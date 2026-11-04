@@ -75,4 +75,17 @@ public sealed class Contrato : BaseEntity, ITenantEntity
 
     /// <summary>Sobrescreve, só para este Contrato, Empresa.DiasAlertaReajusteContratoPadrao. Nulo = usa o padrão da Empresa.</summary>
     public int? DiasAlertaOverride { get; set; }
+
+    /// <summary>
+    /// Sobrescreve Empresa.AplicarReajusteAutomatico só para este Contrato:
+    /// null = segue a Empresa; true = aplica o reajuste do índice sozinho no
+    /// aniversário; false = sempre espera aprovação.
+    /// </summary>
+    public bool? ReajusteAutomatico { get; set; }
+
+    /// <summary>
+    /// Índice acumulado NEGATIVO (deflação) no aniversário: false (padrão)
+    /// mantém o valor; true reduz o valor do Contrato na mesma proporção.
+    /// </summary>
+    public bool AplicarIndiceNegativo { get; set; }
 }

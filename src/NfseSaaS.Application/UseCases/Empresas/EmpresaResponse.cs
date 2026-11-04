@@ -32,4 +32,5 @@ public sealed record EmpresaResponse(
     // O front traduz pra rótulo, igual ROTULOS_STATUS já faz em nfse.js.
     TipoAmbiente TipoAmbiente,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? UpdatedAt);
+    DateTimeOffset? UpdatedAt,
+    bool AplicarReajusteAutomatico = false);

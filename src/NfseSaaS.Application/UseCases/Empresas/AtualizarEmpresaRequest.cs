@@ -26,4 +26,5 @@ public sealed record AtualizarEmpresaRequest(
     string CstPisCofins,
     string TpRetPisCofins,
     string PercentualTotalTributosSimplesNacional,
-    int DiasAlertaReajusteContratoPadrao);
+    int DiasAlertaReajusteContratoPadrao,
+    bool AplicarReajusteAutomatico = false);

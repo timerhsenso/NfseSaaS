@@ -189,6 +189,7 @@ async function abrirModalEditarEmpresa(id) {
         document.getElementById('tpRetPisCofins').value = empresa.tpRetPisCofins;
         document.getElementById('percentualTotalTributosSimplesNacional').value = empresa.percentualTotalTributosSimplesNacional ?? '';
         document.getElementById('diasAlertaReajusteContratoPadrao').value = empresa.diasAlertaReajusteContratoPadrao;
+        document.getElementById('aplicarReajusteAutomatico').checked = !!empresa.aplicarReajusteAutomatico;
 
         const automacao = await apiFetch(`/api/empresas/${id}/automacao-nota-mensal`);
         document.getElementById('automacaoAtivo').checked = automacao.ativo;
@@ -228,7 +229,8 @@ function montarPayloadEmpresa() {
         cstPisCofins: document.getElementById('cstPisCofins').value,
         tpRetPisCofins: document.getElementById('tpRetPisCofins').value,
         percentualTotalTributosSimplesNacional: document.getElementById('percentualTotalTributosSimplesNacional').value || '',
-        diasAlertaReajusteContratoPadrao: parseInt(document.getElementById('diasAlertaReajusteContratoPadrao').value, 10)
+        diasAlertaReajusteContratoPadrao: parseInt(document.getElementById('diasAlertaReajusteContratoPadrao').value, 10),
+        aplicarReajusteAutomatico: document.getElementById('aplicarReajusteAutomatico').checked
     };
 }
 

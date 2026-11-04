@@ -224,14 +224,12 @@ async function excluirIndice(dados) {
 
 async function importarAgora() {
     const botao = document.getElementById('btn-importar-indices');
-    const caixa = document.getElementById('resultado-importacao');
 
     await executarComBotaoDesabilitado(botao, async function () {
         try {
             const r = await apiFetch('/api/indices-economicos/importar', { method: 'POST' });
             const falhas = r.indices.filter(i => i.erro);
-            caixa.className = 'alert ' + (falhas.length === 0 ? 'alert-success' : 'alert-warning');
-            caixa.innerHTML = r.indices.map(i => {
+            const html = r.indices.map(i => {
                 const nome = escaparHtml(nomeIndice(i.indice) || i.indice);
                 return i.erro
                     ? `<div><strong>${nome}</strong>: falhou — ${escaparHtml(i.erro)}</div>`
@@ -239,6 +237,7 @@ async function importarAgora() {
                       (i.manuaisPreservados ? `, ${i.manuaisPreservados} manual(is) preservado(s)` : '') +
                       (i.ultimaCompetencia ? ` — último mês ${formatarCompetencia(i.ultimaCompetencia)}` : '') + '</div>';
             }).join('');
+            mostrarQuadroResultado('resultado-importacao', html, falhas.length === 0 ? 'success' : 'warning');
             await carregarIndicesDisponiveis();
             await recarregarTudo();
         } catch (erro) {

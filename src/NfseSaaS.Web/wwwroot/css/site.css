@@ -833,3 +833,17 @@ html[data-theme="dark"] .btn-tema:hover {
 
 .log-viewer .linha-erro { color: #f47174; }
 .log-viewer .linha-aviso { color: #dcdcaa; }
+
+/* Quadro de resultado com fechamento automático (mostrarQuadroResultado em site.js). */
+.quadro-resultado {
+    overflow: hidden;
+}
+.quadro-resultado-barra {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 3px;
+    background: currentColor;
+    opacity: .35;
+    transition: width .1s linear;
+}

@@ -112,16 +112,19 @@ async function carregarContratosComReajustePendente(empresas) {
             empresas.map(e => apiFetch(`/api/contratos?empresaId=${e.id}&pageSize=100`).catch(() => null))
         );
 
-        let vencendo = 0, vencidos = 0;
+        let vencendo = 0, vencidos = 0, aguardandoAprovacao = 0;
         respostas.forEach(r => {
             (r?.items ?? []).forEach(c => {
+                if (c.reajustePendenteId) aguardandoAprovacao++;
                 if (c.situacao === 1) vencendo++;
                 else if (c.situacao === 2) vencidos++;
             });
         });
 
         elemento.textContent = vencendo + vencidos;
-        detalhe.textContent = vencidos > 0
+        detalhe.textContent = aguardandoAprovacao > 0
+            ? `${aguardandoAprovacao} aguardando sua aprovação` + (vencidos - aguardandoAprovacao > 0 ? `, ${vencidos - aguardandoAprovacao} vencido(s)` : '') + (vencendo > 0 ? `, ${vencendo} vencendo` : '')
+            : vencidos > 0
             ? `${vencidos} vencido(s), ${vencendo} vencendo em breve`
             : vencendo > 0
                 ? `${vencendo} vencendo em breve`

@@ -40,7 +40,7 @@ public sealed class ListarEmpresasUseCase : IListarEmpresasUseCase
                 e.Telefone, e.Email, e.Cep, e.Logradouro, e.Numero, e.Complemento, e.Bairro, e.Uf,
                 e.OpSimpNac, e.RegApTribSN, e.RegEspTrib, e.TribIssqn, e.AliquotaIss,
                 e.CstPisCofins, e.TpRetPisCofins, e.PercentualTotalTributosSimplesNacional,
-                e.DiasAlertaReajusteContratoPadrao, e.Ativo, e.TipoAmbiente, e.CreatedAt, e.UpdatedAt))
+                e.DiasAlertaReajusteContratoPadrao, e.Ativo, e.TipoAmbiente, e.CreatedAt, e.UpdatedAt, e.AplicarReajusteAutomatico))
             .ToListAsync(cancellationToken);
 
         return new PagedResult<EmpresaResponse>

@@ -195,6 +195,9 @@ public static class DependencyInjection
 
         services.AddScoped<IRegistrarReajusteUseCase, RegistrarReajusteUseCase>();
         services.AddScoped<IListarHistoricoValoresContratoUseCase, ListarHistoricoValoresContratoUseCase>();
+        services.AddScoped<IGerarReajustesAniversarioUseCase, GerarReajustesAniversarioUseCase>();
+        services.AddScoped<IDecidirReajusteUseCase, DecidirReajusteUseCase>();
+        services.AddScoped<IGerarReajustesAniversarioJob, GerarReajustesAniversarioJob>();
 
         services.AddScoped<IUploadDocumentoContratoUseCase, UploadDocumentoContratoUseCase>();
         services.AddScoped<IListarDocumentosContratoUseCase, ListarDocumentosContratoUseCase>();
