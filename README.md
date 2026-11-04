@@ -211,6 +211,17 @@ Acesse:
 dotnet test
 ```
 
+> Os testes de integração sobem a aplicação inteira e precisam do Postgres
+> local rodando (`docker compose up -d`).
+
+## Produção: backup e restauração
+
+Backup diário criptografado para o OneDrive (banco, certificados com as
+chaves do Data Protection, documentos e configuração). Instalação, ensaio
+mensal e roteiro de recuperação em
+[`docs/operacao/backup-restauracao.md`](docs/operacao/backup-restauracao.md).
+Os scripts ficam em `deploy/backup/`.
+
 ## Estrutura da solução
 
 ```

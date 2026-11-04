@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (operação)
+- Backup diário externo da produção para o OneDrive, criptografado (rclone
+  crypt): banco (`pg_dump` validado), certificados com as chaves do Data
+  Protection, documentos dos contratos e configuração do servidor. Retenção
+  de 7 diários, 4 semanais e 3 locais, todo dia às 03:30 de Brasília.
+  Script, cron e logrotate em `deploy/backup/`. Instalação, ensaio mensal de
+  restauração e roteiro de recuperação em
+  `docs/operacao/backup-restauracao.md`.
+- `.gitattributes`: arquivos `*.sh` sempre com LF.
+
 ### Adicionado (plataforma)
 - Painel do operador da plataforma (menu Plataforma › Contas, só para quem
   está em `Plataforma:UsuariosOperadoresIds`): todas as contas com
