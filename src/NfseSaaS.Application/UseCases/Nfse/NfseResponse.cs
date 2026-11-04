@@ -1,3 +1,4 @@
+using NfseSaaS.Application.Rejeicoes;
 using NfseSaaS.Domain.Enums;
 
 namespace NfseSaaS.Application.UseCases.Nfse;
@@ -39,4 +40,8 @@ public sealed record NfseResponse(
     int? ReenvioDeNumeroDps,
     Guid? ReenviadaComoNfseId,
     int? ReenviadaComoNumeroDps,
-    bool PodeReenviar);
+    bool PodeReenviar)
+{
+    /// <summary>Rejeição da SEFIN explicada (onde corrigir e o que fazer) — null quando não há código de erro da SEFIN. Ver CatalogoRejeicoesSefin.</summary>
+    public RejeicaoSefinTraduzida? Rejeicao => CatalogoRejeicoesSefin.Traduzir(CodigoErro, MensagemErro);
+}

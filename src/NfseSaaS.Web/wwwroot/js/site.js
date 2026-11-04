@@ -143,7 +143,9 @@ function mostrarToast(mensagem, tipo) {
     }
 
     const ehErro = tipo === 'erro';
-    const duracaoMs = ehErro ? 5000 : 3000;
+    // Erro longo (ex.: rejeição da SEFIN com "o que fazer") fica mais
+    // tempo na tela — dá para ler antes de sumir (máx. 15 s).
+    const duracaoMs = ehErro ? Math.min(15000, Math.max(5000, String(mensagem).length * 60)) : 3000;
 
     const toast = document.createElement('div');
     toast.className = 'toast-nfse' + (ehErro ? ' toast-erro' : '');

@@ -223,6 +223,21 @@ obrigação de quem usa: suba a versão, e todo usuário passa pela tela de
 aceite (`/Legal/Aceitar`) no próximo acesso. Cada aceite fica em
 `aceites_termos` (versão, data, IP, navegador, origem).
 
+## Rejeições da SEFIN
+
+Catálogo oficial em `src/NfseSaaS.Application/Rejeicoes/rejeicoes-sefin.json`
+(embutido no assembly) e regras de "onde corrigir / o que fazer" em
+`CatalogoRejeicoesSefin`. Quando a SEFIN publicar planilhas novas (Anexo I
+DPS/NFS-e, Anexo II Eventos, Anexo VI IBS/CBS, em gov.br/nfse › Biblioteca ›
+Documentação técnica), regenere o catálogo (nunca edite o JSON à mão):
+
+```bash
+pip install openpyxl
+python3 tools/rejeicoes-sefin/gerar_catalogo.py anexo_i-...prod.xlsx anexo_ii-...prod.xlsx anexo_i-...prodrest.xlsx anexo_ii-...prodrest.xlsx AnexoVI-...xlsx
+```
+
+Passe primeiro as planilhas de produção: em código repetido, vale a primeira.
+
 ## Produção: backup e restauração
 
 Backup diário criptografado para o OneDrive (banco, certificados com as

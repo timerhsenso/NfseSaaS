@@ -5,6 +5,30 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (rejeições da SEFIN)
+- Catálogo com os 579 códigos de rejeição oficiais da NFS-e Nacional,
+  extraídos das planilhas do gov.br: Anexo I DPS/NFS-e v1.01 (produção
+  20260209 e produção restrita 20261020), Anexo II Eventos v1.01 (20260122 e
+  20261020) e Anexo VI IBS/CBS v1.02.01.
+- Nota rejeitada agora mostra, além da mensagem oficial, **onde corrigir**
+  (empresa, configuração fiscal, certificado, cliente, serviço, dados da
+  nota, cancelamento, IBS/CBS ou suporte), **o que fazer** e um atalho para a
+  tela. Vale para o detalhe da nota, o aviso de reenvio e os avisos de
+  emissão e de cancelamento recusados. Há texto específico para as rejeições
+  mais comuns (certificado, CNPJ e inscrição municipal, Simples Nacional,
+  município sem convênio, código de tributação, CEP do cliente, alíquota e
+  retenção de ISS, competência, DPS duplicada).
+- A API devolve isso em `rejeicao` (`NfseResponse`, `EmitirNfseResult`,
+  `CancelarNfseResult`). Código fora do catálogo (regra nova) continua com a
+  mensagem recebida.
+- `tools/rejeicoes-sefin/gerar_catalogo.py` regenera o catálogo quando a
+  SEFIN publicar planilhas novas.
+
+### Corrigido (tela de notas)
+- A mensagem de erro da SEFIN no detalhe da nota passa a ser escapada antes
+  de entrar no HTML.
+- Aviso de erro longo fica mais tempo na tela (até 15 segundos).
+
 ### Adicionado (monitoramento)
 - Alerta por e-mail ao operador da plataforma para todo erro registrado no
   log (exceção não tratada, falha de job em uma Empresa) e para job que

@@ -352,7 +352,9 @@ async function abrirModalReenvioNfse(id) {
         erro.textContent = `${nfse.codigoErro ?? ''} — ${nfse.mensagemErro ?? 'motivo não informado'}`;
         const dica = document.createElement('div');
         dica.className = 'small mt-1';
-        dica.textContent = 'Empresa, Cliente e Serviço serão lidos novamente do cadastro atual. Se o erro veio do cadastro, corrija-o antes de reenviar.';
+        dica.textContent = nfse.rejeicao
+            ? `${nfse.rejeicao.ondeCorrigir}: ${nfse.rejeicao.oQueFazer} Empresa, Cliente e Serviço serão lidos novamente do cadastro atual.`
+            : 'Empresa, Cliente e Serviço serão lidos novamente do cadastro atual. Se o erro veio do cadastro, corrija-o antes de reenviar.';
         aviso.append(titulo, erro, dica);
         aviso.classList.remove('d-none');
 
@@ -601,7 +603,7 @@ async function emitirNfse(e) {
         if (resultado.sucesso) {
             mostrarToast('Nota fiscal emitida com sucesso.');
         } else {
-            mostrarErro(`Nota rejeitada pela SEFIN: ${resultado.mensagemErro ?? resultado.codigoErro ?? 'motivo não informado'}.`);
+            mostrarErro(textoRejeicao('Nota rejeitada pela SEFIN', resultado));
         }
     } catch (err) {
         mostrarErroFormulario('erro-emitir-nfse', err.message);
@@ -631,7 +633,7 @@ async function abrirDetalheNfse(id) {
                 ${Number(nfse.valorServico).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} /
                 ${nfse.valorLiquido == null ? '—' : Number(nfse.valorLiquido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </dd>
-            <dt class="col-sm-4">Erro</dt><dd class="col-sm-8">${nfse.mensagemErro ? `${nfse.codigoErro ?? ''} — ${nfse.mensagemErro}` : '—'}</dd>
+            <dt class="col-sm-4">Erro</dt><dd class="col-sm-8">${htmlErroNfse(nfse)}</dd>
             ${nfse.reenvioDeNumeroDps != null ? `<dt class="col-sm-4">Reenvio de</dt><dd class="col-sm-8">DPS nº ${nfse.reenvioDeNumeroDps} (rejeitada)</dd>` : ''}
             ${nfse.reenviadaComoNumeroDps != null ? `<dt class="col-sm-4">Reenviada como</dt><dd class="col-sm-8">DPS nº ${nfse.reenviadaComoNumeroDps}</dd>` : ''}
         `;
@@ -691,7 +693,7 @@ async function confirmarCancelamentoNfse(e) {
         if (resultado.sucesso) {
             mostrarToast('Nota fiscal cancelada com sucesso.');
         } else {
-            mostrarErro(`Cancelamento rejeitado pela SEFIN: ${resultado.mensagemErro ?? resultado.codigoErro ?? 'motivo não informado'}.`);
+            mostrarErro(textoRejeicao('Cancelamento rejeitado pela SEFIN', resultado));
         }
     } catch (err) {
         mostrarErroFormulario('erro-cancelar-nfse', err.message);
@@ -955,4 +957,38 @@ async function enviarNfsePorEmail(id) {
     } catch (err) {
         mostrarErro(err.message);
     }
+}
+
+/**
+ * Rejeição da SEFIN em texto (toast): código, mensagem oficial e, quando o
+ * código está no catálogo (CatalogoRejeicoesSefin), o que fazer.
+ */
+function textoRejeicao(prefixo, resultado) {
+    const codigo = resultado.codigoErro ? ` (${resultado.codigoErro})` : '';
+    const mensagem = resultado.mensagemErro ?? resultado.rejeicao?.mensagemOficial ?? 'motivo não informado';
+    const oQueFazer = resultado.rejeicao ? ` O que fazer: ${resultado.rejeicao.oQueFazer}` : '';
+    return `${prefixo}${codigo}: ${mensagem}.${oQueFazer}`;
+}
+
+/**
+ * Campo "Erro" do detalhe da nota: mensagem oficial e, se houver, a
+ * explicação (onde corrigir, o que fazer e o atalho para a tela). Tudo que
+ * vem da SEFIN passa por escaparHtml.
+ */
+function htmlErroNfse(nfse) {
+    const rejeicao = nfse.rejeicao;
+    const mensagem = nfse.mensagemErro ?? rejeicao?.mensagemOficial;
+    if (!mensagem && !nfse.codigoErro) return '—';
+
+    const base = `${escaparHtml(nfse.codigoErro ?? '')} — ${escaparHtml(mensagem ?? 'motivo não informado')}`;
+    if (!rejeicao) return base;
+
+    const link = rejeicao.linkTela
+        ? ` <a href="${escaparHtml(rejeicao.linkTela)}">Abrir ${escaparHtml(rejeicao.ondeCorrigir.toLowerCase())}</a>`
+        : '';
+    return `${base}
+        <div class="rejeicao-explicada">
+            <div><strong>Onde corrigir:</strong> ${escaparHtml(rejeicao.ondeCorrigir)}</div>
+            <div><strong>O que fazer:</strong> ${escaparHtml(rejeicao.oQueFazer)}${link}</div>
+        </div>`;
 }

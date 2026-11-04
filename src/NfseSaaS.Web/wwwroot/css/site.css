@@ -1920,6 +1920,21 @@ html[data-theme="dark"] .resumo-alerta {
     }
 }
 
+/* Rejeição da SEFIN explicada (detalhe da nota) */
+.rejeicao-explicada {
+    margin-top: 8px;
+    padding: 10px 12px;
+    border-radius: var(--radius-field);
+    background: var(--warning-soft);
+    color: var(--warning-ink);
+    font-size: 13px;
+}
+
+.rejeicao-explicada a {
+    color: inherit;
+    font-weight: 600;
+}
+
 /* =============== Toast de feedback (substitui alert() nativo) =============== */
 
 .toast-container-nfse {
