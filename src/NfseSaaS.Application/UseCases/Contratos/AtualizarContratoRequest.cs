@@ -24,4 +24,15 @@ public sealed record AtualizarContratoRequest(
     StatusContrato Status,
     DateOnly? DataFim,
     TipoCobrancaContrato TipoCobranca,
-    bool PermitirAlterarValorNaEmissao);
+    bool PermitirAlterarValorNaEmissao,
+    // Linhas de serviço do Contrato. Nulo = não mexe nas linhas (compatível
+    // com quem chama sem elas). Informado = passa a ser a composição
+    // COMPLETA do Contrato: linhas ausentes são removidas, novas incluídas,
+    // e o ValorAtual é recalculado — registrado no Histórico.
+    IReadOnlyList<ContratoServicoRequest>? Servicos = null,
+    // Obrigatórios quando as linhas MUDAM (vira um evento do Histórico de
+    // valores): é reajuste ou alteração de escopo, a partir de quando vale,
+    // e por quê.
+    TipoMovimentacaoValor? TipoAlteracaoServicos = null,
+    DateOnly? VigenciaAlteracaoServicos = null,
+    string? MotivoAlteracaoServicos = null);

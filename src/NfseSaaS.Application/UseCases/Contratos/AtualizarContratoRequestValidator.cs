@@ -1,4 +1,5 @@
 using FluentValidation;
+using NfseSaaS.Application.Common;
 using NfseSaaS.Domain.Enums;
 
 namespace NfseSaaS.Application.UseCases.Contratos;
@@ -34,5 +35,37 @@ public sealed class AtualizarContratoRequestValidator : AbstractValidator<Atuali
         RuleFor(x => x.DiasAlertaOverride)
             .Null().WithMessage("Alerta de reajuste não se aplica a cobrança Avulsa.")
             .When(x => x.TipoCobranca == TipoCobrancaContrato.Avulso);
+
+        // Mesmas regras de linha do CadastrarContratoRequestValidator, só
+        // quando as linhas vierem (nulo = não altera a composição).
+        When(x => x.Servicos is not null, () =>
+        {
+            RuleFor(x => x.Servicos).NotEmpty().WithMessage("O Contrato precisa de ao menos um serviço.");
+            RuleForEach(x => x.Servicos).ChildRules(servico =>
+            {
+                servico.RuleFor(s => s.ServicoId).NotEmpty();
+                servico.RuleFor(s => s.Quantidade).GreaterThan(0);
+                servico.RuleFor(s => s.ValorUnitario).GreaterThan(0);
+            });
+            RuleFor(x => x.Servicos)
+                .Must(servicos => servicos!.Select(s => s.ServicoId).Distinct().Count() == servicos!.Count)
+                .WithMessage("O mesmo Serviço não pode aparecer em mais de uma linha do Contrato.")
+                .When(x => x.Servicos is { Count: > 0 });
+        });
+
+        // Valor inicial só nasce no cadastro — edição é reajuste ou alteração.
+        RuleFor(x => x.TipoAlteracaoServicos)
+            .Must(t => t is TipoMovimentacaoValor.Reajuste or TipoMovimentacaoValor.Alteracao)
+            .WithMessage("Informe se a mudança nos serviços é um reajuste ou uma alteração de escopo.")
+            .When(x => x.TipoAlteracaoServicos.HasValue);
+
+        RuleFor(x => x.MotivoAlteracaoServicos).MaximumLength(Domain.Entities.MovimentacaoValorContrato.TamanhoMaximoMotivo);
+
+        // Por enquanto o valor novo passa a valer na hora — vigência futura
+        // (agendada) chega com o reajuste automático.
+        RuleFor(x => x.VigenciaAlteracaoServicos)
+            .Must(d => d <= DataBrasilia.Hoje())
+            .WithMessage("A vigência da alteração não pode ser uma data futura.")
+            .When(x => x.VigenciaAlteracaoServicos.HasValue);
     }
 }

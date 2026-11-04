@@ -3,6 +3,8 @@ using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.Contratos;
 using NfseSaaS.Domain.Entities;
+using NfseSaaS.Domain.Enums;
+using NfseSaaS.Infrastructure.Contratos;
 using NfseSaaS.Infrastructure.Persistence;
 
 namespace NfseSaaS.Infrastructure.UseCases;
@@ -65,6 +67,20 @@ public sealed class CadastrarContratoUseCase : ICadastrarContratoUseCase
                 ValorUnitario = servico.ValorUnitario
             });
         }
+
+        // Primeiro evento do Histórico de valores: com que valor e composição
+        // o Contrato nasceu. Vigência = início do Contrato.
+        _db.MovimentacoesValorContrato.Add(new MovimentacaoValorContrato
+        {
+            ContratoId = contrato.Id,
+            Tipo = TipoMovimentacaoValor.ValorInicial,
+            Status = StatusMovimentacaoValor.Aplicado,
+            DataVigencia = request.DataInicioContrato,
+            ValorAnterior = null,
+            ValorNovo = valorAtual,
+            ComposicaoJson = await ComposicaoContrato.SerializarAsync(
+                _db, request.Servicos.Select(s => (s.ServicoId, s.Quantidade, s.ValorUnitario)), cancellationToken)
+        });
 
         _auditLogWriter.Registrar("CadastrarContrato", "Contrato", contrato.Id, new { contrato.EmpresaId, contrato.ClienteId, contrato.Descricao, contrato.ValorAtual, TotalLinhas = request.Servicos.Count });
 

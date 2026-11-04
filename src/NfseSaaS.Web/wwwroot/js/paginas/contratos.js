@@ -26,6 +26,17 @@ const ROTULOS_INDICE_REAJUSTE = { 0: 'IPCA', 1: 'IGPM', 2: 'INCC', 3: 'INPC', 4:
 let tabelaContratos;
 let modalContrato;
 let modalHistoricoReajuste;
+
+// Linhas do contrato como vieram do servidor ao abrir a edição — pra saber,
+// ao salvar, se a composição mudou (aí a mudança precisa de tipo,
+// vigência e motivo, e vira um evento do Histórico de valores).
+let linhasOriginaisContrato = null;
+
+function normalizarLinhas(linhas) {
+    return JSON.stringify((linhas ?? [])
+        .map(l => ({ servicoId: l.servicoId, quantidade: Number(l.quantidade), valorUnitario: Number(l.valorUnitario) }))
+        .sort((a, b) => a.servicoId.localeCompare(b.servicoId)));
+}
 let empresaAtualIdContratos;
 let contratoAtualParaHistorico;
 let catalogoServicosContratos = []; // cache do combo, reaproveitado nas linhas dinâmicas
@@ -62,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function () {
             data: null,
             orderable: false,
             render: (data, type, contrato) => `
-                <button type="button" class="btn btn-sm btn-outline-secondary btn-historico" data-id="${contrato.id}" data-descricao="${contrato.descricao}" title="Histórico de reajustes">
+                <button type="button" class="btn btn-sm btn-outline-secondary btn-historico" data-id="${contrato.id}" data-descricao="${contrato.descricao}" title="Histórico de valores e reajustes">
                     <i class="bi bi-clock-history"></i>
                 </button>
                 <button type="button" class="btn btn-sm btn-outline-primary btn-editar" data-id="${contrato.id}">
@@ -213,14 +224,13 @@ function limparFormularioContrato() {
     document.getElementById('historico-indisponivel').classList.remove('d-none');
     document.getElementById('tabela-historico-contrato').classList.add('d-none');
 
-    // Cliente e as linhas de Serviço só são editáveis no cadastro —
-    // depois de criado, o valor muda exclusivamente pelo fluxo de
-    // Registrar reajuste (com histórico) e a composição de serviços fica
-    // pra um endpoint dedicado futuro (Fase 6, mesmo raciocínio já usado
-    // pro ValorAtual antes de existir linhas).
+    // Cliente só é editável no cadastro. As linhas de Serviço são
+    // editáveis no cadastro E na edição (ver abrirModalEditarContrato).
     $('#clienteId').prop('disabled', false);
     document.getElementById('bloco-servicos').classList.remove('d-none');
     document.getElementById('nota-servicos-nao-editaveis').textContent = '';
+    document.getElementById('bloco-mudanca-servicos').classList.add('d-none');
+    linhasOriginaisContrato = null;
 
     // Status agora é sempre visível (criação e edição) — antes só
     // aparecia editando, e criar sem escolher status nenhum criava
@@ -269,6 +279,9 @@ function adicionarLinhaServico(linha) {
         <td><button type="button" class="btn btn-sm btn-outline-danger btn-remover-linha-servico"><i class="bi bi-x-lg"></i></button></td>
     `;
     tr.dataset.servicoSelecionado = linha?.servicoId ?? '';
+    // Guardado pra linha cujo Serviço foi DESATIVADO depois: ele não vem
+    // no catálogo (só ativos) e precisa continuar aparecendo pelo nome.
+    tr.dataset.servicoDescricao = linha?.servicoDescricao ?? '';
     corpo.appendChild(tr);
 
     const selectServico = tr.querySelector('.campo-linha-servico');
@@ -314,6 +327,15 @@ function atualizarOpcoesServicosDisponiveis() {
             const selecionado = s.id === atual;
             return `<option value="${s.id}" data-valor="${s.valorPadrao}" ${selecionado ? 'selected' : ''} ${desabilitado ? 'disabled' : ''}>${s.descricao}${desabilitado ? ' (já usado noutra linha)' : ''}</option>`;
         }).join('');
+
+        // Linha existente com Serviço desativado: mantém a opção (pelo
+        // nome gravado na linha) em vez de a linha aparecer em branco e
+        // travar o salvamento. Montada com DOM, não innerHTML — o nome
+        // vem do cadastro.
+        if (atual && !catalogoServicosContratos.some(s => s.id === atual)) {
+            const opcaoInativa = new Option(`${tr.dataset.servicoDescricao || 'Serviço'} (inativo)`, atual, true, true);
+            select.prepend(opcaoInativa);
+        }
 
         if (!atual && select.options.length > 0) {
             // Linha nova sem seleção: escolhe automaticamente o primeiro
@@ -406,10 +428,20 @@ async function abrirModalEditarContrato(id) {
 
         (contrato.servicos ?? []).forEach(s => adicionarLinhaServico(s));
 
+        // Antes o bloco de serviços era ESCONDIDO na edição (a aba ficava
+        // vazia). Agora as linhas aparecem e podem ser alteradas: o backend
+        // aplica a composição nova, recalcula o valor e registra no
+        // Histórico. Cliente continua travado.
         $('#clienteId').prop('disabled', true);
-        document.getElementById('bloco-servicos').classList.add('d-none');
+        document.getElementById('bloco-servicos').classList.remove('d-none');
         document.getElementById('nota-servicos-nao-editaveis').textContent =
-            'Cliente e serviços não são editáveis aqui — o valor muda pelo fluxo de reajuste (mantém histórico).';
+            'Alterar os serviços muda o valor do contrato e fica registrado no Histórico de valores. Notas já emitidas não mudam.';
+
+        linhasOriginaisContrato = normalizarLinhas(contrato.servicos);
+        document.getElementById('mudanca-tipo').value = '3';
+        document.getElementById('mudanca-vigencia').value = dataLocalIso();
+        document.getElementById('mudanca-motivo').value = '';
+        document.getElementById('bloco-mudanca-servicos').classList.remove('d-none');
 
         document.getElementById('documentos-indisponivel').classList.add('d-none');
         document.getElementById('documentos-disponivel').classList.remove('d-none');
@@ -536,23 +568,23 @@ async function salvarContrato(e) {
     const observacao = document.getElementById('observacao').value.trim() || null;
 
     const linhasServico = coletarLinhasServico();
-    if (!id) {
-        // Guid vazio ("") quebra o model binding no backend antes de a
-        // validação do FluentValidation rodar (vira 400 silencioso, sem
-        // log e sem mensagem por campo) — barra aqui, na aba onde o
-        // problema está, com uma mensagem que a pessoa entende.
-        if (linhasServico.length === 0 || linhasServico.some(l => !l.servicoId)) {
-            trocarAbaContrato('tab-servico');
-            mostrarErroFormulario('erro-contrato', 'Selecione o Serviço em todas as linhas da aba "Serviço" antes de salvar.');
-            return;
-        }
 
-        const idsUnicos = new Set(linhasServico.map(l => l.servicoId));
-        if (idsUnicos.size !== linhasServico.length) {
-            trocarAbaContrato('tab-servico');
-            mostrarErroFormulario('erro-contrato', 'O mesmo serviço não pode aparecer em mais de uma linha.');
-            return;
-        }
+    // Vale pra criar E editar (as linhas vão nos dois). Guid vazio ("")
+    // quebra o model binding no backend antes de a validação do
+    // FluentValidation rodar (vira 400 silencioso, sem log e sem mensagem
+    // por campo) — barra aqui, na aba onde o problema está, com uma
+    // mensagem que a pessoa entende.
+    if (linhasServico.length === 0 || linhasServico.some(l => !l.servicoId)) {
+        trocarAbaContrato('tab-servico');
+        mostrarErroFormulario('erro-contrato', 'Selecione o Serviço em todas as linhas da aba "Serviço" antes de salvar.');
+        return;
+    }
+
+    const idsUnicos = new Set(linhasServico.map(l => l.servicoId));
+    if (idsUnicos.size !== linhasServico.length) {
+        trocarAbaContrato('tab-servico');
+        mostrarErroFormulario('erro-contrato', 'O mesmo serviço não pode aparecer em mais de uma linha.');
+        return;
     }
 
     try {
@@ -567,8 +599,30 @@ async function salvarContrato(e) {
                 status: parseInt(document.getElementById('status').value, 10),
                 dataFim: document.getElementById('dataFim').value || null,
                 tipoCobranca: parseInt(document.getElementById('tipoCobranca').value, 10),
-                permitirAlterarValorNaEmissao: document.getElementById('permitirAlterarValorNaEmissao').checked
+                permitirAlterarValorNaEmissao: document.getElementById('permitirAlterarValorNaEmissao').checked,
+                servicos: linhasServico
             };
+
+            // Composição mudou → vira evento do Histórico de valores:
+            // precisa do tipo, da vigência e (na alteração de escopo) do motivo.
+            if (normalizarLinhas(linhasServico) !== linhasOriginaisContrato) {
+                const tipo = parseInt(document.getElementById('mudanca-tipo').value, 10);
+                const vigencia = document.getElementById('mudanca-vigencia').value;
+                const motivo = document.getElementById('mudanca-motivo').value.trim();
+
+                if (!vigencia || (tipo === 3 && !motivo)) {
+                    trocarAbaContrato('tab-servico');
+                    mostrarErroFormulario('erro-contrato', tipo === 3
+                        ? 'Você alterou os serviços: informe a data de vigência e o motivo da alteração de escopo.'
+                        : 'Você alterou os serviços: informe a data de vigência do reajuste.');
+                    return;
+                }
+
+                payload.tipoAlteracaoServicos = tipo;
+                payload.vigenciaAlteracaoServicos = vigencia;
+                payload.motivoAlteracaoServicos = motivo || null;
+            }
+
             await apiFetch(`/api/contratos/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
         } else {
             const payload = {
@@ -613,7 +667,7 @@ async function excluirContrato(id) {
 async function abrirModalHistorico(contratoId, descricao) {
     contratoAtualParaHistorico = null;
     ocultarErroFormulario('erro-reajuste');
-    document.getElementById('titulo-modal-historico').textContent = `Histórico de reajustes — ${descricao}`;
+    document.getElementById('titulo-modal-historico').textContent = `Histórico de valores — ${descricao}`;
     document.getElementById('form-reajuste').reset();
     document.getElementById('reajuste-contratoId').value = contratoId;
     document.getElementById('reajuste-dataReajuste').value = dataLocalIso();
@@ -648,27 +702,51 @@ async function abrirModalHistorico(contratoId, descricao) {
     }
 }
 
+// TipoMovimentacaoValor / StatusMovimentacaoValor (Domain.Enums) como número.
+const ROTULOS_TIPO_MOVIMENTACAO = {
+    1: { texto: 'Valor inicial', classe: 'text-bg-secondary' },
+    2: { texto: 'Reajuste', classe: 'text-bg-primary' },
+    3: { texto: 'Alteração de escopo', classe: 'text-bg-info' }
+};
+const ROTULOS_STATUS_MOVIMENTACAO = { 2: 'Aguardando aprovação', 3: 'Não aplicado' };
+
+function formatarReais(valor) {
+    return valor == null ? '—' : Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+// Histórico de valores: um evento por linha + os serviços cobrados a
+// partir dele. Tudo que vem do cadastro (motivo, nome do serviço) passa
+// por escaparHtml — é texto digitado por usuário.
 async function carregarHistorico(contratoId) {
     const corpo = document.querySelector('#tabela-historico-reajuste tbody');
 
     try {
-        const reajustes = await apiFetch(`/api/contratos/${contratoId}/reajustes`);
+        const eventos = await apiFetch(`/api/contratos/${contratoId}/historico-valores`);
 
-        if (reajustes.length === 0) {
-            corpo.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhum reajuste registrado ainda.</td></tr>';
+        if (eventos.length === 0) {
+            corpo.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Nenhum valor registrado ainda.</td></tr>';
             return;
         }
 
-        corpo.innerHTML = reajustes.map(r => `
-            <tr>
-                <td>${new Date(r.dataReajuste + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
-                <td>${Number(r.valorAnterior).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                <td>${Number(r.valorNovo).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                <td>${r.percentualAplicado != null ? r.percentualAplicado.toFixed(2) + '%' : '—'}</td>
-                <td>${r.indiceUsado != null ? (ROTULOS_INDICE_REAJUSTE[r.indiceUsado] ?? '—') : '—'}</td>
-                <td>${r.observacao ?? '—'}</td>
-            </tr>
-        `).join('');
+        corpo.innerHTML = eventos.map(e => {
+            const tipo = ROTULOS_TIPO_MOVIMENTACAO[e.tipo] ?? { texto: 'Evento', classe: 'text-bg-light' };
+            const status = ROTULOS_STATUS_MOVIMENTACAO[e.status];
+            const composicao = (e.composicao ?? [])
+                .map(l => `${escaparHtml(l.servicoDescricao)}: ${Number(l.quantidade).toLocaleString('pt-BR')} × ${formatarReais(l.valorUnitario)}`)
+                .join(' · ');
+
+            return `
+                <tr>
+                    <td>${new Date(e.dataVigencia + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                    <td><span class="badge ${tipo.classe}">${tipo.texto}</span>${status ? `<div class="small text-warning">${status}</div>` : ''}</td>
+                    <td class="text-end">${formatarReais(e.valorAnterior)}</td>
+                    <td class="text-end">${formatarReais(e.valorNovo)}</td>
+                    <td class="text-end">${e.percentualAplicado != null ? Number(e.percentualAplicado).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%' : '—'}</td>
+                    <td>${e.indice != null ? (ROTULOS_INDICE_REAJUSTE[e.indice] ?? '—') : '—'}</td>
+                    <td>${e.motivo ? escaparHtml(e.motivo) : '—'}</td>
+                </tr>
+                ${composicao ? `<tr class="table-light"><td></td><td colspan="6" class="small text-muted pt-0">${composicao}</td></tr>` : ''}`;
+        }).join('');
     } catch (err) {
         mostrarErro(err.message);
     }

@@ -1,7 +1,10 @@
 @{
     ViewData["Title"] = "Notas Fiscais";
-    var podeEmitir = User.IsInRole("Administrador") || User.IsInRole("Emissor");
-    var podeCancelar = User.IsInRole("Administrador");
+    // Permissão do Grupo (IAEC), a mesma que a API confere: emitir = Incluir,
+    // cancelar = Excluir na tela Nfse (ver GrupoProvisionamentoService). Antes
+    // era o papel antigo do Identity, que contas novas não têm.
+    var podeEmitir = User.PodeIncluir(NfseSaaS.Application.Authorization.TelaCatalogo.Nfse);
+    var podeCancelar = User.PodeExcluir(NfseSaaS.Application.Authorization.TelaCatalogo.Nfse);
 }
 
 <div class="card">

@@ -36,13 +36,21 @@ public sealed class ExcluirContratoUseCase : IExcluirContratoUseCase
             ?? throw new RecursoNaoEncontradoException($"Contrato {id} não encontrado.");
 
         var totalNfse = await _db.NotasFiscais.CountAsync(n => n.ContratoId == id, cancellationToken);
-        var totalReajustes = await _db.ReajustesContrato.CountAsync(r => r.ContratoId == id, cancellationToken);
+        // O "Valor inicial" sempre existe e não conta como histórico real —
+        // só reajustes/alterações bloqueiam a exclusão.
+        var totalMudancasDeValor = await _db.MovimentacoesValorContrato
+            .CountAsync(m => m.ContratoId == id && m.Tipo != Domain.Enums.TipoMovimentacaoValor.ValorInicial, cancellationToken);
 
-        if (totalNfse > 0 || totalReajustes > 0)
+        if (totalNfse > 0 || totalMudancasDeValor > 0)
         {
             throw new RegraNegocioException(
-                $"Não é possível excluir o Contrato: existem {totalNfse} nfse(s) e {totalReajustes} reajuste(s) registrados. Desative o Contrato em vez de excluir.");
+                $"Não é possível excluir o Contrato: existem {totalNfse} nfse(s) e {totalMudancasDeValor} mudança(s) de valor registradas. Desative o Contrato em vez de excluir.");
         }
+
+        // FK Restrict (histórico append-only): o evento de Valor inicial
+        // sai explicitamente, junto com o Contrato, na mesma gravação.
+        var valorInicial = await _db.MovimentacoesValorContrato.Where(m => m.ContratoId == id).ToListAsync(cancellationToken);
+        _db.MovimentacoesValorContrato.RemoveRange(valorInicial);
 
         _db.Contratos.Remove(contrato);
 

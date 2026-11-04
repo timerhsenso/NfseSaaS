@@ -5,6 +5,7 @@ using NfseSaaS.Application.Authorization;
 using NfseSaaS.Application.UseCases.Contratos;
 using NfseSaaS.Application.UseCases.DocumentosContrato;
 using NfseSaaS.Application.UseCases.HistoricoContrato;
+using NfseSaaS.Application.UseCases.HistoricoValoresContrato;
 using NfseSaaS.Application.UseCases.ReajustesContrato;
 
 namespace NfseSaaS.Web.Controllers.Api;
@@ -20,7 +21,7 @@ public sealed class ContratosController : ControllerBase
     private readonly IAtualizarContratoUseCase _atualizarContrato;
     private readonly IExcluirContratoUseCase _excluirContrato;
     private readonly IRegistrarReajusteUseCase _registrarReajuste;
-    private readonly IListarReajustesUseCase _listarReajustes;
+    private readonly IListarHistoricoValoresContratoUseCase _listarHistoricoValores;
     private readonly IUploadDocumentoContratoUseCase _uploadDocumento;
     private readonly IListarDocumentosContratoUseCase _listarDocumentos;
     private readonly IExcluirDocumentoContratoUseCase _excluirDocumento;
@@ -34,7 +35,7 @@ public sealed class ContratosController : ControllerBase
         IAtualizarContratoUseCase atualizarContrato,
         IExcluirContratoUseCase excluirContrato,
         IRegistrarReajusteUseCase registrarReajuste,
-        IListarReajustesUseCase listarReajustes,
+        IListarHistoricoValoresContratoUseCase listarHistoricoValores,
         IUploadDocumentoContratoUseCase uploadDocumento,
         IListarDocumentosContratoUseCase listarDocumentos,
         IExcluirDocumentoContratoUseCase excluirDocumento,
@@ -47,7 +48,7 @@ public sealed class ContratosController : ControllerBase
         _atualizarContrato = atualizarContrato;
         _excluirContrato = excluirContrato;
         _registrarReajuste = registrarReajuste;
-        _listarReajustes = listarReajustes;
+        _listarHistoricoValores = listarHistoricoValores;
         _uploadDocumento = uploadDocumento;
         _listarDocumentos = listarDocumentos;
         _excluirDocumento = excluirDocumento;
@@ -102,7 +103,7 @@ public sealed class ContratosController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>Único caminho pra mudar o valor de um Contrato depois de criado — grava histórico (ver RegistrarReajusteUseCase).</summary>
+    /// <summary>Registra um reajuste manual — vira um evento do Histórico de valores (ver RegistrarReajusteUseCase).</summary>
     [RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Alterar)]
     [HttpPost("{id:guid}/reajustes")]
     public async Task<IActionResult> RegistrarReajuste(Guid id, [FromBody] RegistrarReajusteRequest request, CancellationToken cancellationToken)
@@ -111,11 +112,12 @@ public sealed class ContratosController : ControllerBase
         return Ok(new { reajusteId });
     }
 
-    [HttpGet("{id:guid}/reajustes")]
-    public async Task<IActionResult> ListarReajustes(Guid id, CancellationToken cancellationToken)
+    /// <summary>Histórico de valores do Contrato: valor inicial, reajustes e alterações de escopo, do mais recente pro mais antigo.</summary>
+    [HttpGet("{id:guid}/historico-valores")]
+    public async Task<IActionResult> ListarHistoricoValores(Guid id, CancellationToken cancellationToken)
     {
-        var reajustes = await _listarReajustes.ExecutarAsync(id, cancellationToken);
-        return Ok(reajustes);
+        var eventos = await _listarHistoricoValores.ExecutarAsync(id, cancellationToken);
+        return Ok(eventos);
     }
 
     /// <summary>multipart/form-data: campo "arquivo" (.pdf/.doc/.docx) — mesmo padrão do upload de certificado (EmpresasController).</summary>

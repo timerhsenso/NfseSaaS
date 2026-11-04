@@ -1,6 +1,9 @@
 @{
     ViewData["Title"] = "Contratos";
-    var podeEditar = User.IsInRole("Administrador");
+    // Permissão do Grupo (IAEC), a mesma que a API confere. Antes era o papel
+    // antigo do Identity ("Administrador"), que contas criadas pelo cadastro
+    // e grupos personalizados não têm — a tela escondia os botões.
+    var podeEditar = User.PodeAlterar(NfseSaaS.Application.Authorization.TelaCatalogo.Contratos);
 }
 
 <div class="card">
@@ -107,6 +110,27 @@
                                     <i class="bi bi-plus-lg"></i> Adicionar serviço
                                 </button>
                                 <div class="form-text" id="nota-servicos-nao-editaveis"></div>
+                                @* Só na edição: quando as linhas mudam, a mudança vira um evento do Histórico de valores. *@
+                                <div id="bloco-mudanca-servicos" class="border rounded p-2 mt-2 d-none">
+                                    <div class="small fw-semibold mb-2">Se você alterou os serviços acima, informe:</div>
+                                    <div class="row g-2">
+                                        <div class="col-md-4">
+                                            <label class="form-label small mb-1" for="mudanca-tipo">Tipo da mudança</label>
+                                            <select class="form-select form-select-sm" id="mudanca-tipo">
+                                                <option value="3">Alteração de escopo (aditivo)</option>
+                                                <option value="2">Reajuste</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small mb-1" for="mudanca-vigencia">Vale a partir de</label>
+                                            <input type="date" class="form-control form-control-sm" id="mudanca-vigencia" />
+                                        </div>
+                                        <div class="col-md-5">
+                                            <label class="form-label small mb-1" for="mudanca-motivo">Motivo</label>
+                                            <input type="text" class="form-control form-control-sm" id="mudanca-motivo" maxlength="500" placeholder="Ex.: inclusão do módulo X" />
+                                        </div>
+                                    </div>
+                                </div>
                                 <div class="text-end mt-1"><strong>Total: <span id="valorAtualCalculado">R$ 0,00</span></strong></div>
                             </div>
                         </div>
@@ -206,7 +230,7 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="titulo-modal-historico">Histórico de reajustes</h5>
+                    <h5 class="modal-title" id="titulo-modal-historico">Histórico de valores</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -253,16 +277,18 @@
                         </div>
                     </form>
 
-                    <h6 class="text-muted">Histórico</h6>
+                    <h6 class="text-muted">Histórico de valores</h6>
+                    <div class="form-text mb-2">Valor inicial, reajustes e alterações de escopo do contrato, do mais recente para o mais antigo. Abaixo de cada evento, os serviços cobrados a partir dele.</div>
                     <table class="table table-sm table-striped" id="tabela-historico-reajuste">
                         <thead>
                             <tr>
-                                <th>Data</th>
-                                <th>Valor anterior</th>
-                                <th>Valor novo</th>
-                                <th>% aplicado</th>
+                                <th>Vigência</th>
+                                <th>Tipo</th>
+                                <th class="text-end">Valor anterior</th>
+                                <th class="text-end">Valor novo</th>
+                                <th class="text-end">%</th>
                                 <th>Índice</th>
-                                <th>Observação</th>
+                                <th>Motivo</th>
                             </tr>
                         </thead>
                         <tbody></tbody>

@@ -1,6 +1,9 @@
 @{
     ViewData["Title"] = "Clientes";
-    var podeEditar = User.IsInRole("Administrador");
+    // Permissão do Grupo (IAEC), a mesma que a API confere. Antes era o papel
+    // antigo do Identity ("Administrador"), que contas criadas pelo cadastro
+    // e grupos personalizados não têm — a tela escondia os botões.
+    var podeEditar = User.PodeAlterar(NfseSaaS.Application.Authorization.TelaCatalogo.Clientes);
 }
 
 <div class="card">

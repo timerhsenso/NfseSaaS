@@ -1,6 +1,9 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.HistoricoContrato;
+using NfseSaaS.Domain.Entities;
+using NfseSaaS.Domain.Enums;
 using NfseSaaS.Infrastructure.Persistence;
 
 namespace NfseSaaS.Infrastructure.UseCases;
@@ -20,10 +23,20 @@ public sealed class ObterHistoricoContratoUseCase : IObterHistoricoContratoUseCa
         ["AtualizarContrato"] = "Contrato atualizado",
         ["DesativarContrato"] = "Contrato desativado",
         ["ReativarContrato"] = "Contrato reativado",
-        ["RegistrarReajusteContrato"] = "Reajuste registrado",
         ["AnexarDocumentoContrato"] = "Documento anexado",
         ["ExcluirDocumentoContrato"] = "Documento excluído"
     };
+
+    // Operações cujo conteúdo já aparece pelo Histórico de valores
+    // (MovimentacaoValorContrato) — o AuditLog delas continua gravado, mas
+    // não entra na timeline pra não mostrar o mesmo fato duas vezes.
+    private static readonly HashSet<string> OperacoesCobertasPeloHistoricoDeValores = new()
+    {
+        "RegistrarReajusteContrato",
+        "AlterarServicosContrato"
+    };
+
+    private static readonly CultureInfo PtBr = CultureInfo.GetCultureInfo("pt-BR");
 
     private readonly AppDbContext _db;
 
@@ -44,17 +57,39 @@ public sealed class ObterHistoricoContratoUseCase : IObterHistoricoContratoUseCa
             .ToListAsync(cancellationToken);
 
         var logs = logsBrutos
+            .Where(a => !OperacoesCobertasPeloHistoricoDeValores.Contains(a.Operacao))
             .Select(a => new HistoricoContratoItemResponse(a.DataHora, "AuditLog", RotulosOperacao.GetValueOrDefault(a.Operacao, a.Operacao)))
             .ToList();
 
-        var reajustes = await _db.ReajustesContrato.AsNoTracking()
-            .Where(r => r.ContratoId == contratoId)
-            .Select(r => new HistoricoContratoItemResponse(
-                r.CreatedAt,
-                "Reajuste",
-                $"Reajuste: R$ {r.ValorAnterior:N2} → R$ {r.ValorNovo:N2}" + (r.PercentualAplicado != null ? $" ({r.PercentualAplicado:N2}%)" : string.Empty)))
+        var eventosValor = await _db.MovimentacoesValorContrato.AsNoTracking()
+            .Where(m => m.ContratoId == contratoId)
             .ToListAsync(cancellationToken);
 
-        return logs.Concat(reajustes).OrderByDescending(i => i.Data).ToList();
+        var valores = eventosValor
+            .Select(m => new HistoricoContratoItemResponse(m.CreatedAt, "Reajuste", Descrever(m)))
+            .ToList();
+
+        return logs.Concat(valores).OrderByDescending(i => i.Data).ToList();
+    }
+
+    private static string Descrever(MovimentacaoValorContrato m)
+    {
+        string Reais(decimal? v) => v is null ? "-" : "R$ " + v.Value.ToString("N2", PtBr);
+        var faixa = $"{Reais(m.ValorAnterior)} → {Reais(m.ValorNovo)}";
+        var percentual = m.PercentualAplicado is { } p ? $" ({p.ToString("N2", PtBr)}%)" : string.Empty;
+        var situacao = m.Status switch
+        {
+            StatusMovimentacaoValor.Pendente => " — aguardando aprovação",
+            StatusMovimentacaoValor.Recusado => " — não aplicado",
+            _ => string.Empty
+        };
+        var vigencia = $" (vigência {m.DataVigencia.ToString("dd/MM/yyyy", PtBr)})";
+
+        return m.Tipo switch
+        {
+            TipoMovimentacaoValor.ValorInicial => $"Valor inicial: {Reais(m.ValorNovo)}{vigencia}",
+            TipoMovimentacaoValor.Alteracao => $"Alteração de escopo: {faixa}{vigencia}" + (m.Motivo is null ? string.Empty : $" — {m.Motivo}"),
+            _ => $"Reajuste: {faixa}{percentual}{vigencia}{situacao}"
+        };
     }
 }

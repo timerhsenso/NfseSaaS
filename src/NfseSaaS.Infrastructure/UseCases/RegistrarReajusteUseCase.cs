@@ -3,6 +3,8 @@ using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.ReajustesContrato;
 using NfseSaaS.Domain.Entities;
+using NfseSaaS.Domain.Enums;
+using NfseSaaS.Infrastructure.Contratos;
 using NfseSaaS.Infrastructure.Persistence;
 
 namespace NfseSaaS.Infrastructure.UseCases;
@@ -39,17 +41,6 @@ public sealed class RegistrarReajusteUseCase : IRegistrarReajusteUseCase
             ? (decimal?)null
             : Math.Round((request.ValorNovo - valorAnterior) / valorAnterior * 100, 4);
 
-        var reajuste = new ReajusteContrato
-        {
-            ContratoId = contratoId,
-            DataReajuste = request.DataReajuste,
-            ValorAnterior = valorAnterior,
-            ValorNovo = request.ValorNovo,
-            PercentualAplicado = percentualAplicado,
-            IndiceUsado = request.IndiceUsado,
-            Observacao = request.Observacao
-        };
-
         contrato.ValorAtual = request.ValorNovo;
         contrato.DataUltimoReajuste = request.DataReajuste;
 
@@ -59,15 +50,31 @@ public sealed class RegistrarReajusteUseCase : IRegistrarReajusteUseCase
         // linha pelo mesmo fator pra manter soma(linhas) == ValorAtual.
         // Limitação conhecida: arredondamento por linha pode deixar a
         // soma com centavos de diferença do total — aceitável pro MVP.
+        var linhas = await _db.ContratoServicos.Where(cs => cs.ContratoId == contratoId).ToListAsync(cancellationToken);
         if (valorAnterior != 0)
         {
             var fator = request.ValorNovo / valorAnterior;
-            var linhas = await _db.ContratoServicos.Where(cs => cs.ContratoId == contratoId).ToListAsync(cancellationToken);
             foreach (var linha in linhas)
-                linha.ValorUnitario = Math.Round(linha.ValorUnitario * fator, 2);
+                linha.ValorUnitario = Math.Round(linha.ValorUnitario * fator, 2, MidpointRounding.AwayFromZero);
         }
 
-        _db.ReajustesContrato.Add(reajuste);
+        // Evento do Histórico de valores, com a composição já reajustada.
+        var reajuste = new MovimentacaoValorContrato
+        {
+            ContratoId = contratoId,
+            Tipo = TipoMovimentacaoValor.Reajuste,
+            Status = StatusMovimentacaoValor.Aplicado,
+            DataVigencia = request.DataReajuste,
+            ValorAnterior = valorAnterior,
+            ValorNovo = request.ValorNovo,
+            PercentualAplicado = percentualAplicado,
+            Indice = request.IndiceUsado,
+            Motivo = request.Observacao,
+            ComposicaoJson = await ComposicaoContrato.SerializarAsync(
+                _db, linhas.Select(l => (l.ServicoId, l.Quantidade, l.ValorUnitario)), cancellationToken)
+        };
+
+        _db.MovimentacoesValorContrato.Add(reajuste);
 
         _auditLogWriter.Registrar("RegistrarReajusteContrato", "Contrato", contrato.Id,
             new { valorAnterior, request.ValorNovo, percentualAplicado, request.IndiceUsado });

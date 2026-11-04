@@ -16,6 +16,7 @@ using NfseSaaS.Application.UseCases.Clientes;
 using NfseSaaS.Application.UseCases.Contratos;
 using NfseSaaS.Application.UseCases.DocumentosContrato;
 using NfseSaaS.Application.UseCases.HistoricoContrato;
+using NfseSaaS.Application.UseCases.HistoricoValoresContrato;
 using NfseSaaS.Application.UseCases.NotaMensal;
 using NfseSaaS.Infrastructure.Documents;
 using NfseSaaS.Application.UseCases.Empresas;
@@ -191,7 +192,7 @@ public static class DependencyInjection
         services.AddScoped<IExcluirContratoUseCase, ExcluirContratoUseCase>();
 
         services.AddScoped<IRegistrarReajusteUseCase, RegistrarReajusteUseCase>();
-        services.AddScoped<IListarReajustesUseCase, ListarReajustesUseCase>();
+        services.AddScoped<IListarHistoricoValoresContratoUseCase, ListarHistoricoValoresContratoUseCase>();
 
         services.AddScoped<IUploadDocumentoContratoUseCase, UploadDocumentoContratoUseCase>();
         services.AddScoped<IListarDocumentosContratoUseCase, ListarDocumentosContratoUseCase>();

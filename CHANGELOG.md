@@ -5,7 +5,33 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado
+- Histórico de valores do contrato: substitui o "Histórico de reajustes".
+  Cada mudança de valor é um evento com tipo (Valor inicial, Reajuste,
+  Alteração de escopo), data de vigência, valor anterior → novo, %, índice,
+  motivo e os serviços cobrados a partir dele. Contrato novo já nasce com o
+  evento de Valor inicial. A migration `HistoricoValoresContrato` converte
+  os reajustes existentes (sem perda) e cria o Valor inicial de cada contrato.
+- Editar os serviços de um contrato pede o tipo da mudança (reajuste ou
+  alteração de escopo), a vigência e o motivo, e registra no histórico.
+
+### Corrigido
+- Telas de Empresas, Clientes, Serviços, Contratos e Notas Fiscais decidiam
+  os botões de incluir/editar/emitir/cancelar pelo papel antigo do Identity
+  ("Administrador"/"Emissor"), que contas criadas pelo cadastro e grupos
+  personalizados não têm — esses usuários não viam os botões, embora a API
+  permitisse. Agora usam a permissão do Grupo, a mesma que a API confere.
+- Reajuste com data futura deixa de ser aceito (o valor novo passava a valer
+  na hora, antes da data informada).
+
 ### Alterado
+- Contratos: ao editar, a aba "Serviço" ficava vazia (o bloco era escondido).
+  Agora mostra as linhas e permite incluir, remover e alterar quantidade e
+  valor dos serviços de um Contrato existente. O valor do Contrato é
+  recalculado e a alteração aparece no Histórico ("Serviços alterados:
+  R$ X → R$ Y"). Notas já emitidas não mudam; reajuste por índice continua
+  em "Registrar reajuste". Linha com Serviço desativado continua aparecendo
+  (marcada "inativo").
 - Retenção de ISS passou da Empresa para o Cliente ("Este cliente retém o
   ISS na fonte") e pode ser ajustada em cada nota. Com ISS retido, a DPS
   passa a enviar a alíquota (`pAliq`), da nota ou da nova "Alíquota de ISS
