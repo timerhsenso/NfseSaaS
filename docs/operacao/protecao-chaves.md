@@ -33,7 +33,7 @@ que abre essas chaves. Um não serve sem o outro.
 4. Em **Plataforma › Logs**, na subida, deve aparecer "protegidas por
    certificado {thumbprint}" (o mesmo thumbprint que o script mostrou) e o
    aviso de chaves antigas sem criptografia.
-5. Na tela **Plataforma**, cartão **Proteção das chaves**: clique em
+5. Em **Plataforma › Contas** (fim da página), cartão **Proteção das chaves**: clique em
    **Proteger chaves antigas**. O sistema faz o seguinte:
    1. cria uma chave nova criptografada;
    2. regrava todos os certificados com ela;
@@ -48,6 +48,11 @@ Efeito esperado: na próxima vez que o sistema reiniciar (deploy), todos
 precisam entrar de novo, e links antigos de "esqueci a senha" deixam de
 valer. Os backups antigos, de antes da proteção, ainda têm a chave aberta e
 somem sozinhos pela retenção (até 4 semanas).
+
+## Estado em produção
+
+Ativada em 04/11/2026: chave antiga apagada, certificados regravados,
+Testar conexão e backup conferidos.
 
 ## Restauração (VPS nova)
 

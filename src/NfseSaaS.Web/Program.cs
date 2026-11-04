@@ -210,7 +210,7 @@ try
             var situacao = escopo.ServiceProvider.GetRequiredService<NfseSaaS.Infrastructure.Certificates.ProtecaoChavesService>().Consultar();
             if (situacao.ChavesSemCriptografia > 0)
                 app.Logger.LogWarning(
-                    "{Quantidade} chave(s) antiga(s) do Data Protection ainda sem criptografia em {CaminhoChaves}. Use Plataforma › Proteger chaves antigas.",
+                    "{Quantidade} chave(s) antiga(s) do Data Protection ainda sem criptografia em {CaminhoChaves}. Use Plataforma › Contas › Proteção das chaves.",
                     situacao.ChavesSemCriptografia, protecaoChaves.CaminhoChaves);
         }
         catch (Exception ex)

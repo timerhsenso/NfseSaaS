@@ -6,8 +6,8 @@ versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH)
 
 ## [Não lançado]
 ### Segurança (chaves do Data Protection)
-- Plataforma › **Proteção das chaves**: mostra se as chaves que abrem os
-  certificados A1 estão criptografadas e oferece **Proteger chaves
+- Plataforma › Contas, cartão **Proteção das chaves**: mostra se as chaves que
+  abrem os certificados A1 estão criptografadas e oferece **Proteger chaves
   antigas**. A ação cria uma chave nova criptografada, regrava todos os
   certificados com ela, confere e só então apaga as chaves antigas em texto
   aberto. Se algo falhar, nada é apagado. A subida do sistema avisa no log
