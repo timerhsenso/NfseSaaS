@@ -17,5 +17,6 @@ public sealed record ClienteResponse(
     string Uf,
     bool Ativo,
     bool RetemIss,
+    bool EnviarNfsePorEmail,
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt);

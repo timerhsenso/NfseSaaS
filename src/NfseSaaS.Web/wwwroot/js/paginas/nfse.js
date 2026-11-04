@@ -84,7 +84,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     const botaoReenviar = podeEmitirNfse && n.podeReenviar
                         ? `<button type="button" class="btn btn-sm btn-outline-warning btn-reenviar-nfse" data-id="${n.id}" title="Reenviar com os dados atuais do cadastro"><i class="bi bi-arrow-repeat"></i> Reenviar</button>`
                         : '';
-                    return `<button type="button" class="btn btn-sm btn-outline-secondary btn-ver-detalhe" data-id="${n.id}"><i class="bi bi-eye"></i> Detalhes</button> ${botaoPdf} ${botaoReenviar}`;
+                    // Manda (de novo) o PDF e o XML pro e-mail do tomador.
+                    const botaoEmail = podeEmitirNfse && n.status === STATUS_AUTORIZADA
+                        ? `<button type="button" class="btn btn-sm btn-outline-secondary btn-enviar-email-nfse" data-id="${n.id}" title="Enviar PDF e XML por e-mail ao cliente"><i class="bi bi-envelope"></i></button>`
+                        : '';
+                    return `<button type="button" class="btn btn-sm btn-outline-secondary btn-ver-detalhe" data-id="${n.id}"><i class="bi bi-eye"></i> Detalhes</button> ${botaoPdf} ${botaoEmail} ${botaoReenviar}`;
                 }
             }
         ],
@@ -105,6 +109,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const botaoReenviar = e.target.closest('.btn-reenviar-nfse');
         if (botaoReenviar) await executarComBotaoDesabilitado(botaoReenviar, () => abrirModalReenvioNfse(botaoReenviar.dataset.id));
+
+        const botaoEmail = e.target.closest('.btn-enviar-email-nfse');
+        if (botaoEmail) await executarComBotaoDesabilitado(botaoEmail, () => enviarNfsePorEmail(botaoEmail.dataset.id));
     });
 
     document.getElementById('tabela-nfse').addEventListener('change', function (e) {
@@ -931,5 +938,21 @@ async function baixarDanfsePdfLote() {
     } finally {
         botao.disabled = nfseSelecionadas.size === 0;
         botao.innerHTML = iconeOriginal;
+    }
+}
+
+/**
+ * Botão "envelope" da grid: entra na fila de e-mails (PDF e XML anexos,
+ * gerados na hora do envio). O resultado final aparece na tela de E-mails.
+ */
+async function enviarNfsePorEmail(id) {
+    const confirmado = await confirmarAcao('Enviar o PDF e o XML desta nota para o e-mail do cliente?', { titulo: 'Enviar nota por e-mail', textoBotao: 'Enviar' });
+    if (!confirmado) return;
+
+    try {
+        const resultado = await apiFetch(`/api/nfse/${id}/enviar-email`, { method: 'POST' });
+        mostrarToast(`Nota enviada para ${resultado.destinatario}. Acompanhe a entrega na tela de E-mails.`);
+    } catch (err) {
+        mostrarErro(err.message);
     }
 }

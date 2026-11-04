@@ -63,7 +63,7 @@ public sealed class EmailDispatchHostedService : BackgroundService
 
         log.Tentativas++;
 
-        var resultado = await emailSender.EnviarAsync(item.Destinatario, item.Assunto, item.CorpoHtml, cancellationToken);
+        var resultado = await EnviarAsync(scope.ServiceProvider, emailSender, log.TenantId, log.NfseId, item, cancellationToken);
 
         if (resultado.Sucesso)
         {
@@ -86,5 +86,32 @@ public sealed class EmailDispatchHostedService : BackgroundService
         {
             db.TenantIdOverrideDeSistema = null;
         }
+    }
+
+    /// <summary>
+    /// E-mail com nota anexada (EmailLog.NfseId): os anexos são gerados
+    /// agora, no Tenant da nota (inclusive no "Reenviar" da tela de
+    /// E-mails). Falha ao montar os anexos vira falha do envio, registrada
+    /// no próprio EmailLog — nunca um e-mail de nota sem a nota.
+    /// </summary>
+    private async Task<ResultadoEnvioEmail> EnviarAsync(
+        IServiceProvider servicos, IEmailSender emailSender, Guid tenantId, Guid? nfseId, ItemFilaEmail item, CancellationToken cancellationToken)
+    {
+        if (nfseId is not { } idNota)
+            return await emailSender.EnviarAsync(item.Destinatario, item.Assunto, item.CorpoHtml, cancellationToken);
+
+        IReadOnlyCollection<AnexoEmail> anexos;
+        try
+        {
+            servicos.GetRequiredService<ICurrentTenant>().DefinirTenantIdDeSistema(tenantId);
+            anexos = await servicos.GetRequiredService<AnexosNfseEmail>().MontarAsync(idNota, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Não foi possível montar os anexos da nota {NfseId} para o e-mail {EmailLogId}.", idNota, item.EmailLogId);
+            return new ResultadoEnvioEmail(false, $"Não foi possível anexar a nota: {ex.Message}");
+        }
+
+        return await emailSender.EnviarAsync(item.Destinatario, item.Assunto, item.CorpoHtml, anexos, cancellationToken);
     }
 }

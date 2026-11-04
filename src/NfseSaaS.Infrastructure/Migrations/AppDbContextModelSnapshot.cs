@@ -305,6 +305,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<bool>("NaoEnviarNfsePorEmail")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -653,6 +656,10 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("ChaveDeduplicacao")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
                     b.Property<string>("CorpoHtml")
                         .IsRequired()
                         .HasColumnType("text");
@@ -671,6 +678,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<string>("ErroDetalhe")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid?>("NfseId")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -693,6 +703,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "ChaveDeduplicacao")
+                        .HasFilter("\"ChaveDeduplicacao\" IS NOT NULL");
 
                     b.HasIndex("TenantId", "Status", "CreatedAt");
 

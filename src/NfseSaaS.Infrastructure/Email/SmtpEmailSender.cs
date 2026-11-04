@@ -29,7 +29,10 @@ public sealed class SmtpEmailSender : IEmailSender
         _logger = logger;
     }
 
-    public async Task<ResultadoEnvioEmail> EnviarAsync(string destinatarioEmail, string assunto, string corpoHtml, CancellationToken cancellationToken)
+    public Task<ResultadoEnvioEmail> EnviarAsync(string destinatarioEmail, string assunto, string corpoHtml, CancellationToken cancellationToken) =>
+        EnviarAsync(destinatarioEmail, assunto, corpoHtml, Array.Empty<AnexoEmail>(), cancellationToken);
+
+    public async Task<ResultadoEnvioEmail> EnviarAsync(string destinatarioEmail, string assunto, string corpoHtml, IReadOnlyCollection<AnexoEmail> anexos, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(_options.SmtpHost))
         {
@@ -37,11 +40,20 @@ public sealed class SmtpEmailSender : IEmailSender
             return new ResultadoEnvioEmail(false, "Email:SmtpHost não configurado no servidor.");
         }
 
+        // Endereço digitado no cadastro do tomador pode ser inválido — vira
+        // falha registrada no EmailLog, não exceção solta no envio.
+        if (!MailboxAddress.TryParse(destinatarioEmail, out var destinatario))
+            return new ResultadoEnvioEmail(false, $"Endereço de e-mail inválido: '{destinatarioEmail}'.");
+
         var mensagem = new MimeMessage();
         mensagem.From.Add(new MailboxAddress(_options.RemetenteNome, _options.RemetenteEmail));
-        mensagem.To.Add(MailboxAddress.Parse(destinatarioEmail));
+        mensagem.To.Add(destinatario);
         mensagem.Subject = assunto;
-        mensagem.Body = new TextPart("html") { Text = corpoHtml };
+
+        var corpo = new BodyBuilder { HtmlBody = corpoHtml };
+        foreach (var anexo in anexos)
+            corpo.Attachments.Add(anexo.NomeArquivo, anexo.Conteudo, ContentType.Parse(anexo.ContentType));
+        mensagem.Body = corpo.ToMessageBody();
 
         try
         {

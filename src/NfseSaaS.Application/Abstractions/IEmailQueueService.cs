@@ -1,6 +1,20 @@
 namespace NfseSaaS.Application.Abstractions;
 
 /// <summary>
+/// E-mail a enfileirar, com os campos opcionais que nem todo tipo usa.
+/// </summary>
+/// <param name="NfseId">Nota cujo PDF e XML vão anexados — gerados na hora do envio (ver EmailLog.NfseId).</param>
+/// <param name="ChaveDeduplicacao">Aviso que só pode sair uma vez — ver EmailLog.ChaveDeduplicacao.</param>
+public sealed record EmailParaEnfileirar(
+    string Tipo,
+    Guid? UsuarioId,
+    string Destinatario,
+    string Assunto,
+    string CorpoHtml,
+    Guid? NfseId = null,
+    string? ChaveDeduplicacao = null);
+
+/// <summary>
 /// Ponto único que os controllers usam pra "enviar" um e-mail — na
 /// prática só registra o EmailLog (Status=Pendente) e enfileira; o envio
 /// de verdade acontece em segundo plano (ver EmailDispatchHostedService
@@ -10,4 +24,10 @@ public interface IEmailQueueService
 {
     /// <returns>Id do EmailLog criado — útil pra quem chamou linkar direto na tela de E-mails, se quiser.</returns>
     Task<Guid> EnfileirarAsync(string tipo, Guid? usuarioId, string destinatario, string assunto, string corpoHtml, CancellationToken cancellationToken);
+
+    /// <inheritdoc cref="EnfileirarAsync(string, Guid?, string, string, string, CancellationToken)"/>
+    Task<Guid> EnfileirarAsync(EmailParaEnfileirar email, CancellationToken cancellationToken);
+
+    /// <summary>True se já existe e-mail registrado com esta chave (ver EmailLog.ChaveDeduplicacao), no tenant atual.</summary>
+    Task<bool> JaEnfileiradoAsync(string chaveDeduplicacao, CancellationToken cancellationToken);
 }

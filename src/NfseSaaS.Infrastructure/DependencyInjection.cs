@@ -89,6 +89,9 @@ public static class DependencyInjection
         services.AddScoped<IEmailSender, SmtpEmailSender>();
         services.AddSingleton<IBackgroundEmailQueue, BackgroundEmailQueue>();
         services.AddScoped<IEmailQueueService, EmailQueueService>();
+        // Anexos (PDF e XML) do e-mail da nota ao tomador, montados na hora do envio.
+        services.AddScoped<AnexosNfseEmail>();
+        services.AddScoped<IEnviarNfsePorEmailUseCase, EnviarNfsePorEmailUseCase>();
         services.AddHostedService<EmailDispatchHostedService>();
 
         services
@@ -201,6 +204,9 @@ public static class DependencyInjection
         services.AddScoped<IGerarReajustesAniversarioUseCase, GerarReajustesAniversarioUseCase>();
         services.AddScoped<IDecidirReajusteUseCase, DecidirReajusteUseCase>();
         services.AddScoped<IGerarReajustesAniversarioJob, GerarReajustesAniversarioJob>();
+        // Aviso diário de certificado digital vencendo (30/15/7 dias e vencido).
+        services.AddScoped<IAvisarCertificadosVencendoJob, AvisarCertificadosVencendoJob>();
+        services.AddScoped<IAvisarCertificadoVencendoUseCase, AvisarCertificadoVencendoUseCase>();
 
         services.AddScoped<IUploadDocumentoContratoUseCase, UploadDocumentoContratoUseCase>();
         services.AddScoped<IListarDocumentosContratoUseCase, ListarDocumentosContratoUseCase>();

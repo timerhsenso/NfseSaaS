@@ -58,4 +58,14 @@ public sealed class Cliente : BaseEntity, ITenantEntity
     /// retenção é o tomador, por isso fica no Cliente e não na Empresa.
     /// </summary>
     public bool RetemIss { get; set; }
+
+    /// <summary>
+    /// true = NÃO mandar a nota autorizada (PDF e XML) por e-mail a este
+    /// tomador. O padrão é mandar sempre que houver e-mail cadastrado.
+    /// Gravado "pelo avesso" de propósito: com false como padrão, os
+    /// clientes que já existem passam a receber sem precisar de valor
+    /// padrão no banco (o EF ignora HasDefaultValue(true) quando o valor
+    /// em memória é false — o mesmo aviso de "sentinel" de outros campos).
+    /// </summary>
+    public bool NaoEnviarNfsePorEmail { get; set; }
 }

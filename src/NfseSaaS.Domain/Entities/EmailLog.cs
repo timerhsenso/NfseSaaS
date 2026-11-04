@@ -39,4 +39,20 @@ public sealed class EmailLog : BaseEntity, ITenantEntity
     public int Tentativas { get; set; }
 
     public DateTimeOffset? EnviadoEm { get; set; }
+
+    /// <summary>
+    /// Nota fiscal anexada (e-mail da nota ao tomador). Os anexos — PDF
+    /// (DANFSe) e XML — NÃO ficam guardados aqui: são gerados de novo da
+    /// própria Nfse a cada tentativa de envio (inclusive no "Reenviar"),
+    /// então o log não engorda com arquivos. Guid solto, sem FK (mesmo
+    /// padrão de UsuarioId).
+    /// </summary>
+    public Guid? NfseId { get; set; }
+
+    /// <summary>
+    /// Identifica um aviso que só pode sair UMA vez (ex.: "certificado da
+    /// empresa X, validade Y, faltando 15 dias"). Quem enfileira confere se
+    /// já existe um EmailLog com a mesma chave antes de mandar de novo.
+    /// </summary>
+    public string? ChaveDeduplicacao { get; set; }
 }

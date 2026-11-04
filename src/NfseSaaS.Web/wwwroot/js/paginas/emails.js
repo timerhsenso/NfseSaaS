@@ -75,6 +75,8 @@ function rotuloTipo(tipo) {
         case 'ResetSenha': return 'Reset de senha (Admin)';
         case 'EsqueciSenha': return 'Esqueci minha senha';
         case 'AvisoTrocaSenha': return 'Aviso de troca de senha';
+        case 'NfseTomador': return 'Nota ao cliente';
+        case 'CertificadoVencendo': return 'Certificado vencendo';
         default: return tipo;
     }
 }

@@ -13,4 +13,5 @@ public sealed record AtualizarClienteRequest(
     string? Complemento,
     string Bairro,
     string Uf,
-    bool RetemIss = false);
+    bool RetemIss = false,
+    bool EnviarNfsePorEmail = true);

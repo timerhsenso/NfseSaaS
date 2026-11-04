@@ -5,6 +5,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (e-mails)
+- Nota autorizada vai sozinha para o e-mail do tomador, com o PDF (DANFSe)
+  e o XML anexos — vale para emissão pela tela, nota mensal em lote e
+  automação. Nova opção no cadastro do cliente, "Enviar a nota por e-mail"
+  (ligada por padrão, inclusive nos clientes que já existem). Botão
+  "envelope" na lista de notas para mandar (de novo) a qualquer momento.
+  Os anexos são gerados na hora do envio, a partir da própria nota (o
+  "Reenviar" da tela de E-mails também reanexa); sem PDF disponível, vai só
+  o XML. Nota de homologação sai com "[TESTE]" no assunto.
+- Aviso de certificado digital vencendo: job diário (08:20 de Brasília)
+  manda e-mail aos administradores da conta e ao e-mail da empresa quando
+  faltam 30, 15 e 7 dias e quando vence — cada aviso uma vez só por
+  certificado; renovou, os avisos param.
+- Tela de E-mails: tipos "Nota ao cliente" e "Certificado vencendo".
+- Migration `NotaPorEmailEAvisoCertificado` (`clientes.NaoEnviarNfsePorEmail`,
+  `email_logs.NfseId` e `email_logs.ChaveDeduplicacao`).
+
+### Corrigido (e-mails)
+- E-mail de destinatário inválido virava exceção solta no envio e o
+  registro ficava "Pendente" para sempre; agora fica "Falhou" com o motivo.
+
 ### Adicionado (LGPD)
 - Termos de uso e Política de privacidade (modelo para revisão jurídica),
   públicos em `/termos` e `/privacidade`, com links no login, no cadastro,

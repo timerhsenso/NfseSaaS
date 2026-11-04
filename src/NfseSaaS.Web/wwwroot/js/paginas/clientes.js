@@ -125,6 +125,7 @@ async function abrirModalEditarCliente(id) {
         document.getElementById('bairro').value = cliente.bairro;
         document.getElementById('uf').value = cliente.uf;
         document.getElementById('retemIss').checked = cliente.retemIss === true;
+        document.getElementById('enviarNfsePorEmail').checked = cliente.enviarNfsePorEmail !== false;
 
         const nomeExibicao = cliente.apelido || cliente.nome;
         document.getElementById('titulo-modal-cliente').textContent = nomeExibicao;
@@ -158,7 +159,8 @@ function montarPayloadCliente() {
         complemento: document.getElementById('complemento').value || null,
         bairro: document.getElementById('bairro').value,
         uf: document.getElementById('uf').value.toUpperCase(),
-        retemIss: document.getElementById('retemIss').checked
+        retemIss: document.getElementById('retemIss').checked,
+        enviarNfsePorEmail: document.getElementById('enviarNfsePorEmail').checked
     };
 }
 

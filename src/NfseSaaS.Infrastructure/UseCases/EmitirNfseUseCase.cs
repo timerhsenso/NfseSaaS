@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.Nfse;
@@ -42,17 +43,23 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
     private readonly INfseNacionalService _nfseNacionalService;
     private readonly IAuditLogWriter _auditLogWriter;
     private readonly INfseEventoWriter _nfseEventoWriter;
+    private readonly IEnviarNfsePorEmailUseCase _enviarNfsePorEmail;
+    private readonly ILogger<EmitirNfseUseCase> _logger;
 
     public EmitirNfseUseCase(
         AppDbContext db,
         INfseNacionalService nfseNacionalService,
         IAuditLogWriter auditLogWriter,
-        INfseEventoWriter nfseEventoWriter)
+        INfseEventoWriter nfseEventoWriter,
+        IEnviarNfsePorEmailUseCase enviarNfsePorEmail,
+        ILogger<EmitirNfseUseCase> logger)
     {
         _db = db;
         _nfseNacionalService = nfseNacionalService;
         _auditLogWriter = auditLogWriter;
         _nfseEventoWriter = nfseEventoWriter;
+        _enviarNfsePorEmail = enviarNfsePorEmail;
+        _logger = logger;
     }
 
     public async Task<EmitirNfseResult> ExecutarAsync(EmitirNfseRequest request, CancellationToken cancellationToken)
@@ -321,6 +328,9 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
 
             await _db.SaveChangesAsync(cancellationToken);
 
+            if (resposta.Sucesso)
+                await EnviarAoTomadorAsync(nfse.Id, cancellationToken);
+
             return new EmitirNfseResult(nfse.Id, resposta.Sucesso, nfse.NumeroNfse, nfse.ChaveAcesso, nfse.CodigoErro, nfse.MensagemErro);
         }
         catch (Exception ex)
@@ -445,5 +455,25 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
             """).ToListAsync(cancellationToken);
 
         return resultados.Single();
+    }
+
+    /// <summary>
+    /// Nota autorizada já está gravada: o e-mail ao tomador (PDF e XML) é
+    /// consequência, não parte da emissão. Qualquer falha aqui só vai pro
+    /// log — a nota continua autorizada e o envio pode ser refeito pelo
+    /// botão "Enviar por e-mail" da tela de Notas.
+    /// </summary>
+    private async Task EnviarAoTomadorAsync(Guid nfseId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var envio = await _enviarNfsePorEmail.ExecutarAsync(nfseId, automatico: true, cancellationToken);
+            if (!envio.Enfileirado)
+                _logger.LogInformation("Nota {NfseId} autorizada sem e-mail ao tomador: {Motivo}", nfseId, envio.Motivo);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Nota {NfseId} autorizada, mas o e-mail ao tomador não pôde ser enfileirado.", nfseId);
+        }
     }
 }

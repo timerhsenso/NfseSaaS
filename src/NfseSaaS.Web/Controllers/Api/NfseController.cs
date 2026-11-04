@@ -20,6 +20,7 @@ public sealed class NfseController : ControllerBase
     private readonly IObterSnapshotFiscalDaNfseUseCase _obterSnapshotFiscalDaNfse;
     private readonly IObterDanfsePdfUseCase _obterDanfsePdf;
     private readonly IGerarDanfsePdfLoteUseCase _gerarDanfsePdfLote;
+    private readonly IEnviarNfsePorEmailUseCase _enviarNfsePorEmail;
 
     public NfseController(
         IEmitirNfseUseCase emitirNfse,
@@ -29,7 +30,8 @@ public sealed class NfseController : ControllerBase
         IListarEventosDaNfseUseCase listarEventosDaNfse,
         IObterSnapshotFiscalDaNfseUseCase obterSnapshotFiscalDaNfse,
         IObterDanfsePdfUseCase obterDanfsePdf,
-        IGerarDanfsePdfLoteUseCase gerarDanfsePdfLote)
+        IGerarDanfsePdfLoteUseCase gerarDanfsePdfLote,
+        IEnviarNfsePorEmailUseCase enviarNfsePorEmail)
     {
         _emitirNfse = emitirNfse;
         _listarNfse = listarNfse;
@@ -39,6 +41,7 @@ public sealed class NfseController : ControllerBase
         _obterSnapshotFiscalDaNfse = obterSnapshotFiscalDaNfse;
         _obterDanfsePdf = obterDanfsePdf;
         _gerarDanfsePdfLote = gerarDanfsePdfLote;
+        _enviarNfsePorEmail = enviarNfsePorEmail;
     }
 
     [RequerPermissao(TelaCatalogo.Nfse, AcaoPermissao.Incluir)]
@@ -99,6 +102,19 @@ public sealed class NfseController : ControllerBase
     {
         var danfse = await _obterDanfsePdf.ExecutarAsync(id, cancellationToken);
         return File(danfse.Bytes, danfse.ContentType, danfse.NomeArquivo);
+    }
+
+    /// <summary>
+    /// Manda (de novo) a nota autorizada, com PDF e XML, para o e-mail do
+    /// tomador — mesmo com o envio automático desligado no cliente. Entra
+    /// na fila; o resultado aparece na tela de E-mails.
+    /// </summary>
+    [RequerPermissao(TelaCatalogo.Nfse, AcaoPermissao.Incluir)]
+    [HttpPost("{id:guid}/enviar-email")]
+    public async Task<IActionResult> EnviarPorEmail(Guid id, CancellationToken cancellationToken)
+    {
+        var resultado = await _enviarNfsePorEmail.ExecutarAsync(id, automatico: false, cancellationToken);
+        return Ok(resultado);
     }
 
     /// <summary>Ids que não tinham DANFSe disponível voltam no header X-Nfse-Ids-Ignorados (CSV) — não aborta o lote inteiro por causa de 1 nota sem PDF.</summary>
