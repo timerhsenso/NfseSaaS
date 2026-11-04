@@ -5,6 +5,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Segurança (chaves do Data Protection)
+- Plataforma › **Proteção das chaves**: mostra se as chaves que abrem os
+  certificados A1 estão criptografadas e oferece **Proteger chaves
+  antigas**. A ação cria uma chave nova criptografada, regrava todos os
+  certificados com ela, confere e só então apaga as chaves antigas em texto
+  aberto. Se algo falhar, nada é apagado. A subida do sistema avisa no log
+  enquanto houver chave antiga sem criptografia.
+- `deploy/protecao-chaves/configurar.sh`: gera na VPS o certificado de
+  proteção (`/opt/nfsesaas/segredos`, fora do git e do backup) e o
+  `docker-compose.segredos.yml`. A opção `--restaurar` recria os dois a
+  partir do gerenciador de senhas. Procedimento em
+  `docs/operacao/protecao-chaves.md`.
+
+### Operação
+- Deploy Production: usa o `docker-compose.segredos.yml` quando ele existe
+  (também no rollback) e passa a guardar só os 10 backups pré-deploy mais
+  recentes em `/opt/nfsesaas/backups/postgres`.
+
 ### Segurança (dependências)
 - `System.Security.Cryptography.Xml` 8.0.4 → 8.0.5: corrige GHSA-7hqp-7c5m-4vq6,
   GHSA-c399-9853-6jmj, GHSA-r955-8q5j-3h83 e GHSA-vrv5-2jg9-4mmr (aviso

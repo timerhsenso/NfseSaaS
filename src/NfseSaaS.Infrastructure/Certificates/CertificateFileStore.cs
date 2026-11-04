@@ -1,6 +1,7 @@
 ﻿using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
 using NfseSaaS.Nacional.Exceptions;
 
@@ -8,8 +9,9 @@ namespace NfseSaaS.Infrastructure.Certificates;
 
 /// <summary>
 /// Lê e grava o certificado .pfx de cada Empresa em disco, criptografado
-/// em repouso via ASP.NET Core Data Protection (protegido com DPAPI do
-/// Windows — ver AddInfrastructure).
+/// em repouso via ASP.NET Core Data Protection (as chaves do Data
+/// Protection ficam protegidas por certificado ou DPAPI — ver
+/// AddCertificateStorage e ProtecaoChavesOptions).
 ///
 /// Cada Empresa tem um arquivo "{empresaId}.cert.json" contendo o .pfx e a
 /// senha, cada um protegido separadamente. O arquivo nunca fica no
@@ -18,6 +20,7 @@ namespace NfseSaaS.Infrastructure.Certificates;
 public sealed class CertificateFileStore
 {
     private const string ProtectorPurpose = "NfseSaaS.Certificados.v1";
+    private const string SufixoArquivo = ".cert.json";
 
     private readonly IDataProtector _protector;
     private readonly CertificateStorageOptions _options;
@@ -125,7 +128,98 @@ public sealed class CertificateFileStore
         return certificado;
     }
 
-    private string CaminhoArquivo(Guid empresaId) => Path.Combine(_options.BasePath, $"{empresaId:N}.cert.json");
+    /// <summary>Empresas que têm certificado guardado (arquivos "{empresaId}.cert.json" da pasta).</summary>
+    public IReadOnlyList<Guid> ListarEmpresasComCertificado()
+    {
+        if (string.IsNullOrWhiteSpace(_options.BasePath) || !Directory.Exists(_options.BasePath))
+            return Array.Empty<Guid>();
+
+        return Directory.EnumerateFiles(_options.BasePath, "*" + SufixoArquivo)
+            .Select(caminho => Path.GetFileName(caminho)[..^SufixoArquivo.Length])
+            .Select(nome => Guid.TryParseExact(nome, "N", out var id) ? id : Guid.Empty)
+            .Where(id => id != Guid.Empty)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Ids das chaves do Data Protection que protegem o arquivo da Empresa
+    /// (o .pfx e a senha) — lidos do cabeçalho de cada conteúdo protegido,
+    /// sem descriptografar. Usado para conferir, antes de apagar uma chave
+    /// antiga, que nenhum certificado ainda depende dela.
+    /// </summary>
+    public async Task<IReadOnlySet<Guid>> ChavesUsadasAsync(Guid empresaId, CancellationToken cancellationToken)
+    {
+        var envelope = await LerEnvelopeAsync(empresaId, cancellationToken);
+        return new HashSet<Guid>
+        {
+            IdDaChave(Convert.FromBase64String(envelope.PfxProtegidoBase64)),
+            IdDaChave(WebEncoders.Base64UrlDecode(envelope.SenhaProtegida))
+        };
+    }
+
+    /// <summary>
+    /// Regrava o arquivo da Empresa protegido com a chave ATUAL do Data
+    /// Protection. Confere que o conteúdo novo abre igual ao antigo antes de
+    /// substituir o arquivo, e a troca é atômica (grava num .tmp e renomeia).
+    /// </summary>
+    public async Task ReprotegerAsync(Guid empresaId, CancellationToken cancellationToken)
+    {
+        var envelope = await LerEnvelopeAsync(empresaId, cancellationToken);
+
+        byte[] pfxBytes;
+        string senha;
+        try
+        {
+            pfxBytes = _protector.Unprotect(Convert.FromBase64String(envelope.PfxProtegidoBase64));
+            senha = _protector.Unprotect(envelope.SenhaProtegida);
+        }
+        catch (Exception ex)
+        {
+            throw new NfseCertificateException(
+                $"Não foi possível descriptografar o certificado da empresa {empresaId} para regravá-lo.", ex);
+        }
+
+        var novo = new CertificadoEnvelope(
+            PfxProtegidoBase64: Convert.ToBase64String(_protector.Protect(pfxBytes)),
+            SenhaProtegida: _protector.Protect(senha));
+
+        if (!_protector.Unprotect(Convert.FromBase64String(novo.PfxProtegidoBase64)).AsSpan().SequenceEqual(pfxBytes)
+            || _protector.Unprotect(novo.SenhaProtegida) != senha)
+        {
+            throw new NfseCertificateException($"Conferência falhou ao regravar o certificado da empresa {empresaId}; o arquivo original foi mantido.");
+        }
+
+        var caminho = CaminhoArquivo(empresaId);
+        var temporario = caminho + ".tmp";
+        await File.WriteAllTextAsync(temporario, JsonSerializer.Serialize(novo), cancellationToken);
+        File.Move(temporario, caminho, overwrite: true);
+    }
+
+    /// <summary>
+    /// Id da chave gravado no cabeçalho de um conteúdo protegido pelo Data
+    /// Protection: 4 bytes do "magic header" (09 F0 C9 F0) e depois os 16
+    /// bytes do Guid da chave.
+    /// </summary>
+    public static Guid IdDaChave(byte[] protegido)
+    {
+        if (protegido.Length < 20 || protegido[0] != 0x09 || protegido[1] != 0xF0 || protegido[2] != 0xC9 || protegido[3] != 0xF0)
+            throw new NfseCertificateException("Conteúdo protegido em formato desconhecido (cabeçalho do Data Protection ausente).");
+
+        return new Guid(protegido.AsSpan(4, 16));
+    }
+
+    private async Task<CertificadoEnvelope> LerEnvelopeAsync(Guid empresaId, CancellationToken cancellationToken)
+    {
+        var caminho = CaminhoArquivo(empresaId);
+        if (!File.Exists(caminho))
+            throw new NfseCertificateException($"Certificado da empresa {empresaId} não encontrado em '{caminho}'.");
+
+        var json = await File.ReadAllTextAsync(caminho, cancellationToken);
+        return JsonSerializer.Deserialize<CertificadoEnvelope>(json)
+            ?? throw new NfseCertificateException($"Arquivo de certificado da empresa {empresaId} está corrompido.");
+    }
+
+    private string CaminhoArquivo(Guid empresaId) => Path.Combine(_options.BasePath, $"{empresaId:N}{SufixoArquivo}");
 
     private sealed record CertificadoEnvelope(string PfxProtegidoBase64, string SenhaProtegida);
 }

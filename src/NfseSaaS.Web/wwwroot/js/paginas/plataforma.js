@@ -73,8 +73,52 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    document.getElementById('btn-reproteger-chaves').addEventListener('click', function () {
+        executarComBotaoDesabilitado(this, reprotegerChaves);
+    });
+
     carregarTenants();
+    carregarProtecaoChaves();
 });
+
+async function carregarProtecaoChaves() {
+    try {
+        const s = await apiFetch('/api/plataforma/protecao-chaves');
+        document.getElementById('chaves-pasta').textContent = s.pasta || '(pasta padrão do ASP.NET)';
+        document.getElementById('chaves-mecanismo').innerHTML = s.chavesCriptografadas
+            ? `<span class="badge text-bg-success">Criptografadas</span> <span class="text-muted">${escaparHtml(s.mecanismo)}</span>`
+            : '<span class="badge text-bg-danger">Sem criptografia</span>';
+        document.getElementById('chaves-total').innerHTML = s.chavesSemCriptografia > 0
+            ? `${s.chavesTotal} <span class="badge text-bg-warning">${s.chavesSemCriptografia} sem criptografia</span>`
+            : `${s.chavesTotal}`;
+        document.getElementById('chaves-certificados').textContent = s.certificados;
+
+        const orientacao = document.getElementById('chaves-orientacao');
+        orientacao.textContent = s.orientacao;
+        orientacao.className = 'alert mb-0 small ' + (s.chavesCriptografadas && s.chavesSemCriptografia === 0
+            ? 'alert-success'
+            : s.podeReproteger ? 'alert-warning' : 'alert-danger');
+
+        document.getElementById('btn-reproteger-chaves').classList.toggle('d-none', !s.podeReproteger);
+    } catch (err) {
+        mostrarErro(err.message);
+    }
+}
+
+async function reprotegerChaves() {
+    if (!await confirmarAcao(
+        'Os certificados de todas as empresas serão regravados com uma chave nova criptografada, e as chaves antigas sem criptografia serão apagadas. ' +
+        'Rode um backup manual antes. Na próxima reinicialização do sistema, todos precisarão entrar de novo.',
+        { titulo: 'Proteger chaves antigas', textoBotao: 'Proteger agora', variante: 'perigo' })) return;
+
+    try {
+        const r = await apiFetch('/api/plataforma/protecao-chaves/reproteger', { method: 'POST' });
+        mostrarToast(`Pronto: ${r.certificadosReprotegidos} certificado(s) regravado(s) e ${r.chavesRemovidas} chave(s) antiga(s) apagada(s).`);
+        await carregarProtecaoChaves();
+    } catch (err) {
+        mostrarErro(err.message);
+    }
+}
 
 async function carregarTenants() {
     try {

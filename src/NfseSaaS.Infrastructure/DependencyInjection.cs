@@ -360,6 +360,9 @@ public static class DependencyInjection
         services.AddSingleton(new ProtecaoChavesStatus(keysPath, mecanismo != "nenhum", mecanismo));
 
         services.AddScoped<CertificateFileStore>();
+        services.AddScoped<ProtecaoChavesService>();
+        services.AddScoped<IConsultarProtecaoChavesUseCase>(sp => sp.GetRequiredService<ProtecaoChavesService>());
+        services.AddScoped<IReprotegerChavesUseCase>(sp => sp.GetRequiredService<ProtecaoChavesService>());
         services.AddScoped<ICertificateProvider, FileCertificateProvider>();
     }
 

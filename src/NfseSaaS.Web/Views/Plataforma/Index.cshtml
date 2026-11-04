@@ -52,6 +52,30 @@
     </div>
 </div>
 
+<div class="card mt-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-shield-lock"></i> Proteção das chaves</span>
+        <button type="button" class="btn btn-outline-primary btn-sm d-none" id="btn-reproteger-chaves"><i class="bi bi-shield-check"></i> Proteger chaves antigas</button>
+    </div>
+    <div class="card-body">
+        <p class="small text-muted mb-3">
+            As chaves do Data Protection abrem os certificados A1 de todos os clientes e assinam o login.
+            Elas devem ficar criptografadas em disco.
+        </p>
+        <dl class="row mb-2 small">
+            <dt class="col-sm-3">Pasta</dt>
+            <dd class="col-sm-9"><code id="chaves-pasta">-</code></dd>
+            <dt class="col-sm-3">Chaves novas</dt>
+            <dd class="col-sm-9" id="chaves-mecanismo">-</dd>
+            <dt class="col-sm-3">Chaves na pasta</dt>
+            <dd class="col-sm-9" id="chaves-total">-</dd>
+            <dt class="col-sm-3">Certificados guardados</dt>
+            <dd class="col-sm-9" id="chaves-certificados">-</dd>
+        </dl>
+        <div id="chaves-orientacao" class="alert alert-secondary mb-0 small">Carregando…</div>
+    </div>
+</div>
+
 <div class="modal fade" id="modal-suspender-tenant" tabindex="-1" aria-labelledby="titulo-suspender-tenant">
     <div class="modal-dialog">
         <div class="modal-content">

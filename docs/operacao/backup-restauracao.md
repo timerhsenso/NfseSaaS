@@ -23,7 +23,9 @@ Cada execução gera um `nfsesaas-AAAA-MM-DD_HHMM.tar` (horário UTC) com:
 | `SHA256SUMS` | — | conferir com `sha256sum -c SHA256SUMS` |
 
 Sem as chaves do Data Protection, os certificados salvos **não abrem**. Por
-isso os dois sempre viajam juntos.
+isso os dois sempre viajam juntos. As chaves são criptografadas por um
+certificado de proteção que **não** entra no backup: ele fica no gerenciador
+de senhas (ver [protecao-chaves.md](protecao-chaves.md)).
 
 ## Onde fica
 
@@ -129,7 +131,10 @@ a **SENHA 1** e a **SENHA 2** do cofre.
 6. Criar os volumes da aplicação (`docker compose -f docker-compose.prod.yml create app`)
    e, para cada `nfsesaas_*.tar.gz`, extrair no Mountpoint do volume:
    `tar -xzf nfsesaas_certificados.tar.gz -C "$(docker volume inspect -f '{{ .Mountpoint }}' nfsesaas_certificados)"`.
-7. `docker compose -f docker-compose.prod.yml up -d --build app`. No log,
+7. Recriar o certificado de proteção das chaves com
+   `bash deploy/protecao-chaves/configurar.sh --restaurar` (SENHA e ARQUIVO
+   do gerenciador de senhas; ver protecao-chaves.md). Depois:
+   `docker compose -f docker-compose.prod.yml -f docker-compose.segredos.yml up -d --build app`. No log,
    conferir a linha "Chaves do Data Protection…". Na tela de Empresa, usar
    **Testar conexão** do certificado (prova que chaves e certificado abriram).
 8. Reinstalar o backup (seção "Arquivos neste repositório") e rodar um
@@ -137,10 +142,10 @@ a **SENHA 1** e a **SENHA 2** do cofre.
 
 ## Pendências conhecidas
 
-- As chaves do Data Protection estão em disco **sem criptografia**
-  (`/app/data/certificados/dp-keys`). Configurar
-  `DataProtection__CertificadoPfxPath`/`CertificadoSenha`. Esse .pfx e a
-  senha dele passam a ser item obrigatório do gerenciador de senhas: sem
-  eles, as chaves não abrem.
+- Chaves do Data Protection: ativar a criptografia seguindo
+  [protecao-chaves.md](protecao-chaves.md). Enquanto não for ativada, elas
+  ficam em disco sem criptografia (`/app/data/certificados/dp-keys`).
+- Os backups pré-deploy em `/opt/nfsesaas/backups/postgres`: o Deploy
+  Production mantém os 10 mais recentes.
 - Alerta por e-mail quando o backup falhar: previsto no item de
   Monitoramento da Fase 1.

@@ -17,12 +17,21 @@ public sealed class PlataformaController : ControllerBase
 {
     private readonly IListarTenantsPlataformaUseCase _listar;
     private readonly IAlterarBloqueioTenantUseCase _alterarBloqueio;
+    private readonly IConsultarProtecaoChavesUseCase _consultarProtecaoChaves;
+    private readonly IReprotegerChavesUseCase _reprotegerChaves;
     private readonly ICurrentUser _currentUser;
 
-    public PlataformaController(IListarTenantsPlataformaUseCase listar, IAlterarBloqueioTenantUseCase alterarBloqueio, ICurrentUser currentUser)
+    public PlataformaController(
+        IListarTenantsPlataformaUseCase listar,
+        IAlterarBloqueioTenantUseCase alterarBloqueio,
+        IConsultarProtecaoChavesUseCase consultarProtecaoChaves,
+        IReprotegerChavesUseCase reprotegerChaves,
+        ICurrentUser currentUser)
     {
         _listar = listar;
         _alterarBloqueio = alterarBloqueio;
+        _consultarProtecaoChaves = consultarProtecaoChaves;
+        _reprotegerChaves = reprotegerChaves;
         _currentUser = currentUser;
     }
 
@@ -43,4 +52,14 @@ public sealed class PlataformaController : ControllerBase
         await _alterarBloqueio.ExecutarAsync(id, false, null, _currentUser.UserId, cancellationToken);
         return NoContent();
     }
+
+    /// <summary>Situação das chaves do Data Protection (criptografadas ou não).</summary>
+    [HttpGet("protecao-chaves")]
+    public async Task<IActionResult> ProtecaoChaves(CancellationToken cancellationToken)
+        => Ok(await _consultarProtecaoChaves.ExecutarAsync(cancellationToken));
+
+    /// <summary>Regrava os certificados com uma chave nova criptografada e apaga as chaves antigas sem criptografia.</summary>
+    [HttpPost("protecao-chaves/reproteger")]
+    public async Task<IActionResult> ReprotegerChaves(CancellationToken cancellationToken)
+        => Ok(await _reprotegerChaves.ExecutarAsync(_currentUser.UserId, cancellationToken));
 }

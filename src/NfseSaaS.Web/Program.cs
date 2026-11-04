@@ -200,6 +200,23 @@ try
     {
         app.Logger.LogInformation("Chaves do Data Protection em {CaminhoChaves}, protegidas por {Mecanismo}.",
             protecaoChaves.CaminhoChaves, protecaoChaves.MecanismoCriptografia);
+
+        // O certificado só protege as chaves NOVAS: as gravadas antes dele
+        // continuam em texto aberto até o operador usar "Proteger chaves
+        // antigas" (Plataforma). Erro de leitura aqui não pode impedir a subida.
+        try
+        {
+            using var escopo = app.Services.CreateScope();
+            var situacao = escopo.ServiceProvider.GetRequiredService<NfseSaaS.Infrastructure.Certificates.ProtecaoChavesService>().Consultar();
+            if (situacao.ChavesSemCriptografia > 0)
+                app.Logger.LogWarning(
+                    "{Quantidade} chave(s) antiga(s) do Data Protection ainda sem criptografia em {CaminhoChaves}. Use Plataforma › Proteger chaves antigas.",
+                    situacao.ChavesSemCriptografia, protecaoChaves.CaminhoChaves);
+        }
+        catch (Exception ex)
+        {
+            app.Logger.LogWarning(ex, "Não foi possível conferir as chaves antigas do Data Protection em {CaminhoChaves}.", protecaoChaves.CaminhoChaves);
+        }
     }
 
     // Os textos de Termos de uso e Política de privacidade (Views/Legal)

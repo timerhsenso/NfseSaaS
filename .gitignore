@@ -46,6 +46,8 @@ appsettings.Production.json
 
 ## Docker
 docker-compose.override.yml
+# Certificado de proteção das chaves (deploy/protecao-chaves/configurar.sh)
+docker-compose.segredos.yml
 
 ## SO
 .DS_Store

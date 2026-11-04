@@ -21,6 +21,20 @@ jobs:
 
             cd /opt/nfsesaas/NfseSaaS
 
+            # --------------------------------------------------
+            # Arquivos do compose
+            # --------------------------------------------------
+            # docker-compose.segredos.yml (fora do git) guarda o
+            # certificado que criptografa as chaves do Data Protection
+            # — ver docs/operacao/protecao-chaves.md. Se existir, entra
+            # em todos os comandos, inclusive no rollback.
+
+            COMPOSE=(docker compose -f docker-compose.prod.yml)
+            if [ -f docker-compose.segredos.yml ]; then
+              COMPOSE+=(-f docker-compose.segredos.yml)
+            fi
+            echo "Compose: ${COMPOSE[*]}"
+
             echo "======================================"
             echo "INICIANDO DEPLOY"
             echo "======================================"
@@ -65,8 +79,7 @@ jobs:
 
               docker tag "$PREVIOUS_IMAGE" "$APP_IMAGE_NAME"
 
-              docker compose \
-                -f docker-compose.prod.yml \
+              "${COMPOSE[@]}" \
                 up -d --force-recreate app
 
               echo "Aguardando versão anterior..."
@@ -191,8 +204,7 @@ jobs:
             echo "CONSTRUINDO NOVA IMAGEM"
             echo "======================================"
 
-            docker compose \
-              -f docker-compose.prod.yml \
+            "${COMPOSE[@]}" \
               build app
 
 
@@ -205,8 +217,7 @@ jobs:
             echo "APLICANDO MIGRATIONS"
             echo "======================================"
 
-            docker compose \
-              -f docker-compose.prod.yml \
+            "${COMPOSE[@]}" \
               run --rm migrate
 
 
@@ -223,8 +234,7 @@ jobs:
             echo "SUBINDO NOVA VERSÃO"
             echo "======================================"
 
-            docker compose \
-              -f docker-compose.prod.yml \
+            "${COMPOSE[@]}" \
               up -d app
 
 
@@ -276,6 +286,19 @@ jobs:
             # --------------------------------------------------
 
             trap - ERR
+
+            # --------------------------------------------------
+            # Limpeza dos backups pré-deploy
+            # --------------------------------------------------
+            # Mantém os 10 mais recentes. O backup diário completo
+            # (deploy/backup) é que guarda o histórico longo.
+
+            ls -1t /opt/nfsesaas/backups/postgres/nfse_saas_*.dump 2>/dev/null \
+              | tail -n +11 \
+              | xargs -r rm -f -- \
+              || true
+
+            echo "Backups pré-deploy guardados: $(ls -1 /opt/nfsesaas/backups/postgres/nfse_saas_*.dump 2>/dev/null | wc -l)"
 
             echo ""
             echo "======================================"
