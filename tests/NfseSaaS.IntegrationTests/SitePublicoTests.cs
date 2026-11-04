@@ -83,7 +83,9 @@ public class SitePublicoTests
 
         var robots = await (await Cliente().GetComStatus200Async("/robots.txt")).Content.ReadAsStringAsync();
         Assert.Contains("Sitemap: http://localhost/sitemap.xml", robots);
-        Assert.Contains("Disallow: /", robots);
+        Assert.Contains("Disallow: /api/", robots);
+        Assert.Contains("Allow: /\n", robots);
+        Assert.DoesNotContain("Disallow: /\n", robots); // nunca fechar o site inteiro (bloqueava o próprio sitemap)
     }
 }
 

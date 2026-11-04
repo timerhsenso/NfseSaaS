@@ -72,19 +72,20 @@ public sealed class SiteController : Controller
         return Content(sb.ToString(), "application/xml", Encoding.UTF8);
     }
 
+    // Libera tudo e bloqueia só o privado (lista de "permitidos" esquece o
+    // próprio /sitemap.xml e páginas novas). As telas do sistema exigem
+    // login: o robô é mandado para /Account/Login, que está bloqueado.
     [AcceptVerbs("GET", "HEAD", Route = "/robots.txt")]
     public IActionResult Robots()
     {
         var texto = $"""
             User-agent: *
-            Allow: /$
-            Allow: /erros-nfse
-            Allow: /termos
-            Allow: /privacidade
             Allow: /Account/Registrar
-            Allow: /css/
-            Allow: /js/
-            Disallow: /
+            Disallow: /Account/
+            Disallow: /api/
+            Disallow: /hangfire
+            Disallow: /Legal/
+            Allow: /
 
             Sitemap: {BaseUrl()}/sitemap.xml
             """;

@@ -5,6 +5,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Corrigido
+- `robots.txt` bloqueava o próprio `/sitemap.xml` (o Search Console acusava
+  "Bloqueada pelo robots.txt" e "Erro de HTTP geral"). Agora libera o site e
+  bloqueia só as áreas privadas (`/Account/` exceto o cadastro, `/api/`,
+  `/hangfire`, `/Legal/`).
+
 ### Adicionado (site público)
 - Página inicial pública em "/" para quem não está logado: apresentação,
   recursos, como funciona, preços (Mico e Empresa, com preço de fundador e
