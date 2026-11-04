@@ -40,8 +40,17 @@ public sealed record NfseResponse(
     int? ReenvioDeNumeroDps,
     Guid? ReenviadaComoNfseId,
     int? ReenviadaComoNumeroDps,
-    bool PodeReenviar)
+    bool PodeReenviar,
+    // Tributação desta nota (colunas congeladas na emissão) — para o
+    // detalhe mostrar o que foi de fato para a SEFIN.
+    string CodigoTributacaoNacional,
+    string CodigoNbs,
+    string TpRetIssqn,
+    decimal? AliquotaIss)
 {
+    /// <summary>tpRetISSQN "2" = ISS retido pelo tomador.</summary>
+    public bool IssRetido => TpRetIssqn == "2";
+
     /// <summary>Rejeição da SEFIN explicada (onde corrigir e o que fazer) — null quando não há código de erro da SEFIN. Ver CatalogoRejeicoesSefin.</summary>
     public RejeicaoSefinTraduzida? Rejeicao => CatalogoRejeicoesSefin.Traduzir(CodigoErro, MensagemErro);
 }

@@ -5,6 +5,31 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Alterado (tela de notas)
+- Emissão em duas etapas: "Revisar" mostra o resumo (cliente, contrato,
+  serviço, competência, valor, ISS, ambiente e a descrição que vai na nota)
+  e só "Confirmar e emitir" manda para a SEFIN. Vale também para o reenvio.
+- Detalhe da nota reorganizado em blocos: Nota, Cliente e serviço (com código
+  de tributação e NBS), **Descrição na nota** (o texto que foi para a SEFIN,
+  antes não aparecia), Valores e tributação, e Erro. O JSON do snapshot virou
+  "Dados técnicos", recolhido e com explicação: `descricaoCadastro` é o nome
+  do serviço no catálogo, não o texto da nota.
+- Campo de descrição com contador de caracteres e ajuda ("é este texto que
+  sai na nota").
+- `NfseResponse` passa a trazer `codigoTributacaoNacional`, `codigoNbs`,
+  `tpRetIssqn`/`issRetido` e `aliquotaIss`.
+
+### Corrigido (tela de notas)
+- Trocar serviço, contrato ou cliente sobrescrevia em silêncio a descrição e
+  o valor já digitados — inclusive quando a busca de contratos do cliente
+  respondia depois da digitação. Agora o que foi digitado é mantido, com o
+  link "Usar os do cadastro" para voltar ao sugerido.
+- Chave de idempotência da emissão passa a ser uma por abertura do modal (era
+  uma por clique, então confirmar de novo depois de um erro de rede podia
+  duplicar a nota).
+- Descrição de serviço com aspas ou "<" quebrava a lista de serviços do modal
+  (texto não era escapado).
+
 ### Adicionado (rejeições da SEFIN)
 - Catálogo com os 579 códigos de rejeição oficiais da NFS-e Nacional,
   extraídos das planilhas do gov.br: Anexo I DPS/NFS-e v1.01 (produção

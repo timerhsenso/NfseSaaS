@@ -1920,6 +1920,40 @@ html[data-theme="dark"] .resumo-alerta {
     }
 }
 
+/* Detalhe da nota e resumo da emissão */
+.detalhe-bloco {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.detalhe-bloco:first-child {
+    padding-top: 0;
+}
+
+.detalhe-bloco h6 {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--subtle);
+    margin-bottom: 8px;
+}
+
+.detalhe-bloco dd,
+.resumo-emissao dd {
+    margin-bottom: 4px;
+}
+
+.descricao-nota {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-field);
+    background: var(--surface-2);
+    color: var(--text);
+}
+
 /* Rejeição da SEFIN explicada (detalhe da nota) */
 .rejeicao-explicada {
     margin-top: 8px;

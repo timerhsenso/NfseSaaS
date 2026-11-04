@@ -99,7 +99,8 @@ public sealed class ListarNfseUseCase : IListarNfseUseCase
                 _db.NotasFiscais.Where(r => r.ReenvioDeNfseId == n.Id).Select(r => (Guid?)r.Id).FirstOrDefault(),
                 _db.NotasFiscais.Where(r => r.ReenvioDeNfseId == n.Id).Select(r => (int?)r.NumeroDps).FirstOrDefault(),
                 n.Status == NfseStatus.Rejeitada && n.CodigoErro != null && n.CodigoErro != ""
-                    && !_db.NotasFiscais.Any(r => r.ReenvioDeNfseId == n.Id)))
+                    && !_db.NotasFiscais.Any(r => r.ReenvioDeNfseId == n.Id),
+                n.CodigoTributacaoNacional, n.CodigoNbs, n.TpRetIssqn, n.AliquotaIss))
             .ToListAsync(cancellationToken);
 
         return new PagedResult<NfseResponse>

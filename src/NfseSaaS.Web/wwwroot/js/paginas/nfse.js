@@ -199,6 +199,23 @@ document.addEventListener('DOMContentLoaded', function () {
             definirIssRetido(this.checked);
         });
 
+        // Digitou = é do usuário: o preenchimento automático não mexe mais.
+        document.getElementById('emitir-descricaoServico').addEventListener('input', function () {
+            descricaoEditadaPeloUsuario = true;
+            atualizarAvisoDescricaoEmissao();
+        });
+        document.getElementById('emitir-valorServico').addEventListener('input', function () {
+            valorEditadoPeloUsuario = true;
+            atualizarAvisoDescricaoEmissao();
+        });
+        document.getElementById('link-usar-descricao-sugerida').addEventListener('click', function (e) {
+            e.preventDefault();
+            descricaoEditadaPeloUsuario = false;
+            valorEditadoPeloUsuario = false;
+            aplicarSugestaoEmissao(sugestaoEmissao.descricao, sugestaoEmissao.valor);
+        });
+        document.getElementById('btn-voltar-emissao').addEventListener('click', mostrarCamposEmissao);
+
         modalNotaMensal = new bootstrap.Modal(document.getElementById('modal-nota-mensal'));
         document.getElementById('btn-nota-mensal').addEventListener('click', abrirModalNotaMensal);
         document.getElementById('btn-buscar-candidatos-nota-mensal').addEventListener('click', buscarCandidatosNotaMensal);
@@ -319,6 +336,22 @@ const ROTULOS_INDICE_NFSE = { 0: 'IPCA', 1: 'IGP-M', 2: 'INCC', 3: 'INPC', 4: 'S
 
 let contratosDoClienteAtual = [];
 
+// Proteção do que o usuário digitou no modal de emissão: o preenchimento
+// automático (troca de serviço ou contrato, e a busca dos contratos do
+// cliente, que responde DEPOIS) nunca sobrescreve descrição/valor editados
+// à mão — antes sobrescrevia em silêncio e dava para emitir com o texto
+// errado. A sugestão fica guardada para o link "usar a do cadastro".
+let descricaoEditadaPeloUsuario = false;
+let valorEditadoPeloUsuario = false;
+let sugestaoEmissao = { descricao: '', valor: '' };
+
+// Emissão em 2 etapas: "Revisar" mostra o resumo, "Confirmar e emitir" envia.
+let etapaResumoEmissao = false;
+
+// Uma chave por abertura do modal (não por clique): repetir o envio depois
+// de um erro de rede reaproveita a mesma tentativa na API, sem duplicar nota.
+let chaveIdempotenciaEmissao = null;
+
 async function abrirModalEmitirNfse() {
     try {
         await prepararModalEmitirNfse();
@@ -340,7 +373,7 @@ async function abrirModalReenvioNfse(id) {
 
         nfseReenvioAtualId = nfse.id;
         document.getElementById('titulo-modal-emitir-nfse').textContent = `Reenviar nota rejeitada — DPS nº ${nfse.numeroDps}`;
-        document.getElementById('btn-confirmar-emissao').textContent = 'Reenviar';
+        mostrarCamposEmissao();
 
         // Montado via textContent: a mensagem vem da SEFIN/validação,
         // nunca entra no innerHTML.
@@ -385,6 +418,12 @@ async function abrirModalReenvioNfse(id) {
 
         document.getElementById('emitir-descricaoServico').value = nfse.descricaoServico;
         document.getElementById('emitir-valorServico').value = nfse.valorServico;
+        // Texto e valor da nota original contam como "do usuário": trocar o
+        // serviço no reenvio não os sobrescreve.
+        sugestaoEmissao = { descricao: nfse.descricaoServico, valor: String(nfse.valorServico) };
+        descricaoEditadaPeloUsuario = true;
+        valorEditadoPeloUsuario = true;
+        atualizarAvisoDescricaoEmissao();
         document.getElementById('emitir-dataCompetencia').value = nfse.dataCompetencia;
         // Reenvio relê o cadastro atual (ver aviso acima): retenção pelo
         // padrão ATUAL do Cliente — corrigir o cadastro e reenviar funciona.
@@ -401,7 +440,11 @@ async function abrirModalReenvioNfse(id) {
 async function prepararModalEmitirNfse() {
     nfseReenvioAtualId = null;
     document.getElementById('titulo-modal-emitir-nfse').textContent = 'Emitir nota fiscal';
-    document.getElementById('btn-confirmar-emissao').textContent = 'Emitir';
+    descricaoEditadaPeloUsuario = false;
+    valorEditadoPeloUsuario = false;
+    sugestaoEmissao = { descricao: '', valor: '' };
+    chaveIdempotenciaEmissao = crypto.randomUUID();
+    mostrarCamposEmissao();
     document.getElementById('aviso-reenvio-nfse').classList.add('d-none');
     document.getElementById('emitir-contratoId').disabled = false;
     $('#emitir-clienteId').prop('disabled', false);
@@ -419,7 +462,7 @@ async function prepararModalEmitirNfse() {
     const servicos = await apiFetch(`/api/servicos?empresaId=${empresaAtualIdNfse}&pageSize=200`);
 
     const selectServico = document.getElementById('emitir-servicoId');
-    selectServico.innerHTML = servicos.items.map(s => `<option value="${s.id}" data-descricao="${s.descricao}" data-valor="${s.valorPadrao}">${s.descricao}</option>`).join('');
+    selectServico.innerHTML = servicos.items.map(s => `<option value="${s.id}" data-descricao="${escaparHtml(s.descricao)}" data-valor="${s.valorPadrao}">${escaparHtml(s.descricao)}</option>`).join('');
 
     // Ao trocar o serviço MANUALMENTE, pré-preenche descrição/valor.
     // Com Contrato selecionado e o serviço sendo uma linha dele, usa os
@@ -433,9 +476,9 @@ async function prepararModalEmitirNfse() {
         }
 
         const opcao = selectServico.selectedOptions[0];
-        document.getElementById('emitir-descricaoServico').value = opcao?.dataset.descricao ?? '';
-        document.getElementById('emitir-valorServico').value = opcao?.dataset.valor ?? '';
+        aplicarSugestaoEmissao(opcao?.dataset.descricao ?? '', opcao?.dataset.valor ?? '');
     };
+    atualizarAvisoDescricaoEmissao();
 }
 
 async function carregarContratosDoCliente(clienteId) {
@@ -506,9 +549,98 @@ function contratoSelecionado() {
 // Com vários: descrição do serviço da linha, pra nota não descrever o
 // contrato inteiro quando cobra só uma parte dele.
 function preencherComLinhaDoContrato(contrato, linha) {
-    document.getElementById('emitir-descricaoServico').value =
-        contrato.servicos.length > 1 ? linha.servicoDescricao : contrato.descricao;
-    document.getElementById('emitir-valorServico').value = linha.valorTotal;
+    aplicarSugestaoEmissao(contrato.servicos.length > 1 ? linha.servicoDescricao : contrato.descricao, linha.valorTotal);
+}
+
+/**
+ * Preenche descrição e valor com o sugerido pelo serviço/contrato — só os
+ * campos que o usuário ainda não editou (ou deixou vazios).
+ */
+function aplicarSugestaoEmissao(descricao, valor) {
+    sugestaoEmissao = { descricao: descricao ?? '', valor: valor == null ? '' : String(valor) };
+
+    const campoDescricao = document.getElementById('emitir-descricaoServico');
+    if (!descricaoEditadaPeloUsuario || campoDescricao.value.trim() === '') {
+        campoDescricao.value = sugestaoEmissao.descricao;
+        descricaoEditadaPeloUsuario = false;
+    }
+
+    const campoValor = document.getElementById('emitir-valorServico');
+    if (!valorEditadoPeloUsuario || campoValor.value === '') {
+        campoValor.value = sugestaoEmissao.valor;
+        valorEditadoPeloUsuario = false;
+    }
+
+    atualizarAvisoDescricaoEmissao();
+}
+
+/** Contador de caracteres e aviso "você editou — usar a do cadastro". */
+function atualizarAvisoDescricaoEmissao() {
+    const campoDescricao = document.getElementById('emitir-descricaoServico');
+    document.getElementById('contador-descricao-emissao').textContent = `${campoDescricao.value.length}/2000`;
+
+    const campoValor = document.getElementById('emitir-valorServico');
+    const descricaoDiferente = descricaoEditadaPeloUsuario && sugestaoEmissao.descricao !== '' && campoDescricao.value !== sugestaoEmissao.descricao;
+    const valorDiferente = valorEditadoPeloUsuario && sugestaoEmissao.valor !== '' && Number(campoValor.value) !== Number(sugestaoEmissao.valor);
+    document.getElementById('aviso-descricao-manual').classList.toggle('d-none', !(descricaoDiferente || valorDiferente));
+}
+
+/** Etapa 1 do modal: o formulário. */
+function mostrarCamposEmissao() {
+    etapaResumoEmissao = false;
+    document.getElementById('emitir-campos').classList.remove('d-none');
+    document.getElementById('emitir-resumo').classList.add('d-none');
+    document.getElementById('btn-voltar-emissao').classList.add('d-none');
+    document.getElementById('btn-confirmar-emissao').textContent = nfseReenvioAtualId ? 'Revisar reenvio' : 'Revisar';
+}
+
+/**
+ * Etapa 2 do modal: resumo do que vai para a SEFIN, para conferir antes de
+ * emitir (depois de autorizada, a nota só se desfaz cancelando).
+ */
+function mostrarResumoEmissao() {
+    const textoSelecionado = id => document.getElementById(id).selectedOptions[0]?.text ?? '';
+    const cliente = $('#emitir-clienteId').select2('data')[0]?.text || textoSelecionado('emitir-clienteId');
+    const campoContratoVisivel = !document.getElementById('campo-emitir-contrato').classList.contains('d-none');
+    const contrato = campoContratoVisivel && document.getElementById('emitir-contratoId').value
+        ? textoSelecionado('emitir-contratoId')
+        : 'Nenhum (nota avulsa)';
+    const valor = Number(document.getElementById('emitir-valorServico').value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const competencia = document.getElementById('emitir-dataCompetencia').value; // AAAA-MM-DD
+    const issRetido = document.getElementById('emitir-issRetido').checked;
+    const aliquota = document.getElementById('emitir-aliquotaIss').value;
+    const ambiente = document.getElementById('badge-ambiente-empresa')?.textContent.trim();
+
+    const avisoAmbiente = ambiente === 'Produção'
+        ? '<div class="alert alert-warning py-2 mb-3"><strong>Produção:</strong> esta nota tem valor fiscal.</div>'
+        : ambiente
+            ? `<div class="alert alert-info py-2 mb-3"><strong>${escaparHtml(ambiente)}:</strong> nota de teste, sem valor fiscal.</div>`
+            : '';
+
+    const linha = (rotulo, valorHtml) => `<dt class="col-sm-4">${rotulo}</dt><dd class="col-sm-8">${valorHtml}</dd>`;
+
+    document.getElementById('emitir-resumo').innerHTML = `
+        ${avisoAmbiente}
+        <p class="mb-3">Confira antes de ${nfseReenvioAtualId ? 'reenviar' : 'emitir'}. Depois de autorizada, a nota só pode ser desfeita cancelando.</p>
+        <dl class="row resumo-emissao mb-0">
+            ${linha('Cliente', escaparHtml(cliente))}
+            ${linha('Contrato', escaparHtml(contrato))}
+            ${linha('Serviço', escaparHtml(textoSelecionado('emitir-servicoId')))}
+            ${linha('Competência', competencia ? `${competencia.slice(5, 7)}/${competencia.slice(0, 4)}` : '—')}
+            ${linha('Valor do serviço', `<strong>${valor}</strong>`)}
+            ${linha('ISS', issRetido ? `Retido pelo tomador${aliquota ? ` (alíquota ${escaparHtml(aliquota)}%)` : ' (alíquota da empresa)'}` : 'Não retido')}
+        </dl>
+        <div class="mt-2">
+            <div class="form-label mb-1">Descrição que vai na nota</div>
+            <div class="descricao-nota">${escaparHtml(document.getElementById('emitir-descricaoServico').value)}</div>
+        </div>`;
+
+    etapaResumoEmissao = true;
+    document.getElementById('emitir-campos').classList.add('d-none');
+    document.getElementById('emitir-resumo').classList.remove('d-none');
+    document.getElementById('btn-voltar-emissao').classList.remove('d-none');
+    document.getElementById('btn-confirmar-emissao').textContent = nfseReenvioAtualId ? 'Confirmar e reenviar' : 'Confirmar e emitir';
+    ocultarErroFormulario('erro-emitir-nfse');
 }
 
 function aplicarContratoSelecionado() {
@@ -568,6 +700,11 @@ async function emitirNfse(e) {
     e.preventDefault();
     ocultarErroFormulario('erro-emitir-nfse');
 
+    if (!etapaResumoEmissao) {
+        mostrarResumoEmissao();
+        return;
+    }
+
     const botaoConfirmar = document.getElementById('btn-confirmar-emissao');
     botaoConfirmar.disabled = true; // emissão bate na SEFIN — evita duplo clique
 
@@ -581,10 +718,11 @@ async function emitirNfse(e) {
         valorServico: parseFloat(document.getElementById('emitir-valorServico').value),
         descricaoServico: document.getElementById('emitir-descricaoServico').value,
         dataCompetencia: document.getElementById('emitir-dataCompetencia').value,
-        // Chave de idempotência própria desta tentativa de clique — se o
-        // usuário reenviar (ex.: timeout + segundo clique acidental), a
-        // API reconhece a mesma tentativa e não duplica a nota.
-        idempotencyKey: crypto.randomUUID(),
+        // Chave de idempotência desta abertura do modal (ver
+        // chaveIdempotenciaEmissao) — se o usuário confirmar de novo depois
+        // de um erro de rede, a API reconhece a mesma tentativa e não
+        // duplica a nota.
+        idempotencyKey: chaveIdempotenciaEmissao,
         reenvioDeNfseId: nfseReenvioAtualId,
         // Sempre explícito (true/false): o que está na tela é o que vale
         // pra esta nota. Alíquota em branco = a da Empresa (backend).
@@ -623,20 +761,7 @@ async function abrirDetalheNfse(id) {
             apiFetch(`/api/nfse/${id}/snapshot-fiscal`)
         ]);
 
-        const rotulo = ROTULOS_STATUS[nfse.status] ?? { texto: 'Desconhecido', cor: 'secondary' };
-
-        document.getElementById('detalhe-nfse-dados').innerHTML = `
-            <dt class="col-sm-4">Número/Série</dt><dd class="col-sm-8">${nfse.numeroDps}/${nfse.serieDps}</dd>
-            <dt class="col-sm-4">Status</dt><dd class="col-sm-8"><span class="badge text-bg-${rotulo.cor}">${rotulo.texto}</span></dd>
-            <dt class="col-sm-4">Chave de acesso</dt><dd class="col-sm-8">${nfse.chaveAcesso ?? '—'}</dd>
-            <dt class="col-sm-4">Valor / Líquido</dt><dd class="col-sm-8">
-                ${Number(nfse.valorServico).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} /
-                ${nfse.valorLiquido == null ? '—' : Number(nfse.valorLiquido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </dd>
-            <dt class="col-sm-4">Erro</dt><dd class="col-sm-8">${htmlErroNfse(nfse)}</dd>
-            ${nfse.reenvioDeNumeroDps != null ? `<dt class="col-sm-4">Reenvio de</dt><dd class="col-sm-8">DPS nº ${nfse.reenvioDeNumeroDps} (rejeitada)</dd>` : ''}
-            ${nfse.reenviadaComoNumeroDps != null ? `<dt class="col-sm-4">Reenviada como</dt><dd class="col-sm-8">DPS nº ${nfse.reenviadaComoNumeroDps}</dd>` : ''}
-        `;
+        document.getElementById('detalhe-nfse-dados').innerHTML = htmlDetalheNfse(nfse, snapshot);
 
         document.getElementById('detalhe-nfse-eventos').innerHTML = eventos.length
             ? eventos.map(ev => `
@@ -991,4 +1116,80 @@ function htmlErroNfse(nfse) {
             <div><strong>Onde corrigir:</strong> ${escaparHtml(rejeicao.ondeCorrigir)}</div>
             <div><strong>O que fazer:</strong> ${escaparHtml(rejeicao.oQueFazer)}${link}</div>
         </div>`;
+}
+
+/**
+ * Corpo do detalhe da nota, em blocos. "Descrição na nota" é o texto que
+ * foi de fato para a SEFIN (Nfse.DescricaoServico) — não confundir com o
+ * nome do serviço no catálogo, que está no snapshot (descricaoCadastro).
+ * Tudo que vem de cadastro ou da SEFIN passa por escaparHtml.
+ */
+function htmlDetalheNfse(nfse, snapshot) {
+    const rotulo = ROTULOS_STATUS[nfse.status] ?? { texto: 'Desconhecido', cor: 'secondary' };
+    const moeda = v => v == null ? '—' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const linha = (titulo, valorHtml) => `<dt class="col-sm-4">${titulo}</dt><dd class="col-sm-8">${valorHtml}</dd>`;
+
+    const competencia = nfse.dataCompetencia
+        ? `${nfse.dataCompetencia.slice(5, 7)}/${nfse.dataCompetencia.slice(0, 4)}`
+        : '—';
+    const emissao = nfse.dataEmissao ? new Date(nfse.dataEmissao).toLocaleString('pt-BR') : '—';
+    const ambiente = nfse.tipoAmbiente === 1 ? 'Produção' : 'Homologação (teste, sem valor fiscal)';
+
+    const cliente = snapshot?.cliente
+        ? `${snapshot.cliente.nome} (${snapshot.cliente.cpfCnpj})`
+        : (clientesPorId[nfse.clienteId]?.nome ?? clientesPorId[nfse.clienteId]?.apelido ?? '—');
+    const servicoCatalogo = snapshot?.servico?.descricaoCadastro ?? '—';
+
+    const iss = nfse.issRetido
+        ? `Retido pelo tomador${nfse.aliquotaIss != null ? ` — alíquota ${Number(nfse.aliquotaIss).toLocaleString('pt-BR')}%` : ''}`
+        : 'Não retido';
+
+    const temErro = nfse.mensagemErro || nfse.codigoErro;
+
+    return `
+        <section class="detalhe-bloco">
+            <h6>Nota</h6>
+            <dl class="row mb-0">
+                ${linha('Situação', `<span class="badge text-bg-${rotulo.cor}">${rotulo.texto}</span>`)}
+                ${linha('Número da NFS-e', escaparHtml(nfse.numeroNfse ?? '—'))}
+                ${linha('DPS (número/série)', `${nfse.numeroDps}/${escaparHtml(nfse.serieDps)}`)}
+                ${linha('Ambiente', ambiente)}
+                ${linha('Competência', competencia)}
+                ${linha('Emissão', emissao)}
+                ${linha('Chave de acesso', `<span class="text-break">${escaparHtml(nfse.chaveAcesso ?? '—')}</span>`)}
+                ${nfse.reenvioDeNumeroDps != null ? linha('Reenvio de', `DPS nº ${nfse.reenvioDeNumeroDps} (rejeitada)`) : ''}
+                ${nfse.reenviadaComoNumeroDps != null ? linha('Reenviada como', `DPS nº ${nfse.reenviadaComoNumeroDps}`) : ''}
+            </dl>
+        </section>
+
+        <section class="detalhe-bloco">
+            <h6>Cliente e serviço</h6>
+            <dl class="row mb-0">
+                ${linha('Cliente', escaparHtml(cliente))}
+                ${linha('Serviço (catálogo)', escaparHtml(servicoCatalogo))}
+                ${linha('Cód. tributação nacional', escaparHtml(nfse.codigoTributacaoNacional ?? '—'))}
+                ${linha('NBS', escaparHtml(nfse.codigoNbs ?? '—'))}
+            </dl>
+        </section>
+
+        <section class="detalhe-bloco">
+            <h6>Descrição na nota</h6>
+            <div class="descricao-nota">${escaparHtml(nfse.descricaoServico)}</div>
+            <div class="form-text">Texto enviado à SEFIN — é o que aparece em "Descrição do serviço" no PDF e no portal da NFS-e.</div>
+        </section>
+
+        <section class="detalhe-bloco">
+            <h6>Valores e tributação</h6>
+            <dl class="row mb-0">
+                ${linha('Valor do serviço', `<strong>${moeda(nfse.valorServico)}</strong>`)}
+                ${linha('Valor líquido', moeda(nfse.valorLiquido))}
+                ${linha('ISS', iss)}
+            </dl>
+        </section>
+
+        ${temErro ? `
+        <section class="detalhe-bloco">
+            <h6>Erro</h6>
+            ${htmlErroNfse(nfse)}
+        </section>` : ''}`;
 }

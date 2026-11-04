@@ -95,6 +95,10 @@
                         <div id="erro-emitir-nfse" class="alert alert-danger d-none"></div>
                         <div id="aviso-reenvio-nfse" class="alert alert-warning d-none"></div>
 
+                        @* Etapa 2: resumo para conferir antes de mandar para a SEFIN (montado em nfse.js, mostrarResumoEmissao). *@
+                        <div id="emitir-resumo" class="d-none"></div>
+
+                        <div id="emitir-campos">
                         <div class="mb-3">
                             <label class="form-label">Cliente</label>
                             <select class="form-control" id="emitir-clienteId" style="width: 100%" required></select>
@@ -111,8 +115,17 @@
                             <select class="form-select" id="emitir-servicoId" required></select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Descrição do serviço nesta nota</label>
+                            <label class="form-label" for="emitir-descricaoServico">Descrição do serviço nesta nota</label>
                             <textarea class="form-control" id="emitir-descricaoServico" maxlength="2000" rows="4" required></textarea>
+                            <div class="d-flex justify-content-between gap-2 form-text">
+                                <span>É este texto que sai na nota (campo "Discriminação do serviço" do PDF e do XML).</span>
+                                <span id="contador-descricao-emissao" class="text-nowrap">0/2000</span>
+                            </div>
+                            @* Aparece quando o texto digitado é diferente do sugerido pelo serviço/contrato escolhido. *@
+                            <div id="aviso-descricao-manual" class="form-text d-none">
+                                <i class="bi bi-pencil" aria-hidden="true"></i> Você editou a descrição ou o valor — eles são mantidos ao trocar serviço ou contrato.
+                                <a href="#" id="link-usar-descricao-sugerida">Usar os do cadastro</a>
+                            </div>
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
@@ -138,10 +151,12 @@
                                 <div class="form-text">Em branco, usa a alíquota cadastrada na Empresa.</div>
                             </div>
                         </div>
+                        </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary" id="btn-confirmar-emissao">Emitir</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="btn-cancelar-emissao">Cancelar</button>
+                        <button type="button" class="btn btn-outline-secondary d-none" id="btn-voltar-emissao"><i class="bi bi-arrow-left" aria-hidden="true"></i> Voltar e editar</button>
+                        <button type="submit" class="btn btn-primary" id="btn-confirmar-emissao">Revisar</button>
                     </div>
                 </form>
             </div>
@@ -158,13 +173,14 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <dl class="row" id="detalhe-nfse-dados"></dl>
+                @* Montado em nfse.js (abrirDetalheNfse): blocos Nota, Cliente e serviço, Descrição na nota, Valores e tributação, Erro. *@
+                <div id="detalhe-nfse-dados"></div>
 
                 <h6 class="text-muted mt-3">Histórico de eventos</h6>
                 <ul class="list-group mb-3" id="detalhe-nfse-eventos"></ul>
 
                 <div class="d-flex justify-content-between align-items-center mt-3">
-                    <h6 class="text-muted mb-0">Snapshot fiscal (contexto da emissão)</h6>
+                    <h6 class="text-muted mb-0">Dados técnicos (cadastro no momento da emissão)</h6>
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-toggle-snapshot"
                             data-bs-toggle="collapse" data-bs-target="#detalhe-nfse-snapshot-collapse"
                             aria-expanded="false" aria-controls="detalhe-nfse-snapshot-collapse">
@@ -172,7 +188,12 @@
                     </button>
                 </div>
                 <div class="collapse" id="detalhe-nfse-snapshot-collapse">
-                    <pre id="detalhe-nfse-snapshot" class="bg-body-tertiary p-2 rounded small mt-2"></pre>
+                    <p class="form-text mt-2 mb-1">
+                        Cópia de Empresa, Cliente e Serviço como estavam no cadastro quando a nota foi emitida.
+                        Em <code>servico.descricaoCadastro</code> está o nome do serviço no catálogo — o texto que saiu na nota é o da
+                        "Descrição na nota", acima.
+                    </p>
+                    <pre id="detalhe-nfse-snapshot" class="bg-body-tertiary p-2 rounded small"></pre>
                 </div>
             </div>
             <div class="modal-footer">
