@@ -1,0 +1,86 @@
+@{
+    ViewData["Title"] = "Contas da plataforma";
+}
+
+<div class="stats">
+    <div class="stat">
+        <div class="stat-top"><span class="stat-label">Contas ativas</span><div class="stat-icon"><i class="bi bi-buildings"></i></div></div>
+        <strong id="kpi-ativas">-</strong>
+        <small id="kpi-ativas-detalhe">&nbsp;</small>
+    </div>
+    <div class="stat">
+        <div class="stat-top"><span class="stat-label">Contas suspensas</span><div class="stat-icon"><i class="bi bi-pause-circle"></i></div></div>
+        <strong id="kpi-suspensas">-</strong>
+        <small>Sem login e sem emissão</small>
+    </div>
+    <div class="stat">
+        <div class="stat-top"><span class="stat-label">Notas autorizadas no mês</span><div class="stat-icon"><i class="bi bi-receipt"></i></div></div>
+        <strong id="kpi-notas-mes">-</strong>
+        <small>Somando todas as contas</small>
+    </div>
+    <div class="stat">
+        <div class="stat-top"><span class="stat-label">Empresas em produção</span><div class="stat-icon"><i class="bi bi-broadcast"></i></div></div>
+        <strong id="kpi-producao">-</strong>
+        <small id="kpi-producao-detalhe">&nbsp;</small>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Contas (clientes do micoempresa)</span>
+        <div class="d-flex align-items-center gap-2">
+            <a href="/hangfire" class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener"><i class="bi bi-cpu"></i> Jobs (Hangfire)</a>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-atualizar-plataforma"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
+        </div>
+    </div>
+    <div class="card-body">
+        <table id="tabela-tenants" class="table w-100">
+            <thead>
+                <tr>
+                    <th>Conta</th>
+                    <th>Responsável</th>
+                    <th>Desde</th>
+                    <th class="text-end">Usuários</th>
+                    <th class="text-end">Empresas</th>
+                    <th class="text-end">Notas no mês</th>
+                    <th>Última nota</th>
+                    <th>Situação</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-suspender-tenant" tabindex="-1" aria-labelledby="titulo-suspender-tenant">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="form-suspender-tenant">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="titulo-suspender-tenant">Suspender conta</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="erro-suspender-tenant" class="alert alert-danger d-none"></div>
+                    <p class="mb-3">Suspender <strong id="nome-tenant-suspender"></strong>:</p>
+                    <ul class="small text-muted mb-3">
+                        <li>ninguém da conta entra, e quem está logado sai em até 1 minuto;</li>
+                        <li>nenhuma nota é emitida, nem pela Nota Mensal automática;</li>
+                        <li>os dados ficam guardados — dá para reativar a qualquer momento.</li>
+                    </ul>
+                    <label class="form-label" for="motivo-suspensao">Motivo</label>
+                    <input type="text" class="form-control" id="motivo-suspensao" maxlength="300" required placeholder="ex.: inadimplência desde 10/11" />
+                    <div class="form-text">Só você vê. Fica registrado no histórico da conta.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Suspender conta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/paginas/plataforma.js" asp-append-version="true"></script>
+}

@@ -49,7 +49,9 @@ public sealed class GerarReajustesAniversarioJob : IGerarReajustesAniversarioJob
             // reajustável por índice, em todos os tenants.
             empresas = (await db.Contratos.AsNoTracking().IgnoreQueryFilters()
                     .Where(c => c.Status == StatusContrato.Ativo
-                        && c.IndiceReajuste != null && c.IndiceReajuste != IndiceReajusteContrato.Outro)
+                        && c.IndiceReajuste != null && c.IndiceReajuste != IndiceReajusteContrato.Outro
+                        // Conta suspensa pelo operador da plataforma fica de fora.
+                        && db.Tenants.Any(t => t.Id == c.TenantId && t.Ativo))
                     .Select(c => new { c.EmpresaId, c.TenantId })
                     .Distinct()
                     .ToListAsync())

@@ -1277,6 +1277,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<bool>("Ativo")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTimeOffset?>("BloqueadoEm")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Cnpj")
                         .IsRequired()
                         .HasMaxLength(14)
@@ -1284,6 +1287,10 @@ namespace NfseSaaS.Infrastructure.Migrations
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("MotivoBloqueio")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
 
                     b.Property<string>("NomeFantasia")
                         .HasMaxLength(200)

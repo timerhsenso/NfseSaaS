@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (plataforma)
+- Painel do operador da plataforma (menu Plataforma › Contas, só para quem
+  está em `Plataforma:UsuariosOperadoresIds`): todas as contas com
+  responsável, usuários, empresas (e quantas em produção), notas autorizadas
+  no mês e no total, última nota e situação; atalho para o Hangfire.
+- Suspender/reativar conta (com motivo): ninguém da conta entra (login
+  responde "conta suspensa"), as sessões abertas caem em até 1 minuto, a
+  emissão é recusada (tela, lote e automação) e os jobs pulam a conta. Fica
+  registrado no histórico (AuditLog) da conta e no log. O operador não pode
+  suspender a própria conta. Migration `SuspensaoDeConta`.
+
 ### Alterado (visual)
 - Novo visual e nova marca: **micoempresa** (NFS-e passa a ser um módulo).
   Tema refeito: cores com contraste AA, campos de 40px com asterisco

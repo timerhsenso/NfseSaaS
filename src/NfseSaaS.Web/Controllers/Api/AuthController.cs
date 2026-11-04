@@ -216,6 +216,11 @@ public sealed class AuthController : ControllerBase
             return StatusCode(StatusCodes.Status423Locked, new { erro = "Muitas tentativas de login erradas. Sua conta foi bloqueada temporariamente — tente novamente em alguns minutos." });
         }
 
+        // NotAllowed = senha certa, mas a conta (Tenant) está suspensa pelo
+        // operador da plataforma — ver SignInManagerComTenant.
+        if (resultado.IsNotAllowed)
+            return StatusCode(StatusCodes.Status403Forbidden, new { erro = "Esta conta está suspensa. Fale com o suporte da micoempresa para reativar." });
+
         return resultado.Succeeded ? Ok() : Unauthorized();
     }
 

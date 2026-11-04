@@ -16,5 +16,16 @@ public sealed class Tenant : BaseEntity
 
     public string? NomeFantasia { get; set; }
 
+    /// <summary>
+    /// false = conta suspensa pelo operador da plataforma (painel
+    /// Plataforma): ninguém do tenant entra, as sessões abertas caem em até
+    /// 1 minuto e nenhuma nota é emitida (nem pela automação).
+    /// </summary>
     public bool Ativo { get; set; } = true;
+
+    /// <summary>Quando a conta foi suspensa (nulo se ativa).</summary>
+    public DateTimeOffset? BloqueadoEm { get; set; }
+
+    /// <summary>Por que foi suspensa (ex.: inadimplência, pedido do cliente) — só o operador vê.</summary>
+    public string? MotivoBloqueio { get; set; }
 }

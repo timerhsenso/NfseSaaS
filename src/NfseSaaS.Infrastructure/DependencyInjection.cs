@@ -19,6 +19,7 @@ using NfseSaaS.Application.UseCases.HistoricoContrato;
 using NfseSaaS.Application.UseCases.HistoricoValoresContrato;
 using NfseSaaS.Application.UseCases.IndicesEconomicos;
 using NfseSaaS.Application.UseCases.NotaMensal;
+using NfseSaaS.Application.UseCases.Plataforma;
 using NfseSaaS.Infrastructure.Documents;
 using NfseSaaS.Application.UseCases.Empresas;
 using NfseSaaS.Application.UseCases.Exportacoes;
@@ -112,6 +113,7 @@ public static class DependencyInjection
                 options.Lockout.AllowedForNewUsers = true;
             })
             .AddEntityFrameworkStores<AppDbContext>()
+            .AddSignInManager<SignInManagerComTenant>()
             .AddDefaultTokenProviders()
             .AddClaimsPrincipalFactory<ApplicationUserClaimsPrincipalFactory>();
 
@@ -253,6 +255,9 @@ public static class DependencyInjection
         services.AddScoped<IExecutarAutomacaoNotaMensalJob, ExecutarAutomacaoNotaMensalJob>();
 
         services.AddScoped<IListarAuditLogsUseCase, ListarAuditLogsUseCase>();
+
+        services.AddScoped<IListarTenantsPlataformaUseCase, ListarTenantsPlataformaUseCase>();
+        services.AddScoped<IAlterarBloqueioTenantUseCase, AlterarBloqueioTenantUseCase>();
         services.AddScoped<IObterAuditLogPorIdUseCase, ObterAuditLogPorIdUseCase>();
 
         services.AddScoped<IEnviarCertificadoUseCase, EnviarCertificadoUseCase>();

@@ -76,6 +76,16 @@ public sealed class ExecutarAutomacaoNotaMensalJob : IExecutarAutomacaoNotaMensa
         var currentTenant = scope.ServiceProvider.GetRequiredService<ICurrentTenant>();
         currentTenant.DefinirTenantIdDeSistema(empresa.TenantId);
 
+        // Conta suspensa pelo operador da plataforma: a automação não roda
+        // (nem lista, nem emite, nem manda e-mail) até ser reativada.
+        var tenantAtivo = await db.Tenants.AsNoTracking().AnyAsync(t => t.Id == empresa.TenantId && t.Ativo);
+        if (!tenantAtivo)
+        {
+            _logger.LogInformation(
+                "Automação de Nota Mensal: Empresa {EmpresaId} pertence a uma conta suspensa — pulando execução.", empresaId);
+            return;
+        }
+
         var configuracao = await db.ConfiguracoesAutomacaoNotaMensal
             .FirstOrDefaultAsync(c => c.EmpresaId == empresaId);
 

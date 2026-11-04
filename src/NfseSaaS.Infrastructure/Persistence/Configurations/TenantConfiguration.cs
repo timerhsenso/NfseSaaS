@@ -23,6 +23,9 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.Property(t => t.NomeFantasia)
             .HasMaxLength(200);
 
+        builder.Property(t => t.MotivoBloqueio)
+            .HasMaxLength(300);
+
         builder.HasIndex(t => t.Cnpj)
             .IsUnique();
     }

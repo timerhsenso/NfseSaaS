@@ -57,6 +57,15 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
 
     public async Task<EmitirNfseResult> ExecutarAsync(EmitirNfseRequest request, CancellationToken cancellationToken)
     {
+        // Conta suspensa pelo operador da plataforma não emite — nem pela
+        // tela, nem pelo lote, nem pela automação (todos passam por aqui).
+        var tenantAtivo = await _db.Empresas
+            .Where(e => e.Id == request.EmpresaId)
+            .Select(e => (bool?)_db.Tenants.Where(t => t.Id == e.TenantId).Select(t => t.Ativo).FirstOrDefault())
+            .FirstOrDefaultAsync(cancellationToken);
+        if (tenantAtivo == false)
+            throw new RegraNegocioException("Esta conta está suspensa: a emissão de notas está bloqueada. Fale com o suporte.");
+
         // Idempotência: se o chamador informou uma chave e já existe uma
         // Nfse com ela para esta Empresa, é um retry da MESMA tentativa —
         // devolve o resultado já existente em vez de emitir de novo (e,

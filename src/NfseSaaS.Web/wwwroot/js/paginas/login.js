@@ -20,9 +20,10 @@ document.getElementById('form-login').addEventListener('submit', async function 
         });
 
         if (!resposta.ok) {
-            if (resposta.status === 423) {
+            if (resposta.status === 423 || resposta.status === 403) {
+                // 423: bloqueio por tentativas; 403: conta suspensa pela plataforma.
                 const corpo = await resposta.json().catch(() => null);
-                erroDiv.textContent = corpo?.erro ?? 'Conta bloqueada temporariamente após várias tentativas erradas.';
+                erroDiv.textContent = corpo?.erro ?? 'Não é possível entrar com esta conta agora.';
             } else {
                 erroDiv.textContent = 'E-mail ou senha inválidos.';
             }

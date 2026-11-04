@@ -104,7 +104,7 @@
                 <a href="/Indices" class="@Ativo("/Indices")"><span class="nav-icon bi bi-graph-up-arrow"></span>Índices econômicos</a>
             </nav>
 
-            @if (papelAdministrador || User.EhOperadorPlataforma())
+            @if (papelAdministrador)
             {
                 <div class="nav-label">Administração</div>
                 <nav class="sidebar-nav" aria-label="Administração">
@@ -124,11 +124,17 @@
                     {
                         <a href="/Emails" class="@Ativo("/Emails")"><span class="nav-icon bi bi-envelope"></span>E-mails enviados</a>
                     }
-                    @if (User.EhOperadorPlataforma())
-                    {
-                        <a href="/Logs" class="@Ativo("/Logs")"><span class="nav-icon bi bi-terminal"></span>Logs</a>
-                        <a href="/Sobre" class="@Ativo("/Sobre")"><span class="nav-icon bi bi-info-circle"></span>Sobre</a>
-                    }
+                </nav>
+            }
+
+            @* Só o dono do SaaS (Plataforma:UsuariosOperadoresIds) — enxerga todas as contas. *@
+            @if (User.EhOperadorPlataforma())
+            {
+                <div class="nav-label">Plataforma</div>
+                <nav class="sidebar-nav" aria-label="Plataforma">
+                    <a href="/Plataforma" class="@Ativo("/Plataforma")"><span class="nav-icon bi bi-buildings"></span>Contas</a>
+                    <a href="/Logs" class="@Ativo("/Logs")"><span class="nav-icon bi bi-terminal"></span>Logs</a>
+                    <a href="/Sobre" class="@Ativo("/Sobre")"><span class="nav-icon bi bi-info-circle"></span>Sobre</a>
                 </nav>
             }
 
