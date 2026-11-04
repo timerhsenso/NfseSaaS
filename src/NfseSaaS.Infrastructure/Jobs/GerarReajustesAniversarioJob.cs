@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.UseCases.ReajustesContrato;
 using NfseSaaS.Domain.Enums;
+using NfseSaaS.Infrastructure.Email;
 using NfseSaaS.Infrastructure.Persistence;
 
 namespace NfseSaaS.Infrastructure.Jobs;
@@ -74,6 +75,20 @@ public sealed class GerarReajustesAniversarioJob : IGerarReajustesAniversarioJob
                     _logger.LogInformation(
                         "Reajustes de aniversário da Empresa {EmpresaId}: {Resumo}", empresaId,
                         string.Join("; ", resultado.Itens.Select(i => $"{i.Descricao} {i.Aniversario:yyyy-MM-dd} {i.Resultado}")));
+
+                // Aguardando aprovação / aplicados: e-mail aos administradores
+                // da conta. Falha no aviso não desfaz os reajustes já gravados.
+                try
+                {
+                    var avisados = await scope.ServiceProvider.GetRequiredService<AvisoReajustesAniversario>()
+                        .AvisarAsync(empresaId, resultado.Itens, CancellationToken.None);
+                    if (avisados.Count > 0)
+                        _logger.LogInformation("Aviso de reajustes da Empresa {EmpresaId} enviado para {Destinatarios}.", empresaId, string.Join(", ", avisados));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Reajustes da Empresa {EmpresaId} gerados, mas o e-mail de aviso não pôde ser enfileirado.", empresaId);
+                }
             }
             catch (Exception ex)
             {

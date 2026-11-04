@@ -231,6 +231,12 @@ mensal e roteiro de recuperação em
 [`docs/operacao/backup-restauracao.md`](docs/operacao/backup-restauracao.md).
 Os scripts ficam em `deploy/backup/`.
 
+## Produção: monitoramento
+
+UptimeRobot no `/health`, alertas de erro e de falha de job por e-mail para o
+operador da plataforma e aviso de reajustes aos administradores da conta. Ver
+[`docs/operacao/monitoramento.md`](docs/operacao/monitoramento.md).
+
 ## Estrutura da solução
 
 ```

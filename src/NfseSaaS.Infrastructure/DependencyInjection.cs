@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.UseCases.AuditLogs;
 using NfseSaaS.Application.UseCases.AutomacaoNotaMensal;
@@ -36,6 +37,7 @@ using NfseSaaS.Infrastructure.Email;
 using NfseSaaS.Infrastructure.Identity;
 using NfseSaaS.Infrastructure.IndicesEconomicos;
 using NfseSaaS.Infrastructure.Jobs;
+using NfseSaaS.Infrastructure.Monitoramento;
 using NfseSaaS.Infrastructure.MultiTenancy;
 using NfseSaaS.Infrastructure.Persistence;
 using NfseSaaS.Infrastructure.UseCases;
@@ -72,8 +74,12 @@ public static class DependencyInjection
         // AddHangfireServer roda o worker que processa os jobs
         // recorrentes; o dashboard (/hangfire) é mapeado no Program.cs
         // (é middleware de pipeline, não registro de DI).
-        services.AddHangfire(config => config
-            .UsePostgreSqlStorage(c => c.UseNpgsqlConnection(connectionString)));
+        // AlertaFalhaJobFilter: job que falha de vez (depois das novas
+        // tentativas) vira Error no log -> e-mail ao operador.
+        services.AddHangfire((provider, config) => config
+            .UsePostgreSqlStorage(c => c.UseNpgsqlConnection(connectionString))
+            .UseFilter(new AlertaFalhaJobFilter(
+                provider.GetRequiredService<ILoggerFactory>())));
         services.AddHangfireServer();
 
         services.AddHttpContextAccessor();
@@ -89,8 +95,14 @@ public static class DependencyInjection
         services.AddScoped<IEmailSender, SmtpEmailSender>();
         services.AddSingleton<IBackgroundEmailQueue, BackgroundEmailQueue>();
         services.AddScoped<IEmailQueueService, EmailQueueService>();
+        // Alertas ao operador da plataforma (erros do log e jobs que falharam):
+        // a fila recebe do sink do Serilog (Web) e o hosted service manda o e-mail.
+        services.AddSingleton<AlertaOperadorFila>();
+        services.AddHostedService<AlertaOperadorHostedService>();
+
         // Anexos (PDF e XML) do e-mail da nota ao tomador, montados na hora do envio.
         services.AddScoped<AnexosNfseEmail>();
+        services.AddScoped<AvisoReajustesAniversario>();
         services.AddScoped<IEnviarNfsePorEmailUseCase, EnviarNfsePorEmailUseCase>();
         services.AddHostedService<EmailDispatchHostedService>();
 

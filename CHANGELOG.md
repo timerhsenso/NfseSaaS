@@ -5,6 +5,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (monitoramento)
+- Alerta por e-mail ao operador da plataforma para todo erro registrado no
+  log (exceção não tratada, falha de job em uma Empresa) e para job que
+  falhou de vez no Hangfire, mesmo depois das novas tentativas. Repetições do
+  mesmo erro são agrupadas (1 e-mail a cada 30 minutos, com a contagem) e há
+  um teto de 20 e-mails por hora. Os alertas ficam na tela de E-mails da
+  conta do operador ("Alerta do sistema").
+- E-mail aos administradores da conta quando o job diário gera reajuste de
+  contrato **aguardando aprovação** ou **aplicado automaticamente**, um por
+  Empresa por dia ("Reajustes de contrato").
+- `docs/operacao/monitoramento.md`, com a configuração do UptimeRobot no
+  `/health` e as regras dos alertas.
+
+### Alterado (monitoramento)
+- Respostas esperadas (regra de negócio, validação, não encontrado, sessão
+  expirada) passam a ser registradas como Warning, e não mais como Error:
+  não são falha do sistema e não devem virar alerta.
+
 ### Adicionado (e-mails)
 - Nota autorizada vai sozinha para o e-mail do tomador, com o PDF (DANFSe)
   e o XML anexos — vale para emissão pela tela, nota mensal em lote e

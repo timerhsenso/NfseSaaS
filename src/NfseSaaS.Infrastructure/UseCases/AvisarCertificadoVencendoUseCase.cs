@@ -66,7 +66,9 @@ public sealed class AvisarCertificadoVencendoUseCase : IAvisarCertificadoVencend
         if (await _emailQueue.JaEnfileiradoAsync(chave, cancellationToken))
             return new AvisoCertificadoResult(false, diasRestantes, faixa, Array.Empty<string>(), "Faixa já avisada.");
 
-        var destinatarios = await ObterDestinatariosAsync(tenantId, empresa.Email, cancellationToken);
+        // Administradores ativos da conta e o e-mail cadastrado da Empresa.
+        var administradores = await DestinatariosAviso.AdministradoresDaContaAsync(_db, tenantId, cancellationToken);
+        var destinatarios = DestinatariosAviso.Normalizar(administradores.Append(empresa.Email));
         if (destinatarios.Count == 0)
             return new AvisoCertificadoResult(false, diasRestantes, faixa, destinatarios, "Nenhum destinatário com e-mail.");
 
@@ -80,33 +82,6 @@ public sealed class AvisarCertificadoVencendoUseCase : IAvisarCertificadoVencend
         }
 
         return new AvisoCertificadoResult(true, diasRestantes, faixa, destinatarios, null);
-    }
-
-    /// <summary>
-    /// Administradores ATIVOS da conta (grupo administrador, convite aceito,
-    /// sem bloqueio) e o e-mail cadastrado da Empresa, sem repetir.
-    /// AspNetUsers não tem filtro de tenant — o filtro aqui é manual.
-    /// </summary>
-    private async Task<List<string>> ObterDestinatariosAsync(Guid tenantId, string? emailEmpresa, CancellationToken cancellationToken)
-    {
-        var agora = DateTimeOffset.UtcNow;
-
-        var administradores = await (
-            from u in _db.Users.AsNoTracking()
-            join g in _db.Grupos.AsNoTracking() on u.GrupoId equals g.Id
-            where u.TenantId == tenantId
-                && g.EhAdministrador
-                && u.Email != null
-                && (u.ConvidadoEm == null || u.ConviteAceitoEm != null)
-                && (u.LockoutEnd == null || u.LockoutEnd < agora)
-            select u.Email!).ToListAsync(cancellationToken);
-
-        return administradores
-            .Append(emailEmpresa ?? string.Empty)
-            .Select(e => e.Trim())
-            .Where(e => e.Length > 0)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
     }
 
     private (string Assunto, string CorpoHtml) MontarMensagem(string razaoSocial, string cnpj, DateOnly vencimento, int diasRestantes)

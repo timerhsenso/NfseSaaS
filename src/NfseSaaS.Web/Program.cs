@@ -27,6 +27,10 @@ try
     builder.Host.UseSerilog((context, services, configuration) => configuration
         .ReadFrom.Configuration(context.Configuration)
         .Enrich.FromLogContext()
+        // Error/Fatal também vira e-mail ao operador da plataforma
+        // (agrupado e limitado) — ver AlertaErroSink.
+        .WriteTo.Sink(new NfseSaaS.Web.Monitoramento.AlertaErroSink(
+            services.GetRequiredService<NfseSaaS.Infrastructure.Monitoramento.AlertaOperadorFila>()))
         .WriteTo.Console(outputTemplate:
             "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] ({CorrelationId}) {Message:lj}{NewLine}{Exception}")
         .WriteTo.File(

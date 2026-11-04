@@ -13,4 +13,10 @@ public static class TipoEmailCatalogo
 
     /// <summary>Certificado digital da Empresa vencendo (30/15/7 dias) ou vencido.</summary>
     public const string CertificadoVencendo = "CertificadoVencendo";
+
+    /// <summary>Reajustes de aniversário gerados pelo job: aguardando aprovação e/ou aplicados automaticamente.</summary>
+    public const string ReajustesAniversario = "ReajustesAniversario";
+
+    /// <summary>Alerta técnico para o operador da plataforma: erro no sistema ou job que falhou.</summary>
+    public const string AlertaOperador = "AlertaOperador";
 }

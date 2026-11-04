@@ -34,7 +34,15 @@ public sealed class ExceptionHandlingMiddleware
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro não tratado ao processar {Method} {Path}", context.Request.Method, context.Request.Path);
+            // Regra de negócio, validação, não encontrado e sessão expirada
+            // são respostas ESPERADAS (4xx): ficam como Warning. Só erro de
+            // verdade (5xx) é Error — e Error vira e-mail ao operador
+            // (AlertaErroSink); sem essa separação, cada "cliente sem
+            // e-mail" ou formulário inválido geraria um alerta.
+            if (EhErroEsperado(ex))
+                _logger.LogWarning(ex, "Requisição recusada ao processar {Method} {Path}: {Mensagem}", context.Request.Method, context.Request.Path, ex.Message);
+            else
+                _logger.LogError(ex, "Erro não tratado ao processar {Method} {Path}", context.Request.Method, context.Request.Path);
 
             if (ex is NfseValidationException nfseValidationException && nfseValidationException.Codigos.Count > 0)
             {
@@ -113,4 +121,9 @@ public sealed class ExceptionHandlingMiddleware
             await context.Response.WriteAsync(JsonSerializer.Serialize(payload));
         }
     }
+
+    /// <summary>Exceções que viram 4xx (ver o mapeamento de status abaixo) — previsíveis, não são falha do sistema.</summary>
+    private static bool EhErroEsperado(Exception ex) => ex is
+        ValidacaoException or RecursoNaoEncontradoException or RegraNegocioException
+        or NfseValidationException or AntiforgeryValidationException;
 }

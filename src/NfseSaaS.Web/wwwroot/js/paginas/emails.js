@@ -77,6 +77,8 @@ function rotuloTipo(tipo) {
         case 'AvisoTrocaSenha': return 'Aviso de troca de senha';
         case 'NfseTomador': return 'Nota ao cliente';
         case 'CertificadoVencendo': return 'Certificado vencendo';
+        case 'ReajustesAniversario': return 'Reajustes de contrato';
+        case 'AlertaOperador': return 'Alerta do sistema';
         default: return tipo;
     }
 }
