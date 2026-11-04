@@ -18,13 +18,17 @@ public sealed class MovimentacaoValorContratoConfiguration : IEntityTypeConfigur
         // recebem Reajuste/Aplicado. Os enums começam em 1, então o default
         // do CLR (0) nunca coincide com um valor válido — o EF sempre envia
         // o valor de verdade no INSERT.
+        // Sentinel 0 explícito (os enums começam em 1): mesmo comportamento
+        // descrito acima, sem o aviso de "sentinel" do EF na subida.
         builder.Property(m => m.Tipo)
             .HasConversion<int>()
-            .HasDefaultValue(TipoMovimentacaoValor.Reajuste);
+            .HasDefaultValue(TipoMovimentacaoValor.Reajuste)
+            .HasSentinel(default(TipoMovimentacaoValor));
 
         builder.Property(m => m.Status)
             .HasConversion<int>()
-            .HasDefaultValue(StatusMovimentacaoValor.Aplicado);
+            .HasDefaultValue(StatusMovimentacaoValor.Aplicado)
+            .HasSentinel(default(StatusMovimentacaoValor));
 
         builder.Property(m => m.ValorAnterior).HasColumnType("numeric(18,2)");
         builder.Property(m => m.ValorNovo).HasColumnType("numeric(18,2)");

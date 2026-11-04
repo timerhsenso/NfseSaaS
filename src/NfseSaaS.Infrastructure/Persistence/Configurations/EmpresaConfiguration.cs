@@ -86,9 +86,14 @@ public sealed class EmpresaConfiguration : IEntityTypeConfiguration<Empresa>
         // explícito no banco (não só no C#) por segurança: qualquer INSERT
         // que por algum motivo não passe pelo EF Core (script manual,
         // outra ferramenta) ainda cai em Homologacao, nunca em Producao.
+        // Sentinel explícito = 0, que não é um ambiente válido: se ninguém
+        // definiu o ambiente, vale o default do banco (Homologacao). Era o
+        // comportamento de sempre — declarado aqui só deixa de gerar o aviso
+        // de "sentinel" do EF na subida.
         builder.Property(e => e.TipoAmbiente)
             .HasConversion<int>()
-            .HasDefaultValue(TipoAmbiente.Homologacao);
+            .HasDefaultValue(TipoAmbiente.Homologacao)
+            .HasSentinel(default(TipoAmbiente));
 
         // Um mesmo CNPJ não pode se repetir dentro do mesmo tenant.
         builder.HasIndex(e => new { e.TenantId, e.Cnpj })

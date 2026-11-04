@@ -62,6 +62,13 @@
     -->
     <PackageReference Include="Hangfire.AspNetCore" Version="1.8.24" />
     <PackageReference Include="Hangfire.PostgreSql" Version="1.21.1" />
+
+    <!--
+      Hangfire.Core puxa Newtonsoft.Json 11.0.1, que tem vulnerabilidade
+      conhecida (GHSA-5crp-9r3c-p9vr). Referência direta força a versão
+      corrigida para toda a solução (Web e testes herdam por aqui).
+    -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
   </ItemGroup>
 
 </Project>

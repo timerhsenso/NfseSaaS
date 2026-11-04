@@ -50,7 +50,9 @@ public sealed class CertificateHttpMessageHandlerBuilderFilter : IHttpMessageHan
         {
             next(builder);
 
-            if (!SefinNacionalClientNames.TentarExtrairEmpresaId(builder.Name, out var empresaId))
+            // HttpClient sem nome (ou de outra integração) não usa certificado.
+            if (builder.Name is not { } nomeCliente
+                || !SefinNacionalClientNames.TentarExtrairEmpresaId(nomeCliente, out var empresaId))
                 return;
 
             builder.PrimaryHandler = CriarHandlerComCertificado(empresaId);

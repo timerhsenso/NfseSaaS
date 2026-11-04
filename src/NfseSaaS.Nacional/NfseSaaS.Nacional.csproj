@@ -13,7 +13,9 @@
     Mesma dependência de assinatura XML-DSig já validada na POC.
   -->
   <ItemGroup>
-	  <PackageReference Include="System.Security.Cryptography.Xml" Version="8.0.4" />    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+    <!-- 8.0.5: corrige GHSA-7hqp-7c5m-4vq6, GHSA-c399-9853-6jmj, GHSA-r955-8q5j-3h83 e GHSA-vrv5-2jg9-4mmr (aviso NU1903) e traz o Pkcs 8.0.2 corrigido. -->
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="8.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="8.0.10" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
   </ItemGroup>

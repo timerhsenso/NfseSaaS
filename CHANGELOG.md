@@ -5,6 +5,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Segurança (dependências)
+- `System.Security.Cryptography.Xml` 8.0.4 → 8.0.5: corrige GHSA-7hqp-7c5m-4vq6,
+  GHSA-c399-9853-6jmj, GHSA-r955-8q5j-3h83 e GHSA-vrv5-2jg9-4mmr (aviso
+  NU1903) e traz o `System.Security.Cryptography.Pkcs` 8.0.2, que corrige
+  GHSA-846f-f764-76mx e GHSA-2fmv-rv2c-59x7.
+- `Newtonsoft.Json` fixado em 13.0.4: o Hangfire puxava a 11.0.1
+  (GHSA-5crp-9r3c-p9vr). Com isso, `dotnet list package --vulnerable
+  --include-transitive` não aponta mais nada na solução.
+
+### Corrigido (build e EF)
+- Build sem nenhum aviso. O `AddOrUpdate` obsoleto do Hangfire passou para a
+  forma com `RecurringJobOptions`; foram tratados os nulos em
+  `CertificateHttpMessageHandlerBuilderFilter` (HttpClient sem nome) e em
+  `DpsSigner` (`SignedInfo`).
+- Avisos de "sentinel" do EF na subida: o valor padrão do banco agora está
+  declarado em todos os campos. `Contrato.Status` usa um sentinel fora do
+  enum, então um contrato gravado como **Rascunho** (0) não vira mais
+  **Ativo** pelo default do banco no INSERT. Sem migration: o esquema do
+  banco não muda.
+
 ### Alterado (tela de notas)
 - Emissão em duas etapas: "Revisar" mostra o resumo (cliente, contrato,
   serviço, competência, valor, ISS, ambiente e a descrição que vai na nota)

@@ -52,7 +52,7 @@ public static class AutomacaoNotaMensalJobSincronizador
                 AutomacaoNotaMensalJobHelper.ObterJobId(configuracao.EmpresaId),
                 job => job.ExecutarAsync(configuracao.EmpresaId),
                 AutomacaoNotaMensalJobHelper.MontarCron(configuracao),
-                AutomacaoNotaMensalJobHelper.FusoBrasilia);
+                new RecurringJobOptions { TimeZone = AutomacaoNotaMensalJobHelper.FusoBrasilia });
         }
     }
 }

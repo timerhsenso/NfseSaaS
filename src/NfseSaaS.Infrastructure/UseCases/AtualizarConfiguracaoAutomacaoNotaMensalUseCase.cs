@@ -78,7 +78,7 @@ public sealed class AtualizarConfiguracaoAutomacaoNotaMensalUseCase : IAtualizar
                 jobId,
                 job => job.ExecutarAsync(empresaId),
                 AutomacaoNotaMensalJobHelper.MontarCron(configuracao),
-                AutomacaoNotaMensalJobHelper.FusoBrasilia);
+                new RecurringJobOptions { TimeZone = AutomacaoNotaMensalJobHelper.FusoBrasilia });
         }
         else
         {

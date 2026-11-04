@@ -92,9 +92,11 @@ public sealed class NfseConfiguration : IEntityTypeConfiguration<Nfse>
         // nunca em 0. EmitirNfseUseCase/SincronizarNotasDaSefinUseCase
         // continuam sempre definindo o valor explicitamente — este
         // default é rede de segurança, não a fonte normal do valor.
+        // Sentinel 0 (não é ambiente válido) explícito: ver EmpresaConfiguration.
         builder.Property(n => n.TipoAmbiente)
             .HasConversion<int>()
-            .HasDefaultValue(TipoAmbiente.Homologacao);
+            .HasDefaultValue(TipoAmbiente.Homologacao)
+            .HasSentinel(default(TipoAmbiente));
 
         // Não pode existir duas DPS com o mesmo número+série para a mesma empresa/tenant.
         builder.HasIndex(n => new { n.TenantId, n.EmpresaId, n.NumeroDps, n.SerieDps })

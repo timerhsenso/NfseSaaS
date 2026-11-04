@@ -29,9 +29,15 @@ public sealed class ContratoConfiguration : IEntityTypeConfiguration<Contrato>
         // HasDefaultValue nos dois — mesmo cuidado que faltou em
         // Nfse.TipoAmbiente (bug real: sem default, linhas antigas
         // migradas ficam com 0/CLR-default em vez do valor esperado).
+        // Sentinel fora do enum: Rascunho (0) é um status VÁLIDO, então o EF
+        // não pode tratar 0 como "não informado" e trocar pelo default do
+        // banco (Ativo) no INSERT. Com -1, o EF sempre grava o valor em
+        // memória (que já nasce Ativo na entidade); o default do banco segue
+        // valendo para INSERT fora do EF.
         builder.Property(c => c.Status)
             .HasConversion<int>()
-            .HasDefaultValue(StatusContrato.Ativo);
+            .HasDefaultValue(StatusContrato.Ativo)
+            .HasSentinel((StatusContrato)(-1));
 
         builder.Property(c => c.TipoCobranca)
             .HasConversion<int>()

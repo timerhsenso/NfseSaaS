@@ -29,8 +29,12 @@ public sealed class DpsSigner : IDpsSigner
             SigningKey = rsa
         };
 
-        signedXml.SignedInfo.CanonicalizationMethod = SignedXml.XmlDsigC14NTransformUrl;
-        signedXml.SignedInfo.SignatureMethod = SignedXml.XmlDsigRSASHA1Url;
+        // SignedInfo é sempre criado pelo construtor de SignedXml; a API só
+        // o declara anulável.
+        var signedInfo = signedXml.SignedInfo
+            ?? throw new NfseCertificateException("SignedXml sem SignedInfo — falha interna ao preparar a assinatura.");
+        signedInfo.CanonicalizationMethod = SignedXml.XmlDsigC14NTransformUrl;
+        signedInfo.SignatureMethod = SignedXml.XmlDsigRSASHA1Url;
 
         var reference = new Reference
         {
