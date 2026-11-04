@@ -148,6 +148,11 @@ try
         // Anti-CSRF automático em toda action de método não seguro — ver
         // ValidacaoAntiforgeryFilter.
         options.Filters.Add<ValidacaoAntiforgeryFilter>();
+
+        // Usuário logado sem aceite da versão vigente dos Termos de uso e
+        // da Política de privacidade vai para a tela de aceite (API: 403
+        // "termos_pendentes") — ver ExigeAceiteTermosFilter.
+        options.Filters.Add<ExigeAceiteTermosFilter>();
     });
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
@@ -191,6 +196,16 @@ try
     {
         app.Logger.LogInformation("Chaves do Data Protection em {CaminhoChaves}, protegidas por {Mecanismo}.",
             protecaoChaves.CaminhoChaves, protecaoChaves.MecanismoCriptografia);
+    }
+
+    // Os textos de Termos de uso e Política de privacidade (Views/Legal)
+    // mostram o responsável pela plataforma — não pode ir pro ar com o
+    // marcador "[...]" sem ninguém perceber.
+    if (NfseSaaS.Domain.Legal.DocumentosLegais.PossuiMarcadorPendente)
+    {
+        app.Logger.LogWarning(
+            "Termos de uso/Política de privacidade com dado do responsável ainda por preencher ({Responsavel}). Ajuste NfseSaaS.Domain.Legal.DocumentosLegais.",
+            NfseSaaS.Domain.Legal.DocumentosLegais.ResponsavelNome);
     }
 
     await NfseSaaS.Infrastructure.Identity.IdentitySeeder.SeedRolesAsync(app.Services);

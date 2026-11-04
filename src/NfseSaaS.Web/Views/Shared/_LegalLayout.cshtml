@@ -1,0 +1,39 @@
+@using NfseSaaS.Domain.Legal
+@*
+    Layout das páginas públicas de Termos de uso e Política de privacidade
+    (/termos e /privacidade): texto longo, leitura confortável, sem menu do
+    sistema — abre também para quem não tem conta.
+*@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] · micoempresa</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="legal-page">
+    <header class="legal-topo">
+        <a href="/" class="legal-marca">
+            <span class="legal-marca-mark" aria-hidden="true">m</span>
+            <strong>micoempresa</strong>
+        </a>
+        <nav class="legal-nav" aria-label="Documentos">
+            <a href="/termos" class="@(Context.Request.Path.StartsWithSegments("/termos") ? "ativo" : null)">Termos de uso</a>
+            <a href="/privacidade" class="@(Context.Request.Path.StartsWithSegments("/privacidade") ? "ativo" : null)">Política de privacidade</a>
+        </nav>
+    </header>
+
+    <main class="legal-doc">
+        @RenderBody()
+    </main>
+
+    <footer class="legal-rodape">
+        <span>@DocumentosLegais.Site</span>
+        <span>Dúvidas sobre privacidade: <a href="mailto:@DocumentosLegais.EmailPrivacidade">@DocumentosLegais.EmailPrivacidade</a></span>
+    </footer>
+</body>
+</html>

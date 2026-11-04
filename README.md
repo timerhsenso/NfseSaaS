@@ -214,6 +214,15 @@ dotnet test
 > Os testes de integração sobem a aplicação inteira e precisam do Postgres
 > local rodando (`docker compose up -d`).
 
+## Termos de uso e Política de privacidade
+
+Textos em `src/NfseSaaS.Web/Views/Legal` (`/termos` e `/privacidade`).
+Versões, data de vigência, responsável e e-mail de privacidade ficam em
+`NfseSaaS.Domain.Legal.DocumentosLegais`. Mudou algo que altera direito ou
+obrigação de quem usa: suba a versão, e todo usuário passa pela tela de
+aceite (`/Legal/Aceitar`) no próximo acesso. Cada aceite fica em
+`aceites_termos` (versão, data, IP, navegador, origem).
+
 ## Produção: backup e restauração
 
 Backup diário criptografado para o OneDrive (banco, certificados com as

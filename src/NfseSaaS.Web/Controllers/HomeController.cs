@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NfseSaaS.Web.Filters;
 
 namespace NfseSaaS.Web.Controllers;
 
@@ -18,6 +19,7 @@ public sealed class HomeController : Controller
     /// estabelecida (ex.: sessão expirada no meio de uma navegação).
     /// </summary>
     [AllowAnonymous]
+    [PermitirSemAceiteTermos]
     [Route("Home/Error")]
     public IActionResult Error(string? cid)
     {

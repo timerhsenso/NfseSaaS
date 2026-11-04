@@ -1732,6 +1732,194 @@ html[data-theme="dark"] .resumo-alerta {
     }
 }
 
+.auth-legal {
+    margin: 16px 0 0;
+    text-align: center;
+    font-size: 12px;
+    color: var(--subtle);
+}
+
+.auth-legal a {
+    color: var(--muted);
+}
+
+.auth-legal span {
+    margin: 0 6px;
+}
+
+/* Tela de aceite dos termos (/Legal/Aceitar) */
+.lista-documentos-legais {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.lista-documentos-legais a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-field);
+    color: var(--text);
+    text-decoration: none;
+}
+
+.lista-documentos-legais a:hover {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+}
+
+.lista-documentos-legais a span {
+    flex: 1;
+    font-weight: 600;
+}
+
+.lista-documentos-legais small {
+    display: block;
+    font-weight: 400;
+    color: var(--subtle);
+}
+
+/* =============== Termos de uso e Política de privacidade (páginas públicas) =============== */
+
+.legal-page {
+    background: var(--bg);
+    min-height: 100vh;
+    margin: 0;
+}
+
+.legal-topo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px 24px;
+    background: var(--sidebar);
+}
+
+.legal-marca {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #fff;
+    text-decoration: none;
+}
+
+.legal-marca:hover {
+    color: #fff;
+}
+
+.legal-marca-mark {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: var(--primary);
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+}
+
+.legal-nav {
+    display: flex;
+    gap: 16px;
+}
+
+.legal-nav a {
+    color: var(--sidebar-text);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.legal-nav a.ativo,
+.legal-nav a:hover {
+    color: #fff;
+}
+
+.legal-doc {
+    max-width: 800px;
+    margin: 32px auto;
+    padding: 40px 48px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--text-2);
+}
+
+.legal-doc h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    color: var(--text);
+    margin-bottom: 4px;
+}
+
+.legal-doc h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 32px 0 10px;
+}
+
+.legal-versao {
+    color: var(--subtle);
+    font-size: 13px;
+    margin-bottom: 24px;
+}
+
+.legal-resumo {
+    background: var(--primary-soft);
+    border-radius: var(--radius-field);
+    padding: 14px 16px;
+    color: var(--text);
+}
+
+.legal-doc ul {
+    padding-left: 20px;
+}
+
+.legal-doc li {
+    margin-bottom: 6px;
+}
+
+.legal-tabela {
+    font-size: 14px;
+}
+
+.legal-tabela th {
+    white-space: nowrap;
+}
+
+.legal-rodape {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    max-width: 800px;
+    margin: 0 auto 32px;
+    padding: 0 8px;
+    font-size: 13px;
+    color: var(--subtle);
+}
+
+@media (max-width: 700px) {
+    .legal-doc {
+        margin: 16px;
+        padding: 24px 16px;
+    }
+
+    .legal-rodape {
+        margin: 0 16px 24px;
+        padding: 0;
+    }
+}
+
 /* =============== Toast de feedback (substitui alert() nativo) =============== */
 
 .toast-container-nfse {

@@ -19,7 +19,8 @@ using NfseSaaS.Web.Filters;
 
 namespace NfseSaaS.Web.Controllers.Api;
 
-public sealed record RegistrarRequest(string Email, string Senha, string RazaoSocialTenant, string CnpjTenant);
+/// <param name="AceitouTermos">Caixa "Li e aceito os Termos de uso e a Política de privacidade" — obrigatória.</param>
+public sealed record RegistrarRequest(string Email, string Senha, string RazaoSocialTenant, string CnpjTenant, bool AceitouTermos = false);
 
 public sealed record LoginRequest(string Email, string Senha);
 
@@ -31,7 +32,8 @@ public sealed record RedefinirSenhaRequest(string Email, string Token, string No
 
 public sealed record ConvidarRequest(string Email, Guid GrupoId);
 
-public sealed record AceitarConviteRequest(string Email, string Token, string NovaSenha);
+/// <param name="AceitouTermos">Caixa "Li e aceito os Termos de uso e a Política de privacidade" — obrigatória.</param>
+public sealed record AceitarConviteRequest(string Email, string Token, string NovaSenha, bool AceitouTermos = false);
 
 public sealed record AlterarGrupoRequest(Guid GrupoId);
 
@@ -84,6 +86,7 @@ public sealed class AuthController : ControllerBase
     private readonly EmailOptions _emailOptions;
     private readonly IHostEnvironment _environment;
     private readonly PlataformaOptions _plataforma;
+    private readonly IAceiteTermosService _aceiteTermos;
 
     public AuthController(
         AppDbContext db,
@@ -96,7 +99,8 @@ public sealed class AuthController : ControllerBase
         IEmailQueueService emailQueueService,
         IOptions<EmailOptions> emailOptions,
         IHostEnvironment environment,
-        IOptions<PlataformaOptions> plataforma)
+        IOptions<PlataformaOptions> plataforma,
+        IAceiteTermosService aceiteTermos)
     {
         _db = db;
         _userManager = userManager;
@@ -109,6 +113,7 @@ public sealed class AuthController : ControllerBase
         _emailOptions = emailOptions.Value;
         _environment = environment;
         _plataforma = plataforma.Value;
+        _aceiteTermos = aceiteTermos;
     }
 
     /// <summary>Cria um novo Tenant, provisiona os 5 grupos padrão e cria o primeiro usuário (grupo Administrador), já autenticado (cookie com o Claim tenant_id).</summary>
@@ -128,6 +133,8 @@ public sealed class AuthController : ControllerBase
             erros.Add("CNPJ inválido (dígito verificador não confere).");
         if (string.IsNullOrWhiteSpace(request.Email))
             erros.Add("E-mail é obrigatório.");
+        if (!request.AceitouTermos)
+            erros.Add("Para criar a conta, é preciso aceitar os Termos de uso e a Política de privacidade.");
         if (erros.Count > 0)
             return BadRequest(erros);
 
@@ -174,7 +181,23 @@ public sealed class AuthController : ControllerBase
             return BadRequest(resultado.Errors.Select(e => e.Description));
         }
 
+        // Aceite dos termos na MESMA transação: conta criada sem a prova do
+        // aceite não existe. Ninguém logado ainda — o TenantId vem do
+        // override (AceiteTermos e AuditLog são ITenantEntity).
+        _db.TenantIdOverrideDeSistema = tenant.Id;
+        try
+        {
+            _aceiteTermos.Registrar(user.Id, OrigemAceiteTermos.Cadastro);
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+        finally
+        {
+            _db.TenantIdOverrideDeSistema = null;
+        }
+
         await transacao.CommitAsync(cancellationToken);
+
+        _aceiteTermos.MarcarComoAceito(user.Id);
 
         await _signInManager.SignInAsync(user, isPersistent: false);
 
@@ -224,6 +247,7 @@ public sealed class AuthController : ControllerBase
         return resultado.Succeeded ? Ok() : Unauthorized();
     }
 
+    [PermitirSemAceiteTermos]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout()
     {
@@ -415,8 +439,11 @@ public sealed class AuthController : ControllerBase
     [AllowAnonymous]
     [EnableRateLimiting("AuthSensivel")]
     [HttpPost("aceitar-convite")]
-    public async Task<IActionResult> AceitarConvite([FromBody] AceitarConviteRequest request)
+    public async Task<IActionResult> AceitarConvite([FromBody] AceitarConviteRequest request, CancellationToken cancellationToken)
     {
+        if (!request.AceitouTermos)
+            return BadRequest(new { erro = "Para entrar, é preciso aceitar os Termos de uso e a Política de privacidade." });
+
         var usuario = await _userManager.FindByEmailAsync(request.Email);
         if (usuario is null)
             return NotFound();
@@ -430,6 +457,21 @@ public sealed class AuthController : ControllerBase
         // usuários usa pra decidir o Status e bloquear reenvio/exclusão.
         usuario.ConviteAceitoEm = DateTimeOffset.UtcNow;
         await _userManager.UpdateAsync(usuario);
+
+        // Pré-autenticação: TenantId do aceite vem do override (mesmo
+        // padrão de SolicitarRedefinicaoSenha).
+        _db.TenantIdOverrideDeSistema = usuario.TenantId;
+        try
+        {
+            _aceiteTermos.Registrar(usuario.Id, OrigemAceiteTermos.Convite);
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+        finally
+        {
+            _db.TenantIdOverrideDeSistema = null;
+        }
+
+        _aceiteTermos.MarcarComoAceito(usuario.Id);
 
         await _signInManager.SignInAsync(usuario, isPersistent: false);
 

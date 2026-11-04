@@ -3,6 +3,13 @@ document.getElementById('form-convite').addEventListener('submit', async functio
     const erroDiv = document.getElementById('erro-convite');
     erroDiv.classList.add('d-none');
 
+    const aceitouTermos = document.getElementById('aceitouTermos').checked;
+    if (!aceitouTermos) {
+        erroDiv.textContent = 'Para entrar, marque que leu e aceita os Termos de uso e a Política de privacidade.';
+        erroDiv.classList.remove('d-none');
+        return;
+    }
+
     try {
         const resposta = await fetch('/api/auth/aceitar-convite', {
             method: 'POST',
@@ -11,7 +18,8 @@ document.getElementById('form-convite').addEventListener('submit', async functio
             body: JSON.stringify({
                 email: document.getElementById('email').value,
                 token: document.getElementById('token').value,
-                novaSenha: document.getElementById('novaSenha').value
+                novaSenha: document.getElementById('novaSenha').value,
+                aceitouTermos: aceitouTermos
             })
         });
 

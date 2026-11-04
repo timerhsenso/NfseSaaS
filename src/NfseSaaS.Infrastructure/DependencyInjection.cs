@@ -80,6 +80,7 @@ public static class DependencyInjection
         services.AddScoped<ICurrentTenant, CurrentTenant>();
         services.AddScoped<ICurrentUser, CurrentUser>();
         services.AddScoped<IAuditLogWriter, AuditLogWriter>();
+        services.AddScoped<IAceiteTermosService, NfseSaaS.Infrastructure.Legal.AceiteTermosService>();
         services.AddScoped<IGrupoProvisionamentoService, GrupoProvisionamentoService>();
         services.AddScoped<INfseEventoWriter, NfseEventoWriter>();
 

@@ -5,6 +5,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (LGPD)
+- Termos de uso e Política de privacidade (modelo para revisão jurídica),
+  públicos em `/termos` e `/privacidade`, com links no login, no cadastro,
+  no convite e no menu do usuário. Versões e dados do responsável em
+  `NfseSaaS.Domain.Legal.DocumentosLegais` (único lugar a mudar).
+- Aceite registrado: o cadastro e o aceite de convite exigem marcar "Li e
+  aceito"; cada aceite grava versão dos dois documentos, data, IP,
+  navegador, usuário e origem (tabela `aceites_termos`, nunca alterada) e
+  entra no histórico de auditoria (`AceitarTermos`). Migration `AceiteTermos`.
+- Usuário logado sem aceite da versão vigente (contas já existentes, ou
+  quando a versão sobe) vai para a tela de aceite antes de qualquer outra;
+  a API responde 403 `termos_pendentes` e as telas levam ao aceite sozinhas.
+  Depois de aceitar, volta para onde estava.
+
 ### Adicionado (operação)
 - Backup diário externo da produção para o OneDrive, criptografado (rclone
   crypt): banco (`pg_dump` validado), certificados com as chaves do Data

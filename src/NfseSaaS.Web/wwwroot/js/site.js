@@ -63,6 +63,13 @@ async function apiFetch(url, options) {
     }
 
     if (resposta.status === 403) {
+        // Nova versão dos Termos de uso/Política de privacidade ainda não
+        // aceita (ExigeAceiteTermosFilter) — leva para a tela de aceite.
+        const corpo = await resposta.json().catch(() => null);
+        if (corpo?.codigo === 'termos_pendentes') {
+            window.location.href = (corpo.url || '/Legal/Aceitar') + '?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
+            throw new Error(corpo.erro);
+        }
         throw new Error('Você não tem permissão para esta ação.');
     }
 

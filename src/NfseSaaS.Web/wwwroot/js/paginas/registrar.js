@@ -3,6 +3,13 @@ document.getElementById('form-registrar').addEventListener('submit', async funct
     const erroDiv = document.getElementById('erro-registrar');
     erroDiv.classList.add('d-none');
 
+    const aceitouTermos = document.getElementById('aceitouTermos').checked;
+    if (!aceitouTermos) {
+        erroDiv.textContent = 'Para criar a conta, marque que leu e aceita os Termos de uso e a Política de privacidade.';
+        erroDiv.classList.remove('d-none');
+        return;
+    }
+
     try {
         const resposta = await fetch('/api/auth/registrar', {
             method: 'POST',
@@ -12,7 +19,8 @@ document.getElementById('form-registrar').addEventListener('submit', async funct
                 razaoSocialTenant: document.getElementById('razaoSocialTenant').value,
                 cnpjTenant: document.getElementById('cnpjTenant').value,
                 email: document.getElementById('email').value,
-                senha: document.getElementById('senha').value
+                senha: document.getElementById('senha').value,
+                aceitouTermos: aceitouTermos
             })
         });
 

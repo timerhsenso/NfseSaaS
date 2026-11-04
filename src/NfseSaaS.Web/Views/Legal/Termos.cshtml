@@ -1,0 +1,179 @@
+@using NfseSaaS.Domain.Legal
+@{
+    Layout = "_LegalLayout";
+    ViewData["Title"] = "Termos de uso";
+    var servico = DocumentosLegais.NomeServico;
+}
+
+<h1>Termos de uso</h1>
+<p class="legal-versao">Versão @DocumentosLegais.VersaoTermosDeUso · vigente desde @DocumentosLegais.VigentesDesde.ToString("dd/MM/yyyy")</p>
+
+<p class="legal-resumo">
+    <strong>Em poucas palavras:</strong> o @servico é uma plataforma para emitir e organizar notas fiscais de serviço
+    (NFS-e) no padrão nacional. Você continua responsável pelas informações fiscais que cadastra e pelas notas que
+    emite; nós cuidamos de manter a plataforma funcionando, segura e com os seus dados protegidos. Leia o texto
+    completo abaixo — ele vale como contrato entre você e o @servico.
+</p>
+
+<h2>1. Quem somos e aceitação</h2>
+<p>
+    O @servico (<a href="https://@DocumentosLegais.Site">@DocumentosLegais.Site</a>) é mantido por
+    <strong>@DocumentosLegais.ResponsavelNome</strong>, com sede em @DocumentosLegais.Foro, aqui chamado de
+    "@servico", "nós" ou "plataforma".
+</p>
+<p>
+    Ao criar uma conta, aceitar um convite ou continuar usando a plataforma depois de uma nova versão destes Termos,
+    você declara que leu, entendeu e concorda com eles e com a <a href="/privacidade">Política de privacidade</a>.
+    Se estiver usando a plataforma em nome de uma empresa, você declara ter poderes para aceitar estes Termos por ela.
+    Se não concordar, não use a plataforma.
+</p>
+
+<h2>2. Definições</h2>
+<ul>
+    <li><strong>Cliente:</strong> a empresa (identificada pelo CNPJ) que contrata a plataforma e é titular da conta.</li>
+    <li><strong>Conta:</strong> o espaço do Cliente na plataforma, com suas empresas, cadastros, contratos e notas, separado das demais contas.</li>
+    <li><strong>Usuário:</strong> a pessoa que acessa a Conta com e-mail e senha — o primeiro usuário (administrador) e os convidados por ele.</li>
+    <li><strong>NFS-e:</strong> nota fiscal de serviço eletrônica emitida no Ambiente Nacional da NFS-e (Sistema Nacional NFS-e / SEFIN Nacional).</li>
+    <li><strong>Certificado digital:</strong> o certificado ICP-Brasil do Cliente (tipo A1, arquivo .pfx), usado para assinar e transmitir as notas.</li>
+</ul>
+
+<h2>3. O serviço</h2>
+<p>
+    A plataforma permite cadastrar empresas, tomadores, serviços e contratos; emitir, consultar, cancelar e
+    baixar NFS-e (XML e PDF); emitir notas mensais em lote; acompanhar reajustes de contratos por índices
+    econômicos; e convidar outros usuários com permissões por perfil.
+</p>
+<p>
+    Durante a fase de testes com clientes convidados (beta), funcionalidades podem mudar, ser incluídas ou
+    retiradas, sempre com aviso quando afetarem o uso que você já faz. A plataforma não presta serviços de
+    contabilidade, nem consultoria fiscal ou jurídica.
+</p>
+
+<h2>4. Conta, usuários e senhas</h2>
+<ul>
+    <li>As informações de cadastro devem ser verdadeiras e mantidas atualizadas. É vedado criar conta em nome de empresa sem autorização dela.</li>
+    <li>Cada usuário deve ter seu próprio acesso. Senhas são pessoais e intransferíveis; o Cliente responde pelo que for feito com os acessos da sua Conta.</li>
+    <li>O administrador da Conta decide quem entra, com quais permissões, e pode bloquear ou remover usuários a qualquer momento.</li>
+    <li>Em caso de suspeita de uso indevido, troque a senha imediatamente e avise-nos pelo e-mail <a href="mailto:@DocumentosLegais.EmailPrivacidade">@DocumentosLegais.EmailPrivacidade</a>.</li>
+</ul>
+
+<h2>5. Certificado digital</h2>
+<p>
+    Ao enviar o certificado digital, o Cliente autoriza a plataforma a usá-lo <strong>exclusivamente</strong> para
+    assinar e transmitir ao Ambiente Nacional da NFS-e os documentos que ele mandar emitir, cancelar ou consultar —
+    inclusive pelas automações que ele mesmo configurar (como a nota mensal). O arquivo é guardado criptografado,
+    a senha nunca é exibida e o certificado não é usado para nenhuma outra finalidade.
+</p>
+<p>
+    O Cliente é responsável pela validade do certificado, por renová-lo antes do vencimento e por removê-lo da
+    plataforma quando não quiser mais que ela emita em seu nome.
+</p>
+
+<h2>6. Responsabilidade pelas informações fiscais</h2>
+<p>O Cliente é o emitente das notas e responde pelo conteúdo delas. Por isso, cabe ao Cliente:</p>
+<ul>
+    <li>conferir, de preferência com o seu contador, regime tributário, códigos de tributação, NBS, alíquotas, retenções, valores e dados dos tomadores;</li>
+    <li>revisar as automações que ativar (nota mensal, reajuste automático de contratos) e os valores que elas vão aplicar;</li>
+    <li>acompanhar o resultado de cada emissão e tratar as rejeições informadas pela SEFIN;</li>
+    <li>guardar os XML das notas pelo prazo exigido pela legislação, inclusive baixando-os antes de encerrar a Conta.</li>
+</ul>
+<p>
+    A plataforma valida o formato dos dados conforme o leiaute oficial, mas não substitui a análise fiscal do Cliente
+    nem garante que uma informação correta no formato esteja correta perante a lei.
+</p>
+
+<h2>7. Disponibilidade e serviços de terceiros</h2>
+<p>
+    Trabalhamos para manter a plataforma disponível e segura, com cópias de segurança diárias, mas não garantimos
+    funcionamento ininterrupto ou livre de erros. Podem ocorrer paradas para manutenção (avisadas com antecedência
+    sempre que possível) e falhas fora do nosso controle — em especial indisponibilidade ou mudanças do Ambiente
+    Nacional da NFS-e, de provedores de hospedagem e internet, e de serviços públicos de consulta (CNPJ, CEP,
+    índices econômicos).
+</p>
+
+<h2>8. Planos, preços e pagamento</h2>
+<ul>
+    <li>Durante o beta, o uso pode ser gratuito ou ter condições especiais, conforme comunicado ao Cliente.</li>
+    <li>Encerrado o beta, o uso passa a ser pago, conforme o plano escolhido. Preço, limites e forma de cobrança são informados <strong>antes</strong> da contratação, e nada é cobrado sem que o Cliente tenha escolhido um plano.</li>
+    <li>A cobrança é recorrente (mensal ou anual, conforme o plano), feita por empresa de pagamentos parceira. Não guardamos dados de cartão.</li>
+    <li>Em caso de atraso, o Cliente é avisado por e-mail; persistindo o atraso por mais de 10 (dez) dias após o aviso, a Conta pode ser suspensa até a regularização, sem perda dos dados durante o prazo de retenção da Política de privacidade.</li>
+    <li>Os preços podem ser reajustados uma vez por ano, ou alterados por mudança de plano, com aviso de pelo menos 30 (trinta) dias.</li>
+    <li>O Cliente pode cancelar a qualquer momento; o cancelamento vale para o próximo período e não gera multa. Valores do período em curso não são devolvidos, salvo quando a lei determinar.</li>
+</ul>
+
+<h2>9. Uso permitido</h2>
+<p>É proibido usar a plataforma para:</p>
+<ul>
+    <li>emitir documentos fiscais falsos, simulados ou em nome de terceiros sem autorização, ou praticar qualquer fraude;</li>
+    <li>acessar, ou tentar acessar, contas e dados de outros clientes;</li>
+    <li>testar vulnerabilidades, sobrecarregar, copiar ou fazer engenharia reversa da plataforma, ou automatizar acessos fora dos meios que oferecemos;</li>
+    <li>cadastrar dados pessoais de terceiros sem base legal para isso.</li>
+</ul>
+
+<h2>10. Suspensão e encerramento</h2>
+<p>
+    O Cliente pode encerrar a Conta a qualquer momento pelo canal de contato. Podemos suspender ou encerrar a Conta
+    em caso de violação destes Termos, de uso que coloque em risco a plataforma ou outros clientes, de ordem de
+    autoridade, ou de inadimplência (item 8). Fora de situações urgentes ou ilegais, avisaremos antes, por e-mail.
+</p>
+<p>
+    Durante a suspensão, ninguém da Conta acessa a plataforma e nenhuma nota é emitida, inclusive pelas automações.
+    Após o encerramento, os dados são mantidos e depois excluídos nos prazos da
+    <a href="/privacidade">Política de privacidade</a> (os dados fiscais, por 5 anos). Antes de encerrar, baixe os XML
+    e PDF das suas notas.
+</p>
+
+<h2>11. Propriedade intelectual</h2>
+<p>
+    A plataforma, sua marca, código e aparência pertencem ao @servico. O Cliente recebe uma licença de uso pessoal,
+    não exclusiva e intransferível, enquanto a Conta estiver ativa. Os dados que o Cliente cadastra continuam sendo
+    do Cliente.
+</p>
+
+<h2>12. Dados pessoais</h2>
+<p>
+    O tratamento de dados pessoais segue a Lei Geral de Proteção de Dados (Lei nº 13.709/2018) e está descrito na
+    <a href="/privacidade">Política de privacidade</a>. Para os dados dos usuários da Conta, o @servico é o
+    controlador. Para os dados que o Cliente cadastra sobre os próprios clientes e tomadores, o
+    <strong>Cliente é o controlador</strong> e o @servico atua como operador, tratando esses dados somente para
+    executar o serviço, conforme as instruções do Cliente e estes Termos.
+</p>
+
+<h2>13. Limitação de responsabilidade</h2>
+<p>O @servico não responde por:</p>
+<ul>
+    <li>multas, tributos, juros ou prejuízos decorrentes de informações fiscais cadastradas ou confirmadas pelo Cliente, ou de automações que ele ativou;</li>
+    <li>indisponibilidade, demora, rejeição ou mudança de regras do Ambiente Nacional da NFS-e ou de outros serviços públicos;</li>
+    <li>uso indevido de senhas ou do certificado digital por falha de guarda do Cliente ou de seus usuários;</li>
+    <li>lucros cessantes e danos indiretos.</li>
+</ul>
+<p>
+    Em qualquer caso, a responsabilidade total do @servico fica limitada ao valor pago pelo Cliente nos 12 (doze)
+    meses anteriores ao fato. Nada nestes Termos afasta responsabilidade que a lei não permita limitar, nem a
+    decorrente de dolo.
+</p>
+
+<h2>14. Alterações destes Termos</h2>
+<p>
+    Podemos atualizar estes Termos. Mudanças relevantes são avisadas por e-mail e na plataforma com pelo menos
+    15 (quinze) dias de antecedência, salvo quando a mudança for exigida por lei ou por questão de segurança. Cada
+    versão tem número e data; a nova versão precisa ser aceita para continuar usando a plataforma. Se não
+    concordar, o Cliente pode encerrar a Conta sem multa.
+</p>
+
+<h2>15. Comunicações</h2>
+<p>
+    Os avisos são enviados para o e-mail dos usuários cadastrados na Conta e/ou exibidos na plataforma. Mantenha
+    os e-mails atualizados.
+</p>
+
+<h2>16. Lei aplicável e foro</h2>
+<p>
+    Estes Termos seguem as leis do Brasil. Fica eleito o foro da comarca de @DocumentosLegais.Foro para resolver
+    qualquer questão relacionada a eles, ressalvados os casos em que a lei garanta outro foro.
+</p>
+
+<h2>17. Contato</h2>
+<p>
+    Dúvidas, pedidos e avisos: <a href="mailto:@DocumentosLegais.EmailPrivacidade">@DocumentosLegais.EmailPrivacidade</a>.
+</p>

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NfseSaaS.Web.Filters;
 
 namespace NfseSaaS.Web.Controllers;
 
@@ -15,6 +16,7 @@ namespace NfseSaaS.Web.Controllers;
 /// quando uma página MVC protegida é acessada sem sessão.
 /// </summary>
 [AllowAnonymous]
+[PermitirSemAceiteTermos]
 public sealed class AccountController : Controller
 {
     [HttpGet("/Account/Login")]
