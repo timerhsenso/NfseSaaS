@@ -28,5 +28,22 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
 
         builder.HasIndex(t => t.Cnpj)
             .IsUnique();
+
+        builder.Property(t => t.CodigoIndicacao)
+            .HasMaxLength(12);
+
+        builder.Property(t => t.OrigemCadastro)
+            .HasMaxLength(40);
+
+        // Único quando preenchido (o Postgres aceita vários NULL num índice único).
+        builder.HasIndex(t => t.CodigoIndicacao)
+            .IsUnique()
+            .HasDatabaseName("IX_tenants_CodigoIndicacao");
+
+        // Quem indicou não pode ser apagado enquanto houver conta indicada por ele.
+        builder.HasOne<Tenant>()
+            .WithMany()
+            .HasForeignKey(t => t.IndicadoPorTenantId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

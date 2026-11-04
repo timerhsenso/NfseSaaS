@@ -300,7 +300,6 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
             // offset de Brasília (-03:00), então convertemos antes de salvar.
             nfse.DataEmissao = (resposta.DataHoraProcessamento ?? DateTimeOffset.UtcNow).ToUniversalTime();
             nfse.ChaveAcesso = resposta.ChaveAcesso;
-            nfse.NumeroNfse = resposta.IdDps;
 
             if (resposta.Sucesso)
             {
@@ -310,6 +309,10 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
                 {
                     nfse.XmlNfse = GZipHelper.DescomprimirDeBase64(resposta.NfseXmlGZipB64);
                     nfse.ValorLiquido = NfseXmlValoresParser.ExtrairValorLiquido(nfse.XmlNfse);
+
+                    // Número oficial da NFS-e (nNFSe), gerado pela SEFIN na
+                    // autorização. Antes gravava o Id da DPS aqui por engano.
+                    nfse.NumeroNfse = new NfseSaaS.Infrastructure.SincronizacaoSefin.NfseXmlImportDados(nfse.XmlNfse).NumeroNfse();
                 }
 
                 _nfseEventoWriter.Registrar(nfse.Id, NfseEventoTipo.Autorizada, mensagem: nfse.ChaveAcesso);

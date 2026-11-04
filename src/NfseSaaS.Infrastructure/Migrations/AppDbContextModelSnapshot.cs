@@ -1350,8 +1350,15 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasMaxLength(14)
                         .HasColumnType("character varying(14)");
 
+                    b.Property<string>("CodigoIndicacao")
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("IndicadoPorTenantId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("MotivoBloqueio")
                         .HasMaxLength(300)
@@ -1360,6 +1367,10 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<string>("NomeFantasia")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<string>("OrigemCadastro")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
 
                     b.Property<string>("RazaoSocial")
                         .IsRequired()
@@ -1373,6 +1384,12 @@ namespace NfseSaaS.Infrastructure.Migrations
 
                     b.HasIndex("Cnpj")
                         .IsUnique();
+
+                    b.HasIndex("CodigoIndicacao")
+                        .IsUnique()
+                        .HasDatabaseName("IX_tenants_CodigoIndicacao");
+
+                    b.HasIndex("IndicadoPorTenantId");
 
                     b.ToTable("tenants", (string)null);
                 });
@@ -1634,6 +1651,14 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasForeignKey("EmpresaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.Tenant", b =>
+                {
+                    b.HasOne("NfseSaaS.Domain.Entities.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("IndicadoPorTenantId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("NfseSaaS.Infrastructure.Identity.ApplicationUser", b =>

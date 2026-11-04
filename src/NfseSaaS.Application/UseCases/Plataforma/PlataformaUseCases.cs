@@ -18,7 +18,10 @@ public sealed record TenantPlataformaResponse(
     int EmpresasEmProducao,
     int NotasNoMes,
     int NotasTotal,
-    DateTimeOffset? UltimaNota);
+    DateTimeOffset? UltimaNota,
+    string? OrigemCadastro,
+    string? IndicadaPor,
+    int Indicacoes);
 
 /// <summary>Todas as contas, de todos os tenants — só o operador da plataforma chama.</summary>
 public interface IListarTenantsPlataformaUseCase

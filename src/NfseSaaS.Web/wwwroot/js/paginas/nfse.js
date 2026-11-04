@@ -36,7 +36,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 orderable: false,
                 render: (d, t, n) => `<input type="checkbox" class="form-check-input check-linha-nfse" data-id="${n.id}" ${nfseSelecionadas.has(n.id) ? 'checked' : ''}>`
             },
-            { data: null, render: (d, t, n) => `${n.numeroDps}/${n.serieDps}` },
+            {
+                // Número oficial da NFS-e (quando autorizada) e, embaixo, a DPS que a originou.
+                data: null,
+                render: (d, t, n) => t !== 'display'
+                    ? `${n.numeroNfse ?? ''} ${n.numeroDps}`
+                    : n.numeroNfse
+                        ? `<strong>${escaparHtml(n.numeroNfse)}</strong> <br><small class="text-muted">DPS ${n.numeroDps}/${escaparHtml(n.serieDps)}</small>`
+                        : `<span class="text-muted">DPS ${n.numeroDps}/${escaparHtml(n.serieDps)}</span>`
+            },
             {
                 // Apelido na grade; razão social na dica (title) do mouse.
                 data: 'clienteId',

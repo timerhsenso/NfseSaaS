@@ -5,6 +5,34 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (indique e ganhe)
+- Tela **Indique e ganhe** (menu lateral, qualquer usuário logado): link da
+  conta (`micoempresa.com.br/?ref=CODIGO`), botões de copiar, WhatsApp e
+  e-mail, e a lista das contas que vieram pelo link (só data e situação, sem
+  nome). O prêmio (1 mês grátis para os dois quando a indicada virar
+  assinatura) entra com a cobrança.
+- O código de indicação (`?ref=`) e o canal (`?origem=`, ex.: `email-nota`)
+  viajam no endereço da página pública até o formulário de cadastro, sem
+  cookie. Código desconhecido é ignorado e nunca impede o cadastro.
+- Conta nova já nasce com o próprio código; contas antigas ganham o código na
+  primeira visita à tela.
+- Painel do operador (Contas) mostra quem indicou cada conta, a origem do
+  cadastro e quantas indicações cada uma fez.
+- Texto da tela de cadastro sem o termo "Tenant".
+- Migration `IndicacaoDeContas`: 3 colunas opcionais em `tenants`
+  (`CodigoIndicacao` único, `IndicadoPorTenantId` com FK para `tenants`,
+  `OrigemCadastro`).
+
+### Corrigido (número da NFS-e)
+- O "Número da NFS-e" guardava o Id da DPS ("DPS" + 42 dígitos) em vez do
+  número oficial gerado pela SEFIN. Agora a emissão grava o `nNFSe` do XML
+  autorizado, e as notas antigas são corrigidas sozinhas na subida do
+  sistema (`NumeroNfseCorrecao`, idempotente, sem migration): com XML, recebem
+  o número oficial; sem XML (rejeitadas), ficam sem número de NFS-e.
+- Lista de notas e painel mostram o número da NFS-e em destaque e a DPS
+  embaixo. O e-mail ao tomador já usava esse campo e passa a mostrar o
+  número certo.
+
 ### Adicionado (onboarding)
 - **Primeiros passos** no painel: da conta nova até a primeira nota em
   produção, em 6 passos (empresa, certificado A1, serviço, cliente, nota de

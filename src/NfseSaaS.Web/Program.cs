@@ -236,6 +236,7 @@ try
     await NfseSaaS.Infrastructure.Persistence.Seeders.EmailPendenteRecuperador.ReenfileirarPendentesAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.CodigoTributacaoNacionalSeeder.SeedAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.CodigoNbsSeeder.SeedAsync(app.Services);
+    await NfseSaaS.Infrastructure.Persistence.Seeders.NumeroNfseCorrecao.CorrigirAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.AutomacaoNotaMensalJobSincronizador.SincronizarAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.IndicesEconomicosJobSincronizador.SincronizarAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.AvisoCertificadoJobSincronizador.SincronizarAsync(app.Services);

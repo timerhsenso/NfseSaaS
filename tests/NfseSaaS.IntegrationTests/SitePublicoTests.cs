@@ -41,6 +41,16 @@ public class SitePublicoTests
     }
 
     [Fact]
+    public async Task Link_de_indicacao_chega_ao_cadastro_e_valor_invalido_e_descartado()
+    {
+        var comCodigo = await (await Cliente().GetComStatus200Async("/?ref=k7m2qx9a&origem=email-nota")).Content.ReadAsStringAsync();
+        Assert.Contains("/Account/Registrar?ref=K7M2QX9A&amp;origem=email-nota", comCodigo);
+
+        var invalido = await (await Cliente().GetComStatus200Async("/?ref=%3Cscript%3E")).Content.ReadAsStringAsync();
+        Assert.DoesNotContain("Registrar?ref=", invalido);
+    }
+
+    [Fact]
     public async Task Indice_de_erros_lista_todos_os_codigos()
     {
         var html = await (await Cliente().GetComStatus200Async("/erros-nfse")).Content.ReadAsStringAsync();
@@ -116,6 +126,15 @@ public class OnboardingApiTests
     public OnboardingApiTests(WebApplicationFactory<Program> factory)
     {
         _factory = factory;
+    }
+
+    [Fact]
+    public async Task Indicacao_exige_login()
+    {
+        var resposta = await _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false })
+            .GetAsync("/api/indicacao");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, resposta.StatusCode);
     }
 
     [Fact]

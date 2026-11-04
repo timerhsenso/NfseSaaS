@@ -20,7 +20,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 data: 'razaoSocial',
                 render: (v, type, t) => type !== 'display' ? `${v} ${t.nomeFantasia ?? ''} ${t.cnpj}` :
                     `<div class="fw-semibold">${escaparHtml(t.nomeFantasia || v)}</div>` +
-                    `<div class="small text-muted">${escaparHtml(formatarCnpjPlataforma(t.cnpj))}${t.nomeFantasia ? ' · ' + escaparHtml(v) : ''}</div>`
+                    `<div class="small text-muted">${escaparHtml(formatarCnpjPlataforma(t.cnpj))}${t.nomeFantasia ? ' · ' + escaparHtml(v) : ''}</div>` +
+                    (t.indicadaPor || t.origemCadastro || t.indicacoes
+                        ? `<div class="small text-muted">${[
+                            t.indicadaPor ? `indicada por ${escaparHtml(t.indicadaPor)}` : (t.origemCadastro ? `origem: ${escaparHtml(t.origemCadastro)}` : ''),
+                            t.indicacoes ? `<i class="bi bi-gift" aria-hidden="true"></i> ${t.indicacoes} indicação(ões)` : ''
+                          ].filter(Boolean).join(' · ')}</div>`
+                        : '')
             },
             { data: 'emailResponsavel', render: v => v ? escaparHtml(v) : '—' },
             { data: 'criadoEm', render: (v, type) => type === 'display' ? dataCurta(v) : v },

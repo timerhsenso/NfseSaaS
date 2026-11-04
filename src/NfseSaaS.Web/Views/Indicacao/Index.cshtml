@@ -1,0 +1,49 @@
+@{
+    ViewData["Title"] = "Indique e ganhe";
+}
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-gift" aria-hidden="true"></i> Seu link de indicação</div>
+            <div class="card-body">
+                <p class="mb-3">
+                    Conhece alguém que emite nota de serviço? Mande o seu link. Quando a pessoa criar a conta por ele,
+                    ela aparece aqui embaixo.
+                </p>
+                <label class="form-label" for="link-indicacao">Link</label>
+                <div class="input-group mb-2">
+                    <input type="text" class="form-control" id="link-indicacao" readonly value="Carregando…" />
+                    <button type="button" class="btn btn-primary" id="btn-copiar-link"><i class="bi bi-clipboard" aria-hidden="true"></i> Copiar</button>
+                </div>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <a class="btn btn-outline-success btn-sm" id="btn-whatsapp" target="_blank" rel="noopener"><i class="bi bi-whatsapp" aria-hidden="true"></i> Enviar pelo WhatsApp</a>
+                    <a class="btn btn-outline-secondary btn-sm" id="btn-email"><i class="bi bi-envelope" aria-hidden="true"></i> Enviar por e-mail</a>
+                </div>
+                <div class="alert alert-info small mb-0">
+                    <strong>Como funciona o prêmio:</strong> quando a cobrança começar, cada conta indicada por você que
+                    virar assinatura dá <strong>1 mês grátis para você e 1 mês grátis para ela</strong>.
+                    Durante o beta, o uso já é gratuito para todos.
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Suas indicações</span>
+                <strong id="total-indicacoes">-</strong>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0" id="lista-indicacoes">
+                    <li class="text-muted">Carregando…</li>
+                </ul>
+                <div class="form-text mt-2">Por privacidade, mostramos só a data do cadastro e a situação de cada conta.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/paginas/indicacao.js" asp-append-version="true"></script>
+}

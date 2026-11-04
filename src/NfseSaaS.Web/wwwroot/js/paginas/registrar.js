@@ -20,7 +20,10 @@ document.getElementById('form-registrar').addEventListener('submit', async funct
                 cnpjTenant: document.getElementById('cnpjTenant').value,
                 email: document.getElementById('email').value,
                 senha: document.getElementById('senha').value,
-                aceitouTermos: aceitouTermos
+                aceitouTermos: aceitouTermos,
+                // Link de indicação (?ref=) e canal (?origem=) que trouxeram a pessoa — ver LinkCadastroExtensions.
+                codigoIndicacao: new URLSearchParams(window.location.search).get('ref'),
+                origem: new URLSearchParams(window.location.search).get('origem')
             })
         });
 

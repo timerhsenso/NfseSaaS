@@ -20,7 +20,9 @@ using NfseSaaS.Web.Filters;
 namespace NfseSaaS.Web.Controllers.Api;
 
 /// <param name="AceitouTermos">Caixa "Li e aceito os Termos de uso e a Política de privacidade" — obrigatória.</param>
-public sealed record RegistrarRequest(string Email, string Senha, string RazaoSocialTenant, string CnpjTenant, bool AceitouTermos = false);
+/// <param name="CodigoIndicacao">Código do link de indicação (?ref=) que trouxe a pessoa, se houver.</param>
+/// <param name="Origem">Canal que trouxe a pessoa (?origem=), se houver — ex.: email-nota.</param>
+public sealed record RegistrarRequest(string Email, string Senha, string RazaoSocialTenant, string CnpjTenant, bool AceitouTermos = false, string? CodigoIndicacao = null, string? Origem = null);
 
 public sealed record LoginRequest(string Email, string Senha);
 
@@ -154,10 +156,23 @@ public sealed class AuthController : ControllerBase
         // então participa desta mesma transação.
         await using var transacao = await _db.Database.BeginTransactionAsync(cancellationToken);
 
+        // Indicação: código desconhecido é ignorado em silêncio (o cadastro
+        // nunca falha por causa do link). A origem só serve para o operador
+        // medir de onde vêm as contas.
+        var codigoIndicacao = NfseSaaS.Application.UseCases.Indicacao.CodigoIndicacao.Normalizar(request.CodigoIndicacao);
+        var indicadoPorTenantId = codigoIndicacao is null
+            ? (Guid?)null
+            : await _db.Tenants.Where(t => t.CodigoIndicacao == codigoIndicacao).Select(t => (Guid?)t.Id).FirstOrDefaultAsync(cancellationToken);
+        var origem = NfseSaaS.Application.UseCases.Indicacao.CodigoIndicacao.NormalizarOrigem(request.Origem)
+            ?? (indicadoPorTenantId is null ? null : NfseSaaS.Application.UseCases.Indicacao.CodigoIndicacao.OrigemIndicacao);
+
         var tenant = new Tenant
         {
             Cnpj = cnpj,
-            RazaoSocial = request.RazaoSocialTenant.Trim()
+            RazaoSocial = request.RazaoSocialTenant.Trim(),
+            CodigoIndicacao = NfseSaaS.Application.UseCases.Indicacao.CodigoIndicacao.Gerar(),
+            IndicadoPorTenantId = indicadoPorTenantId,
+            OrigemCadastro = origem
         };
 
         _db.Tenants.Add(tenant);

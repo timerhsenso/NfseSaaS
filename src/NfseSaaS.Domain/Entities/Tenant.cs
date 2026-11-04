@@ -28,4 +28,19 @@ public sealed class Tenant : BaseEntity
 
     /// <summary>Por que foi suspensa (ex.: inadimplência, pedido do cliente) — só o operador vê.</summary>
     public string? MotivoBloqueio { get; set; }
+
+    /// <summary>
+    /// Código do link "Indique e ganhe" desta conta (ex.: micoempresa.com.br/?ref=K7M2QX9A).
+    /// Gerado no cadastro; contas antigas ganham o código na primeira visita à tela de indicação.
+    /// </summary>
+    public string? CodigoIndicacao { get; set; }
+
+    /// <summary>Conta que indicou esta (veio pelo link de indicação dela no cadastro).</summary>
+    public Guid? IndicadoPorTenantId { get; set; }
+
+    /// <summary>
+    /// De onde veio o cadastro (ex.: "indicacao", "email-nota"), lido do endereço
+    /// que trouxe a pessoa ao site. Só para o operador medir os canais.
+    /// </summary>
+    public string? OrigemCadastro { get; set; }
 }

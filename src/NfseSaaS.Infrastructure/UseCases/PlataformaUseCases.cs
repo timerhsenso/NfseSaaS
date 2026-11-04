@@ -60,6 +60,13 @@ public sealed class ListarTenantsPlataformaUseCase : IListarTenantsPlataformaUse
             })
             .ToDictionaryAsync(x => x.TenantId, cancellationToken);
 
+        // Indicação: quem indicou cada conta e quantas cada uma indicou
+        // (para o operador conceder o mês grátis quando a cobrança existir).
+        var nomes = tenants.ToDictionary(t => t.Id, t => t.NomeFantasia ?? t.RazaoSocial);
+        var indicacoes = tenants.Where(t => t.IndicadoPorTenantId is not null)
+            .GroupBy(t => t.IndicadoPorTenantId!.Value)
+            .ToDictionary(g => g.Key, g => g.Count());
+
         return tenants.Select(t =>
         {
             usuarios.TryGetValue(t.Id, out var u);
@@ -67,7 +74,10 @@ public sealed class ListarTenantsPlataformaUseCase : IListarTenantsPlataformaUse
             notas.TryGetValue(t.Id, out var n);
             return new TenantPlataformaResponse(
                 t.Id, t.RazaoSocial, t.NomeFantasia, t.Cnpj, t.Ativo, t.CreatedAt, t.BloqueadoEm, t.MotivoBloqueio,
-                u?.Responsavel, u?.Total ?? 0, e?.Total ?? 0, e?.Producao ?? 0, n?.NoMes ?? 0, n?.Total ?? 0, n?.Ultima);
+                u?.Responsavel, u?.Total ?? 0, e?.Total ?? 0, e?.Producao ?? 0, n?.NoMes ?? 0, n?.Total ?? 0, n?.Ultima,
+                t.OrigemCadastro,
+                t.IndicadoPorTenantId is { } indicadora && nomes.TryGetValue(indicadora, out var nomeIndicadora) ? nomeIndicadora : null,
+                indicacoes.GetValueOrDefault(t.Id));
         }).ToList();
     }
 }

@@ -277,6 +277,7 @@ public static class DependencyInjection
 
         services.AddScoped<IListarTenantsPlataformaUseCase, ListarTenantsPlataformaUseCase>();
         services.AddScoped<NfseSaaS.Application.UseCases.Onboarding.IObterProgressoOnboardingUseCase, ObterProgressoOnboardingUseCase>();
+        services.AddScoped<NfseSaaS.Application.UseCases.Indicacao.IObterIndicacaoUseCase, ObterIndicacaoUseCase>();
         services.AddScoped<IAlterarBloqueioTenantUseCase, AlterarBloqueioTenantUseCase>();
         services.AddScoped<IObterAuditLogPorIdUseCase, ObterAuditLogPorIdUseCase>();
 

@@ -85,7 +85,7 @@ function renderizarNotasRecentes(notas, empresasPorId) {
         const empresa = empresasPorId[n.empresaId] ?? '—';
 
         return `<tr>
-            <td>${n.numeroDps}/${n.serieDps}</td>
+            <td>${n.numeroNfse ? `<strong>${escaparHtml(n.numeroNfse)}</strong>` : `<span class="text-muted">DPS ${n.numeroDps}</span>`}</td>
             <td>${empresa}</td>
             <td>${valor}</td>
             <td><span class="badge text-bg-${rotulo.cor}">${rotulo.texto}</span></td>
