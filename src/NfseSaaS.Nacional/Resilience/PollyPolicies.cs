@@ -22,6 +22,28 @@ namespace NfseSaaS.Nacional.Resilience;
 public static class PollyPolicies
 {
     /// <summary>
+    /// Marca uma requisição para passar FORA da resiliência global
+    /// (ConfigureHttpClientDefaults pega todo HttpClient do container). Usado
+    /// por chamadas que não têm nada a ver com a SEFIN — ex.: importação de
+    /// índices do Banco Central: sem isto, o Banco Central fora do ar abriria
+    /// o circuit breaker COMPARTILHADO e bloquearia a emissão de notas por 30s.
+    /// Uso: <c>request.Options.Set(PollyPolicies.IgnorarResilienciaGlobal, true)</c>.
+    /// </summary>
+    public static readonly HttpRequestOptionsKey<bool> IgnorarResilienciaGlobal = new("NfseSaaS.IgnorarResilienciaGlobal");
+
+    private static readonly IAsyncPolicy<HttpResponseMessage> SemPolitica = Policy.NoOpAsync<HttpResponseMessage>();
+
+    /// <summary>Política para a requisição: nenhuma se marcada com <see cref="IgnorarResilienciaGlobal"/>; senão retry+breaker em GET, só breaker no resto.</summary>
+    public static IAsyncPolicy<HttpResponseMessage> Selecionar(
+        HttpRequestMessage request, IAsyncPolicy<HttpResponseMessage> comRetry, IAsyncPolicy<HttpResponseMessage> circuitBreaker)
+    {
+        if (request.Options.TryGetValue(IgnorarResilienciaGlobal, out var ignorar) && ignorar)
+            return SemPolitica;
+
+        return request.Method == HttpMethod.Get ? comRetry : circuitBreaker;
+    }
+
+    /// <summary>
     /// Retry com backoff exponencial (1s, 2s, 4s) — só para falha
     /// TRANSITÓRIA: erro de rede (HttpRequestException) ou HTTP 5xx/408
     /// da própria SEFIN/ADN. NUNCA em 4xx: um 4xx é uma rejeição de

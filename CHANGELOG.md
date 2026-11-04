@@ -6,6 +6,13 @@ versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH)
 
 ## [Não lançado]
 ### Adicionado
+- Tela "Índices econômicos" (menu lateral): variação mensal de IPCA, IGP-M,
+  INCC, INPC, Selic e CDI, importada todo dia (09:40) da API SGS do Banco
+  Central — 24 meses na primeira vez. Mostra o acumulado dos 12 últimos meses
+  já publicados para qualquer data de aniversário, com os meses usados; recusa
+  calcular quando falta mês ou o índice está desatualizado. O operador da
+  plataforma pode lançar/corrigir um mês à mão (fica "Manual" e a importação
+  não sobrescreve), excluir e "Importar agora". Base do reajuste automático.
 - Histórico de valores do contrato: substitui o "Histórico de reajustes".
   Cada mudança de valor é um evento com tipo (Valor inicial, Reajuste,
   Alteração de escopo), data de vigência, valor anterior → novo, %, índice,

@@ -862,6 +862,42 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.ToTable("grupo_telas", (string)null);
                 });
 
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.IndiceEconomicoMensal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AtualizadoPorUsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("Competencia")
+                        .HasColumnType("date");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Fonte")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Indice")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("Variacao")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("numeric(9,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Indice", "Competencia")
+                        .IsUnique();
+
+                    b.ToTable("indices_economicos_mensais", (string)null);
+                });
+
             modelBuilder.Entity("NfseSaaS.Domain.Entities.MovimentacaoValorContrato", b =>
                 {
                     b.Property<Guid>("Id")

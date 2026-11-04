@@ -201,6 +201,7 @@ try
     await NfseSaaS.Infrastructure.Persistence.Seeders.CodigoTributacaoNacionalSeeder.SeedAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.CodigoNbsSeeder.SeedAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.AutomacaoNotaMensalJobSincronizador.SincronizarAsync(app.Services);
+    await NfseSaaS.Infrastructure.Persistence.Seeders.IndicesEconomicosJobSincronizador.SincronizarAsync(app.Services);
 
     app.UseForwardedHeaders();
     app.UseMiddleware<SecurityHeadersMiddleware>();

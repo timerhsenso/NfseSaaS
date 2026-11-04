@@ -17,6 +17,7 @@ using NfseSaaS.Application.UseCases.Contratos;
 using NfseSaaS.Application.UseCases.DocumentosContrato;
 using NfseSaaS.Application.UseCases.HistoricoContrato;
 using NfseSaaS.Application.UseCases.HistoricoValoresContrato;
+using NfseSaaS.Application.UseCases.IndicesEconomicos;
 using NfseSaaS.Application.UseCases.NotaMensal;
 using NfseSaaS.Infrastructure.Documents;
 using NfseSaaS.Application.UseCases.Empresas;
@@ -32,6 +33,7 @@ using NfseSaaS.Infrastructure.Auditing;
 using NfseSaaS.Infrastructure.Certificates;
 using NfseSaaS.Infrastructure.Email;
 using NfseSaaS.Infrastructure.Identity;
+using NfseSaaS.Infrastructure.IndicesEconomicos;
 using NfseSaaS.Infrastructure.Jobs;
 using NfseSaaS.Infrastructure.MultiTenancy;
 using NfseSaaS.Infrastructure.Persistence;
@@ -219,6 +221,24 @@ public static class DependencyInjection
 
         services.AddScoped<IBuscarCodigoTributacaoNacionalUseCase, BuscarCodigoTributacaoNacionalUseCase>();
         services.AddScoped<IBuscarCodigoNbsUseCase, BuscarCodigoNbsUseCase>();
+
+        // Índices econômicos (IPCA, IGP-M...) — tabela global alimentada pela
+        // API SGS do Banco Central; base do reajuste anual dos Contratos.
+        services.Configure<IndicesEconomicosOptions>(configuration.GetSection(IndicesEconomicosOptions.SectionName));
+        services.AddHttpClient<IFonteIndicesEconomicos, BancoCentralSgsClient>((sp, client) =>
+        {
+            var opcoes = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<IndicesEconomicosOptions>>().Value;
+            client.Timeout = TimeSpan.FromSeconds(Math.Max(opcoes.TimeoutSeconds, 5));
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("NfseSaaS/1.0");
+            client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+        });
+        services.AddScoped<IListarIndicesDisponiveisUseCase, ListarIndicesDisponiveisUseCase>();
+        services.AddScoped<IListarIndicesEconomicosUseCase, ListarIndicesEconomicosUseCase>();
+        services.AddScoped<ICalcularIndiceAcumuladoUseCase, CalcularIndiceAcumuladoUseCase>();
+        services.AddScoped<ISalvarIndiceManualUseCase, SalvarIndiceManualUseCase>();
+        services.AddScoped<IExcluirIndiceEconomicoUseCase, ExcluirIndiceEconomicoUseCase>();
+        services.AddScoped<IImportarIndicesEconomicosUseCase, ImportarIndicesEconomicosUseCase>();
+        services.AddScoped<IImportarIndicesEconomicosJob, ImportarIndicesEconomicosJob>();
 
         services.AddScoped<IObterConfiguracaoAutomacaoNotaMensalUseCase, ObterConfiguracaoAutomacaoNotaMensalUseCase>();
         services.AddScoped<IAtualizarConfiguracaoAutomacaoNotaMensalUseCase, AtualizarConfiguracaoAutomacaoNotaMensalUseCase>();

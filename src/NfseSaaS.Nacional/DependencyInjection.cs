@@ -61,8 +61,10 @@ public static class DependencyInjection
         // precisa enxergar todas as falhas pra abrir.
         var circuitBreaker = PollyPolicies.CriarCircuitBreaker();
         var comRetry = circuitBreaker.WrapAsync(PollyPolicies.CriarRetry());
+        // Requisição marcada com PollyPolicies.IgnorarResilienciaGlobal passa
+        // sem política nenhuma (ex.: Banco Central — ver PollyPolicies).
         services.ConfigureHttpClientDefaults(http => http.AddPolicyHandler(request =>
-            request.Method == HttpMethod.Get ? comRetry : circuitBreaker));
+            PollyPolicies.Selecionar(request, comRetry, circuitBreaker)));
 
         services.AddScoped<IDpsValidator, DpsValidator>();
         services.AddScoped<IDpsBuilder, DpsBuilder>();

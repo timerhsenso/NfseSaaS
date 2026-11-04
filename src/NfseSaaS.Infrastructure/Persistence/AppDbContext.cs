@@ -18,8 +18,8 @@ namespace NfseSaaS.Infrastructure.Persistence;
 /// desenvolvedores escrevam .Where(x => x.TenantId == tenantId) à mão.
 ///
 /// Entidades GLOBAIS (não implementam ITenantEntity) — hoje <see cref="Tenant"/>
-/// e os catálogos oficiais <see cref="CodigoTributacaoNacional"/> e
-/// <see cref="CodigoNbs"/> — NÃO sofrem esse filtro.
+/// os catálogos oficiais <see cref="CodigoTributacaoNacional"/> e
+/// <see cref="CodigoNbs"/> e a tabela de <see cref="IndiceEconomicoMensal"/> — NÃO sofrem esse filtro.
 /// </summary>
 public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>
 {
@@ -49,6 +49,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
     public DbSet<EmailLog> EmailLogs => Set<EmailLog>();
     public DbSet<CodigoTributacaoNacional> CodigosTributacaoNacional => Set<CodigoTributacaoNacional>();
     public DbSet<CodigoNbs> CodigosNbs => Set<CodigoNbs>();
+    public DbSet<IndiceEconomicoMensal> IndicesEconomicosMensais => Set<IndiceEconomicoMensal>();
     public DbSet<ConfiguracaoAutomacaoNotaMensal> ConfiguracoesAutomacaoNotaMensal => Set<ConfiguracaoAutomacaoNotaMensal>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

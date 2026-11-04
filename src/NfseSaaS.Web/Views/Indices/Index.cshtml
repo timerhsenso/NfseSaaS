@@ -1,0 +1,121 @@
+@{
+    ViewData["Title"] = "Índices econômicos";
+    // Tabela GLOBAL (vale para todos os tenants): só o operador da
+    // plataforma lança, exclui ou dispara a importação.
+    var operador = User.EhOperadorPlataforma();
+}
+
+<div class="card mb-3">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <label class="form-label mb-0" for="indice-selecionado">Índice</label>
+            <select class="form-select form-select-sm" id="indice-selecionado" style="width:auto"></select>
+            <span class="text-muted small" id="indice-info"></span>
+        </div>
+        @if (operador)
+        {
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-importar-indices">
+                    <i class="bi bi-cloud-download"></i> Importar agora
+                </button>
+                <button type="button" class="btn btn-primary btn-sm" id="btn-lancar-indice">
+                    <i class="bi bi-plus-lg"></i> Lançar valor
+                </button>
+            </div>
+        }
+    </div>
+    <div class="card-body">
+        <div id="resultado-importacao" class="alert d-none"></div>
+        <p class="text-muted small mb-0">
+            Variações mensais importadas todo dia do Banco Central (SGS). O reajuste anual do contrato usa o
+            acumulado dos 12 últimos meses já publicados na data do aniversário.
+            @if (operador)
+            {
+                <span>Um valor lançado à mão fica marcado como <strong>Manual</strong> e a importação não o altera; exclua-o para voltar ao valor do Banco Central.</span>
+            }
+        </p>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header">Acumulado em 12 meses</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label small mb-1" for="acumulado-data">Data do aniversário (referência)</label>
+                    <input type="date" class="form-control form-control-sm" id="acumulado-data" style="max-width:200px" />
+                </div>
+                <div id="acumulado-indisponivel" class="alert alert-warning d-none"></div>
+                <div id="acumulado-resultado" class="d-none">
+                    <div class="display-6 mb-1" id="acumulado-percentual">—</div>
+                    <div class="text-muted small mb-3" id="acumulado-janela"></div>
+                </div>
+                <table class="table table-sm mb-0 d-none" id="tabela-acumulado-meses">
+                    <thead>
+                        <tr><th>Competência</th><th class="text-end">Variação</th><th>Fonte</th></tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header">Variações mensais</div>
+            <div class="card-body">
+                <table id="tabela-indices" class="table table-striped table-bordered w-100">
+                    <thead>
+                        <tr>
+                            <th>Competência</th>
+                            <th>Variação</th>
+                            <th>Fonte</th>
+                            <th>Atualizado em</th>
+                            @if (operador)
+                            {
+                                <th>Ações</th>
+                            }
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (operador)
+{
+    <div class="modal fade" id="modal-indice-manual" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="form-indice-manual">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Lançar variação manual — <span id="manual-nome-indice"></span></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="erro-indice-manual" class="alert alert-danger d-none"></div>
+                        <div class="mb-3">
+                            <label class="form-label" for="manual-competencia">Competência</label>
+                            <input type="month" class="form-control" id="manual-competencia" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="manual-variacao">Variação do mês (%)</label>
+                            <input type="number" step="0.0001" min="-50" max="50" class="form-control" id="manual-variacao" required />
+                            <div class="form-text">Em percentual, como o IBGE/FGV divulga: 0,56 para 0,56%. Negativo em caso de deflação.</div>
+                        </div>
+                        <div class="form-text">Se o mês já existe, o valor é substituído e passa a ser Manual.</div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/js/paginas/indices.js" asp-append-version="true"></script>
+}
