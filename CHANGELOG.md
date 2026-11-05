@@ -5,6 +5,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Corrigido
+- Conta nova (sem Empresa) aberta num navegador que já tinha usado outra
+  conta: o cookie "Empresa atual" da conta anterior fazia todas as telas
+  pedirem dados de uma Empresa de outra conta, e o servidor recusava tudo
+  ("Empresa não encontrada"). Agora o cookie é apagado quando a conta não
+  tem Empresa (e ao sair), e as telas mostram "Cadastre a sua empresa para
+  começar" com o atalho para a tela Empresas.
+
 ### Adicionado (prêmio do indique e ganhe)
 - **1 mês grátis automático** para os dois lados quando uma conta indicada
   paga a primeira fatura: a próxima fatura em aberto é removida no Asaas (ou o

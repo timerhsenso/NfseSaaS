@@ -63,6 +63,8 @@ window.usuarioAtual = document.body.dataset.usuarioAtual;
 document.getElementById('link-sair')?.addEventListener('click', async function (e) {
     e.preventDefault();
     await fetch('/api/auth/logout', { method: 'POST', headers: obterCsrfHeader() });
+    // A próxima conta que entrar neste navegador não herda a Empresa desta.
+    if (typeof limparEmpresaAtualId === 'function') limparEmpresaAtualId();
     window.location.href = '/Account/Login';
 });
 

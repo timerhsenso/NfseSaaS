@@ -18,6 +18,28 @@ function obterEmpresaAtualId() {
     return match ? decodeURIComponent(match[1]) : null;
 }
 
+/** Esquece a Empresa selecionada (ex.: o cookie é de outra conta que usou este navegador). */
+function limparEmpresaAtualId() {
+    document.cookie = `${NOME_COOKIE_EMPRESA_ATUAL}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax`;
+}
+
+/**
+ * Conta sem nenhuma Empresa: aviso no topo de cada tela que depende dela
+ * (a tela Empresas já é o lugar de cadastrar, não precisa do aviso).
+ */
+function mostrarAvisoSemEmpresa() {
+    if (location.pathname.toLowerCase().startsWith('/empresas')) return;
+    const cabecalho = document.querySelector('.content .page-head');
+    if (!cabecalho || document.getElementById('aviso-sem-empresa')) return;
+
+    const aviso = document.createElement('div');
+    aviso.id = 'aviso-sem-empresa';
+    aviso.className = 'alert alert-info d-flex align-items-center justify-content-between gap-2';
+    aviso.innerHTML = '<span><i class="bi bi-building" aria-hidden="true"></i> Cadastre a sua empresa para começar: clientes, contratos e notas ficam dentro dela.</span>' +
+        '<a href="/Empresas" class="btn btn-primary btn-sm">Cadastrar empresa</a>';
+    cabecalho.insertAdjacentElement('afterend', aviso);
+}
+
 function definirEmpresaAtualId(empresaId) {
     const expira = new Date();
     expira.setDate(expira.getDate() + 365);
@@ -45,7 +67,17 @@ async function inicializarSeletorEmpresaTopo() {
         select.innerHTML = '';
 
         if (!resultado.items.length) {
+            // Cookie de OUTRA conta (mesmo navegador): as telas pediriam os
+            // dados de uma Empresa que não é desta conta e o servidor recusaria
+            // tudo. Apaga e recarrega uma vez; na volta, sem cookie, as telas
+            // não pedem nada e o aviso orienta a cadastrar a Empresa.
+            if (obterEmpresaAtualId()) {
+                limparEmpresaAtualId();
+                location.reload();
+                return;
+            }
             select.innerHTML = '<option value="">Nenhuma empresa cadastrada</option>';
+            mostrarAvisoSemEmpresa();
             return;
         }
 
