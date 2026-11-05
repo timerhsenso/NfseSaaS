@@ -62,6 +62,12 @@ public class CobrancaServiceTests
                 .GarantirPodeEmitirEmProducaoAsync(tenant.Id, CancellationToken.None);
             await Servico(sp, new CobrancaOptions { Ativa = false })
                 .GarantirPodeEmitirEmProducaoAsync(tenant.Id, CancellationToken.None);
+
+            // Conta piloto: cobrança ligada só para ela, mesmo com Ativa=false.
+            await Assert.ThrowsAsync<RegraNegocioException>(() => Servico(sp, new CobrancaOptions { Ativa = false, ContasPiloto = { tenant.Id } })
+                .GarantirPodeEmitirEmProducaoAsync(tenant.Id, CancellationToken.None));
+            await Servico(sp, new CobrancaOptions { Ativa = false, ContasPiloto = { Guid.NewGuid() } })
+                .GarantirPodeEmitirEmProducaoAsync(tenant.Id, CancellationToken.None);
         }
         finally
         {

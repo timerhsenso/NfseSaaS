@@ -5,6 +5,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado
+- `Cobranca:ContasPiloto`: contas em que a cobrança funciona mesmo com
+  `Cobranca:Ativa=false`, para testar o ciclo completo em produção (assinar,
+  pagar no sandbox, webhook ativar) com uma conta de teste, sem ligar a
+  cobrança para os clientes do beta.
+
 ### Adicionado (cobrança)
 - **Planos** Mico (R$ 29) e Empresa (R$ 59), com preço de fundador (R$ 19 e
   R$ 39) para os 20 primeiros assinantes, mantido enquanto a assinatura

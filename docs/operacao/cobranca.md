@@ -31,6 +31,7 @@ produção, 7 dias de tolerância para fatura vencida).
 | `Asaas:BaseUrl` | appsettings / compose | sandbox `https://api-sandbox.asaas.com/v3` (padrão) · produção `https://api.asaas.com/v3` |
 | `Cobranca:Ativa` | compose | `false` no beta; `true` quando os planos valerem |
 | `Cobranca:ContasIsentas:0` | compose | Id da conta do operador (Plataforma › Contas) |
+| `Cobranca:ContasPiloto:0` | compose | Id de uma conta de teste: a cobrança vale só para ela, mesmo com `Ativa=false` |
 
 No PC (fora do Git):
 

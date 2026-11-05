@@ -52,7 +52,7 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
 
     public async Task GarantirPodeEmitirEmProducaoAsync(Guid tenantId, CancellationToken cancellationToken)
     {
-        if (!_options.Ativa || _options.ContasIsentas.Contains(tenantId))
+        if (!_options.AtivaPara(tenantId) || _options.ContasIsentas.Contains(tenantId))
             return;
 
         var assinatura = await ObterOuCriarAsync(tenantId, cancellationToken);
@@ -77,9 +77,10 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
         var tenantId = TenantAtual();
         var assinatura = await ObterOuCriarAsync(tenantId, cancellationToken);
         var isenta = _options.ContasIsentas.Contains(tenantId);
+        var cobrancaAtiva = _options.AtivaPara(tenantId);
 
         var notasTeste = await NotasDoTesteAsync(assinatura, cancellationToken);
-        var situacao = _options.Ativa && !isenta
+        var situacao = cobrancaAtiva && !isenta
             ? RegrasCobranca.Avaliar(assinatura.Status, assinatura.TesteIniciadoEm, notasTeste, assinatura.AtrasadaDesde, DateTimeOffset.UtcNow, DataBrasilia.Hoje())
             : new SituacaoCobranca(true, null, null, assinatura.TesteIniciadoEm?.AddDays(Planos.TesteDias));
 
@@ -99,12 +100,12 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
         var plano = assinatura.Plano is { } codigo ? Planos.Obter(codigo) : null;
 
         return new AssinaturaResponse(
-            _options.Ativa, isenta, assinatura.Status, assinatura.Plano, plano?.Nome, assinatura.PrecoMensal, assinatura.Fundador,
+            cobrancaAtiva, isenta, assinatura.Status, assinatura.Plano, plano?.Nome, assinatura.PrecoMensal, assinatura.Fundador,
             assinatura.TesteIniciadoEm, situacao.TesteTerminaEm, notasTeste, Planos.TesteNotas,
             situacao.PodeEmitirEmProducao, situacao.Bloqueio, situacao.Aviso,
             notasMes, empresas, assinatura.AtrasadaDesde, assinatura.UrlFaturaPendente,
             AguardandoPrimeiroPagamento: temAssinaturaNoGateway && assinatura.Status == StatusAssinatura.Teste,
-            PodeAssinar: _options.Ativa && !isenta && !temAssinaturaNoGateway,
+            PodeAssinar: cobrancaAtiva && !isenta && !temAssinaturaNoGateway,
             PodeCancelar: temAssinaturaNoGateway,
             vagas, ofertas);
     }
@@ -114,7 +115,7 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
     async Task<AssinarResponse> IAssinarUseCase.ExecutarAsync(AssinarRequest request, CancellationToken cancellationToken)
     {
         var tenantId = TenantAtual();
-        if (!_options.Ativa)
+        if (!_options.AtivaPara(tenantId))
             throw new RegraNegocioException("Estamos em beta: o uso é gratuito e ainda não há assinatura para contratar.");
         if (_options.ContasIsentas.Contains(tenantId))
             throw new RegraNegocioException("Esta conta é isenta de cobrança.");

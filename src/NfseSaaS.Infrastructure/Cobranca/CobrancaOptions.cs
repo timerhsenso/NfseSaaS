@@ -13,6 +13,16 @@ public sealed class CobrancaOptions
 
     /// <summary>Contas que nunca são cobradas (ex.: a conta do próprio operador).</summary>
     public List<Guid> ContasIsentas { get; set; } = new();
+
+    /// <summary>
+    /// Contas em que a cobrança funciona mesmo com Ativa=false (piloto): para
+    /// testar o ciclo completo em produção com uma conta de teste, sem ligar
+    /// a cobrança (e o teste grátis) para os clientes do beta.
+    /// </summary>
+    public List<Guid> ContasPiloto { get; set; } = new();
+
+    /// <summary>A cobrança vale para esta conta? (ligada para todos, ou conta piloto).</summary>
+    public bool AtivaPara(Guid tenantId) => Ativa || ContasPiloto.Contains(tenantId);
 }
 
 /// <summary>Seção "Asaas". A chave de API e o token do webhook nunca vão para o Git (user-secrets / compose da VPS).</summary>
