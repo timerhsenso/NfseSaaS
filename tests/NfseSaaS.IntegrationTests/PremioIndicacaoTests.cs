@@ -93,8 +93,8 @@ public class PremioIndicacaoTests
         var webhook = sp.GetRequiredService<IProcessarWebhookAsaasUseCase>();
 
         var s = Guid.NewGuid().ToString("N");
-        var indicador = new Tenant { Cnpj = s[..14], RazaoSocial = "Indicador " + s };
-        var indicada = new Tenant { Cnpj = s[14..28], RazaoSocial = "Indicada " + s };
+        var indicador = new Tenant { Documento = s[..14], RazaoSocial = "Indicador " + s };
+        var indicada = new Tenant { Documento = s[14..28], RazaoSocial = "Indicada " + s };
         db.Tenants.AddRange(indicador, indicada);
         await db.SaveChangesAsync();
         indicada.IndicadoPorTenantId = indicador.Id;
@@ -183,8 +183,8 @@ public class PremioIndicacaoTests
         var db = sp.GetRequiredService<AppDbContext>();
 
         var s = Guid.NewGuid().ToString("N");
-        var indicador = new Tenant { Cnpj = s[..14], RazaoSocial = "Indicador " + s };
-        var indicada = new Tenant { Cnpj = s[14..28], RazaoSocial = "Indicada " + s };
+        var indicador = new Tenant { Documento = s[..14], RazaoSocial = "Indicador " + s };
+        var indicada = new Tenant { Documento = s[14..28], RazaoSocial = "Indicada " + s };
         db.Tenants.AddRange(indicador, indicada);
         await db.SaveChangesAsync();
         var sub = "sub_c_" + s;

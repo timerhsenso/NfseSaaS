@@ -3,42 +3,102 @@
     ViewData["Title"] = "Criar conta";
 }
 
-<h5 class="card-title mb-4">Criar conta</h5>
-<p class="text-muted small">Cria a conta da sua empresa e o seu usuário, como administrador. Grátis e sem cartão.</p>
+<div class="d-flex justify-content-between align-items-center mb-1">
+    <h5 class="card-title mb-0">Criar conta</h5>
+    <span class="small text-muted" id="cadastro-etapa-numero">Etapa 1 de 3</span>
+</div>
+<div class="progress mb-3" style="height:4px" role="progressbar" aria-label="Progresso do cadastro">
+    <div class="progress-bar" id="cadastro-progresso" style="width:33%"></div>
+</div>
 
-<div id="erro-registrar" class="alert alert-danger d-none"></div>
+<div id="erro-registrar" class="alert alert-danger d-none" role="alert"></div>
 
-<form id="form-registrar">
-    <div class="mb-3">
-        <label class="form-label" for="razaoSocialTenant">Razão social</label>
-        <input type="text" class="form-control" id="razaoSocialTenant" required />
+@* Etapa 1: quem é *@
+<section id="etapa-perfil" data-etapa="1">
+    <p class="text-muted small mb-3">Grátis para testar, sem cartão. Leva 1 minuto.</p>
+    <p class="fw-semibold mb-2">Você é:</p>
+    <div class="d-grid gap-2">
+        <button type="button" class="btn btn-outline-primary text-start p-3 btn-perfil" data-perfil="1">
+            <i class="bi bi-building me-2" aria-hidden="true"></i><strong>Minha empresa emite as notas</strong>
+            <div class="small text-muted ms-4">Você emite as notas da sua própria empresa.</div>
+        </button>
+        <button type="button" class="btn btn-outline-primary text-start p-3 btn-perfil" data-perfil="2">
+            <i class="bi bi-briefcase me-2" aria-hidden="true"></i><strong>Sou contador ou escritório</strong>
+            <div class="small text-muted ms-4">Você emite pelos seus clientes. Pode ser com CPF ou CNPJ.</div>
+        </button>
     </div>
+</section>
+
+@* Etapa 2: documento (CNPJ com busca na Receita) *@
+<section id="etapa-documento" data-etapa="2" class="d-none">
     <div class="mb-3">
-        <label class="form-label" for="cnpjTenant">CNPJ</label>
-        <input type="text" class="form-control" id="cnpjTenant" required maxlength="14" placeholder="Somente números" />
-    </div>
-    <div class="mb-3">
-        <label class="form-label" for="email">E-mail</label>
-        <input type="email" class="form-control" id="email" required />
-    </div>
-    <div class="mb-3">
-        <label class="form-label" for="senha">Senha</label>
+        <label class="form-label" for="documento" id="rotulo-documento">CNPJ da empresa</label>
         <div class="input-group">
-            <input type="password" class="form-control" id="senha" required minlength="8" autocomplete="new-password" />
-            <button type="button" class="btn btn-outline-secondary btn-toggle-senha" tabindex="-1" title="Mostrar/ocultar senha">
-                <i class="bi bi-eye"></i>
-            </button>
+            <input type="text" class="form-control form-control-lg" id="documento" inputmode="numeric" autocomplete="off" maxlength="18" placeholder="00.000.000/0000-00" />
+            <span class="input-group-text d-none" id="buscando-documento"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span class="visually-hidden">Buscando</span></span>
         </div>
+        <div class="form-text" id="ajuda-documento">Digite os números; buscamos os dados na Receita Federal.</div>
     </div>
-    <div class="form-check mb-3">
-        <input class="form-check-input" type="checkbox" id="aceitouTermos" />
-        <label class="form-check-label small" for="aceitouTermos">
-            Li e aceito os <a href="/termos" target="_blank" rel="noopener">Termos de uso</a>
-            e a <a href="/privacidade" target="_blank" rel="noopener">Política de privacidade</a>.
-        </label>
+
+    <div id="empresa-encontrada" class="alert alert-success d-none">
+        <div class="small text-muted">Sua empresa:</div>
+        <div class="fw-semibold" id="empresa-encontrada-nome"></div>
+        <div class="small" id="empresa-encontrada-local"></div>
     </div>
-    <button type="submit" class="btn btn-primary w-100">Criar conta</button>
-</form>
+    <div id="aviso-documento" class="alert alert-warning small d-none"></div>
+
+    <div class="mb-3 d-none" id="grupo-nome">
+        <label class="form-label" for="nome" id="rotulo-nome">Nome da empresa (razão social)</label>
+        <input type="text" class="form-control" id="nome" maxlength="200" autocomplete="organization" />
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary" data-voltar="1" title="Voltar"><i class="bi bi-arrow-left" aria-hidden="true"></i></button>
+        <button type="button" class="btn btn-primary flex-grow-1" id="btn-continuar-documento" disabled>Continuar</button>
+    </div>
+</section>
+
+@* Etapa 3: acesso *@
+<section id="etapa-acesso" data-etapa="3" class="d-none">
+    <p class="small text-muted mb-3">Conta de <strong id="resumo-conta"></strong></p>
+    <form id="form-registrar" novalidate>
+        <div class="mb-3">
+            <label class="form-label" for="email">Seu e-mail</label>
+            <input type="email" class="form-control" id="email" required autocomplete="email" />
+            <div class="form-text">Por ele você entra e recebe as notas e os avisos. Vamos pedir para confirmar.</div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="senha">Senha</label>
+            <div class="input-group">
+                <input type="password" class="form-control" id="senha" required minlength="8" autocomplete="new-password" />
+                <button type="button" class="btn btn-outline-secondary btn-toggle-senha" tabindex="-1" title="Mostrar/ocultar senha">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </div>
+            <div class="form-text">Pelo menos 8 caracteres.</div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="confirmarSenha">Confirme a senha</label>
+            <div class="input-group">
+                <input type="password" class="form-control" id="confirmarSenha" required minlength="8" autocomplete="new-password" />
+                <button type="button" class="btn btn-outline-secondary btn-toggle-senha" tabindex="-1" title="Mostrar/ocultar senha">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </div>
+        </div>
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="aceitouTermos" />
+            <label class="form-check-label small" for="aceitouTermos">
+                Li e aceito os <a href="/termos" target="_blank" rel="noopener">Termos de uso</a>
+                e a <a href="/privacidade" target="_blank" rel="noopener">Política de privacidade</a>.
+            </label>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary" data-voltar="2" title="Voltar"><i class="bi bi-arrow-left" aria-hidden="true"></i></button>
+            <button type="submit" class="btn btn-primary flex-grow-1" id="btn-criar-conta">Criar conta</button>
+        </div>
+    </form>
+</section>
 
 <div class="text-center mt-3">
     <a href="/Account/Login">Já tenho uma conta</a>

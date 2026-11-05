@@ -50,7 +50,7 @@ public class WebhookAsaasTests
         var processar = escopo.ServiceProvider.GetRequiredService<IProcessarWebhookAsaasUseCase>();
 
         var sufixo = Guid.NewGuid().ToString("N");
-        var tenant = new Tenant { Cnpj = sufixo[..14], RazaoSocial = "Teste webhook " + sufixo };
+        var tenant = new Tenant { Documento = sufixo[..14], RazaoSocial = "Teste webhook " + sufixo };
         db.Tenants.Add(tenant);
         var assinatura = new Assinatura { TenantId = tenant.Id, AsaasAssinaturaId = "sub_" + sufixo, AsaasClienteId = "cus_" + sufixo };
         db.Assinaturas.Add(assinatura);

@@ -7,9 +7,12 @@ let modalExcluir;
 let tenantParaExcluir = null;
 let relogioExclusao = null;
 
-function formatarCnpjPlataforma(cnpj) {
-    const d = (cnpj || '').replace(/\D/g, '');
-    return d.length === 14 ? d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5') : cnpj;
+// CPF (contador pessoa física) ou CNPJ do titular da conta.
+function formatarDocumentoPlataforma(documento) {
+    const d = (documento || '').replace(/\D/g, '');
+    if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    return documento;
 }
 
 // StatusAssinatura (Domain.Enums): 1 Teste, 2 Ativa, 3 Atrasada, 4 Cancelada.
@@ -45,9 +48,11 @@ document.addEventListener('DOMContentLoaded', function () {
         columns: [
             {
                 data: 'razaoSocial',
-                render: (v, type, t) => type !== 'display' ? `${v} ${t.nomeFantasia ?? ''} ${t.cnpj}` :
-                    `<div class="fw-semibold">${escaparHtml(t.nomeFantasia || v)}</div>` +
-                    `<div class="small text-muted">${escaparHtml(formatarCnpjPlataforma(t.cnpj))}${t.nomeFantasia ? ' · ' + escaparHtml(v) : ''}</div>` +
+                render: (v, type, t) => type !== 'display' ? `${v} ${t.nomeFantasia ?? ''} ${t.documento}${t.perfil === 2 ? ' contador' : ''}` :
+                    `<div class="fw-semibold">${escaparHtml(t.nomeFantasia || v)}` +
+                    // PerfilConta (Domain.Enums): 1 Empresa, 2 Contador.
+                    (t.perfil === 2 ? ' <span class="badge text-bg-info align-middle">Contador</span>' : '') + '</div>' +
+                    `<div class="small text-muted">${escaparHtml(formatarDocumentoPlataforma(t.documento))}${t.nomeFantasia ? ' · ' + escaparHtml(v) : ''}</div>` +
                     (t.indicadaPor || t.origemCadastro || t.indicacoes
                         ? `<div class="small text-muted">${[
                             t.indicadaPor ? `indicada por ${escaparHtml(t.indicadaPor)}` : (t.origemCadastro ? `origem: ${escaparHtml(t.origemCadastro)}` : ''),

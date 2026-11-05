@@ -1,0 +1,25 @@
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Confirmar e-mail";
+    var confirmado = ViewData["Confirmado"] as bool? == true;
+    var logado = User.Identity?.IsAuthenticated == true;
+}
+
+@if (confirmado)
+{
+    <div class="text-center">
+        <div class="display-5 text-success mb-2"><i class="bi bi-check-circle" aria-hidden="true"></i></div>
+        <h5 class="card-title mb-2">E-mail confirmado!</h5>
+        <p class="text-muted small">Pronto: quando a empresa estiver em produção, as notas já podem ser emitidas de verdade.</p>
+        <a href="@(logado ? "/" : "/Account/Login")" class="btn btn-primary w-100">@(logado ? "Ir para o sistema" : "Entrar")</a>
+    </div>
+}
+else
+{
+    <div class="text-center">
+        <div class="display-5 text-warning mb-2"><i class="bi bi-exclamation-circle" aria-hidden="true"></i></div>
+        <h5 class="card-title mb-2">Este link não vale mais</h5>
+        <p class="text-muted small">O link vale por 24 horas. Entre no sistema e use <strong>Reenviar e-mail</strong> no aviso do topo para receber um novo.</p>
+        <a href="@(logado ? "/" : "/Account/Login")" class="btn btn-primary w-100">@(logado ? "Ir para o sistema" : "Entrar")</a>
+    </div>
+}

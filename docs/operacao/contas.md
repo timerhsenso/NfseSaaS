@@ -3,6 +3,20 @@
 Painel do operador da plataforma: todas as contas (clientes do micoempresa),
 com números de uso, situação da cobrança e prêmios de indicação.
 
+## Perfil e documento da conta
+
+Desde o cadastro em etapas, cada conta tem um **perfil**:
+- **Empresa**: a própria empresa emite as notas. O documento é o CNPJ dela, e
+  a conta nasce com essa Empresa cadastrada (dados da Receita; Inscrição
+  Municipal e regime ficam para o cliente completar).
+- **Contador** (selo "Contador" na lista): contador autônomo (CPF) ou
+  escritório (CNPJ). As Empresas são as dos clientes, cada uma com o próprio
+  certificado A1.
+
+Contas sem **e-mail confirmado** não emitem em produção. Se um cliente disser
+que não recebeu o link, ele usa "Reenviar e-mail" no aviso do topo; confira
+também a tela E-mails (tipo "Confirmação de e-mail").
+
 ## Suspender × Excluir
 
 | | Suspender | Excluir |

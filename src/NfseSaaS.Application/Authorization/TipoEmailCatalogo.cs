@@ -8,6 +8,9 @@ public static class TipoEmailCatalogo
     public const string EsqueciSenha = "EsqueciSenha";
     public const string AvisoTrocaSenha = "AvisoTrocaSenha";
 
+    /// <summary>Link para confirmar o e-mail da conta (cadastro ou "Reenviar" no aviso do topo).</summary>
+    public const string ConfirmacaoEmail = "ConfirmacaoEmail";
+
     /// <summary>Nota autorizada (PDF e XML anexos) enviada ao tomador.</summary>
     public const string NfseTomador = "NfseTomador";
 

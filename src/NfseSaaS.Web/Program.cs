@@ -92,6 +92,17 @@ try
                 QueueLimit = 0
             }));
 
+        // Consulta de CNPJ na tela pública de cadastro: chama a BrasilAPI sem
+        // login. Folga para a pessoa errar e corrigir o número algumas vezes,
+        // mas sem virar consulta em massa de CNPJ de terceiros.
+        options.AddPolicy("ConsultaCadastro", context =>
+            RateLimitPartition.GetFixedWindowLimiter(ObterChaveDeIp(context), _ => new FixedWindowRateLimiterOptions
+            {
+                Window = TimeSpan.FromMinutes(5),
+                PermitLimit = 10,
+                QueueLimit = 0
+            }));
+
         // Solicitação de recuperação de senha — dispara e-mail; limite
         // mais apertado pra não virar ferramenta de spam/email-bombing
         // contra terceiros (o e-mail informado nem precisa existir).

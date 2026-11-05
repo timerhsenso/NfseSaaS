@@ -6,9 +6,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Authorization;
+using NfseSaaS.Application.UseCases.Cadastro;
+using NfseSaaS.Application.UseCases.Consultas;
 using NfseSaaS.Application.Validation;
 using NfseSaaS.Domain.Entities;
 using NfseSaaS.Domain.Enums;
@@ -22,7 +25,18 @@ namespace NfseSaaS.Web.Controllers.Api;
 /// <param name="AceitouTermos">Caixa "Li e aceito os Termos de uso e a Política de privacidade" — obrigatória.</param>
 /// <param name="CodigoIndicacao">Código do link de indicação (?ref=) que trouxe a pessoa, se houver.</param>
 /// <param name="Origem">Canal que trouxe a pessoa (?origem=), se houver — ex.: email-nota.</param>
-public sealed record RegistrarRequest(string Email, string Senha, string RazaoSocialTenant, string CnpjTenant, bool AceitouTermos = false, string? CodigoIndicacao = null, string? Origem = null);
+/// <param name="Perfil">Empresa (emite as próprias notas: a conta já nasce com a Empresa) ou Contador (CPF ou CNPJ).</param>
+/// <param name="Documento">CNPJ (perfil Empresa) ou CPF/CNPJ (perfil Contador), com ou sem máscara.</param>
+/// <param name="Nome">Razão social (CNPJ) ou nome da pessoa (CPF) — a tela preenche pelo CNPJ.</param>
+public sealed record RegistrarRequest(
+    string Email,
+    string Senha,
+    string Nome,
+    string Documento,
+    PerfilConta Perfil = PerfilConta.Empresa,
+    bool AceitouTermos = false,
+    string? CodigoIndicacao = null,
+    string? Origem = null);
 
 public sealed record LoginRequest(string Email, string Senha);
 
@@ -89,6 +103,10 @@ public sealed class AuthController : ControllerBase
     private readonly IHostEnvironment _environment;
     private readonly PlataformaOptions _plataforma;
     private readonly IAceiteTermosService _aceiteTermos;
+    private readonly IConsultarCnpjUseCase _consultarCnpj;
+    private readonly ICriarEmpresaInicialService _empresaInicial;
+    private readonly IConfirmacaoEmailService _confirmacaoEmail;
+    private readonly ILogger<AuthController> _logger;
 
     public AuthController(
         AppDbContext db,
@@ -102,7 +120,11 @@ public sealed class AuthController : ControllerBase
         IOptions<EmailOptions> emailOptions,
         IHostEnvironment environment,
         IOptions<PlataformaOptions> plataforma,
-        IAceiteTermosService aceiteTermos)
+        IAceiteTermosService aceiteTermos,
+        IConsultarCnpjUseCase consultarCnpj,
+        ICriarEmpresaInicialService empresaInicial,
+        IConfirmacaoEmailService confirmacaoEmail,
+        ILogger<AuthController> logger)
     {
         _db = db;
         _userManager = userManager;
@@ -116,9 +138,21 @@ public sealed class AuthController : ControllerBase
         _environment = environment;
         _plataforma = plataforma.Value;
         _aceiteTermos = aceiteTermos;
+        _consultarCnpj = consultarCnpj;
+        _empresaInicial = empresaInicial;
+        _confirmacaoEmail = confirmacaoEmail;
+        _logger = logger;
     }
 
-    /// <summary>Cria um novo Tenant, provisiona os 5 grupos padrão e cria o primeiro usuário (grupo Administrador), já autenticado (cookie com o Claim tenant_id).</summary>
+    /// <summary>
+    /// Cadastro em etapas (Account/Registrar): cria o Tenant (perfil Empresa
+    /// com CNPJ, ou Contador com CPF/CNPJ), os 5 grupos padrão e o primeiro
+    /// usuário (Administrador), já autenticado. Perfil Empresa: a primeira
+    /// Empresa nasce junto, com os dados públicos do CNPJ (o que falta fica
+    /// em Empresa.PendenciasCadastro). Ao final envia o e-mail de
+    /// confirmação: a conta usa tudo, mas só emite em produção depois de
+    /// confirmar (EmitirNfseUseCase).
+    /// </summary>
     [EnableRateLimiting("AuthSensivel")]
     [HttpPost("registrar")]
     public async Task<IActionResult> Registrar([FromBody] RegistrarRequest request, CancellationToken cancellationToken)
@@ -129,10 +163,10 @@ public sealed class AuthController : ControllerBase
             return StatusCode(StatusCodes.Status403Forbidden, new { erro = "O cadastro de novas contas está fechado no momento. Fale com o suporte para receber um convite." });
 
         var erros = new List<string>();
-        if (string.IsNullOrWhiteSpace(request.RazaoSocialTenant))
-            erros.Add("Razão social é obrigatória.");
-        if (!DocumentoFiscalValidator.CnpjValido(request.CnpjTenant))
-            erros.Add("CNPJ inválido (dígito verificador não confere).");
+        if (string.IsNullOrWhiteSpace(request.Nome))
+            erros.Add(request.Perfil == PerfilConta.Contador ? "Informe o seu nome ou o do escritório." : "Informe o nome da empresa.");
+        if (RegrasCadastroConta.ErroDocumento(request.Perfil, request.Documento) is { } erroDocumento)
+            erros.Add(erroDocumento);
         if (string.IsNullOrWhiteSpace(request.Email))
             erros.Add("E-mail é obrigatório.");
         if (!request.AceitouTermos)
@@ -143,10 +177,23 @@ public sealed class AuthController : ControllerBase
         // Mesma normalização do CNPJ alfanumérico usada na DPS: tira só a
         // máscara, mantém letras. Sem isso "12.345.678/0001-90" e
         // "12345678000190" virariam dois Tenants diferentes.
-        var cnpj = new string(request.CnpjTenant.Where(char.IsLetterOrDigit).Select(char.ToUpperInvariant).ToArray());
+        var documento = RegrasCadastroConta.NormalizarDocumento(request.Documento);
 
-        if (await _db.Tenants.AnyAsync(t => t.Cnpj == cnpj, cancellationToken))
-            return Conflict(new { erro = "Já existe uma conta para este CNPJ. Se ela é da sua empresa, peça um convite ao administrador dela ou fale com o suporte." });
+        if (await _db.Tenants.AnyAsync(t => t.Documento == documento, cancellationToken))
+            return Conflict(new { erro = documento.Length == 11
+                ? "Já existe uma conta para este CPF. Entre com o seu e-mail ou use \"Esqueci minha senha\"."
+                : "Já existe uma conta para este CNPJ. Se ela é da sua empresa, peça um convite ao administrador dela ou fale com o suporte." });
+
+        // Perfil Empresa: consulta a Receita ANTES de abrir a transação (é
+        // chamada externa). Falhou ou demorou: segue só com CNPJ e nome — o
+        // cadastro nunca trava por causa da consulta.
+        ConsultaCnpjResponse? consulta = null;
+        if (request.Perfil == PerfilConta.Empresa)
+        {
+            consulta = await ConsultarCnpjRapidoAsync(documento, cancellationToken);
+            if (RegrasCadastroConta.ErroSituacao(consulta) is { } erroSituacao)
+                return BadRequest(new { erro = erroSituacao });
+        }
 
         // Tenant, grupos padrão e primeiro usuário numa transação só. Antes
         // o Tenant era gravado primeiro: se o Identity recusasse a senha ou
@@ -166,10 +213,12 @@ public sealed class AuthController : ControllerBase
         var origem = NfseSaaS.Application.UseCases.Indicacao.CodigoIndicacao.NormalizarOrigem(request.Origem)
             ?? (indicadoPorTenantId is null ? null : NfseSaaS.Application.UseCases.Indicacao.CodigoIndicacao.OrigemIndicacao);
 
+        var nome = request.Nome.Trim();
         var tenant = new Tenant
         {
-            Cnpj = cnpj,
-            RazaoSocial = request.RazaoSocialTenant.Trim(),
+            Documento = documento,
+            Perfil = request.Perfil,
+            RazaoSocial = nome.Length <= 200 ? nome : nome[..200],
             CodigoIndicacao = NfseSaaS.Application.UseCases.Indicacao.CodigoIndicacao.Gerar(),
             IndicadoPorTenantId = indicadoPorTenantId,
             OrigemCadastro = origem
@@ -198,11 +247,13 @@ public sealed class AuthController : ControllerBase
 
         // Aceite dos termos na MESMA transação: conta criada sem a prova do
         // aceite não existe. Ninguém logado ainda — o TenantId vem do
-        // override (AceiteTermos e AuditLog são ITenantEntity).
+        // override (AceiteTermos, AuditLog e Empresa são ITenantEntity).
         _db.TenantIdOverrideDeSistema = tenant.Id;
         try
         {
             _aceiteTermos.Registrar(user.Id, OrigemAceiteTermos.Cadastro);
+            if (request.Perfil == PerfilConta.Empresa)
+                _empresaInicial.Adicionar(tenant.Id, documento, tenant.RazaoSocial, request.Email.Trim(), consulta);
             await _db.SaveChangesAsync(cancellationToken);
         }
         finally
@@ -216,7 +267,58 @@ public sealed class AuthController : ControllerBase
 
         await _signInManager.SignInAsync(user, isPersistent: false);
 
+        // Fora da transação: falha no e-mail não desfaz a conta (o aviso do
+        // topo tem "Reenviar").
+        try
+        {
+            await _confirmacaoEmail.EnviarAsync(user.Id, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Conta {TenantId} criada, mas o e-mail de confirmação não foi enfileirado.", tenant.Id);
+        }
+
         return Ok(new { tenantId = tenant.Id, userId = user.Id });
+    }
+
+    /// <summary>Consulta da Receita no cadastro com prazo curto (4 s). Qualquer falha devolve nulo.</summary>
+    private async Task<ConsultaCnpjResponse?> ConsultarCnpjRapidoAsync(string cnpj, CancellationToken cancellationToken)
+    {
+        using var prazo = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        prazo.CancelAfter(TimeSpan.FromSeconds(4));
+        try
+        {
+            return await _consultarCnpj.ExecutarAsync(cnpj, prazo.Token);
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogInformation("Consulta do CNPJ no cadastro falhou ({Erro}); a Empresa nasce só com CNPJ e nome.", ex.Message);
+            return null;
+        }
+    }
+
+    /// <summary>E-mail da sessão e se a conta já confirmou (aviso no topo das telas).</summary>
+    [Authorize]
+    [HttpGet("situacao")]
+    public async Task<IActionResult> Situacao(CancellationToken cancellationToken)
+    {
+        var usuario = await _userManager.GetUserAsync(User);
+        if (usuario is null)
+            return Unauthorized();
+        var contaConfirmada = await _confirmacaoEmail.ContaConfirmadaAsync(usuario.TenantId, cancellationToken);
+        return Ok(new { email = usuario.Email, emailConfirmado = usuario.EmailConfirmed, contaConfirmada });
+    }
+
+    /// <summary>Reenvia o link de confirmação para o e-mail de quem está logado.</summary>
+    [Authorize]
+    [EnableRateLimiting("Recuperacao")]
+    [HttpPost("reenviar-confirmacao")]
+    public async Task<IActionResult> ReenviarConfirmacao(CancellationToken cancellationToken)
+    {
+        if (_currentUser.UserId is not { } usuarioId)
+            return Unauthorized();
+        await _confirmacaoEmail.EnviarAsync(usuarioId, cancellationToken);
+        return Ok(new { mensagem = "Enviamos um novo link. Confira a caixa de entrada (e o spam)." });
     }
 
     /// <summary>
@@ -376,6 +478,13 @@ public sealed class AuthController : ControllerBase
 
         await _userManager.SetLockoutEndDateAsync(usuario, null);
 
+        // O link de redefinição chegou por e-mail: confirma a caixa de entrada.
+        if (!usuario.EmailConfirmed)
+        {
+            usuario.EmailConfirmed = true;
+            await _userManager.UpdateAsync(usuario);
+        }
+
         await _signInManager.SignInAsync(usuario, isPersistent: false);
 
         _auditLogWriter.Registrar("RedefinirSenha", "ApplicationUser", usuario.Id, null);
@@ -471,6 +580,8 @@ public sealed class AuthController : ControllerBase
         // que o Identity usa pra outra finalidade) que a listagem de
         // usuários usa pra decidir o Status e bloquear reenvio/exclusão.
         usuario.ConviteAceitoEm = DateTimeOffset.UtcNow;
+        // O link do convite chegou por e-mail: isso já prova a caixa de entrada.
+        usuario.EmailConfirmed = true;
         await _userManager.UpdateAsync(usuario);
 
         // Pré-autenticação: TenantId do aceite vem do override (mesmo

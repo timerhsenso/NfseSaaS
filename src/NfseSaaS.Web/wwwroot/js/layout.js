@@ -89,3 +89,48 @@ document.getElementById('link-sair')?.addEventListener('click', async function (
         atualizarIcone(novoTema);
     });
 })();
+
+// E-mail da conta ainda não confirmado: aviso no topo de todas as telas.
+// Sem confirmar dá para usar tudo e emitir em homologação, mas não em
+// produção (EmitirNfseUseCase). "Reenviar" também é o botão do passo
+// "Confirme o seu e-mail" nos Primeiros passos (href="#reenviar-confirmacao").
+async function reenviarConfirmacaoEmail(botao) {
+    if (botao) botao.disabled = true;
+    try {
+        const r = await apiFetch('/api/auth/reenviar-confirmacao', { method: 'POST' });
+        mostrarToast(r?.mensagem ?? 'Enviamos um novo link para o seu e-mail.');
+    } catch (err) {
+        mostrarErro(err.message);
+    } finally {
+        if (botao) botao.disabled = false;
+    }
+}
+
+document.addEventListener('click', function (e) {
+    const link = e.target.closest('a[href="#reenviar-confirmacao"]');
+    if (!link) return;
+    e.preventDefault();
+    reenviarConfirmacaoEmail(null);
+});
+
+(async function avisoEmailNaoConfirmado() {
+    const cabecalho = document.querySelector('.content .page-head');
+    if (!cabecalho) return;
+    let situacao;
+    try {
+        situacao = await apiFetch('/api/auth/situacao');
+    } catch {
+        return;
+    }
+    if (!situacao || situacao.contaConfirmada) return;
+
+    const aviso = document.createElement('div');
+    aviso.id = 'aviso-email-nao-confirmado';
+    aviso.className = 'alert alert-warning d-flex align-items-center justify-content-between gap-2 flex-wrap';
+    aviso.innerHTML =
+        `<span><i class="bi bi-envelope-exclamation" aria-hidden="true"></i> Confirme o seu e-mail <strong>${escaparHtml(situacao.email ?? '')}</strong> ` +
+        'para emitir notas em produção. Enviamos um link no cadastro (confira também o spam).</span>' +
+        '<button type="button" class="btn btn-sm btn-warning" id="btn-reenviar-confirmacao">Reenviar e-mail</button>';
+    cabecalho.insertAdjacentElement('afterend', aviso);
+    document.getElementById('btn-reenviar-confirmacao').addEventListener('click', e => reenviarConfirmacaoEmail(e.currentTarget));
+})();

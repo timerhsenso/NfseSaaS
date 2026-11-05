@@ -8,7 +8,7 @@ public class TenantTests
     [Fact]
     public void Tenant_deve_possuir_Id_gerado_automaticamente()
     {
-        var tenant = new Tenant { Cnpj = "04747304000178", RazaoSocial = "Empresa Teste" };
+        var tenant = new Tenant { Documento = "04747304000178", RazaoSocial = "Empresa Teste" };
 
         Assert.NotEqual(Guid.Empty, tenant.Id);
     }
@@ -16,7 +16,7 @@ public class TenantTests
     [Fact]
     public void Tenant_deve_iniciar_ativo_por_padrao()
     {
-        var tenant = new Tenant { Cnpj = "04747304000178", RazaoSocial = "Empresa Teste" };
+        var tenant = new Tenant { Documento = "04747304000178", RazaoSocial = "Empresa Teste" };
 
         Assert.True(tenant.Ativo);
     }

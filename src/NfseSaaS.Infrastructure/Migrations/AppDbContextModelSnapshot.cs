@@ -1522,17 +1522,17 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<DateTimeOffset?>("BloqueadoEm")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Cnpj")
-                        .IsRequired()
-                        .HasMaxLength(14)
-                        .HasColumnType("character varying(14)");
-
                     b.Property<string>("CodigoIndicacao")
                         .HasMaxLength(12)
                         .HasColumnType("character varying(12)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Documento")
+                        .IsRequired()
+                        .HasMaxLength(14)
+                        .HasColumnType("character varying(14)");
 
                     b.Property<Guid?>("IndicadoPorTenantId")
                         .HasColumnType("uuid");
@@ -1549,6 +1549,11 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
+                    b.Property<int>("Perfil")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.Property<string>("RazaoSocial")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -1559,12 +1564,12 @@ namespace NfseSaaS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Cnpj")
-                        .IsUnique();
-
                     b.HasIndex("CodigoIndicacao")
                         .IsUnique()
                         .HasDatabaseName("IX_tenants_CodigoIndicacao");
+
+                    b.HasIndex("Documento")
+                        .IsUnique();
 
                     b.HasIndex("IndicadoPorTenantId");
 

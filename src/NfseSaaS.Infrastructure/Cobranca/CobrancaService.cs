@@ -139,7 +139,7 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
             var preco = fundador ? plano.PrecoFundador : plano.PrecoMensal;
 
             // Cliente no Asaas: reaproveita o de uma assinatura anterior (cancelada).
-            assinatura.AsaasClienteId ??= await _gateway.CriarClienteAsync(tenant.RazaoSocial, tenant.Cnpj, email, tenantId.ToString(), cancellationToken);
+            assinatura.AsaasClienteId ??= await _gateway.CriarClienteAsync(tenant.RazaoSocial, tenant.Documento, email, tenantId.ToString(), cancellationToken);
             await _db.SaveChangesAsync(cancellationToken);
 
             var assinaturaId = await _gateway.CriarAssinaturaMensalAsync(

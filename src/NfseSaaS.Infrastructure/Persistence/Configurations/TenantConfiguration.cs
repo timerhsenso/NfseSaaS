@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using NfseSaaS.Domain.Entities;
+using NfseSaaS.Domain.Enums;
 
 namespace NfseSaaS.Infrastructure.Persistence.Configurations;
 
@@ -12,9 +13,15 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
 
         builder.HasKey(t => t.Id);
 
-        builder.Property(t => t.Cnpj)
+        // CPF (11) ou CNPJ (14) do titular da conta, sem máscara.
+        builder.Property(t => t.Documento)
             .HasMaxLength(14)
             .IsRequired();
+
+        // Contas criadas antes do cadastro em etapas são todas "Empresa".
+        builder.Property(t => t.Perfil)
+            .HasDefaultValue(PerfilConta.Empresa)
+            .HasSentinel(default(PerfilConta));
 
         builder.Property(t => t.RazaoSocial)
             .HasMaxLength(200)
@@ -26,7 +33,7 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.Property(t => t.MotivoBloqueio)
             .HasMaxLength(300);
 
-        builder.HasIndex(t => t.Cnpj)
+        builder.HasIndex(t => t.Documento)
             .IsUnique();
 
         builder.Property(t => t.CodigoIndicacao)

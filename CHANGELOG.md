@@ -5,6 +5,31 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (cadastro em etapas)
+- **Cadastro em 3 etapas**: "Você é" (minha empresa / contador) → documento →
+  e-mail e senha (com confirmação da senha). Perfil empresa: ao digitar o
+  CNPJ, a tela busca na Receita e mostra "Sua empresa: XYZ LTDA, Salvador/BA";
+  CNPJ baixado/inapto não segue; consulta fora do ar ou lenta deixa digitar
+  o nome. Consulta pública com limite por IP (`ConsultaCadastro`).
+- **Contador pode abrir conta com CPF** (autônomo) ou CNPJ (escritório).
+  A conta passa a ter **documento (CPF ou CNPJ)** e **perfil** (Empresa ou
+  Contador); o operador vê o selo "Contador" em Plataforma › Contas.
+- **Empresa criada junto** no perfil empresa, com os dados públicos do CNPJ
+  (endereço, município, telefone, sugestão de Simples/MEI) e o e-mail da
+  conta. O que não vem da Receita (Inscrição Municipal, regime) fica como
+  pendência: os Primeiros passos mostram "Complete os dados da empresa" e a
+  emissão diz exatamente o que falta.
+- **Confirmação do e-mail**: link enviado no cadastro; aviso no topo com
+  "Reenviar e-mail" e passo nos Primeiros passos. Sem confirmar, usa tudo e
+  emite em homologação, mas **não emite em produção** (tela, lote e
+  automação). Convite aceito e senha redefinida pelo link também confirmam.
+- **Certificado A1 conferido**: o CNPJ do certificado (SAN ICP-Brasil ou nome)
+  precisa ter a mesma raiz do CNPJ da Empresa (matriz/filial aceitas).
+- Testes de integração usam uma consulta de CNPJ falsa (sem BrasilAPI).
+- Migration `CadastroEmEtapas`: `tenants.Cnpj` renomeada para `Documento`,
+  nova coluna `Perfil` (1 = Empresa nas contas existentes) e usuários
+  existentes marcados com e-mail confirmado.
+
 ### Adicionado (exclusão de conta)
 - Plataforma › Contas: **excluir conta definitivamente** (lixeira), com
   confirmação por **código de 6 números enviado ao e-mail do operador**

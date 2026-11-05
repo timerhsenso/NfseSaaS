@@ -38,8 +38,8 @@ public sealed class EnviarCertificadoUseCase : IEnviarCertificadoUseCase
         // _db.Empresas já é filtrado pelo Global Query Filter do tenant
         // atual, então esta consulta só acha a Empresa se ela pertencer
         // ao tenant do usuário autenticado.
-        var empresaExiste = await _db.Empresas.AnyAsync(e => e.Id == empresaId, cancellationToken);
-        if (!empresaExiste)
+        var cnpjEmpresa = await _db.Empresas.Where(e => e.Id == empresaId).Select(e => e.Cnpj).FirstOrDefaultAsync(cancellationToken);
+        if (cnpjEmpresa is null)
             throw new RecursoNaoEncontradoException($"Empresa {empresaId} não encontrada.");
 
         if (pfxBytes.Length == 0)
@@ -71,6 +71,15 @@ public sealed class EnviarCertificadoUseCase : IEnviarCertificadoUseCase
                 throw new RegraNegocioException(
                     $"O certificado só é válido a partir de {certificadoTeste.NotBefore:dd/MM/yyyy}.");
 
+            // O certificado é a prova de que a empresa é de quem se cadastrou
+            // (qualquer um digita um CNPJ no cadastro). Aceita a mesma raiz
+            // (matriz/filial). Sem CNPJ legível no certificado (ex.: e-CPF),
+            // não bloqueia aqui: a própria SEFIN recusa quem não pode emitir.
+            var cnpjCertificado = CnpjDoCertificado.Extrair(certificadoTeste);
+            if (cnpjCertificado is not null && !CnpjDoCertificado.MesmaRaiz(cnpjCertificado, cnpjEmpresa))
+                throw new RegraNegocioException(
+                    $"Este certificado é do CNPJ {FormatarCnpj(cnpjCertificado)}, mas a empresa é {FormatarCnpj(cnpjEmpresa)}. Envie o certificado A1 da própria empresa.");
+
             await _store.SalvarAsync(empresaId, pfxBytes, senha, cancellationToken);
 
             return new CertificadoStatusResponse(
@@ -81,4 +90,7 @@ public sealed class EnviarCertificadoUseCase : IEnviarCertificadoUseCase
                 Valido: true);
         }
     }
+
+    private static string FormatarCnpj(string cnpj) =>
+        cnpj.Length == 14 ? $"{cnpj[..2]}.{cnpj[2..5]}.{cnpj[5..8]}/{cnpj[8..12]}-{cnpj[12..]}" : cnpj;
 }

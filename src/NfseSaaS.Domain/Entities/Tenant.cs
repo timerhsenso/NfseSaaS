@@ -1,4 +1,5 @@
 using NfseSaaS.Domain.Common;
+using NfseSaaS.Domain.Enums;
 
 namespace NfseSaaS.Domain.Entities;
 
@@ -10,8 +11,17 @@ namespace NfseSaaS.Domain.Entities;
 /// </summary>
 public sealed class Tenant : BaseEntity
 {
-    public string Cnpj { get; set; } = string.Empty;
+    /// <summary>
+    /// Documento do titular da conta: CNPJ (14, pode ter letras no CNPJ
+    /// alfanumérico) ou CPF (11), só caracteres, sem máscara. Único: uma conta
+    /// por documento. Não é o CNPJ que emite (esse é o de cada Empresa).
+    /// </summary>
+    public string Documento { get; set; } = string.Empty;
 
+    /// <summary>Empresa (emite as próprias notas) ou Contador (emite pelos clientes).</summary>
+    public PerfilConta Perfil { get; set; } = PerfilConta.Empresa;
+
+    /// <summary>Nome do titular: razão social (CNPJ) ou nome da pessoa (CPF).</summary>
     public string RazaoSocial { get; set; } = string.Empty;
 
     public string? NomeFantasia { get; set; }

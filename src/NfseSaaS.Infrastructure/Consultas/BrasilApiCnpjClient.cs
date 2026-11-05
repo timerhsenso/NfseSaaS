@@ -27,7 +27,10 @@ internal sealed record BrasilApiCnpjResponse(
     [property: JsonPropertyName("uf")] string? Uf,
     [property: JsonPropertyName("ddd_telefone_1")] string? DddTelefone1,
     [property: JsonPropertyName("email")] string? Email,
-    [property: JsonPropertyName("descricao_situacao_cadastral")] string? DescricaoSituacaoCadastral);
+    [property: JsonPropertyName("descricao_situacao_cadastral")] string? DescricaoSituacaoCadastral,
+    [property: JsonPropertyName("municipio")] string? Municipio = null,
+    [property: JsonPropertyName("opcao_pelo_simples")] bool? OpcaoPeloSimples = null,
+    [property: JsonPropertyName("opcao_pelo_mei")] bool? OpcaoPeloMei = null);
 
 /// <summary>
 /// Consulta pública e gratuita (sem chave/autenticação) que agrega
@@ -97,6 +100,9 @@ public sealed class BrasilApiCnpjClient : IConsultarCnpjUseCase
             Uf: dados.Uf,
             Telefone: dados.DddTelefone1,
             Email: dados.Email,
-            SituacaoCadastral: dados.DescricaoSituacaoCadastral);
+            SituacaoCadastral: dados.DescricaoSituacaoCadastral,
+            Municipio: dados.Municipio,
+            OptanteSimples: dados.OpcaoPeloSimples,
+            OptanteMei: dados.OpcaoPeloMei);
     }
 }

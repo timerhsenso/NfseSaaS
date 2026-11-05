@@ -85,7 +85,26 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
         // fatura atrasada além da tolerância ou assinatura cancelada barram
         // aqui — inclusive o lote e a automação, que passam por este método.
         if (contaEmpresa is { TipoAmbiente: TipoAmbiente.Producao })
+        {
+            // Produção só com o e-mail da conta confirmado: a nota, os avisos
+            // e a cobrança vão por e-mail (cadastro em etapas). Homologação
+            // continua livre. Vale também para o lote e a automação.
+            var emailConfirmado = await _db.Users.AsNoTracking()
+                .AnyAsync(u => u.TenantId == contaEmpresa.TenantId && u.EmailConfirmed, cancellationToken);
+            if (!emailConfirmado)
+                throw new RegraNegocioException(
+                    "Confirme o e-mail da conta para emitir em produção: enviamos um link no cadastro. Não chegou? Use \"Reenviar e-mail\" no aviso do topo da tela.");
+
             await _verificadorCobranca.GarantirPodeEmitirEmProducaoAsync(contaEmpresa.TenantId, cancellationToken);
+        }
+
+        // Empresa criada no cadastro em etapas nasce só com os dados públicos
+        // do CNPJ: sem Inscrição Municipal e regime a DPS seria rejeitada.
+        // Aqui a mensagem diz exatamente o que falta.
+        var empresaCadastro = await _db.Empresas.AsNoTracking().FirstOrDefaultAsync(e => e.Id == request.EmpresaId, cancellationToken);
+        if (empresaCadastro?.PendenciasCadastro() is { Count: > 0 } pendencias)
+            throw new RegraNegocioException(
+                $"Complete o cadastro da empresa antes de emitir (Empresas › Editar). Falta: {string.Join(", ", pendencias)}.");
 
         // Idempotência: se o chamador informou uma chave e já existe uma
         // Nfse com ela para esta Empresa, é um retry da MESMA tentativa —

@@ -65,13 +65,13 @@ public class ExclusaoContaTests
     /// <summary>Conta do operador (com um usuário que recebe o código) e a conta a excluir com um pouco de tudo.</summary>
     private static async Task<(Tenant Operador, ApplicationUser UsuarioOperador, Tenant Conta, Empresa Empresa, Cliente Cliente, Tenant Indicada)> MontarAsync(AppDbContext db, string s)
     {
-        var operador = new Tenant { Cnpj = s[..14], RazaoSocial = "Operador " + s };
-        var conta = new Tenant { Cnpj = s[14..28], RazaoSocial = "Conta " + s, IndicadoPorTenantId = null };
+        var operador = new Tenant { Documento = s[..14], RazaoSocial = "Operador " + s };
+        var conta = new Tenant { Documento = s[14..28], RazaoSocial = "Conta " + s, IndicadoPorTenantId = null };
         db.Tenants.AddRange(operador, conta);
         await db.SaveChangesAsync();
 
         conta.IndicadoPorTenantId = operador.Id;
-        var indicada = new Tenant { Cnpj = s[4..18], RazaoSocial = "Indicada " + s, IndicadoPorTenantId = conta.Id };
+        var indicada = new Tenant { Documento = s[4..18], RazaoSocial = "Indicada " + s, IndicadoPorTenantId = conta.Id };
         db.Tenants.Add(indicada);
 
         var usuarioOperador = new ApplicationUser { TenantId = operador.Id, UserName = $"op{s}@teste.com", Email = $"op{s}@teste.com" };
@@ -184,7 +184,7 @@ public class ExclusaoContaTests
             // Fica só o registro no Histórico do operador, sem nome nem CNPJ.
             var registro = await db.AuditLogs.IgnoreQueryFilters().SingleAsync(a => a.TenantId == operador.Id && a.Operacao == "ContaExcluidaPelaPlataforma");
             Assert.Equal(conta.Id, registro.EntidadeId);
-            Assert.DoesNotContain(conta.Cnpj, registro.Dados);
+            Assert.DoesNotContain(conta.Documento, registro.Dados);
             Assert.DoesNotContain(conta.RazaoSocial, registro.Dados);
 
             // Código de uso único.

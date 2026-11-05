@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NfseSaaS.Application.UseCases.Cadastro;
 using NfseSaaS.Web.Filters;
 
 namespace NfseSaaS.Web.Controllers;
@@ -34,6 +35,18 @@ public sealed class AccountController : Controller
     {
         ViewData["Email"] = email;
         ViewData["Token"] = token;
+        return View();
+    }
+
+    /// <summary>
+    /// Link do e-mail de confirmação (u = usuário, t = token do Identity).
+    /// Funciona com ou sem login: abrir o link já prova a caixa de entrada.
+    /// </summary>
+    [HttpGet("/Account/ConfirmarEmail")]
+    public async Task<IActionResult> ConfirmarEmail(Guid? u, string? t, [FromServices] IConfirmacaoEmailService confirmacao, CancellationToken cancellationToken)
+    {
+        ViewData["Confirmado"] = u is { } usuarioId && !string.IsNullOrWhiteSpace(t)
+            && await confirmacao.ConfirmarAsync(usuarioId, t, cancellationToken);
         return View();
     }
 

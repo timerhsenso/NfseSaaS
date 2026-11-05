@@ -277,6 +277,10 @@ public static class DependencyInjection
 
         services.AddScoped<IListarTenantsPlataformaUseCase, ListarTenantsPlataformaUseCase>();
         services.AddScoped<NfseSaaS.Application.UseCases.Onboarding.IObterProgressoOnboardingUseCase, ObterProgressoOnboardingUseCase>();
+        // Cadastro em etapas: consulta pública do CNPJ, Empresa criada junto e confirmação de e-mail.
+        services.AddScoped<NfseSaaS.Application.UseCases.Cadastro.IConsultarCnpjCadastroUseCase, ConsultarCnpjCadastroUseCase>();
+        services.AddScoped<NfseSaaS.Application.UseCases.Cadastro.ICriarEmpresaInicialService, CriarEmpresaInicialService>();
+        services.AddScoped<NfseSaaS.Application.UseCases.Cadastro.IConfirmacaoEmailService, ConfirmacaoEmailService>();
         services.AddScoped<NfseSaaS.Application.UseCases.Indicacao.IObterIndicacaoUseCase, ObterIndicacaoUseCase>();
 
         // Cobrança (planos, teste grátis, Asaas). Desligada por padrão (Cobranca:Ativa=false).

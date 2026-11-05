@@ -105,4 +105,31 @@ public sealed class Empresa : BaseEntity, ITenantEntity
     /// (Contrato.ReajusteAutomatico).
     /// </summary>
     public bool AplicarReajusteAutomatico { get; set; }
+
+    /// <summary>
+    /// O que falta no cadastro para emitir nota (em palavras para o usuário).
+    /// A Empresa criada no cadastro em etapas nasce só com os dados públicos
+    /// do CNPJ; Inscrição Municipal e regime ficam para o usuário completar.
+    /// Mesmos campos obrigatórios do CadastrarEmpresaRequestValidator (a
+    /// validação de FORMATO continua lá; aqui é só "está preenchido?").
+    /// </summary>
+    public IReadOnlyList<string> PendenciasCadastro()
+    {
+        var pendencias = new List<string>();
+        if (string.IsNullOrWhiteSpace(InscricaoMunicipal))
+            pendencias.Add("Inscrição Municipal");
+        if (string.IsNullOrWhiteSpace(CodigoMunicipio) || string.IsNullOrWhiteSpace(Uf)
+            || string.IsNullOrWhiteSpace(Cep) || string.IsNullOrWhiteSpace(Logradouro)
+            || string.IsNullOrWhiteSpace(Numero) || string.IsNullOrWhiteSpace(Bairro))
+            pendencias.Add("endereço completo");
+        if (string.IsNullOrWhiteSpace(Telefone))
+            pendencias.Add("telefone");
+        if (string.IsNullOrWhiteSpace(Email))
+            pendencias.Add("e-mail");
+        if (string.IsNullOrWhiteSpace(OpSimpNac) || string.IsNullOrWhiteSpace(RegApTribSN) || string.IsNullOrWhiteSpace(RegEspTrib)
+            || string.IsNullOrWhiteSpace(TribIssqn) || string.IsNullOrWhiteSpace(CstPisCofins) || string.IsNullOrWhiteSpace(TpRetPisCofins)
+            || (OpSimpNac is "2" or "3" && string.IsNullOrWhiteSpace(PercentualTotalTributosSimplesNacional)))
+            pendencias.Add("dados fiscais (regime e tributação)");
+        return pendencias;
+    }
 }

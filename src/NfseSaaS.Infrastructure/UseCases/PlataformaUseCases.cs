@@ -77,7 +77,7 @@ public sealed class ListarTenantsPlataformaUseCase : IListarTenantsPlataformaUse
             empresas.TryGetValue(t.Id, out var e);
             notas.TryGetValue(t.Id, out var n);
             return new TenantPlataformaResponse(
-                t.Id, t.RazaoSocial, t.NomeFantasia, t.Cnpj, t.Ativo, t.CreatedAt, t.BloqueadoEm, t.MotivoBloqueio,
+                t.Id, t.RazaoSocial, t.NomeFantasia, t.Documento, t.Perfil, t.Ativo, t.CreatedAt, t.BloqueadoEm, t.MotivoBloqueio,
                 u?.Responsavel, u?.Total ?? 0, e?.Total ?? 0, e?.Producao ?? 0, n?.NoMes ?? 0, n?.Total ?? 0, n?.Ultima,
                 t.OrigemCadastro,
                 t.IndicadoPorTenantId is { } indicadora && nomes.TryGetValue(indicadora, out var nomeIndicadora) ? nomeIndicadora : null,

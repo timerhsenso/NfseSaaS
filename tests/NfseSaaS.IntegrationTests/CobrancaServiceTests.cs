@@ -40,7 +40,7 @@ public class CobrancaServiceTests
         var sp = escopo.ServiceProvider;
         var db = sp.GetRequiredService<AppDbContext>();
 
-        var tenant = new Tenant { Cnpj = Guid.NewGuid().ToString("N")[..14], RazaoSocial = "Teste cobrança" };
+        var tenant = new Tenant { Documento = Guid.NewGuid().ToString("N")[..14], RazaoSocial = "Teste cobrança" };
         db.Tenants.Add(tenant);
         await db.SaveChangesAsync();
 
