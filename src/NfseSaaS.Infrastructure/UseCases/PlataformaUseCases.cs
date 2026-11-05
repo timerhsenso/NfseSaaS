@@ -61,7 +61,7 @@ public sealed class ListarTenantsPlataformaUseCase : IListarTenantsPlataformaUse
             .ToDictionaryAsync(x => x.TenantId, cancellationToken);
 
         // Indicação: quem indicou cada conta e quantas cada uma indicou
-        // (para o operador conceder o mês grátis quando a cobrança existir).
+        // (o mês grátis é automático — ver PremioIndicacaoService).
         var nomes = tenants.ToDictionary(t => t.Id, t => t.NomeFantasia ?? t.RazaoSocial);
         var indicacoes = tenants.Where(t => t.IndicadoPorTenantId is not null)
             .GroupBy(t => t.IndicadoPorTenantId!.Value)

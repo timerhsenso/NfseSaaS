@@ -35,13 +35,24 @@ document.addEventListener('DOMContentLoaded', async function () {
         return;
     }
 
+    // StatusPremioIndicacao (Domain.Enums): 1 Pendente, 2 Aplicando, 3 Aplicado, 4 Erro.
+    function premio(i) {
+        switch (i.premio) {
+            case 3: return `<span class="badge text-bg-success" title="Concedido em ${new Date(i.premioAplicadoEm).toLocaleDateString('pt-BR')}"><i class="bi bi-gift" aria-hidden="true"></i> 1 mês grátis ganho</span>`;
+            case 1: return '<span class="badge text-bg-info" title="Vale assim que a sua assinatura estiver em dia"><i class="bi bi-gift" aria-hidden="true"></i> 1 mês grátis guardado</span>';
+            case 2:
+            case 4: return '<span class="badge text-bg-info"><i class="bi bi-gift" aria-hidden="true"></i> Prêmio em processamento</span>';
+            default: return null;
+        }
+    }
+
     lista.innerHTML = dados.indicadas.map(function (i) {
         const data = new Date(i.cadastradaEm).toLocaleDateString('pt-BR');
-        const situacao = !i.ativa
+        const situacao = premio(i) ?? (!i.ativa
             ? '<span class="badge text-bg-secondary">Conta suspensa</span>'
             : i.jaEmitiuNota
                 ? '<span class="badge text-bg-success">Já emite notas</span>'
-                : '<span class="badge text-bg-warning">Configurando</span>';
+                : '<span class="badge text-bg-warning">Configurando</span>');
         return `<li class="d-flex justify-content-between align-items-center py-2 border-bottom"><span>Conta criada em ${data}</span>${situacao}</li>`;
     }).join('');
 });

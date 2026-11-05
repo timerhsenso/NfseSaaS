@@ -11,7 +11,8 @@ namespace NfseSaaS.Infrastructure.UseCases;
 /// cadastraram por ele. Conta antiga (de antes da indicação) ganha o código
 /// aqui, na primeira visita. As contas indicadas são de OUTROS tenants:
 /// a consulta às notas delas ignora o filtro de tenant de propósito e só
-/// devolve "já emitiu nota: sim/não", sem nome nem dado fiscal.
+/// devolve "já emitiu nota: sim/não", sem nome nem dado fiscal, e a
+/// situação do prêmio que a conta atual ganhou por cada uma.
 /// </summary>
 public sealed class ObterIndicacaoUseCase : IObterIndicacaoUseCase
 {
@@ -64,8 +65,21 @@ public sealed class ObterIndicacaoUseCase : IObterIndicacaoUseCase
                 .Distinct()
                 .ToListAsync(cancellationToken)).ToHashSet();
 
+        var premios = ids.Count == 0
+            ? new Dictionary<Guid, (StatusPremioIndicacao Status, DateTimeOffset? AplicadoEm)>()
+            : (await _db.PremiosIndicacao.AsNoTracking()
+                .Where(p => p.TenantId == tenantId && p.Papel == PapelPremioIndicacao.QuemIndicou && ids.Contains(p.IndicadoTenantId))
+                .Select(p => new { p.IndicadoTenantId, p.Status, p.AplicadoEm })
+                .ToListAsync(cancellationToken))
+                .ToDictionary(p => p.IndicadoTenantId, p => (p.Status, p.AplicadoEm));
+
         return new IndicacaoResponse(
             tenant.CodigoIndicacao!,
-            indicadas.Select(t => new ContaIndicada(t.CreatedAt, comNota.Contains(t.Id), t.Ativo)).ToList());
+            indicadas.Select(t =>
+            {
+                var temPremio = premios.TryGetValue(t.Id, out var premio);
+                return new ContaIndicada(t.CreatedAt, comNota.Contains(t.Id), t.Ativo,
+                    temPremio ? premio.Status : null, temPremio ? premio.AplicadoEm : null);
+            }).ToList());
     }
 }

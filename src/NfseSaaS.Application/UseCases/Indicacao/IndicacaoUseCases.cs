@@ -49,7 +49,14 @@ public static partial class CodigoIndicacao
 }
 
 /// <summary>Uma conta que se cadastrou pelo link de indicação. Sem nome: só o necessário para acompanhar.</summary>
-public sealed record ContaIndicada(DateTimeOffset CadastradaEm, bool JaEmitiuNota, bool Ativa);
+/// <param name="Premio">Prêmio de quem indicou por esta conta (nulo enquanto ela não pagou a primeira fatura).</param>
+/// <param name="PremioAplicadoEm">Quando o mês grátis foi concedido.</param>
+public sealed record ContaIndicada(
+    DateTimeOffset CadastradaEm,
+    bool JaEmitiuNota,
+    bool Ativa,
+    NfseSaaS.Domain.Enums.StatusPremioIndicacao? Premio = null,
+    DateTimeOffset? PremioAplicadoEm = null);
 
 /// <summary>Dados da tela "Indique e ganhe".</summary>
 public sealed record IndicacaoResponse(string Codigo, IReadOnlyList<ContaIndicada> Indicadas);

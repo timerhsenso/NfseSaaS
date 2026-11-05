@@ -12,7 +12,8 @@ namespace NfseSaaS.Infrastructure.Cobranca;
 /// Cliente da API v3 do Asaas (HttpClient tipado). Autenticação pelo header
 /// "access_token"; o User-Agent é obrigatório. POST nunca é repetido
 /// automaticamente (a política global de retry só repete GET — ver
-/// PollyPolicies), para não criar cliente ou assinatura em dobro.
+/// PollyPolicies), para não criar cliente ou assinatura em dobro — nem
+/// remover duas faturas no prêmio de indicação.
 /// </summary>
 public sealed class AsaasClient : IGatewayCobranca
 {
@@ -79,6 +80,45 @@ public sealed class AsaasClient : IGatewayCobranca
         await EnviarAsync<JsonElement>(HttpMethod.Delete, $"subscriptions/{Uri.EscapeDataString(assinaturaId)}", null, cancellationToken);
     }
 
+    public async Task<FaturaGateway?> ObterProximaFaturaEmAbertoAsync(string assinaturaId, string? ignorarPagamentoId, CancellationToken cancellationToken)
+    {
+        var lista = await EnviarAsync<ListaCobrancas>(HttpMethod.Get,
+            $"subscriptions/{Uri.EscapeDataString(assinaturaId)}/payments?status=PENDING", null, cancellationToken);
+
+        return lista.Data?
+            .Where(c => c.Status == "PENDING" && !string.IsNullOrWhiteSpace(c.Id) && c.Id != ignorarPagamentoId)
+            .Select(c => (Cobranca: c, Vencimento: Data(c.DueDate)))
+            .Where(x => x.Vencimento is not null)
+            .OrderBy(x => x.Vencimento)
+            .Select(x => new FaturaGateway(x.Cobranca.Id!, x.Vencimento!.Value, x.Cobranca.InvoiceUrl))
+            .FirstOrDefault();
+    }
+
+    public async Task RemoverFaturaAsync(string pagamentoId, CancellationToken cancellationToken)
+    {
+        await EnviarAsync<JsonElement>(HttpMethod.Delete, $"payments/{Uri.EscapeDataString(pagamentoId)}", null, cancellationToken);
+    }
+
+    public async Task<DateOnly?> ObterProximoVencimentoAsync(string assinaturaId, CancellationToken cancellationToken)
+    {
+        var assinatura = await EnviarAsync<AssinaturaAsaas>(HttpMethod.Get, $"subscriptions/{Uri.EscapeDataString(assinaturaId)}", null, cancellationToken);
+        return Data(assinatura.NextDueDate);
+    }
+
+    public async Task AlterarProximoVencimentoAsync(string assinaturaId, DateOnly novoVencimento, CancellationToken cancellationToken)
+    {
+        // Sem updatePendingPayments: só as faturas que ainda vão ser geradas.
+        await EnviarAsync<JsonElement>(HttpMethod.Put, $"subscriptions/{Uri.EscapeDataString(assinaturaId)}", new
+        {
+            nextDueDate = novoVencimento.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
+        }, cancellationToken);
+    }
+
+    private static DateOnly? Data(string? texto) =>
+        DateOnly.TryParseExact(texto, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var data)
+            ? data
+            : null;
+
     private async Task<T> EnviarAsync<T>(HttpMethod metodo, string caminho, object? corpo, CancellationToken cancellationToken)
     {
         if (!Configurado)
@@ -131,4 +171,6 @@ public sealed class AsaasClient : IGatewayCobranca
     private sealed record CobrancaAsaas(string? Id, string? Status, string? DueDate, string? InvoiceUrl);
 
     private sealed record ListaCobrancas(List<CobrancaAsaas>? Data);
+
+    private sealed record AssinaturaAsaas(string? Id, string? NextDueDate, string? Status);
 }

@@ -5,6 +5,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (prêmio do indique e ganhe)
+- **1 mês grátis automático** para os dois lados quando uma conta indicada
+  paga a primeira fatura: a próxima fatura em aberto é removida no Asaas (ou o
+  próximo vencimento é adiado, se ela ainda não foi gerada). Quem indicou e
+  ainda não paga fica com o prêmio guardado até a assinatura estar em dia.
+- Concedido uma única vez por indicação e por lado (índice único); gravado
+  como "Aplicando" antes de chamar o Asaas, para nunca dispensar duas faturas
+  se o sistema cair no meio.
+- Job `aplicar-premios-indicacao` (logo após o pagamento e todo dia às 07:40).
+- Plataforma › Contas: quadro **Prêmios de indicação** com situação, detalhe
+  e "Tentar de novo" para os que deram erro.
+- Indique e ganhe: cada conta indicada mostra "1 mês grátis ganho" ou
+  "guardado"; texto do prêmio atualizado.
+- Webhook: `PAYMENT_DELETED` limpa o link da fatura removida;
+  `PAYMENT_RESTORED` volta a registrar a fatura em aberto.
+- Migration `PremioIndicacao`: tabela `premios_indicacao`.
+
 ### Adicionado
 - `Cobranca:ContasPiloto`: contas em que a cobrança funciona mesmo com
   `Cobranca:Ativa=false`, para testar o ciclo completo em produção (assinar,

@@ -289,6 +289,12 @@ public static class DependencyInjection
         services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IAssinarUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.CobrancaService>());
         services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.ICancelarAssinaturaUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.CobrancaService>());
         services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IProcessarWebhookAsaasUseCase, NfseSaaS.Infrastructure.Cobranca.ProcessarWebhookAsaasUseCase>();
+        // Prêmio do "Indique e ganhe" (1 mês grátis), aplicado no Asaas por job.
+        services.AddScoped<NfseSaaS.Infrastructure.Cobranca.PremioIndicacaoService>();
+        services.AddScoped<NfseSaaS.Application.UseCases.Indicacao.IAplicarPremiosIndicacaoUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.PremioIndicacaoService>());
+        services.AddScoped<NfseSaaS.Application.UseCases.Indicacao.IListarPremiosIndicacaoPlataformaUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.PremioIndicacaoService>());
+        services.AddScoped<NfseSaaS.Application.UseCases.Indicacao.IReabrirPremioIndicacaoUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.PremioIndicacaoService>());
+        services.AddScoped<IAplicarPremiosIndicacaoJob, AplicarPremiosIndicacaoJob>();
         services.AddScoped<IAlterarBloqueioTenantUseCase, AlterarBloqueioTenantUseCase>();
         services.AddScoped<IObterAuditLogPorIdUseCase, ObterAuditLogPorIdUseCase>();
 

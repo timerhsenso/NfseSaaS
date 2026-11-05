@@ -22,6 +22,37 @@ produção, 7 dias de tolerância para fatura vencida).
 - **Contas isentas** (`Cobranca:ContasIsentas`): nunca são cobradas. Coloque a
   conta do operador antes de ligar a cobrança.
 
+## Prêmio do "Indique e ganhe" (1 mês grátis, automático)
+
+- **Quando nasce:** no **primeiro pagamento confirmado** (webhook
+  `PAYMENT_CONFIRMED` ou `PAYMENT_RECEIVED`) de uma conta que se cadastrou pelo
+  link de outra. Nascem dois prêmios: um para a conta indicada e um para quem
+  indicou. Tabela `premios_indicacao`, com índice único (conta indicada +
+  papel): cada indicação premia cada lado uma única vez, mesmo com evento
+  repetido.
+- **Como é aplicado** (job `aplicar-premios-indicacao`, disparado logo após o
+  pagamento e todo dia às 07:40):
+  1. se já existe a próxima fatura em aberto da assinatura (o Asaas gera com até
+     40 dias de antecedência), ela é **removida** no Asaas — o cliente não paga
+     aquele mês e a assinatura continua;
+  2. se ainda não existe, o **próximo vencimento** da assinatura é adiado em 1 mês.
+  Vários prêmios da mesma conta somam meses.
+- **Prêmio guardado:** só vale para assinatura **em dia** (Ativa). Quem indicou
+  e ainda está no beta, no teste, em atraso ou com assinatura cancelada fica com
+  o prêmio guardado; ele é aplicado no primeiro pagamento seguinte dessa conta.
+  Conta isenta nunca recebe (não há fatura).
+- **Nunca em dobro:** o prêmio é gravado como "Aplicando" antes de chamar o
+  Asaas. Se o sistema cair no meio, ele vira **Erro** e não é repetido sozinho.
+  Recusa do Asaas tenta de novo até 3 vezes; depois, Erro.
+- **Operador:** Plataforma › Contas › quadro **Prêmios de indicação**. Para um
+  prêmio com Erro: abrir o painel do Asaas, conferir a assinatura da conta
+  (Cobranças › assinatura › faturas). Se a próxima fatura **já sumiu** (ou o
+  vencimento já foi adiado), **não** clique em "Tentar de novo". Se nada mudou,
+  clique em "Tentar de novo". Um prêmio com erro também dispara o e-mail de
+  falha de job.
+- **Desfazer** (raro): a fatura removida pode ser restaurada no painel do Asaas
+  (cobrança removida › restaurar).
+
 ## Configuração
 
 | Chave | Onde | Valor |
@@ -47,7 +78,8 @@ dotnet user-secrets set "Cobranca:Ativa" "true"
 1. **Integrações › Chaves de API**: gerar a chave.
 2. **Integrações › Webhooks › Adicionar**: URL `https://micoempresa.com.br/api/webhooks/asaas`,
    o mesmo token de `Asaas:WebhookToken`, versão da API v3, envio sequencial,
-   eventos de **Cobranças** (PAYMENT_*) e de **Assinaturas** (SUBSCRIPTION_*).
+   eventos de **Cobranças** (PAYMENT_*, inclusive PAYMENT_DELETED e
+   PAYMENT_RESTORED) e de **Assinaturas** (SUBSCRIPTION_*).
 3. No sandbox, uma fatura pode ser dada como paga pelo próprio painel do Asaas
    (cobrança › confirmar recebimento), o que dispara o webhook.
 

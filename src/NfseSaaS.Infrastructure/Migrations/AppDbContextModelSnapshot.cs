@@ -1372,6 +1372,63 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.ToTable("nfse_eventos", (string)null);
                 });
 
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.PremioIndicacao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("AplicadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("AsaasPagamentoDispensadoId")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("AsaasPagamentoOrigemId")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Detalhe")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid>("IndicadoTenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Papel")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Tentativas")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("VencimentoDispensado")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("IndicadoTenantId", "Papel")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "Status");
+
+                    b.ToTable("premios_indicacao", (string)null);
+                });
+
             modelBuilder.Entity("NfseSaaS.Domain.Entities.Servico", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1769,6 +1826,21 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.HasOne("NfseSaaS.Domain.Entities.Nfse", null)
                         .WithMany()
                         .HasForeignKey("NfseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.PremioIndicacao", b =>
+                {
+                    b.HasOne("NfseSaaS.Domain.Entities.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("IndicadoTenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("NfseSaaS.Domain.Entities.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

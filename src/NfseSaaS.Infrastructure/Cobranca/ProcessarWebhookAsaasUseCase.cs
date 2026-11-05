@@ -1,10 +1,13 @@
 using System.Globalization;
 using System.Text.Json;
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NfseSaaS.Application.UseCases.Cobranca;
+using NfseSaaS.Application.UseCases.Indicacao;
 using NfseSaaS.Domain.Entities;
 using NfseSaaS.Domain.Enums;
+using NfseSaaS.Infrastructure.Jobs;
 using NfseSaaS.Infrastructure.Persistence;
 
 namespace NfseSaaS.Infrastructure.Cobranca;
@@ -18,18 +21,24 @@ namespace NfseSaaS.Infrastructure.Cobranca;
 ///
 /// Regras:
 /// - PAYMENT_CONFIRMED / PAYMENT_RECEIVED: assinatura Ativa, sai do atraso.
+///   Se for o PRIMEIRO pagamento de uma conta indicada, registra os prêmios
+///   do "Indique e ganhe" (na mesma gravação do evento) e dispara a
+///   aplicação no Asaas por job (nunca dentro do webhook).
 /// - PAYMENT_OVERDUE: Atrasada desde o vencimento (tolerância em RegrasCobranca).
-/// - PAYMENT_CREATED / PAYMENT_UPDATED: guarda o link da fatura em aberto.
+/// - PAYMENT_CREATED / PAYMENT_UPDATED / PAYMENT_RESTORED: guarda o link da fatura em aberto.
+/// - PAYMENT_DELETED: esquece o link se era o da fatura removida (ex.: mês grátis).
 /// - SUBSCRIPTION_DELETED / SUBSCRIPTION_INACTIVATED: Cancelada.
 /// </summary>
 public sealed class ProcessarWebhookAsaasUseCase : IProcessarWebhookAsaasUseCase
 {
     private readonly AppDbContext _db;
+    private readonly IBackgroundJobClient _jobs;
     private readonly ILogger<ProcessarWebhookAsaasUseCase> _logger;
 
-    public ProcessarWebhookAsaasUseCase(AppDbContext db, ILogger<ProcessarWebhookAsaasUseCase> logger)
+    public ProcessarWebhookAsaasUseCase(AppDbContext db, IBackgroundJobClient jobs, ILogger<ProcessarWebhookAsaasUseCase> logger)
     {
         _db = db;
+        _jobs = jobs;
         _logger = logger;
     }
 
@@ -84,10 +93,29 @@ public sealed class ProcessarWebhookAsaasUseCase : IProcessarWebhookAsaasUseCase
             : await _db.Assinaturas.FirstOrDefaultAsync(a => a.AsaasAssinaturaId == assinaturaId, cancellationToken);
 
         evento.TenantId = assinaturaLocal?.TenantId;
-        evento.Resultado = assinaturaLocal is null
-            ? "ignorado: assinatura não encontrada"
-            : Aplicar(assinaturaLocal, tipo, vencimento, faturaUrl, statusPagamento);
         evento.Processado = assinaturaLocal is not null;
+        var dispararPremios = false;
+
+        if (assinaturaLocal is null)
+        {
+            evento.Resultado = "ignorado: assinatura não encontrada";
+        }
+        else
+        {
+            var primeiroPagamento = assinaturaLocal.UltimoPagamentoEm is null;
+            evento.Resultado = Aplicar(assinaturaLocal, tipo, vencimento, faturaUrl, statusPagamento);
+
+            if (tipo is "PAYMENT_CONFIRMED" or "PAYMENT_RECEIVED")
+            {
+                var registrou = primeiroPagamento && await RegistrarPremiosIndicacaoAsync(assinaturaLocal.TenantId, pagamentoId, cancellationToken);
+                if (registrou)
+                    evento.Resultado += "; prêmio de indicação registrado";
+
+                // Quem INDICOU também pode ter prêmio guardado esperando este pagamento.
+                dispararPremios = registrou || await _db.PremiosIndicacao.AsNoTracking().AnyAsync(
+                    p => p.TenantId == assinaturaLocal.TenantId && p.Status == StatusPremioIndicacao.Pendente, cancellationToken);
+            }
+        }
 
         _db.EventosCobranca.Add(evento);
         try
@@ -104,7 +132,53 @@ public sealed class ProcessarWebhookAsaasUseCase : IProcessarWebhookAsaasUseCase
 
         _logger.LogInformation("Webhook Asaas {Tipo} ({EventoId}) da assinatura {AssinaturaId}: {Resultado}",
             tipo, eventoId, assinaturaId, evento.Resultado);
+
+        if (dispararPremios)
+        {
+            try
+            {
+                _jobs.Enqueue<IAplicarPremiosIndicacaoJob>(job => job.ExecutarAsync());
+            }
+            catch (Exception ex)
+            {
+                // O evento já está gravado; a varredura diária aplica o prêmio.
+                _logger.LogWarning(ex, "Não foi possível agendar a aplicação do prêmio de indicação; fica para a varredura diária.");
+            }
+        }
+
         return evento.Resultado;
+    }
+
+    /// <summary>
+    /// Primeiro pagamento de uma conta indicada: um prêmio para ela e um para
+    /// quem indicou. O índice único (IndicadoTenantId, Papel) segura a
+    /// repetição; a consulta antes evita depender do erro de gravação.
+    /// </summary>
+    private async Task<bool> RegistrarPremiosIndicacaoAsync(Guid tenantId, string? pagamentoId, CancellationToken cancellationToken)
+    {
+        var indicadoPor = await _db.Tenants.AsNoTracking()
+            .Where(t => t.Id == tenantId)
+            .Select(t => t.IndicadoPorTenantId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (!RegrasPremioIndicacao.GeraPremio(primeiroPagamento: true, tenantId, indicadoPor))
+            return false;
+
+        if (await _db.PremiosIndicacao.AsNoTracking().AnyAsync(p => p.IndicadoTenantId == tenantId, cancellationToken))
+            return false;
+
+        var origem = Limitar(pagamentoId, 60);
+        _db.PremiosIndicacao.Add(new PremioIndicacao
+        {
+            TenantId = tenantId, IndicadoTenantId = tenantId, Papel = PapelPremioIndicacao.ContaIndicada,
+            AsaasPagamentoOrigemId = origem, Detalhe = "Aguardando aplicação."
+        });
+        _db.PremiosIndicacao.Add(new PremioIndicacao
+        {
+            TenantId = indicadoPor!.Value, IndicadoTenantId = tenantId, Papel = PapelPremioIndicacao.QuemIndicou,
+            AsaasPagamentoOrigemId = origem, Detalhe = "Aguardando aplicação."
+        });
+        return true;
     }
 
     private static string Aplicar(Assinatura assinatura, string tipo, DateOnly? vencimento, string? faturaUrl, string? statusPagamento)
@@ -137,10 +211,19 @@ public sealed class ProcessarWebhookAsaasUseCase : IProcessarWebhookAsaasUseCase
 
             case "PAYMENT_CREATED":
             case "PAYMENT_UPDATED":
+            case "PAYMENT_RESTORED":
                 if (statusPagamento is "PENDING" or "OVERDUE" && !string.IsNullOrWhiteSpace(faturaUrl))
                 {
                     assinatura.UrlFaturaPendente = Limitar(faturaUrl, 300);
                     return "fatura em aberto registrada";
+                }
+                return "sem mudança";
+
+            case "PAYMENT_DELETED":
+                if (!string.IsNullOrWhiteSpace(faturaUrl) && assinatura.UrlFaturaPendente == Limitar(faturaUrl, 300))
+                {
+                    assinatura.UrlFaturaPendente = null;
+                    return "fatura removida";
                 }
                 return "sem mudança";
 

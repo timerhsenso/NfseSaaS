@@ -1,5 +1,6 @@
 // Painel do operador da plataforma — todas as contas (tenants).
 let tabelaTenants;
+let tabelaPremios;
 let modalSuspender;
 let tenantParaSuspender = null;
 
@@ -16,6 +17,17 @@ function situacaoCobrancaPlataforma(t) {
         case 3: return `<div class="small text-danger mt-1">Fatura em atraso · ${escaparHtml(t.plano ?? '')}</div>`;
         case 4: return '<div class="small text-muted mt-1">Assinatura cancelada</div>';
         case 1: return `<div class="small text-muted mt-1">${t.testeIniciadoEm ? 'Em teste desde ' + dataCurta(t.testeIniciadoEm) : 'Teste não iniciado'}</div>`;
+        default: return '';
+    }
+}
+
+// StatusPremioIndicacao (Domain.Enums): 1 Pendente, 2 Aplicando, 3 Aplicado, 4 Erro.
+function situacaoPremioPlataforma(status) {
+    switch (status) {
+        case 1: return '<span class="badge text-bg-warning">Guardado</span>';
+        case 2: return '<span class="badge text-bg-info">Aplicando</span>';
+        case 3: return '<span class="badge text-bg-success">Aplicado</span>';
+        case 4: return '<span class="badge text-bg-danger">Erro</span>';
         default: return '';
     }
 }
@@ -74,8 +86,47 @@ document.addEventListener('DOMContentLoaded', function () {
         language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/pt-BR.json' }
     });
 
+    tabelaPremios = new DataTable('#tabela-premios', {
+        order: [[0, 'desc']],
+        pageLength: 10,
+        columns: [
+            { data: 'criadoEm', render: (v, type) => type === 'display' ? dataCurta(v) : v },
+            {
+                data: 'conta',
+                render: (v, type, p) => type !== 'display' ? v :
+                    `${escaparHtml(v)}<div class="small text-muted">${p.papel === 1 ? 'a conta indicada' : 'quem indicou'}</div>`
+            },
+            { data: 'contaIndicada', render: (v, type) => type === 'display' ? escaparHtml(v) : v },
+            {
+                data: 'status',
+                render: (v, type, p) => type !== 'display' ? v :
+                    situacaoPremioPlataforma(v) + (p.aplicadoEm ? `<div class="small text-muted mt-1">${dataCurta(p.aplicadoEm)}</div>` : '')
+            },
+            {
+                data: 'detalhe',
+                render: (v, type, p) => type !== 'display' ? (v ?? '') :
+                    `<span class="small">${escaparHtml(v ?? '')}</span>${p.tentativas > 1 ? `<div class="small text-muted">${p.tentativas} tentativa(s)</div>` : ''}`
+            },
+            {
+                data: null, orderable: false,
+                render: (d, type, p) => p.status === 4
+                    ? `<button type="button" class="btn btn-sm btn-outline-primary btn-tentar-premio" data-id="${p.id}" data-nome="${escaparHtml(p.conta)}"><i class="bi bi-arrow-repeat"></i> Tentar de novo</button>`
+                    : ''
+            }
+        ],
+        language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/pt-BR.json' }
+    });
+
+    document.getElementById('tabela-premios').addEventListener('click', async function (e) {
+        const botao = e.target.closest('.btn-tentar-premio');
+        if (botao) await executarComBotaoDesabilitado(botao, () => tentarPremioNovamente(botao.dataset.id, botao.dataset.nome));
+    });
+
     modalSuspender = new bootstrap.Modal(document.getElementById('modal-suspender-tenant'));
-    document.getElementById('btn-atualizar-plataforma').addEventListener('click', carregarTenants);
+    document.getElementById('btn-atualizar-plataforma').addEventListener('click', function () {
+        carregarTenants();
+        carregarPremios();
+    });
     document.getElementById('form-suspender-tenant').addEventListener('submit', suspenderTenant);
 
     document.getElementById('tabela-tenants').addEventListener('click', async function (e) {
@@ -97,8 +148,37 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     carregarTenants();
+    carregarPremios();
     carregarProtecaoChaves();
 });
+
+async function carregarPremios() {
+    try {
+        const premios = await apiFetch('/api/plataforma/premios-indicacao');
+        tabelaPremios.clear().rows.add(premios).draw();
+        const contar = s => premios.filter(p => p.status === s).length;
+        const erros = contar(4);
+        document.getElementById('resumo-premios').innerHTML =
+            `${contar(3)} aplicado(s) · ${contar(1)} guardado(s)` + (erros ? ` · <span class="text-danger fw-semibold">${erros} com erro</span>` : '');
+    } catch (err) {
+        mostrarErro(err.message);
+    }
+}
+
+async function tentarPremioNovamente(id, nome) {
+    if (!await confirmarAcao(
+        `Antes, abra o painel do Asaas e confira se a próxima fatura de ${nome} já foi removida ou o vencimento já foi adiado. ` +
+        'Se já foi, NÃO tente de novo (a conta ganharia 2 meses). Tentar de novo agora?',
+        { titulo: 'Tentar aplicar o prêmio de novo', textoBotao: 'Tentar de novo' })) return;
+
+    try {
+        await apiFetch(`/api/plataforma/premios-indicacao/${id}/tentar-novamente`, { method: 'POST' });
+        mostrarToast('Prêmio devolvido para a fila. Atualize em alguns segundos para ver o resultado.');
+        await carregarPremios();
+    } catch (err) {
+        mostrarErro(err.message);
+    }
+}
 
 async function carregarProtecaoChaves() {
     try {

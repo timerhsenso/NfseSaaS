@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using NfseSaaS.Application.Abstractions;
+using NfseSaaS.Application.UseCases.Indicacao;
 using NfseSaaS.Application.UseCases.Plataforma;
 using NfseSaaS.Web.Filters;
 
@@ -19,6 +20,8 @@ public sealed class PlataformaController : ControllerBase
     private readonly IAlterarBloqueioTenantUseCase _alterarBloqueio;
     private readonly IConsultarProtecaoChavesUseCase _consultarProtecaoChaves;
     private readonly IReprotegerChavesUseCase _reprotegerChaves;
+    private readonly IListarPremiosIndicacaoPlataformaUseCase _listarPremios;
+    private readonly IReabrirPremioIndicacaoUseCase _reabrirPremio;
     private readonly ICurrentUser _currentUser;
 
     public PlataformaController(
@@ -26,12 +29,16 @@ public sealed class PlataformaController : ControllerBase
         IAlterarBloqueioTenantUseCase alterarBloqueio,
         IConsultarProtecaoChavesUseCase consultarProtecaoChaves,
         IReprotegerChavesUseCase reprotegerChaves,
+        IListarPremiosIndicacaoPlataformaUseCase listarPremios,
+        IReabrirPremioIndicacaoUseCase reabrirPremio,
         ICurrentUser currentUser)
     {
         _listar = listar;
         _alterarBloqueio = alterarBloqueio;
         _consultarProtecaoChaves = consultarProtecaoChaves;
         _reprotegerChaves = reprotegerChaves;
+        _listarPremios = listarPremios;
+        _reabrirPremio = reabrirPremio;
         _currentUser = currentUser;
     }
 
@@ -50,6 +57,19 @@ public sealed class PlataformaController : ControllerBase
     public async Task<IActionResult> Reativar(Guid id, CancellationToken cancellationToken)
     {
         await _alterarBloqueio.ExecutarAsync(id, false, null, _currentUser.UserId, cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>Prêmios do "Indique e ganhe" (os 300 mais recentes).</summary>
+    [HttpGet("premios-indicacao")]
+    public async Task<IActionResult> PremiosIndicacao(CancellationToken cancellationToken)
+        => Ok(await _listarPremios.ExecutarAsync(cancellationToken));
+
+    /// <summary>Devolve um prêmio com erro para a fila (conferir antes no Asaas).</summary>
+    [HttpPost("premios-indicacao/{id:guid}/tentar-novamente")]
+    public async Task<IActionResult> TentarPremioNovamente(Guid id, CancellationToken cancellationToken)
+    {
+        await _reabrirPremio.ExecutarAsync(id, _currentUser.UserId, cancellationToken);
         return NoContent();
     }
 

@@ -91,4 +91,23 @@ public interface IGatewayCobranca
     Task<string?> ObterUrlFaturaPendenteAsync(string assinaturaId, CancellationToken cancellationToken);
 
     Task CancelarAssinaturaAsync(string assinaturaId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Fatura em aberto (PENDING, ainda não vencida) mais próxima da assinatura,
+    /// ignorando <paramref name="ignorarPagamentoId"/>. Nulo quando o Asaas ainda
+    /// não gerou a próxima (ele gera com antecedência configurável na conta).
+    /// </summary>
+    Task<FaturaGateway?> ObterProximaFaturaEmAbertoAsync(string assinaturaId, string? ignorarPagamentoId, CancellationToken cancellationToken);
+
+    /// <summary>Remove UMA fatura da assinatura (a assinatura continua; pode ser restaurada no painel do Asaas).</summary>
+    Task RemoverFaturaAsync(string pagamentoId, CancellationToken cancellationToken);
+
+    /// <summary>Vencimento da próxima fatura que o Asaas ainda vai gerar (nextDueDate da assinatura).</summary>
+    Task<DateOnly?> ObterProximoVencimentoAsync(string assinaturaId, CancellationToken cancellationToken);
+
+    /// <summary>Muda o nextDueDate da assinatura (só as faturas futuras).</summary>
+    Task AlterarProximoVencimentoAsync(string assinaturaId, DateOnly novoVencimento, CancellationToken cancellationToken);
 }
+
+/// <summary>Uma fatura (cobrança) de assinatura no gateway.</summary>
+public sealed record FaturaGateway(string Id, DateOnly Vencimento, string? Url);

@@ -88,4 +88,59 @@ public class AsaasClientTests
         await Assert.ThrowsAsync<RegraNegocioException>(() => cliente.CancelarAssinaturaAsync("sub_1", CancellationToken.None));
         Assert.Empty(servidor.Recebidas);
     }
+
+    [Fact]
+    public async Task Proxima_fatura_em_aberto_ignora_a_fatura_de_origem_e_pega_o_menor_vencimento()
+    {
+        var servidor = new ServidorFalso
+        {
+            Responder = _ => Json("""
+                {"data":[
+                  {"id":"pay_3","status":"PENDING","dueDate":"2027-01-10","invoiceUrl":"https://asaas/i/3"},
+                  {"id":"pay_1","status":"PENDING","dueDate":"2026-11-10","invoiceUrl":"https://asaas/i/1"},
+                  {"id":"pay_2","status":"PENDING","dueDate":"2026-12-10","invoiceUrl":"https://asaas/i/2"},
+                  {"id":"pay_0","status":"OVERDUE","dueDate":"2026-10-10","invoiceUrl":"https://asaas/i/0"}
+                ]}
+                """)
+        };
+
+        var fatura = await Cliente(servidor).ObterProximaFaturaEmAbertoAsync("sub_1", "pay_1", CancellationToken.None);
+
+        Assert.NotNull(fatura);
+        Assert.Equal("pay_2", fatura!.Id);
+        Assert.Equal(new DateOnly(2026, 12, 10), fatura.Vencimento);
+        Assert.Equal("https://asaas/i/2", fatura.Url);
+        Assert.Equal("https://api-sandbox.asaas.com/v3/subscriptions/sub_1/payments?status=PENDING", servidor.Recebidas.Single().Requisicao.RequestUri!.ToString());
+    }
+
+    [Fact]
+    public async Task Sem_fatura_em_aberto_devolve_nulo()
+    {
+        var servidor = new ServidorFalso { Responder = _ => Json("""{"data":[]}""") };
+
+        Assert.Null(await Cliente(servidor).ObterProximaFaturaEmAbertoAsync("sub_1", null, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Remove_fatura_e_adia_vencimento_com_os_verbos_certos()
+    {
+        var servidor = new ServidorFalso
+        {
+            Responder = r => r.Method == HttpMethod.Get
+                ? Json("""{"id":"sub_1","nextDueDate":"2026-12-10","status":"ACTIVE"}""")
+                : Json("""{"deleted":true,"id":"pay_2"}""")
+        };
+        var cliente = Cliente(servidor);
+
+        await cliente.RemoverFaturaAsync("pay_2", CancellationToken.None);
+        var proximo = await cliente.ObterProximoVencimentoAsync("sub_1", CancellationToken.None);
+        await cliente.AlterarProximoVencimentoAsync("sub_1", new DateOnly(2027, 1, 10), CancellationToken.None);
+
+        Assert.Equal(new DateOnly(2026, 12, 10), proximo);
+        Assert.Equal(HttpMethod.Delete, servidor.Recebidas[0].Requisicao.Method);
+        Assert.Equal("https://api-sandbox.asaas.com/v3/payments/pay_2", servidor.Recebidas[0].Requisicao.RequestUri!.ToString());
+        Assert.Equal(HttpMethod.Put, servidor.Recebidas[2].Requisicao.Method);
+        Assert.Equal("https://api-sandbox.asaas.com/v3/subscriptions/sub_1", servidor.Recebidas[2].Requisicao.RequestUri!.ToString());
+        Assert.Equal("""{"nextDueDate":"2027-01-10"}""", servidor.Recebidas[2].Corpo);
+    }
 }
