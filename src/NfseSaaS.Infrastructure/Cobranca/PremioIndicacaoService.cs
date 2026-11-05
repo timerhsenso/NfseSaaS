@@ -25,12 +25,20 @@ namespace NfseSaaS.Infrastructure.Cobranca;
 ///
 /// Segurança contra mês em dobro: o prêmio é gravado como "Aplicando"
 /// ANTES de chamar o Asaas. Se o processo cair no meio, ele vira Erro na
-/// próxima passada e só o operador o reabre (depois de conferir no Asaas).
+/// primeira passada depois de TempoMaximoAplicando e só o operador o reabre
+/// (depois de conferir no Asaas).
 /// Recusa explícita do Asaas (RegraNegocioException) não mudou nada lá:
 /// volta a Pendente e tenta de novo, até RegrasPremioIndicacao.MaxTentativas.
 /// </summary>
 public sealed class PremioIndicacaoService : IAplicarPremiosIndicacaoUseCase, IListarPremiosIndicacaoPlataformaUseCase, IReabrirPremioIndicacaoUseCase
 {
+    /// <summary>
+    /// "Aplicando" parado há mais que isto é queda no meio. Acima do limite de
+    /// execução do job (DisableConcurrentExecution de 600 s): um prêmio sendo
+    /// aplicado AGORA por outra execução nunca é tomado por interrompido.
+    /// </summary>
+    public static readonly TimeSpan TempoMaximoAplicando = TimeSpan.FromMinutes(15);
+
     private const string MotivoInterrompido =
         "A aplicação foi interrompida no meio. Confira no Asaas se a fatura já foi dispensada antes de tentar de novo.";
 
@@ -64,8 +72,9 @@ public sealed class PremioIndicacaoService : IAplicarPremiosIndicacaoUseCase, IL
     async Task<ResultadoAplicacaoPremios> IAplicarPremiosIndicacaoUseCase.ExecutarAsync(CancellationToken cancellationToken)
     {
         // Sobrou "Aplicando" de uma passada que caiu: não repete sozinho.
+        var limiteInterrompido = DateTimeOffset.UtcNow - TempoMaximoAplicando;
         var interrompidos = await _db.PremiosIndicacao
-            .Where(p => p.Status == StatusPremioIndicacao.Aplicando)
+            .Where(p => p.Status == StatusPremioIndicacao.Aplicando && (p.UpdatedAt ?? p.CreatedAt) < limiteInterrompido)
             .ToListAsync(cancellationToken);
         foreach (var premio in interrompidos)
         {

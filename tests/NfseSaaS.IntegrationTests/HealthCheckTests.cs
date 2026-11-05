@@ -13,9 +13,9 @@ namespace NfseSaaS.IntegrationTests;
 [Collection(AplicacaoEmMemoriaCollection.Nome)]
 public class HealthCheckTests
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly AplicacaoTesteFactory _factory;
 
-    public HealthCheckTests(WebApplicationFactory<Program> factory)
+    public HealthCheckTests(AplicacaoTesteFactory factory)
     {
         _factory = factory;
     }

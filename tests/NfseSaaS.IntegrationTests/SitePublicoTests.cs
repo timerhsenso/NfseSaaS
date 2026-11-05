@@ -12,9 +12,9 @@ namespace NfseSaaS.IntegrationTests;
 [Collection(AplicacaoEmMemoriaCollection.Nome)]
 public class SitePublicoTests
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly AplicacaoTesteFactory _factory;
 
-    public SitePublicoTests(WebApplicationFactory<Program> factory)
+    public SitePublicoTests(AplicacaoTesteFactory factory)
     {
         _factory = factory;
     }
@@ -121,9 +121,9 @@ internal static class HttpClientTesteExtensions
 [Collection(AplicacaoEmMemoriaCollection.Nome)]
 public class OnboardingApiTests
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly AplicacaoTesteFactory _factory;
 
-    public OnboardingApiTests(WebApplicationFactory<Program> factory)
+    public OnboardingApiTests(AplicacaoTesteFactory factory)
     {
         _factory = factory;
     }

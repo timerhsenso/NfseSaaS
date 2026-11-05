@@ -42,7 +42,8 @@ produção, 7 dias de tolerância para fatura vencida).
   o prêmio guardado; ele é aplicado no primeiro pagamento seguinte dessa conta.
   Conta isenta nunca recebe (não há fatura).
 - **Nunca em dobro:** o prêmio é gravado como "Aplicando" antes de chamar o
-  Asaas. Se o sistema cair no meio, ele vira **Erro** e não é repetido sozinho.
+  Asaas. Se o sistema cair no meio, depois de 15 minutos ele vira **Erro** e
+  não é repetido sozinho.
   Recusa do Asaas tenta de novo até 3 vezes; depois, Erro.
 - **Operador:** Plataforma › Contas › quadro **Prêmios de indicação**. Para um
   prêmio com Erro: abrir o painel do Asaas, conferir a assinatura da conta

@@ -18,11 +18,19 @@ namespace NfseSaaS.IntegrationTests;
 [Collection(AplicacaoEmMemoriaCollection.Nome)]
 public class WebhookAsaasTests
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly AplicacaoTesteFactory _factory;
 
-    public WebhookAsaasTests(WebApplicationFactory<Program> factory)
+    public WebhookAsaasTests(AplicacaoTesteFactory factory)
     {
         _factory = factory;
+    }
+
+    [Fact]
+    public void Testes_nunca_falam_com_o_Asaas_de_verdade()
+    {
+        // Mesmo com a chave do sandbox nos user-secrets do PC (AplicacaoTesteFactory).
+        using var escopo = _factory.Services.CreateScope();
+        Assert.False(escopo.ServiceProvider.GetRequiredService<IGatewayCobranca>().Configurado);
     }
 
     [Fact]

@@ -17,9 +17,9 @@ namespace NfseSaaS.IntegrationTests;
 [Collection(AplicacaoEmMemoriaCollection.Nome)]
 public class CobrancaServiceTests
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly AplicacaoTesteFactory _factory;
 
-    public CobrancaServiceTests(WebApplicationFactory<Program> factory)
+    public CobrancaServiceTests(AplicacaoTesteFactory factory)
     {
         _factory = factory;
     }

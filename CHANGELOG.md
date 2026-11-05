@@ -21,6 +21,9 @@ versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH)
 - Webhook: `PAYMENT_DELETED` limpa o link da fatura removida;
   `PAYMENT_RESTORED` volta a registrar a fatura em aberto.
 - Migration `PremioIndicacao`: tabela `premios_indicacao`.
+- Testes de integração sobem com uma factory própria (`AplicacaoTesteFactory`)
+  que zera `Asaas:ApiKey` e `Asaas:WebhookToken`: com a chave do sandbox nos
+  user-secrets, um job real disparado pelo teste chamava o Asaas.
 
 ### Adicionado
 - `Cobranca:ContasPiloto`: contas em que a cobrança funciona mesmo com

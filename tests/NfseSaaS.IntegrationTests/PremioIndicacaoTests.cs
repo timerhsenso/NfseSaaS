@@ -25,9 +25,9 @@ namespace NfseSaaS.IntegrationTests;
 [Collection(AplicacaoEmMemoriaCollection.Nome)]
 public class PremioIndicacaoTests
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly AplicacaoTesteFactory _factory;
 
-    public PremioIndicacaoTests(WebApplicationFactory<Program> factory)
+    public PremioIndicacaoTests(AplicacaoTesteFactory factory)
     {
         _factory = factory;
     }
@@ -227,9 +227,17 @@ public class PremioIndicacaoTests
             Assert.Equal(StatusPremioIndicacao.Aplicado, premio.Status);
             Assert.Equal(new[] { "pay_x_" + s }, gateway.Removidas);
 
-            // Ficou "Aplicando" (processo caiu no meio): vira Erro, sem chamar o gateway.
+            // "Aplicando" recente: pode ser outra execução no meio → não mexe.
             premio.Status = StatusPremioIndicacao.Aplicando;
             await db.SaveChangesAsync();
+            await aplicar.ExecutarAsync(CancellationToken.None);
+            await db.Entry(premio).ReloadAsync();
+            Assert.Equal(StatusPremioIndicacao.Aplicando, premio.Status);
+
+            // "Aplicando" antigo (processo caiu no meio): vira Erro, sem chamar o gateway.
+            // (direto no banco: o SaveChanges carimba UpdatedAt com a hora atual)
+            var antigo = DateTimeOffset.UtcNow - PremioIndicacaoService.TempoMaximoAplicando - TimeSpan.FromMinutes(1);
+            await db.PremiosIndicacao.Where(p => p.Id == premio.Id).ExecuteUpdateAsync(u => u.SetProperty(p => p.UpdatedAt, antigo));
             await aplicar.ExecutarAsync(CancellationToken.None);
             await db.Entry(premio).ReloadAsync();
             Assert.Equal(StatusPremioIndicacao.Erro, premio.Status);
