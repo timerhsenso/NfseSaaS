@@ -5,6 +5,29 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (cobrança)
+- **Planos** Mico (R$ 29) e Empresa (R$ 59), com preço de fundador (R$ 19 e
+  R$ 39) para os 20 primeiros assinantes, mantido enquanto a assinatura
+  existir. Limites de empresas e notas por mês são informativos.
+- **Teste grátis** em produção: 30 dias ou 10 notas, contados da primeira nota
+  em produção; homologação sempre livre.
+- **Bloqueio só da emissão em produção** (tela, lote e automação) quando o
+  teste acaba sem assinatura, a fatura está vencida há mais de 7 dias ou a
+  assinatura foi cancelada. Consulta e download nunca são bloqueados.
+- Tela **Assinatura** (Administrador; Financeiro só consulta): situação, uso
+  do mês, planos, assinar, pagar fatura e cancelar. Nova tela na matriz de
+  permissões.
+- Integração com o **Asaas**: cliente e assinatura mensal (Pix, boleto ou
+  cartão à escolha do cliente), link da fatura, cancelamento. Webhook
+  `POST /api/webhooks/asaas` autenticado por token, idempotente pelo id do
+  evento.
+- Painel do operador (Contas) mostra a situação da cobrança de cada conta.
+- **Desligada por padrão** (`Cobranca:Ativa=false`): o beta continua grátis
+  até a cobrança ser ligada. `Cobranca:ContasIsentas` para a conta do operador.
+  Configuração em `docs/operacao/cobranca.md`.
+- Migration `CobrancaAssinatura`: tabelas `assinaturas` (uma por conta) e
+  `eventos_cobranca`.
+
 ### Adicionado (indique e ganhe)
 - Tela **Indique e ganhe** (menu lateral, qualquer usuário logado): link da
   conta (`micoempresa.com.br/?ref=CODIGO`), botões de copiar, WhatsApp e

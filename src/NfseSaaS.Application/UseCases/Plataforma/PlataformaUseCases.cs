@@ -21,7 +21,11 @@ public sealed record TenantPlataformaResponse(
     DateTimeOffset? UltimaNota,
     string? OrigemCadastro,
     string? IndicadaPor,
-    int Indicacoes);
+    int Indicacoes,
+    NfseSaaS.Domain.Enums.StatusAssinatura? StatusAssinatura,
+    string? Plano,
+    decimal? PrecoMensal,
+    DateTimeOffset? TesteIniciadoEm);
 
 /// <summary>Todas as contas, de todos os tenants — só o operador da plataforma chama.</summary>
 public interface IListarTenantsPlataformaUseCase

@@ -1,0 +1,48 @@
+@{
+    ViewData["Title"] = "Assinatura";
+}
+
+<div id="assinatura-alerta" class="alert d-none" role="status"></div>
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-credit-card" aria-hidden="true"></i> Sua assinatura</div>
+            <div class="card-body">
+                <dl class="row mb-0 small" id="assinatura-resumo">
+                    <dt class="col-6">Situação</dt><dd class="col-6" id="ass-situacao">-</dd>
+                    <dt class="col-6">Plano</dt><dd class="col-6" id="ass-plano">-</dd>
+                    <dt class="col-6">Teste grátis em produção</dt><dd class="col-6" id="ass-teste">-</dd>
+                    <dt class="col-6">Notas em produção neste mês</dt><dd class="col-6" id="ass-notas-mes">-</dd>
+                    <dt class="col-6">Empresas ativas</dt><dd class="col-6" id="ass-empresas">-</dd>
+                </dl>
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    <a class="btn btn-primary d-none" id="btn-pagar-fatura" target="_blank" rel="noopener"><i class="bi bi-qr-code" aria-hidden="true"></i> Pagar fatura</a>
+                    <button type="button" class="btn btn-outline-danger btn-sm d-none" id="btn-cancelar-assinatura">Cancelar assinatura</button>
+                </div>
+                <p class="form-text mt-3 mb-0">
+                    Em homologação a emissão é sempre livre. Consultas e downloads nunca são bloqueados.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Planos</span>
+                <small class="text-muted" id="ass-vagas"></small>
+            </div>
+            <div class="card-body">
+                <div class="row g-3" id="ass-planos"></div>
+                <p class="form-text mt-3 mb-0">
+                    A fatura abre numa página do Asaas, onde você escolhe Pix, boleto ou cartão. A assinatura renova todo mês
+                    e pode ser cancelada aqui quando quiser.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/paginas/assinatura.js" asp-append-version="true"></script>
+}

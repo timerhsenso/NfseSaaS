@@ -2,7 +2,8 @@
 @{
     var papelAdministrador = User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Usuarios)
         || User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Grupos)
-        || User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Auditoria);
+        || User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Auditoria)
+        || User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Assinatura);
     var caminhoAtual = Context.Request.Path.Value?.TrimEnd('/') ?? "";
     string Ativo(string caminho) => caminhoAtual.Equals(caminho, StringComparison.OrdinalIgnoreCase) ? "active" : "";
     var nomeUsuario = User.Identity?.Name ?? "Usuário";
@@ -124,6 +125,10 @@
                     @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Emails))
                     {
                         <a href="/Emails" class="@Ativo("/Emails")"><span class="nav-icon bi bi-envelope"></span>E-mails enviados</a>
+                    }
+                    @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Assinatura))
+                    {
+                        <a href="/Assinatura" class="@Ativo("/Assinatura")"><span class="nav-icon bi bi-credit-card"></span>Assinatura</a>
                     }
                 </nav>
             }

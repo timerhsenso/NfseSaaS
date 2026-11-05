@@ -8,6 +8,18 @@ function formatarCnpjPlataforma(cnpj) {
     return d.length === 14 ? d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5') : cnpj;
 }
 
+// StatusAssinatura (Domain.Enums): 1 Teste, 2 Ativa, 3 Atrasada, 4 Cancelada.
+function situacaoCobrancaPlataforma(t) {
+    const preco = t.precoMensal != null ? ` · R$ ${Number(t.precoMensal).toFixed(2).replace('.', ',')}` : '';
+    switch (t.statusAssinatura) {
+        case 2: return `<div class="small text-muted mt-1">Assinante ${escaparHtml(t.plano ?? '')}${preco}</div>`;
+        case 3: return `<div class="small text-danger mt-1">Fatura em atraso · ${escaparHtml(t.plano ?? '')}</div>`;
+        case 4: return '<div class="small text-muted mt-1">Assinatura cancelada</div>';
+        case 1: return `<div class="small text-muted mt-1">${t.testeIniciadoEm ? 'Em teste desde ' + dataCurta(t.testeIniciadoEm) : 'Teste não iniciado'}</div>`;
+        default: return '';
+    }
+}
+
 function dataCurta(iso) {
     return iso ? new Date(iso).toLocaleDateString('pt-BR') : '—';
 }
@@ -46,9 +58,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 data: 'ativo',
                 render: (v, type, t) => {
                     if (type !== 'display') return v ? 'Ativa' : 'Suspensa';
-                    if (v) return '<span class="badge text-bg-success">Ativa</span>';
+                    const cobranca = situacaoCobrancaPlataforma(t);
+                    if (v) return '<span class="badge text-bg-success">Ativa</span>' + cobranca;
                     return `<span class="badge text-bg-danger">Suspensa</span>` +
-                        `<div class="small text-muted mt-1">${dataCurta(t.bloqueadoEm)}${t.motivoBloqueio ? ' · ' + escaparHtml(t.motivoBloqueio) : ''}</div>`;
+                        `<div class="small text-muted mt-1">${dataCurta(t.bloqueadoEm)}${t.motivoBloqueio ? ' · ' + escaparHtml(t.motivoBloqueio) : ''}</div>` + cobranca;
                 }
             },
             {

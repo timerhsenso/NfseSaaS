@@ -204,6 +204,72 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.ToTable("aceites_termos", (string)null);
                 });
 
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.Assinatura", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AsaasAssinaturaId")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("AsaasClienteId")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<DateTimeOffset?>("AssinadaEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("AtrasadaDesde")
+                        .HasColumnType("date");
+
+                    b.Property<DateTimeOffset?>("CanceladaEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Fundador")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("Plano")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("PrecoMensal")
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("TesteIniciadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("UltimoPagamentoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UrlFaturaPendente")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AsaasAssinaturaId")
+                        .IsUnique()
+                        .HasFilter("\"AsaasAssinaturaId\" IS NOT NULL");
+
+                    b.HasIndex("TenantId")
+                        .IsUnique();
+
+                    b.ToTable("assinaturas", (string)null);
+                });
+
             modelBuilder.Entity("NfseSaaS.Domain.Entities.AuditLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -851,6 +917,60 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("empresas", (string)null);
+                });
+
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.EventoCobranca", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AsaasAssinaturaId")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("AsaasPagamentoId")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EventoId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("Processado")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Resultado")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventoId")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "CreatedAt");
+
+                    b.ToTable("eventos_cobranca", (string)null);
                 });
 
             modelBuilder.Entity("NfseSaaS.Domain.Entities.Grupo", b =>
@@ -1521,6 +1641,15 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.Assinatura", b =>
+                {
+                    b.HasOne("NfseSaaS.Domain.Entities.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

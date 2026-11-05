@@ -278,6 +278,17 @@ public static class DependencyInjection
         services.AddScoped<IListarTenantsPlataformaUseCase, ListarTenantsPlataformaUseCase>();
         services.AddScoped<NfseSaaS.Application.UseCases.Onboarding.IObterProgressoOnboardingUseCase, ObterProgressoOnboardingUseCase>();
         services.AddScoped<NfseSaaS.Application.UseCases.Indicacao.IObterIndicacaoUseCase, ObterIndicacaoUseCase>();
+
+        // Cobrança (planos, teste grátis, Asaas). Desligada por padrão (Cobranca:Ativa=false).
+        services.Configure<NfseSaaS.Infrastructure.Cobranca.CobrancaOptions>(configuration.GetSection(NfseSaaS.Infrastructure.Cobranca.CobrancaOptions.SectionName));
+        services.Configure<NfseSaaS.Infrastructure.Cobranca.AsaasOptions>(configuration.GetSection(NfseSaaS.Infrastructure.Cobranca.AsaasOptions.SectionName));
+        services.AddHttpClient<NfseSaaS.Application.UseCases.Cobranca.IGatewayCobranca, NfseSaaS.Infrastructure.Cobranca.AsaasClient>(http => http.Timeout = TimeSpan.FromSeconds(30));
+        services.AddScoped<NfseSaaS.Infrastructure.Cobranca.CobrancaService>();
+        services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IVerificadorCobranca>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.CobrancaService>());
+        services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IObterAssinaturaUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.CobrancaService>());
+        services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IAssinarUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.CobrancaService>());
+        services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.ICancelarAssinaturaUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.CobrancaService>());
+        services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IProcessarWebhookAsaasUseCase, NfseSaaS.Infrastructure.Cobranca.ProcessarWebhookAsaasUseCase>();
         services.AddScoped<IAlterarBloqueioTenantUseCase, AlterarBloqueioTenantUseCase>();
         services.AddScoped<IObterAuditLogPorIdUseCase, ObterAuditLogPorIdUseCase>();
 

@@ -45,6 +45,7 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
     private readonly INfseEventoWriter _nfseEventoWriter;
     private readonly IEnviarNfsePorEmailUseCase _enviarNfsePorEmail;
     private readonly ILogger<EmitirNfseUseCase> _logger;
+    private readonly NfseSaaS.Application.UseCases.Cobranca.IVerificadorCobranca _verificadorCobranca;
 
     public EmitirNfseUseCase(
         AppDbContext db,
@@ -52,8 +53,10 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
         IAuditLogWriter auditLogWriter,
         INfseEventoWriter nfseEventoWriter,
         IEnviarNfsePorEmailUseCase enviarNfsePorEmail,
-        ILogger<EmitirNfseUseCase> logger)
+        ILogger<EmitirNfseUseCase> logger,
+        NfseSaaS.Application.UseCases.Cobranca.IVerificadorCobranca verificadorCobranca)
     {
+        _verificadorCobranca = verificadorCobranca;
         _db = db;
         _nfseNacionalService = nfseNacionalService;
         _auditLogWriter = auditLogWriter;
@@ -66,12 +69,23 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
     {
         // Conta suspensa pelo operador da plataforma não emite — nem pela
         // tela, nem pelo lote, nem pela automação (todos passam por aqui).
-        var tenantAtivo = await _db.Empresas
+        var contaEmpresa = await _db.Empresas
             .Where(e => e.Id == request.EmpresaId)
-            .Select(e => (bool?)_db.Tenants.Where(t => t.Id == e.TenantId).Select(t => t.Ativo).FirstOrDefault())
+            .Select(e => new
+            {
+                e.TenantId,
+                e.TipoAmbiente,
+                TenantAtivo = _db.Tenants.Where(t => t.Id == e.TenantId).Select(t => t.Ativo).FirstOrDefault()
+            })
             .FirstOrDefaultAsync(cancellationToken);
-        if (tenantAtivo == false)
+        if (contaEmpresa is { TenantAtivo: false })
             throw new RegraNegocioException("Esta conta está suspensa: a emissão de notas está bloqueada. Fale com o suporte.");
+
+        // Cobrança: só produção (homologação é sempre livre). Teste acabado,
+        // fatura atrasada além da tolerância ou assinatura cancelada barram
+        // aqui — inclusive o lote e a automação, que passam por este método.
+        if (contaEmpresa is { TipoAmbiente: TipoAmbiente.Producao })
+            await _verificadorCobranca.GarantirPodeEmitirEmProducaoAsync(contaEmpresa.TenantId, cancellationToken);
 
         // Idempotência: se o chamador informou uma chave e já existe uma
         // Nfse com ela para esta Empresa, é um retry da MESMA tentativa —

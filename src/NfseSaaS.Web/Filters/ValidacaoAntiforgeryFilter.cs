@@ -38,7 +38,8 @@ public sealed class ValidacaoAntiforgeryFilter : IAsyncActionFilter
 
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
-        if (!MetodosSeguros.Contains(context.HttpContext.Request.Method))
+        if (!MetodosSeguros.Contains(context.HttpContext.Request.Method)
+            && !context.ActionDescriptor.EndpointMetadata.OfType<SemAntiforgeryAttribute>().Any())
         {
             // Lança AntiforgeryValidationException se o par não bater —
             // tratada pelo ExceptionHandlingMiddleware, que devolve 403.

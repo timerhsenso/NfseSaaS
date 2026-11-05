@@ -67,8 +67,12 @@ public sealed class ListarTenantsPlataformaUseCase : IListarTenantsPlataformaUse
             .GroupBy(t => t.IndicadoPorTenantId!.Value)
             .ToDictionary(g => g.Key, g => g.Count());
 
+        var assinaturas = await _db.Assinaturas.AsNoTracking()
+            .ToDictionaryAsync(a => a.TenantId, cancellationToken);
+
         return tenants.Select(t =>
         {
+            assinaturas.TryGetValue(t.Id, out var a);
             usuarios.TryGetValue(t.Id, out var u);
             empresas.TryGetValue(t.Id, out var e);
             notas.TryGetValue(t.Id, out var n);
@@ -77,7 +81,11 @@ public sealed class ListarTenantsPlataformaUseCase : IListarTenantsPlataformaUse
                 u?.Responsavel, u?.Total ?? 0, e?.Total ?? 0, e?.Producao ?? 0, n?.NoMes ?? 0, n?.Total ?? 0, n?.Ultima,
                 t.OrigemCadastro,
                 t.IndicadoPorTenantId is { } indicadora && nomes.TryGetValue(indicadora, out var nomeIndicadora) ? nomeIndicadora : null,
-                indicacoes.GetValueOrDefault(t.Id));
+                indicacoes.GetValueOrDefault(t.Id),
+                a?.Status,
+                a?.Plano is { } plano ? NfseSaaS.Domain.Cobranca.Planos.Obter(plano).Nome : null,
+                a?.PrecoMensal,
+                a?.TesteIniciadoEm);
         }).ToList();
     }
 }
