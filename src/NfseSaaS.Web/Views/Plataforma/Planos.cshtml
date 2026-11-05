@@ -1,0 +1,227 @@
+@{
+    ViewData["Title"] = "Planos e preços";
+}
+
+<div class="alert alert-info small">
+    <i class="bi bi-info-circle"></i>
+    Preço novo vale <strong>só para novas assinaturas</strong>: quem já assina continua pagando o preço contratado.
+    Cada mudança de preço fica no histórico do plano, e toda alteração desta tela fica no seu Histórico.
+    Teste grátis (30 dias ou 10 notas) e tolerância de atraso (7 dias) são fixos.
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-star"></i> Vagas de fundador</span>
+        <span class="small text-muted">Preço de fundador fica preso enquanto a assinatura existir</span>
+    </div>
+    <div class="card-body">
+        <div class="row g-3" id="vagas-fundador">
+            <div class="col-12 text-muted small">Carregando…</div>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-tags"></i> Planos</span>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-atualizar-planos"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-novo-plano"><i class="bi bi-plus-lg"></i> Novo plano</button>
+        </div>
+    </div>
+    <div class="card-body">
+        <table id="tabela-planos" class="table w-100">
+            <thead>
+                <tr>
+                    <th>Plano</th>
+                    <th>Aparece para</th>
+                    <th>Inclui</th>
+                    <th class="text-end">Preço</th>
+                    <th class="text-end">Assinantes</th>
+                    <th>Situação</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>
+
+@* Criar / alterar plano *@
+<div class="modal fade" id="modal-plano" tabindex="-1" aria-labelledby="titulo-modal-plano">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="form-plano" novalidate>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="titulo-modal-plano">Plano</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="erro-plano" class="alert alert-danger d-none"></div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="plano-nome">Nome</label>
+                            <input type="text" class="form-control" id="plano-nome" maxlength="60" required />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label" for="plano-ordem">Ordem na tela</label>
+                            <input type="number" class="form-control" id="plano-ordem" min="0" max="9999" step="1" value="100" />
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="plano-avenda" checked />
+                                <label class="form-check-label" for="plano-avenda">À venda</label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="plano-descricao">Descrição (aparece na tela Assinatura)</label>
+                            <input type="text" class="form-control" id="plano-descricao" maxlength="200" />
+                        </div>
+                        <div class="col-md-6">
+                            <span class="form-label d-block">Aparece para</span>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="plano-para-empresa" />
+                                <label class="form-check-label" for="plano-para-empresa">Empresas</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="plano-para-contador" />
+                                <label class="form-check-label" for="plano-para-contador">Contadores</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="plano-publico">Vagas de fundador do grupo</label>
+                            <select class="form-select" id="plano-publico">
+                                <option value="1">Empresas</option>
+                                <option value="2">Escritórios</option>
+                            </select>
+                            <div class="form-text">Não muda depois que o plano tem assinaturas.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="plano-max-empresas">Empresas ativas incluídas</label>
+                            <input type="number" class="form-control" id="plano-max-empresas" min="1" step="1" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="plano-notas">Notas por mês</label>
+                            <input type="number" class="form-control" id="plano-notas" min="1" step="1" placeholder="sem limite" />
+                            <div class="form-text">Em branco = sem limite. Limite é aviso: nunca trava a emissão no meio do mês.</div>
+                        </div>
+                        <div class="col-md-6 grupo-preco-inicial">
+                            <label class="form-label" for="plano-preco">Preço normal (R$/mês)</label>
+                            <input type="number" class="form-control" id="plano-preco" min="0.01" step="0.01" />
+                        </div>
+                        <div class="col-md-6 grupo-preco-inicial">
+                            <label class="form-label" for="plano-preco-fundador">Preço de fundador (R$/mês)</label>
+                            <input type="number" class="form-control" id="plano-preco-fundador" min="0.01" step="0.01" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@* Novo preço *@
+<div class="modal fade" id="modal-preco" tabindex="-1" aria-labelledby="titulo-modal-preco">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="form-preco" novalidate>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="titulo-modal-preco">Novo preço</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="erro-preco" class="alert alert-danger d-none"></div>
+                    <p class="mb-2">Plano <strong id="preco-nome-plano"></strong> · hoje <span id="preco-atual"></span></p>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label" for="preco-mensal">Preço normal (R$/mês)</label>
+                            <input type="number" class="form-control" id="preco-mensal" min="0.01" step="0.01" required />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" for="preco-fundador">Preço de fundador (R$/mês)</label>
+                            <input type="number" class="form-control" id="preco-fundador" min="0.01" step="0.01" required />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" for="preco-vigente">Vale a partir de</label>
+                            <input type="date" class="form-control" id="preco-vigente" required />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="preco-motivo">Motivo</label>
+                            <input type="text" class="form-control" id="preco-motivo" maxlength="200" placeholder="ex.: reajuste anual, campanha de lançamento" />
+                        </div>
+                    </div>
+                    <div class="form-text mt-2">
+                        Vale só para novas assinaturas. Se já existe um preço com a mesma data, ele é corrigido (fica no seu Histórico).
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar preço</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@* Histórico de preços *@
+<div class="modal fade" id="modal-historico-precos" tabindex="-1" aria-labelledby="titulo-historico-precos">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="titulo-historico-precos">Histórico de preços</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Vale a partir de</th>
+                                <th class="text-end">Normal</th>
+                                <th class="text-end">Fundador</th>
+                                <th>Motivo</th>
+                                <th>Cadastrado</th>
+                                <th>Situação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpo-historico-precos"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Vagas de fundador *@
+<div class="modal fade" id="modal-vagas" tabindex="-1" aria-labelledby="titulo-modal-vagas">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="form-vagas" novalidate>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="titulo-modal-vagas">Vagas de fundador</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="erro-vagas" class="alert alert-danger d-none"></div>
+                    <p class="mb-2">Grupo <strong id="vagas-grupo"></strong> · <span id="vagas-usadas"></span> já usada(s)</p>
+                    <label class="form-label" for="vagas-quantidade">Total de vagas</label>
+                    <input type="number" class="form-control" id="vagas-quantidade" min="0" step="1" required />
+                    <div class="form-text">Diminuir não tira o preço de quem já é fundador; só para de oferecer.</div>
+                    <label class="form-label mt-3" for="vagas-motivo">Motivo</label>
+                    <input type="text" class="form-control" id="vagas-motivo" maxlength="200" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/paginas/plataforma-planos.js" asp-append-version="true"></script>
+}

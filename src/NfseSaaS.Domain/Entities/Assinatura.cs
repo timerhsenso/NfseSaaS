@@ -16,8 +16,8 @@ public sealed class Assinatura : BaseEntity
 
     public StatusAssinatura Status { get; set; } = StatusAssinatura.Teste;
 
-    /// <summary>Plano escolhido ao assinar (nulo enquanto em teste).</summary>
-    public PlanoCodigo? Plano { get; set; }
+    /// <summary>Código do plano escolhido ao assinar (Plano.Codigo; nulo enquanto em teste).</summary>
+    public int? Plano { get; set; }
 
     /// <summary>Valor mensal contratado (preço de fundador fica gravado aqui).</summary>
     public decimal? PrecoMensal { get; set; }

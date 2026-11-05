@@ -287,6 +287,9 @@ public static class DependencyInjection
         services.Configure<NfseSaaS.Infrastructure.Cobranca.CobrancaOptions>(configuration.GetSection(NfseSaaS.Infrastructure.Cobranca.CobrancaOptions.SectionName));
         services.Configure<NfseSaaS.Infrastructure.Cobranca.AsaasOptions>(configuration.GetSection(NfseSaaS.Infrastructure.Cobranca.AsaasOptions.SectionName));
         services.AddHttpClient<NfseSaaS.Application.UseCases.Cobranca.IGatewayCobranca, NfseSaaS.Infrastructure.Cobranca.AsaasClient>(http => http.Timeout = TimeSpan.FromSeconds(30));
+        services.AddScoped<NfseSaaS.Infrastructure.Cobranca.CatalogoPlanosService>();
+        services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.ICatalogoPlanos>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.CatalogoPlanosService>());
+        services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IAdministrarPlanosUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.CatalogoPlanosService>());
         services.AddScoped<NfseSaaS.Infrastructure.Cobranca.CobrancaService>();
         services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IVerificadorCobranca>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.CobrancaService>());
         services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IObterAssinaturaUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.CobrancaService>());

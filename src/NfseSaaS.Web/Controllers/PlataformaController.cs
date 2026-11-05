@@ -8,4 +8,7 @@ namespace NfseSaaS.Web.Controllers;
 public sealed class PlataformaController : Controller
 {
     public IActionResult Index() => View();
+
+    /// <summary>Catálogo de planos, preços (com histórico) e vagas de fundador. Dados via api/plataforma/planos.</summary>
+    public IActionResult Planos() => View();
 }

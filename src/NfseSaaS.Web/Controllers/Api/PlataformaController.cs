@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using NfseSaaS.Application.Abstractions;
+using NfseSaaS.Application.UseCases.Cobranca;
 using NfseSaaS.Application.UseCases.Indicacao;
 using NfseSaaS.Application.UseCases.Plataforma;
 using NfseSaaS.Web.Filters;
@@ -24,6 +25,7 @@ public sealed class PlataformaController : ControllerBase
     private readonly IReabrirPremioIndicacaoUseCase _reabrirPremio;
     private readonly ISolicitarExclusaoContaUseCase _solicitarExclusao;
     private readonly IConfirmarExclusaoContaUseCase _confirmarExclusao;
+    private readonly IAdministrarPlanosUseCase _planos;
     private readonly ICurrentUser _currentUser;
 
     public PlataformaController(
@@ -35,6 +37,7 @@ public sealed class PlataformaController : ControllerBase
         IReabrirPremioIndicacaoUseCase reabrirPremio,
         ISolicitarExclusaoContaUseCase solicitarExclusao,
         IConfirmarExclusaoContaUseCase confirmarExclusao,
+        IAdministrarPlanosUseCase planos,
         ICurrentUser currentUser)
     {
         _listar = listar;
@@ -45,6 +48,7 @@ public sealed class PlataformaController : ControllerBase
         _reabrirPremio = reabrirPremio;
         _solicitarExclusao = solicitarExclusao;
         _confirmarExclusao = confirmarExclusao;
+        _planos = planos;
         _currentUser = currentUser;
     }
 
@@ -104,4 +108,42 @@ public sealed class PlataformaController : ControllerBase
     [HttpPost("protecao-chaves/reproteger")]
     public async Task<IActionResult> ReprotegerChaves(CancellationToken cancellationToken)
         => Ok(await _reprotegerChaves.ExecutarAsync(_currentUser.UserId, cancellationToken));
+
+    // ---------- Planos (catálogo, preços com histórico, vagas de fundador) ----------
+
+    [HttpGet("planos")]
+    public async Task<IActionResult> ListarPlanos(CancellationToken cancellationToken)
+        => Ok(await _planos.ListarAsync(cancellationToken));
+
+    [HttpPost("planos")]
+    public async Task<IActionResult> CriarPlano([FromBody] SalvarPlanoRequest request, CancellationToken cancellationToken)
+        => Ok(await _planos.CriarAsync(request, _currentUser.UserId, cancellationToken));
+
+    /// <summary>Altera nome, limites e oferta. Preço muda por POST planos/{id}/precos.</summary>
+    [HttpPut("planos/{id:guid}")]
+    public async Task<IActionResult> AlterarPlano(Guid id, [FromBody] SalvarPlanoRequest request, CancellationToken cancellationToken)
+        => Ok(await _planos.AlterarAsync(id, request, _currentUser.UserId, cancellationToken));
+
+    [HttpGet("planos/{id:guid}/precos")]
+    public async Task<IActionResult> HistoricoPrecos(Guid id, CancellationToken cancellationToken)
+        => Ok(await _planos.HistoricoPrecosAsync(id, cancellationToken));
+
+    /// <summary>Novo preço a partir de hoje ou de uma data futura (vale só para novas assinaturas).</summary>
+    [HttpPost("planos/{id:guid}/precos")]
+    public async Task<IActionResult> NovoPreco(Guid id, [FromBody] NovoPrecoPlanoRequest request, CancellationToken cancellationToken)
+    {
+        await _planos.AdicionarPrecoAsync(id, request, _currentUser.UserId, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpGet("vagas-fundador")]
+    public async Task<IActionResult> ListarVagasFundador(CancellationToken cancellationToken)
+        => Ok(await _planos.ListarVagasAsync(cancellationToken));
+
+    [HttpPut("vagas-fundador")]
+    public async Task<IActionResult> AlterarVagasFundador([FromBody] AlterarVagasFundadorRequest request, CancellationToken cancellationToken)
+    {
+        await _planos.AlterarVagasAsync(request, _currentUser.UserId, cancellationToken);
+        return NoContent();
+    }
 }

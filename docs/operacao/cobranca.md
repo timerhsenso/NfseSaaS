@@ -1,8 +1,33 @@
 # Cobrança (planos, teste grátis e Asaas)
 
-Regras comerciais: `claude/plano-comercial.md` (projeto) e `Domain/Cobranca/Planos.cs`
-(planos Mico e Empresa, 20 vagas de fundador, teste de 30 dias ou 10 notas em
-produção, 7 dias de tolerância para fatura vencida).
+Regras comerciais: `claude/plano-comercial.md` (projeto). Planos, preços e
+vagas de fundador ficam no banco e são administrados em **Plataforma › Planos**
+(ver abaixo). Fixos no código (`Domain/Cobranca/Planos.cs`): teste de 30 dias ou
+10 notas em produção e 7 dias de tolerância para fatura vencida.
+
+## Planos e preços (Plataforma › Planos)
+
+- **Planos iniciais** (criados no startup por `PlanosSeeder`, só se faltarem):
+  Mico (1), Empresa (2), Escritório 10 (3), Escritório 25 (4) e Escritório 50 (5).
+  Depois de criados, quem manda é a tela: mudar o seeder não altera o banco.
+- **Aparece para**: empresas, contadores ou ambos (pelo perfil da conta).
+  Contador vê Empresa + Escritórios; empresa vê Mico + Empresa.
+- **Preço com histórico** (`precos_planos`): cada mudança é uma linha nova com
+  "vale a partir de" (hoje ou data futura, nunca passada). Vale o preço com a
+  data mais recente até hoje; o futuro aparece como "Agendado". Cadastrar de novo
+  na **mesma data** corrige aquele preço (fica no Histórico do operador).
+- **Quem já assina mantém o preço contratado** (`assinaturas.PrecoMensal` e o
+  valor da assinatura no Asaas). O preço novo vale só para novas assinaturas.
+  Reajuste de assinantes atuais: ainda não automatizado (precisa aviso de 30 dias).
+- **Vagas de fundador separadas por grupo** (`vagas_fundador`): Empresas (20) e
+  Escritórios (10), editáveis. Usada = assinatura com preço de fundador em plano
+  do grupo (cancelada também conta). Diminuir não tira o preço de quem já é fundador.
+- **Fora de venda**: o plano some da tela Assinatura; quem já assina continua nele.
+- O grupo de fundador de um plano não muda depois que ele tem assinaturas.
+- Limites (empresas, notas/mês; em branco = sem limite) são **suaves**: servem
+  para avisar e orientar troca de plano, nunca travam a emissão.
+- Toda alteração da tela vai para o **Histórico** (auditoria) do operador:
+  `CriarPlano`, `AlterarPlano`, `NovoPrecoPlano`, `CorrigirPrecoPlano`, `AlterarVagasFundador`.
 
 ## Como funciona
 

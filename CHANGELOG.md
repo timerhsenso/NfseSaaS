@@ -5,6 +5,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (catálogo de planos e plano Escritório)
+- **Plataforma › Planos** (só operador): planos, preços e vagas de fundador
+  saem do código e vão para o banco (`planos`, `precos_planos`,
+  `vagas_fundador`). Criar e alterar plano (nome, descrição, para quem aparece,
+  empresas e notas incluídas, à venda, ordem).
+- **Preço com vigência e histórico**: novo preço a partir de hoje ou de uma
+  data futura (agendado); mesma data corrige. Quem já assina mantém o preço
+  contratado; o novo vale só para novas assinaturas.
+- **Planos Escritório 10/25/50** para contadores (R$ 129/279/499; fundador
+  R$ 89/199/349), notas sem limite. Contador vê Empresa + Escritórios; empresa
+  vê Mico + Empresa. Assinar recusa plano fora de venda ou de outro perfil.
+- **Vagas de fundador separadas** (Empresas 20, Escritórios 10), editáveis;
+  a tela Assinatura mostra quantas vagas restam em cada plano.
+- Toda alteração fica no Histórico do operador.
+- Migration `CatalogoPlanos` (3 tabelas novas; os dados iniciais entram pelo
+  `PlanosSeeder` no startup). `assinaturas.Plano` continua com os mesmos
+  códigos (1 = Mico, 2 = Empresa).
+
 ### Adicionado (cadastro em etapas)
 - **Cadastro em 3 etapas**: "Você é" (minha empresa / contador) → documento →
   e-mail e senha (com confirmação da senha). Perfil empresa: ao digitar o

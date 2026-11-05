@@ -69,6 +69,7 @@ public sealed class ListarTenantsPlataformaUseCase : IListarTenantsPlataformaUse
 
         var assinaturas = await _db.Assinaturas.AsNoTracking()
             .ToDictionaryAsync(a => a.TenantId, cancellationToken);
+        var nomesPlanos = await _db.Planos.AsNoTracking().ToDictionaryAsync(p => p.Codigo, p => p.Nome, cancellationToken);
 
         return tenants.Select(t =>
         {
@@ -83,7 +84,7 @@ public sealed class ListarTenantsPlataformaUseCase : IListarTenantsPlataformaUse
                 t.IndicadoPorTenantId is { } indicadora && nomes.TryGetValue(indicadora, out var nomeIndicadora) ? nomeIndicadora : null,
                 indicacoes.GetValueOrDefault(t.Id),
                 a?.Status,
-                a?.Plano is { } plano ? NfseSaaS.Domain.Cobranca.Planos.Obter(plano).Nome : null,
+                a?.Plano is { } plano ? nomesPlanos.GetValueOrDefault(plano, $"plano {plano}") : null,
                 a?.PrecoMensal,
                 a?.TesteIniciadoEm);
         }).ToList();

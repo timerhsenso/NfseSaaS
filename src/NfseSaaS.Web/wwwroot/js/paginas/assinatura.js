@@ -58,7 +58,7 @@ async function carregarAssinatura() {
     document.getElementById('ass-planos').innerHTML = a.planos.map(p => {
         const atual = a.plano === p.codigo && a.status !== 4;
         const preco = p.precoDeFundador
-            ? `<span class="text-muted text-decoration-line-through me-1">${reais(p.precoNormal)}</span><strong class="fs-4">${reais(p.preco)}</strong><small>/mês</small><div class="small text-success fw-semibold">preço de fundador</div>`
+            ? `<span class="text-muted text-decoration-line-through me-1">${reais(p.precoNormal)}</span><strong class="fs-4">${reais(p.preco)}</strong><small>/mês</small><div class="small text-success fw-semibold">preço de fundador · ${p.vagasFundadorRestantes} vaga(s)</div>`
             : `<strong class="fs-4">${reais(p.preco)}</strong><small>/mês</small>`;
         const botao = atual
             ? '<span class="badge text-bg-success">Seu plano</span>'
@@ -71,7 +71,7 @@ async function carregarAssinatura() {
                     <div class="mb-2">${preco}</div>
                     <ul class="small mb-3 ps-3 flex-grow-1">
                         <li>até ${p.maxEmpresas} empresa(s)</li>
-                        <li>até ${p.notasPorMes} notas por mês</li>
+                        <li>${p.notasPorMes ? `até ${p.notasPorMes} notas por mês` : 'notas sem limite'}</li>
                         <li>nota mensal automática, reajuste e e-mail ao cliente</li>
                     </ul>
                     ${botao}

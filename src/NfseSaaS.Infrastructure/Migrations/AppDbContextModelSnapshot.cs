@@ -1372,6 +1372,99 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.ToTable("nfse_eventos", (string)null);
                 });
 
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.Plano", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("AVenda")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Codigo")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("MaxEmpresas")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<int?>("NotasPorMes")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("OfertarParaContador")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("OfertarParaEmpresa")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Ordem")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Publico")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Codigo")
+                        .IsUnique();
+
+                    b.ToTable("planos", (string)null);
+                });
+
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.PrecoPlano", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AlteradoPorUsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Motivo")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("PlanoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("PrecoFundador")
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<decimal>("PrecoMensal")
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("VigenteDesde")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlanoId", "VigenteDesde")
+                        .IsUnique();
+
+                    b.ToTable("precos_planos", (string)null);
+                });
+
             modelBuilder.Entity("NfseSaaS.Domain.Entities.PremioIndicacao", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1574,6 +1667,22 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.HasIndex("IndicadoPorTenantId");
 
                     b.ToTable("tenants", (string)null);
+                });
+
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.VagasFundador", b =>
+                {
+                    b.Property<int>("Publico")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Quantidade")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Publico");
+
+                    b.ToTable("vagas_fundador", (string)null);
                 });
 
             modelBuilder.Entity("NfseSaaS.Infrastructure.Identity.ApplicationUser", b =>
@@ -1831,6 +1940,15 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.HasOne("NfseSaaS.Domain.Entities.Nfse", null)
                         .WithMany()
                         .HasForeignKey("NfseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.PrecoPlano", b =>
+                {
+                    b.HasOne("NfseSaaS.Domain.Entities.Plano", null)
+                        .WithMany()
+                        .HasForeignKey("PlanoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

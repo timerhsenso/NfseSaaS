@@ -30,6 +30,7 @@ public class CobrancaServiceTests
         sp.GetRequiredService<ICurrentUser>(),
         sp.GetRequiredService<IGatewayCobranca>(),
         sp.GetRequiredService<IAuditLogWriter>(),
+        sp.GetRequiredService<ICatalogoPlanos>(),
         Options.Create(opcoes),
         NullLogger<CobrancaService>.Instance);
 

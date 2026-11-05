@@ -27,6 +27,7 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
     private readonly ICurrentUser _currentUser;
     private readonly IGatewayCobranca _gateway;
     private readonly IAuditLogWriter _auditLogWriter;
+    private readonly ICatalogoPlanos _catalogo;
     private readonly CobrancaOptions _options;
     private readonly ILogger<CobrancaService> _logger;
 
@@ -36,6 +37,7 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
         ICurrentUser currentUser,
         IGatewayCobranca gateway,
         IAuditLogWriter auditLogWriter,
+        ICatalogoPlanos catalogo,
         IOptions<CobrancaOptions> options,
         ILogger<CobrancaService> logger)
     {
@@ -44,6 +46,7 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
         _currentUser = currentUser;
         _gateway = gateway;
         _auditLogWriter = auditLogWriter;
+        _catalogo = catalogo;
         _options = options.Value;
         _logger = logger;
     }
@@ -91,16 +94,26 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
         var empresas = await _db.Empresas.IgnoreQueryFilters().AsNoTracking()
             .CountAsync(e => e.TenantId == tenantId && e.Ativo, cancellationToken);
 
-        var vagas = await VagasFundadorRestantesAsync(cancellationToken);
-        var ofertas = Planos.Todos.Select(p => new PlanoOfertaResponse(
-            p.Codigo, p.Nome, p.Descricao, p.MaxEmpresas, p.NotasPorMes,
-            vagas > 0 ? p.PrecoFundador : p.PrecoMensal, p.PrecoMensal, vagas > 0)).ToList();
+        // Planos do perfil da conta (empresa ou contador), com o preço de hoje.
+        var perfil = await _db.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.Perfil).FirstAsync(cancellationToken);
+        var vagasPorGrupo = new Dictionary<PublicoPlano, int>();
+        foreach (var publico in Enum.GetValues<PublicoPlano>())
+            vagasPorGrupo[publico] = await _catalogo.VagasFundadorRestantesAsync(publico, cancellationToken);
+
+        var ofertas = (await _catalogo.PlanosAVendaAsync(perfil, cancellationToken)).Select(p =>
+        {
+            var vagasPlano = vagasPorGrupo[p.Publico];
+            return new PlanoOfertaResponse(
+                p.Codigo, p.Nome, p.Descricao, p.MaxEmpresas, p.NotasPorMes,
+                vagasPlano > 0 ? p.PrecoFundador : p.PrecoMensal, p.PrecoMensal, vagasPlano > 0, vagasPlano);
+        }).ToList();
+        var vagas = vagasPorGrupo[perfil == PerfilConta.Contador ? PublicoPlano.Escritorios : PublicoPlano.Empresas];
 
         var temAssinaturaNoGateway = assinatura.AsaasAssinaturaId is not null && assinatura.Status != StatusAssinatura.Cancelada;
-        var plano = assinatura.Plano is { } codigo ? Planos.Obter(codigo) : null;
+        var planoNome = assinatura.Plano is { } codigo ? (await _catalogo.ObterAsync(codigo, cancellationToken))?.Nome : null;
 
         return new AssinaturaResponse(
-            cobrancaAtiva, isenta, assinatura.Status, assinatura.Plano, plano?.Nome, assinatura.PrecoMensal, assinatura.Fundador,
+            cobrancaAtiva, isenta, assinatura.Status, assinatura.Plano, planoNome, assinatura.PrecoMensal, assinatura.Fundador,
             assinatura.TesteIniciadoEm, situacao.TesteTerminaEm, notasTeste, Planos.TesteNotas,
             situacao.PodeEmitirEmProducao, situacao.Bloqueio, situacao.Aviso,
             notasMes, empresas, assinatura.AtrasadaDesde, assinatura.UrlFaturaPendente,
@@ -120,8 +133,7 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
         if (_options.ContasIsentas.Contains(tenantId))
             throw new RegraNegocioException("Esta conta é isenta de cobrança.");
 
-        var plano = Planos.Todos.FirstOrDefault(p => p.Codigo == request.Plano)
-            ?? throw new RegraNegocioException("Plano inválido.");
+        var plano = await _catalogo.ObterAsync(request.Plano, cancellationToken);
 
         await TravaAssinar.WaitAsync(cancellationToken);
         try
@@ -131,11 +143,15 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
                 throw new RegraNegocioException("Esta conta já tem uma assinatura. Para trocar de plano, fale com o suporte.");
 
             var tenant = await _db.Tenants.AsNoTracking().FirstAsync(t => t.Id == tenantId, cancellationToken);
+            // Só planos à venda para o perfil da conta (o mesmo que a tela mostra).
+            if (plano is null || !plano.AVenda
+                || !(tenant.Perfil == PerfilConta.Contador ? plano.OfertarParaContador : plano.OfertarParaEmpresa))
+                throw new RegraNegocioException("Plano inválido ou fora de venda. Atualize a página e escolha outro.");
             var email = _currentUser.UserId is { } usuarioId
                 ? await _db.Users.AsNoTracking().Where(u => u.Id == usuarioId).Select(u => u.Email).FirstOrDefaultAsync(cancellationToken)
                 : null;
 
-            var fundador = await VagasFundadorRestantesAsync(cancellationToken) > 0;
+            var fundador = await _catalogo.VagasFundadorRestantesAsync(plano.Publico, cancellationToken) > 0;
             var preco = fundador ? plano.PrecoFundador : plano.PrecoMensal;
 
             // Cliente no Asaas: reaproveita o de uma assinatura anterior (cancelada).
@@ -238,9 +254,6 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
             .CountAsync(n => n.TenantId == assinatura.TenantId && n.TipoAmbiente == TipoAmbiente.Producao
                              && n.Status == NfseStatus.Autorizada && n.DataEmissao >= inicioUtc, cancellationToken);
     }
-
-    private async Task<int> VagasFundadorRestantesAsync(CancellationToken cancellationToken) =>
-        Math.Max(0, Planos.VagasFundador - await _db.Assinaturas.AsNoTracking().CountAsync(a => a.Fundador, cancellationToken));
 
     private static DateTimeOffset InicioDoMesUtc()
     {

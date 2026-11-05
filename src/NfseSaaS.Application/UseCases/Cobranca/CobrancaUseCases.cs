@@ -1,4 +1,3 @@
-using NfseSaaS.Domain.Cobranca;
 using NfseSaaS.Domain.Enums;
 
 namespace NfseSaaS.Application.UseCases.Cobranca;
@@ -6,22 +5,26 @@ namespace NfseSaaS.Application.UseCases.Cobranca;
 /// <summary>Plano oferecido na tela, já com o preço que esta conta pagaria hoje.</summary>
 /// <param name="Preco">Preço que vale para esta conta (fundador, enquanto houver vaga).</param>
 /// <param name="PrecoNormal">Preço cheio do plano.</param>
+/// <param name="NotasPorMes">Nulo = sem limite de notas.</param>
+/// <param name="VagasFundadorRestantes">Vagas de fundador que sobram no grupo do plano.</param>
 public sealed record PlanoOfertaResponse(
-    PlanoCodigo Codigo,
+    int Codigo,
     string Nome,
     string Descricao,
     int MaxEmpresas,
-    int NotasPorMes,
+    int? NotasPorMes,
     decimal Preco,
     decimal PrecoNormal,
-    bool PrecoDeFundador);
+    bool PrecoDeFundador,
+    int VagasFundadorRestantes);
 
 /// <summary>Tela "Assinatura".</summary>
+/// <param name="VagasFundadorRestantes">Vagas de fundador no grupo do perfil da conta (empresas ou escritórios).</param>
 public sealed record AssinaturaResponse(
     bool CobrancaAtiva,
     bool Isenta,
     StatusAssinatura Status,
-    PlanoCodigo? Plano,
+    int? Plano,
     string? PlanoNome,
     decimal? PrecoMensal,
     bool Fundador,
@@ -42,7 +45,7 @@ public sealed record AssinaturaResponse(
     int VagasFundadorRestantes,
     IReadOnlyList<PlanoOfertaResponse> Planos);
 
-public sealed record AssinarRequest(PlanoCodigo Plano);
+public sealed record AssinarRequest(int Plano);
 
 public sealed record AssinarResponse(string? UrlFatura);
 
