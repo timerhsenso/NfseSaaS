@@ -132,6 +132,35 @@
     </div>
 </div>
 
+<div class="modal fade" id="modal-excluir-tenant" tabindex="-1" aria-labelledby="titulo-excluir-tenant">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="form-excluir-tenant" autocomplete="off">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="titulo-excluir-tenant"><i class="bi bi-trash"></i> Excluir conta definitivamente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="erro-excluir-tenant" class="alert alert-danger d-none"></div>
+                    <p class="mb-2">Conta: <strong id="nome-tenant-excluir"></strong></p>
+                    <div class="alert alert-warning small mb-3">
+                        Será apagado <strong>tudo</strong>, sem volta: <span id="resumo-exclusao-tenant"></span>,
+                        além de grupos, históricos, e-mails, certificados e documentos dos contratos.
+                    </div>
+                    <label class="form-label" for="codigo-exclusao">Código enviado para <strong id="email-codigo-exclusao"></strong></label>
+                    <input type="text" class="form-control form-control-lg text-center" id="codigo-exclusao"
+                           inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required placeholder="000000" style="letter-spacing:.4em" />
+                    <div class="form-text" id="tempo-codigo-exclusao">&nbsp;</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger" id="btn-confirmar-exclusao"><i class="bi bi-trash"></i> Excluir conta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script src="~/js/paginas/plataforma.js" asp-append-version="true"></script>
 }

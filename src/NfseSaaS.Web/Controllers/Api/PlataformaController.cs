@@ -22,6 +22,8 @@ public sealed class PlataformaController : ControllerBase
     private readonly IReprotegerChavesUseCase _reprotegerChaves;
     private readonly IListarPremiosIndicacaoPlataformaUseCase _listarPremios;
     private readonly IReabrirPremioIndicacaoUseCase _reabrirPremio;
+    private readonly ISolicitarExclusaoContaUseCase _solicitarExclusao;
+    private readonly IConfirmarExclusaoContaUseCase _confirmarExclusao;
     private readonly ICurrentUser _currentUser;
 
     public PlataformaController(
@@ -31,6 +33,8 @@ public sealed class PlataformaController : ControllerBase
         IReprotegerChavesUseCase reprotegerChaves,
         IListarPremiosIndicacaoPlataformaUseCase listarPremios,
         IReabrirPremioIndicacaoUseCase reabrirPremio,
+        ISolicitarExclusaoContaUseCase solicitarExclusao,
+        IConfirmarExclusaoContaUseCase confirmarExclusao,
         ICurrentUser currentUser)
     {
         _listar = listar;
@@ -39,6 +43,8 @@ public sealed class PlataformaController : ControllerBase
         _reprotegerChaves = reprotegerChaves;
         _listarPremios = listarPremios;
         _reabrirPremio = reabrirPremio;
+        _solicitarExclusao = solicitarExclusao;
+        _confirmarExclusao = confirmarExclusao;
         _currentUser = currentUser;
     }
 
@@ -59,6 +65,22 @@ public sealed class PlataformaController : ControllerBase
         await _alterarBloqueio.ExecutarAsync(id, false, null, _currentUser.UserId, cancellationToken);
         return NoContent();
     }
+
+    /// <summary>Exclusão de conta, passo 1: confere as regras e envia o código ao e-mail do operador.</summary>
+    [HttpPost("tenants/{id:guid}/exclusao/codigo")]
+    public async Task<IActionResult> PedirCodigoExclusao(Guid id, CancellationToken cancellationToken)
+        => Ok(await _solicitarExclusao.ExecutarAsync(id, OperadorId(), cancellationToken));
+
+    /// <summary>Exclusão de conta, passo 2: com o código, apaga a conta inteira.</summary>
+    [HttpPost("tenants/{id:guid}/exclusao/confirmar")]
+    public async Task<IActionResult> ConfirmarExclusao(Guid id, [FromBody] ConfirmarExclusaoContaRequest request, CancellationToken cancellationToken)
+    {
+        await _confirmarExclusao.ExecutarAsync(id, OperadorId(), request.Codigo, cancellationToken);
+        return NoContent();
+    }
+
+    private Guid OperadorId() =>
+        _currentUser.UserId ?? throw new InvalidOperationException("Operador não identificado.");
 
     /// <summary>Prêmios do "Indique e ganhe" (os 300 mais recentes).</summary>
     [HttpGet("premios-indicacao")]

@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (exclusão de conta)
+- Plataforma › Contas: **excluir conta definitivamente** (lixeira), com
+  confirmação por **código de 6 números enviado ao e-mail do operador**
+  (10 minutos, uso único, 5 tentativas). O código sai direto pelo SMTP e não é
+  gravado (nem no EmailLog); o servidor guarda só o hash, em memória.
+- Só exclui conta que **nunca registrou nenhuma nota** (qualquer status ou
+  ambiente), **sem assinatura ativa** no Asaas e que não seja a do operador.
+- Apaga em cascata, numa transação: empresas, clientes, serviços, contratos
+  (histórico e documentos), Nota Mensal, usuários, grupos, histórico, e-mails,
+  aceites, assinatura cancelada, eventos de cobrança e prêmios; depois os
+  certificados e documentos em disco e os jobs agendados. Fica só um registro
+  no Histórico do operador, sem nome nem CNPJ. Guia em `docs/operacao/contas.md`.
+
 ### Corrigido
 - Conta nova (sem Empresa) aberta num navegador que já tinha usado outra
   conta: o cookie "Empresa atual" da conta anterior fazia todas as telas

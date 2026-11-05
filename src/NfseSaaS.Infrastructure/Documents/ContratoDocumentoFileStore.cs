@@ -54,6 +54,16 @@ public sealed class ContratoDocumentoFileStore
             File.Delete(caminho);
     }
 
+    /// <summary>Exclusão de conta: remove a pasta inteira da conta ({BasePath}/{TenantId}), com todas as Empresas e Contratos.</summary>
+    public void ExcluirPastaConta(Guid tenantId)
+    {
+        if (string.IsNullOrWhiteSpace(_options.BasePath))
+            return;
+        var pasta = Path.Combine(_options.BasePath, tenantId.ToString("N"));
+        if (Directory.Exists(pasta))
+            Directory.Delete(pasta, recursive: true);
+    }
+
     /// <summary>Chamado por ExcluirContratoUseCase — remove a pasta inteira do Contrato (todos os documentos dele) do disco.</summary>
     public void ExcluirPastaContrato(Guid tenantId, Guid empresaId, Guid contratoId)
     {

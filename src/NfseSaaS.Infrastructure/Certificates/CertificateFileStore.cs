@@ -129,6 +129,16 @@ public sealed class CertificateFileStore
     }
 
     /// <summary>A Empresa tem certificado guardado (sem abrir nem descriptografar o arquivo).</summary>
+    /// <summary>Apaga o certificado da Empresa (exclusão de conta). Sem arquivo: não faz nada.</summary>
+    public void Excluir(Guid empresaId)
+    {
+        if (string.IsNullOrWhiteSpace(_options.BasePath))
+            return;
+        var caminho = CaminhoArquivo(empresaId);
+        if (File.Exists(caminho))
+            File.Delete(caminho);
+    }
+
     public bool ExisteCertificado(Guid empresaId) =>
         !string.IsNullOrWhiteSpace(_options.BasePath) && File.Exists(CaminhoArquivo(empresaId));
 

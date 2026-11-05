@@ -3,6 +3,9 @@ let tabelaTenants;
 let tabelaPremios;
 let modalSuspender;
 let tenantParaSuspender = null;
+let modalExcluir;
+let tenantParaExcluir = null;
+let relogioExclusao = null;
 
 function formatarCnpjPlataforma(cnpj) {
     const d = (cnpj || '').replace(/\D/g, '');
@@ -78,9 +81,17 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             {
                 data: null, orderable: false,
-                render: (d, type, t) => t.ativo
-                    ? `<button type="button" class="btn btn-sm btn-outline-danger btn-suspender" data-id="${t.id}" data-nome="${escaparHtml(t.nomeFantasia || t.razaoSocial)}"><i class="bi bi-pause-circle"></i> Suspender</button>`
-                    : `<button type="button" class="btn btn-sm btn-outline-success btn-reativar" data-id="${t.id}" data-nome="${escaparHtml(t.nomeFantasia || t.razaoSocial)}"><i class="bi bi-play-circle"></i> Reativar</button>`
+                render: (d, type, t) => {
+                    const nome = escaparHtml(t.nomeFantasia || t.razaoSocial);
+                    const principal = t.ativo
+                        ? `<button type="button" class="btn btn-sm btn-outline-danger btn-suspender" data-id="${t.id}" data-nome="${nome}"><i class="bi bi-pause-circle"></i> Suspender</button>`
+                        : `<button type="button" class="btn btn-sm btn-outline-success btn-reativar" data-id="${t.id}" data-nome="${nome}"><i class="bi bi-play-circle"></i> Reativar</button>`;
+                    // Só aparece para conta que nunca teve nota (a regra completa é conferida no servidor).
+                    const excluir = t.notasTotal === 0
+                        ? ` <button type="button" class="btn btn-sm btn-outline-danger btn-excluir-tenant" data-id="${t.id}" data-nome="${nome}" title="Excluir definitivamente"><i class="bi bi-trash"></i></button>`
+                        : '';
+                    return `<div class="d-flex gap-1">${principal}${excluir}</div>`;
+                }
             }
         ],
         language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/pt-BR.json' }
@@ -123,6 +134,9 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     modalSuspender = new bootstrap.Modal(document.getElementById('modal-suspender-tenant'));
+    modalExcluir = new bootstrap.Modal(document.getElementById('modal-excluir-tenant'));
+    document.getElementById('form-excluir-tenant').addEventListener('submit', confirmarExclusaoTenant);
+    document.getElementById('modal-excluir-tenant').addEventListener('hidden.bs.modal', pararRelogioExclusao);
     document.getElementById('btn-atualizar-plataforma').addEventListener('click', function () {
         carregarTenants();
         carregarPremios();
@@ -138,6 +152,8 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('motivo-suspensao').value = '';
             ocultarErroFormulario('erro-suspender-tenant');
             modalSuspender.show();
+        } else if (botao.classList.contains('btn-excluir-tenant')) {
+            await executarComBotaoDesabilitado(botao, () => pedirCodigoExclusao(botao.dataset.id, botao.dataset.nome));
         } else if (botao.classList.contains('btn-reativar')) {
             await executarComBotaoDesabilitado(botao, () => reativarTenant(botao.dataset.id, botao.dataset.nome));
         }
@@ -269,4 +285,79 @@ async function reativarTenant(id, nome) {
     } catch (err) {
         mostrarErro(err.message);
     }
+}
+
+// ---------- Excluir conta (2 passos: código por e-mail e confirmação) ----------
+
+async function pedirCodigoExclusao(id, nome) {
+    if (!await confirmarAcao(
+        `Excluir DEFINITIVAMENTE a conta ${nome}? Empresas, clientes, contratos, usuários e todo o resto serão apagados, sem volta. ` +
+        'Vamos enviar um código para o seu e-mail para confirmar.',
+        { titulo: 'Excluir conta', textoBotao: 'Enviar código', variante: 'perigo' })) return;
+
+    try {
+        const r = await apiFetch(`/api/plataforma/tenants/${id}/exclusao/codigo`, { method: 'POST' });
+        tenantParaExcluir = id;
+        document.getElementById('nome-tenant-excluir').textContent = nome;
+        document.getElementById('email-codigo-exclusao').textContent = r.emailMascarado;
+        document.getElementById('resumo-exclusao-tenant').textContent =
+            `${r.empresas} empresa(s), ${r.clientes} cliente(s), ${r.contratos} contrato(s), ${r.servicos} serviço(s) e ${r.usuarios} usuário(s)`;
+        document.getElementById('codigo-exclusao').value = '';
+        ocultarErroFormulario('erro-excluir-tenant');
+        iniciarRelogioExclusao(r.minutosValidade);
+        modalExcluir.show();
+        setTimeout(() => document.getElementById('codigo-exclusao').focus(), 300);
+    } catch (err) {
+        mostrarErro(err.message);
+    }
+}
+
+function iniciarRelogioExclusao(minutos) {
+    pararRelogioExclusao();
+    const fim = Date.now() + minutos * 60 * 1000;
+    const texto = document.getElementById('tempo-codigo-exclusao');
+    const botao = document.getElementById('btn-confirmar-exclusao');
+    botao.disabled = false;
+    const atualizar = () => {
+        const restante = Math.max(0, Math.round((fim - Date.now()) / 1000));
+        if (restante === 0) {
+            texto.textContent = 'O código expirou. Feche e clique em excluir de novo para receber outro.';
+            botao.disabled = true;
+            pararRelogioExclusao();
+            return;
+        }
+        texto.textContent = `O código vale por mais ${Math.floor(restante / 60)}:${String(restante % 60).padStart(2, '0')}.`;
+    };
+    atualizar();
+    relogioExclusao = setInterval(atualizar, 1000);
+}
+
+function pararRelogioExclusao() {
+    if (relogioExclusao) clearInterval(relogioExclusao);
+    relogioExclusao = null;
+}
+
+async function confirmarExclusaoTenant(e) {
+    e.preventDefault();
+    ocultarErroFormulario('erro-excluir-tenant');
+    const codigo = document.getElementById('codigo-exclusao').value.trim();
+    if (!/^[0-9]{6}$/.test(codigo)) {
+        mostrarErroFormulario('erro-excluir-tenant', 'Digite os 6 números do código.');
+        return;
+    }
+
+    const botao = document.getElementById('btn-confirmar-exclusao');
+    await executarComBotaoDesabilitado(botao, async () => {
+        try {
+            await apiFetch(`/api/plataforma/tenants/${tenantParaExcluir}/exclusao/confirmar`, {
+                method: 'POST', body: JSON.stringify({ codigo })
+            });
+            modalExcluir.hide();
+            mostrarToast('Conta excluída definitivamente.');
+            await carregarTenants();
+            await carregarPremios();
+        } catch (err) {
+            mostrarErroFormulario('erro-excluir-tenant', err.message);
+        }
+    });
 }

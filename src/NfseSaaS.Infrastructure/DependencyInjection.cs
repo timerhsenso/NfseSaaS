@@ -296,6 +296,10 @@ public static class DependencyInjection
         services.AddScoped<NfseSaaS.Application.UseCases.Indicacao.IReabrirPremioIndicacaoUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.PremioIndicacaoService>());
         services.AddScoped<IAplicarPremiosIndicacaoJob, AplicarPremiosIndicacaoJob>();
         services.AddScoped<IAlterarBloqueioTenantUseCase, AlterarBloqueioTenantUseCase>();
+        // Exclusão definitiva de conta pelo operador (código por e-mail).
+        services.AddScoped<ExclusaoContaService>();
+        services.AddScoped<ISolicitarExclusaoContaUseCase>(sp => sp.GetRequiredService<ExclusaoContaService>());
+        services.AddScoped<IConfirmarExclusaoContaUseCase>(sp => sp.GetRequiredService<ExclusaoContaService>());
         services.AddScoped<IObterAuditLogPorIdUseCase, ObterAuditLogPorIdUseCase>();
 
         services.AddScoped<IEnviarCertificadoUseCase, EnviarCertificadoUseCase>();
