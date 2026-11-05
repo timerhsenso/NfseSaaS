@@ -290,6 +290,9 @@ public static class DependencyInjection
         services.AddScoped<NfseSaaS.Infrastructure.Cobranca.CatalogoPlanosService>();
         services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.ICatalogoPlanos>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.CatalogoPlanosService>());
         services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IAdministrarPlanosUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.CatalogoPlanosService>());
+        services.AddScoped<NfseSaaS.Infrastructure.Cobranca.ExclusaoPlanoService>();
+        services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.ISolicitarExclusaoPlanoUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.ExclusaoPlanoService>());
+        services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IConfirmarExclusaoPlanoUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.ExclusaoPlanoService>());
         services.AddScoped<NfseSaaS.Infrastructure.Cobranca.CobrancaService>();
         services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IVerificadorCobranca>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.CobrancaService>());
         services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IObterAssinaturaUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.CobrancaService>());

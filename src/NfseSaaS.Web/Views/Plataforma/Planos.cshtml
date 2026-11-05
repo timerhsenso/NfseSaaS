@@ -222,6 +222,35 @@
     </div>
 </div>
 
+@* Excluir plano (código no e-mail do operador) *@
+<div class="modal fade" id="modal-excluir-plano" tabindex="-1" aria-labelledby="titulo-excluir-plano">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="form-excluir-plano" autocomplete="off" novalidate>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="titulo-excluir-plano"><i class="bi bi-trash"></i> Excluir plano</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="erro-excluir-plano" class="alert alert-danger d-none"></div>
+                    <div class="alert alert-warning small mb-3">
+                        O plano <strong id="nome-plano-excluir"></strong> e o histórico de preços dele
+                        (<span id="precos-plano-excluir"></span> preço(s)) serão apagados. Fica só o registro na sua Auditoria.
+                    </div>
+                    <label class="form-label" for="codigo-exclusao-plano">Código enviado para <strong id="email-codigo-exclusao-plano"></strong></label>
+                    <input type="text" class="form-control form-control-lg text-center" id="codigo-exclusao-plano"
+                           inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required placeholder="000000" style="letter-spacing:.4em" />
+                    <div class="form-text" id="tempo-codigo-exclusao-plano">&nbsp;</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger" id="btn-confirmar-exclusao-plano"><i class="bi bi-trash"></i> Excluir plano</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script src="~/js/paginas/plataforma-planos.js" asp-append-version="true"></script>
 }

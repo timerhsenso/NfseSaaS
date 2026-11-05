@@ -5,6 +5,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (excluir plano)
+- **Plataforma › Planos › Excluir**: plano que nunca foi assinado (nem
+  cancelado) e não é inicial pode ser excluído, com código de 6 dígitos no
+  e-mail do operador (10 min, uso único, 5 tentativas). Apaga o plano e o
+  histórico de preços; registro `ExcluirPlano` na Auditoria. Planos iniciais e
+  já assinados: usar "Fora de venda".
+
 ### Adicionado (catálogo de planos e plano Escritório)
 - **Plataforma › Planos** (só operador): planos, preços e vagas de fundador
   saem do código e vão para o banco (`planos`, `precos_planos`,

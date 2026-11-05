@@ -1,3 +1,4 @@
+using FluentValidation;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Domain.Cobranca;
 using NfseSaaS.Domain.Entities;
@@ -40,6 +41,7 @@ public interface ICatalogoPlanos
 /// <summary>Linha da tela Plataforma › Planos.</summary>
 /// <param name="ProximoPrecoMensal">Preço já agendado para uma data futura (nulo se não há).</param>
 /// <param name="Assinantes">Assinaturas não canceladas neste plano.</param>
+/// <param name="PodeExcluir">Nunca foi assinado (nem cancelado) e não é um plano inicial.</param>
 public sealed record PlanoAdminResponse(
     Guid Id,
     int Codigo,
@@ -58,7 +60,8 @@ public sealed record PlanoAdminResponse(
     decimal? ProximoPrecoMensal,
     decimal? ProximoPrecoFundador,
     DateOnly? ProximoVigenteDesde,
-    int Assinantes);
+    int Assinantes,
+    bool PodeExcluir);
 
 /// <summary>Criar ou alterar um plano. Preços só na criação; depois, por "Novo preço" (histórico).</summary>
 public sealed record SalvarPlanoRequest(
@@ -111,6 +114,38 @@ public interface IAdministrarPlanosUseCase
     Task AlterarVagasAsync(AlterarVagasFundadorRequest request, Guid? operadorId, CancellationToken cancellationToken);
 }
 
+// ---------- Excluir plano (código no e-mail do operador) ----------
+
+/// <summary>Para onde foi o código e quantos preços serão apagados junto.</summary>
+public sealed record SolicitacaoExclusaoPlanoResponse(string EmailMascarado, int MinutosValidade, string Plano, int Precos);
+
+public sealed record ConfirmarExclusaoPlanoRequest(string Codigo);
+
+public sealed class ConfirmarExclusaoPlanoRequestValidator : AbstractValidator<ConfirmarExclusaoPlanoRequest>
+{
+    public ConfirmarExclusaoPlanoRequestValidator()
+    {
+        RuleFor(x => x.Codigo)
+            .NotEmpty().WithMessage("Informe o código recebido por e-mail.")
+            .Matches("^[0-9]{6}$").WithMessage("O código tem 6 números.");
+    }
+}
+
+/// <summary>
+/// Passo 1: confere se o plano pode ser excluído (nunca assinado, não é
+/// plano inicial) e envia o código ao e-mail do OPERADOR logado.
+/// </summary>
+public interface ISolicitarExclusaoPlanoUseCase
+{
+    Task<SolicitacaoExclusaoPlanoResponse> ExecutarAsync(Guid planoId, Guid operadorId, CancellationToken cancellationToken);
+}
+
+/// <summary>Passo 2: com o código certo e no prazo, apaga o plano e o histórico de preços dele.</summary>
+public interface IConfirmarExclusaoPlanoUseCase
+{
+    Task ExecutarAsync(Guid planoId, Guid operadorId, string codigo, CancellationToken cancellationToken);
+}
+
 /// <summary>Regras do catálogo (sem banco), testadas em CatalogoPlanosRegrasTests.</summary>
 public static class RegrasCatalogoPlanos
 {
@@ -120,6 +155,17 @@ public static class RegrasCatalogoPlanos
     public const int VagasLimite = 10_000;
 
     /// <summary>Preço que vale na data: o de maior VigenteDesde até ela (nulo se nenhum começou).</summary>
+    /// <summary>Códigos dos planos que o PlanosSeeder cria (e recriaria se sumissem): use "Fora de venda".</summary>
+    public static bool EhPlanoInicial(int codigo) => codigo is >= Planos.CodigoMico and <= Planos.CodigoEscritorio50;
+
+    /// <summary>Só plano que nunca teve assinatura (nem cancelada) e não é inicial.</summary>
+    public static string? MotivoNaoPodeExcluir(int codigo, int assinaturasJaFeitas) =>
+        EhPlanoInicial(codigo)
+            ? "Os planos iniciais (Mico, Empresa e Escritórios) não são excluídos: o sistema os recriaria. Use \"Fora de venda\"."
+            : assinaturasJaFeitas > 0
+                ? $"Este plano já foi assinado ({assinaturasJaFeitas} assinatura(s), contando as canceladas). Use \"Fora de venda\"."
+                : null;
+
     public static PrecoPlano? PrecoVigente(IEnumerable<PrecoPlano> precos, DateOnly hoje) =>
         precos.Where(p => p.VigenteDesde <= hoje)
             .OrderByDescending(p => p.VigenteDesde)

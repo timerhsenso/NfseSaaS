@@ -26,6 +26,8 @@ public sealed class PlataformaController : ControllerBase
     private readonly ISolicitarExclusaoContaUseCase _solicitarExclusao;
     private readonly IConfirmarExclusaoContaUseCase _confirmarExclusao;
     private readonly IAdministrarPlanosUseCase _planos;
+    private readonly ISolicitarExclusaoPlanoUseCase _solicitarExclusaoPlano;
+    private readonly IConfirmarExclusaoPlanoUseCase _confirmarExclusaoPlano;
     private readonly ICurrentUser _currentUser;
 
     public PlataformaController(
@@ -38,6 +40,8 @@ public sealed class PlataformaController : ControllerBase
         ISolicitarExclusaoContaUseCase solicitarExclusao,
         IConfirmarExclusaoContaUseCase confirmarExclusao,
         IAdministrarPlanosUseCase planos,
+        ISolicitarExclusaoPlanoUseCase solicitarExclusaoPlano,
+        IConfirmarExclusaoPlanoUseCase confirmarExclusaoPlano,
         ICurrentUser currentUser)
     {
         _listar = listar;
@@ -49,6 +53,8 @@ public sealed class PlataformaController : ControllerBase
         _solicitarExclusao = solicitarExclusao;
         _confirmarExclusao = confirmarExclusao;
         _planos = planos;
+        _solicitarExclusaoPlano = solicitarExclusaoPlano;
+        _confirmarExclusaoPlano = confirmarExclusaoPlano;
         _currentUser = currentUser;
     }
 
@@ -123,6 +129,19 @@ public sealed class PlataformaController : ControllerBase
     [HttpPut("planos/{id:guid}")]
     public async Task<IActionResult> AlterarPlano(Guid id, [FromBody] SalvarPlanoRequest request, CancellationToken cancellationToken)
         => Ok(await _planos.AlterarAsync(id, request, _currentUser.UserId, cancellationToken));
+
+    /// <summary>Excluir plano, passo 1: confere as regras e envia o código ao e-mail do operador.</summary>
+    [HttpPost("planos/{id:guid}/exclusao/codigo")]
+    public async Task<IActionResult> PedirCodigoExclusaoPlano(Guid id, CancellationToken cancellationToken)
+        => Ok(await _solicitarExclusaoPlano.ExecutarAsync(id, OperadorId(), cancellationToken));
+
+    /// <summary>Excluir plano, passo 2: com o código, apaga o plano e o histórico de preços dele.</summary>
+    [HttpPost("planos/{id:guid}/exclusao/confirmar")]
+    public async Task<IActionResult> ConfirmarExclusaoPlano(Guid id, [FromBody] ConfirmarExclusaoPlanoRequest request, CancellationToken cancellationToken)
+    {
+        await _confirmarExclusaoPlano.ExecutarAsync(id, OperadorId(), request.Codigo, cancellationToken);
+        return NoContent();
+    }
 
     [HttpGet("planos/{id:guid}/precos")]
     public async Task<IActionResult> HistoricoPrecos(Guid id, CancellationToken cancellationToken)

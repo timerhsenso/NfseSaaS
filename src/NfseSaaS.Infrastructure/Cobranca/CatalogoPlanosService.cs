@@ -85,14 +85,18 @@ public sealed class CatalogoPlanosService : ICatalogoPlanos, IAdministrarPlanosU
     {
         var planos = await _db.Planos.AsNoTracking().OrderBy(p => p.Ordem).ThenBy(p => p.Codigo).ToListAsync(cancellationToken);
         var precos = (await _db.PrecosPlanos.AsNoTracking().ToListAsync(cancellationToken)).ToLookup(p => p.PlanoId);
-        var assinantes = await _db.Assinaturas.AsNoTracking()
-            .Where(a => a.Plano != null && a.Status != StatusAssinatura.Cancelada)
+        var assinaturas = await _db.Assinaturas.AsNoTracking()
+            .Where(a => a.Plano != null)
             .GroupBy(a => a.Plano!.Value)
-            .Select(g => new { Codigo = g.Key, Total = g.Count() })
-            .ToDictionaryAsync(x => x.Codigo, x => x.Total, cancellationToken);
+            .Select(g => new { Codigo = g.Key, Total = g.Count(), Ativas = g.Count(a => a.Status != StatusAssinatura.Cancelada) })
+            .ToDictionaryAsync(x => x.Codigo, cancellationToken);
 
         var hoje = DataBrasilia.Hoje();
-        return planos.Select(p => Montar(p, precos[p.Id], assinantes.GetValueOrDefault(p.Codigo), hoje)).ToList();
+        return planos.Select(p =>
+        {
+            assinaturas.TryGetValue(p.Codigo, out var a);
+            return Montar(p, precos[p.Id], a?.Ativas ?? 0, a?.Total ?? 0, hoje);
+        }).ToList();
     }
 
     public async Task<PlanoAdminResponse> CriarAsync(SalvarPlanoRequest request, Guid? operadorId, CancellationToken cancellationToken)
@@ -116,7 +120,7 @@ public sealed class CatalogoPlanosService : ICatalogoPlanos, IAdministrarPlanosU
         _auditLogWriter.Registrar("CriarPlano", "Plano", plano.Id, new { plano.Codigo, plano.Nome, preco.PrecoMensal, preco.PrecoFundador });
         await _db.SaveChangesAsync(cancellationToken);
 
-        return Montar(plano, [preco], 0, DataBrasilia.Hoje());
+        return Montar(plano, [preco], 0, 0, DataBrasilia.Hoje());
     }
 
     public async Task<PlanoAdminResponse> AlterarAsync(Guid id, SalvarPlanoRequest request, Guid? operadorId, CancellationToken cancellationToken)
@@ -246,7 +250,7 @@ public sealed class CatalogoPlanosService : ICatalogoPlanos, IAdministrarPlanosU
         plano.Ordem = r.Ordem;
     }
 
-    private static PlanoAdminResponse Montar(Plano p, IEnumerable<PrecoPlano> precos, int assinantes, DateOnly hoje)
+    private static PlanoAdminResponse Montar(Plano p, IEnumerable<PrecoPlano> precos, int assinantes, int assinaturasJaFeitas, DateOnly hoje)
     {
         var lista = precos.ToList();
         var vigente = RegrasCatalogoPlanos.PrecoVigente(lista, hoje);
@@ -256,6 +260,7 @@ public sealed class CatalogoPlanosService : ICatalogoPlanos, IAdministrarPlanosU
             p.MaxEmpresas, p.NotasPorMes, p.AVenda, p.Ordem,
             vigente?.PrecoMensal, vigente?.PrecoFundador, vigente?.VigenteDesde,
             proximo?.PrecoMensal, proximo?.PrecoFundador, proximo?.VigenteDesde,
-            assinantes);
+            assinantes,
+            RegrasCatalogoPlanos.MotivoNaoPodeExcluir(p.Codigo, assinaturasJaFeitas) is null);
     }
 }

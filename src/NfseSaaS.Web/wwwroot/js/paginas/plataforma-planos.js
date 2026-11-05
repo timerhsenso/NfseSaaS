@@ -8,7 +8,9 @@ let planos = [];
 let planoEmEdicao = null;   // null = novo plano
 let planoDoPreco = null;
 let grupoDasVagas = null;
-let modalPlano, modalPreco, modalHistorico, modalVagas;
+let modalPlano, modalPreco, modalHistorico, modalVagas, modalExcluirPlano;
+let planoParaExcluir = null;
+let relogioExclusaoPlano = null;
 
 function reaisPlano(valor) {
     return valor == null ? '—' : Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -35,6 +37,7 @@ document.addEventListener('DOMContentLoaded', function () {
     modalPreco = new bootstrap.Modal('#modal-preco');
     modalHistorico = new bootstrap.Modal('#modal-historico-precos');
     modalVagas = new bootstrap.Modal('#modal-vagas');
+    modalExcluirPlano = new bootstrap.Modal('#modal-excluir-plano');
 
     tabelaPlanos = new DataTable('#tabela-planos', {
         order: [],
@@ -75,10 +78,11 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             {
                 data: 'id', orderable: false,
-                render: id => `<div class="d-flex gap-1 flex-nowrap">
+                render: (id, type, p) => `<div class="d-flex gap-1 flex-nowrap">
                     <button type="button" class="btn btn-outline-secondary btn-sm btn-editar-plano" data-id="${id}" title="Alterar"><i class="bi bi-pencil"></i></button>
                     <button type="button" class="btn btn-outline-primary btn-sm btn-preco-plano" data-id="${id}" title="Novo preço"><i class="bi bi-currency-dollar"></i> Preço</button>
                     <button type="button" class="btn btn-outline-secondary btn-sm btn-historico-plano" data-id="${id}" title="Histórico de preços"><i class="bi bi-clock-history"></i></button>
+                    ${p.podeExcluir ? `<button type="button" class="btn btn-outline-danger btn-sm btn-excluir-plano" data-id="${id}" title="Excluir (nunca foi assinado)"><i class="bi bi-trash"></i></button>` : ''}
                 </div>`
             }
         ]
@@ -97,6 +101,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (botao.classList.contains('btn-editar-plano')) abrirPlano(plano);
         else if (botao.classList.contains('btn-preco-plano')) abrirPreco(plano);
         else if (botao.classList.contains('btn-historico-plano')) await executarComBotaoDesabilitado(botao, () => abrirHistorico(plano));
+        else if (botao.classList.contains('btn-excluir-plano')) await executarComBotaoDesabilitado(botao, () => pedirCodigoExclusaoPlano(plano));
     });
 
     document.getElementById('vagas-fundador').addEventListener('click', function (e) {
@@ -114,6 +119,8 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('form-plano').addEventListener('submit', salvarPlano);
     document.getElementById('form-preco').addEventListener('submit', salvarPreco);
     document.getElementById('form-vagas').addEventListener('submit', salvarVagas);
+    document.getElementById('form-excluir-plano').addEventListener('submit', confirmarExclusaoPlano);
+    document.getElementById('modal-excluir-plano').addEventListener('hidden.bs.modal', pararRelogioExclusaoPlano);
 
     carregarTudo();
 });
@@ -288,6 +295,78 @@ async function salvarVagas(e) {
             await carregarVagas();
         } catch (err) {
             mostrarErroFormulario('erro-vagas', err.message);
+        }
+    });
+}
+
+// ---------- Excluir plano (2 passos: código no seu e-mail e confirmação) ----------
+
+async function pedirCodigoExclusaoPlano(plano) {
+    if (!await confirmarAcao(
+        `Excluir o plano ${plano.nome}? Ele e o histórico de preços dele serão apagados. ` +
+        'Vamos enviar um código para o seu e-mail para confirmar.',
+        { titulo: 'Excluir plano', textoBotao: 'Enviar código', variante: 'perigo' })) return;
+
+    try {
+        const r = await apiFetch(`/api/plataforma/planos/${plano.id}/exclusao/codigo`, { method: 'POST' });
+        planoParaExcluir = plano.id;
+        document.getElementById('nome-plano-excluir').textContent = r.plano;
+        document.getElementById('precos-plano-excluir').textContent = r.precos;
+        document.getElementById('email-codigo-exclusao-plano').textContent = r.emailMascarado;
+        document.getElementById('codigo-exclusao-plano').value = '';
+        ocultarErroFormulario('erro-excluir-plano');
+        iniciarRelogioExclusaoPlano(r.minutosValidade);
+        modalExcluirPlano.show();
+        setTimeout(() => document.getElementById('codigo-exclusao-plano').focus(), 300);
+    } catch (err) {
+        mostrarErro(err.message);
+    }
+}
+
+function iniciarRelogioExclusaoPlano(minutos) {
+    pararRelogioExclusaoPlano();
+    const fim = Date.now() + minutos * 60 * 1000;
+    const texto = document.getElementById('tempo-codigo-exclusao-plano');
+    const botao = document.getElementById('btn-confirmar-exclusao-plano');
+    botao.disabled = false;
+    const atualizar = () => {
+        const restante = Math.max(0, Math.round((fim - Date.now()) / 1000));
+        if (restante === 0) {
+            texto.textContent = 'O código expirou. Feche e clique em excluir de novo para receber outro.';
+            botao.disabled = true;
+            pararRelogioExclusaoPlano();
+            return;
+        }
+        texto.textContent = `O código vale por mais ${Math.floor(restante / 60)}:${String(restante % 60).padStart(2, '0')}.`;
+    };
+    atualizar();
+    relogioExclusaoPlano = setInterval(atualizar, 1000);
+}
+
+function pararRelogioExclusaoPlano() {
+    if (relogioExclusaoPlano) clearInterval(relogioExclusaoPlano);
+    relogioExclusaoPlano = null;
+}
+
+async function confirmarExclusaoPlano(e) {
+    e.preventDefault();
+    ocultarErroFormulario('erro-excluir-plano');
+    const codigo = document.getElementById('codigo-exclusao-plano').value.trim();
+    if (!/^[0-9]{6}$/.test(codigo)) {
+        mostrarErroFormulario('erro-excluir-plano', 'Digite os 6 números do código.');
+        return;
+    }
+
+    await executarComBotaoDesabilitado(document.getElementById('btn-confirmar-exclusao-plano'), async () => {
+        try {
+            await apiFetch(`/api/plataforma/planos/${planoParaExcluir}/exclusao/confirmar`, {
+                method: 'POST', body: JSON.stringify({ codigo })
+            });
+            modalExcluirPlano.hide();
+            mostrarToast('Plano excluído.');
+            await carregarPlanos();
+        } catch (err) {
+            mostrarErroFormulario('erro-excluir-plano', err.message);
         }
     });
 }

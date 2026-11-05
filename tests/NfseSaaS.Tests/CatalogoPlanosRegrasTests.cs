@@ -79,4 +79,13 @@ public class CatalogoPlanosRegrasTests
         Assert.Throws<RegraNegocioException>(() => RegrasCatalogoPlanos.ValidarVagas(new AlterarVagasFundadorRequest(PublicoPlano.Empresas, -1, null)));
         Assert.Throws<RegraNegocioException>(() => RegrasCatalogoPlanos.ValidarVagas(new AlterarVagasFundadorRequest((PublicoPlano)0, 5, null)));
     }
+
+    [Fact]
+    public void So_exclui_plano_novo_que_nunca_foi_assinado()
+    {
+        Assert.Null(RegrasCatalogoPlanos.MotivoNaoPodeExcluir(6, 0));
+        Assert.Contains("já foi assinado", RegrasCatalogoPlanos.MotivoNaoPodeExcluir(6, 1)!);
+        for (var codigo = Planos.CodigoMico; codigo <= Planos.CodigoEscritorio50; codigo++)
+            Assert.Contains("iniciais", RegrasCatalogoPlanos.MotivoNaoPodeExcluir(codigo, 0)!);
+    }
 }

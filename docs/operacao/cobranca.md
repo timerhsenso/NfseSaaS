@@ -23,11 +23,17 @@ vagas de fundador ficam no banco e são administrados em **Plataforma › Planos
   Escritórios (10), editáveis. Usada = assinatura com preço de fundador em plano
   do grupo (cancelada também conta). Diminuir não tira o preço de quem já é fundador.
 - **Fora de venda**: o plano some da tela Assinatura; quem já assina continua nele.
+- **Excluir** (lixeira, só aparece quando pode): só plano que **nunca foi assinado**
+  (nem assinatura cancelada) e que **não é inicial** (códigos 1 a 5, que o seeder
+  recriaria). Pede confirmação e envia um código de 6 dígitos ao **seu e-mail**
+  (o mesmo esquema da exclusão de conta: 10 minutos, uso único, 5 tentativas,
+  direto pelo SMTP, sem gravar no EmailLog). Apaga o plano e o histórico de
+  preços; na Auditoria fica `ExcluirPlano` com os preços que existiam.
 - O grupo de fundador de um plano não muda depois que ele tem assinaturas.
 - Limites (empresas, notas/mês; em branco = sem limite) são **suaves**: servem
   para avisar e orientar troca de plano, nunca travam a emissão.
 - Toda alteração da tela vai para o **Histórico** (auditoria) do operador:
-  `CriarPlano`, `AlterarPlano`, `NovoPrecoPlano`, `CorrigirPrecoPlano`, `AlterarVagasFundador`.
+  `CriarPlano`, `AlterarPlano`, `NovoPrecoPlano`, `CorrigirPrecoPlano`, `AlterarVagasFundador`, `ExcluirPlano`.
 
 ## Como funciona
 
