@@ -42,6 +42,7 @@ public class CatalogoPlanosTests
             return Task.FromResult("sub_" + Guid.NewGuid().ToString("N"));
         }
         public Task<string?> ObterUrlFaturaPendenteAsync(string assinaturaId, CancellationToken cancellationToken) => Task.FromResult<string?>(null);
+        public Task AlterarValorAssinaturaAsync(string assinaturaId, decimal valor, string descricao, CancellationToken cancellationToken) => throw new NotSupportedException();
         public Task CancelarAssinaturaAsync(string assinaturaId, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task<FaturaGateway?> ObterProximaFaturaEmAbertoAsync(string assinaturaId, string? ignorarPagamentoId, CancellationToken cancellationToken) => throw new NotSupportedException();
         public Task RemoverFaturaAsync(string pagamentoId, CancellationToken cancellationToken) => throw new NotSupportedException();
@@ -129,11 +130,15 @@ public class CatalogoPlanosTests
             Assert.Equal(0, await catalogo.VagasFundadorRestantesAsync(PublicoPlano.Escritorios, CancellationToken.None));
             Assert.Equal(restantesEmpresas, await catalogo.VagasFundadorRestantesAsync(PublicoPlano.Empresas, CancellationToken.None));
 
-            // Sem vaga, a tela oferece o preço normal e o nome do plano contratado aparece.
+            // Sem vaga sobrando, quem JÁ é fundador no grupo vê a troca com o
+            // preço de fundador do outro plano (RegrasTrocaPlano), e o nome do
+            // plano contratado aparece.
             tela = await obter.ExecutarAsync(CancellationToken.None);
             var oferta = tela.Planos.Single(p => p.Codigo == Planos.CodigoEscritorio25);
-            Assert.False(oferta.PrecoDeFundador);
-            Assert.Equal(oferta.PrecoNormal, oferta.Preco);
+            var escritorio25 = (await catalogo.ObterAsync(Planos.CodigoEscritorio25, CancellationToken.None))!;
+            Assert.True(tela.PodeTrocarPlano);
+            Assert.True(oferta.PrecoDeFundador);
+            Assert.Equal(escritorio25.PrecoFundador, oferta.Preco);
             Assert.Equal(escritorio.Nome, tela.PlanoNome);
             Assert.Equal(0, tela.VagasFundadorRestantes);
         }

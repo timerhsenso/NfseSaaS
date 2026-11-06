@@ -80,6 +80,17 @@ public sealed class AsaasClient : IGatewayCobranca
         await EnviarAsync<JsonElement>(HttpMethod.Delete, $"subscriptions/{Uri.EscapeDataString(assinaturaId)}", null, cancellationToken);
     }
 
+    public async Task AlterarValorAssinaturaAsync(string assinaturaId, decimal valor, string descricao, CancellationToken cancellationToken)
+    {
+        // updatePendingPayments: a fatura já gerada e ainda não paga também passa ao novo valor.
+        await EnviarAsync<JsonElement>(HttpMethod.Put, $"subscriptions/{Uri.EscapeDataString(assinaturaId)}", new
+        {
+            value = valor,
+            description = descricao,
+            updatePendingPayments = true
+        }, cancellationToken);
+    }
+
     public async Task<FaturaGateway?> ObterProximaFaturaEmAbertoAsync(string assinaturaId, string? ignorarPagamentoId, CancellationToken cancellationToken)
     {
         var lista = await EnviarAsync<ListaCobrancas>(HttpMethod.Get,

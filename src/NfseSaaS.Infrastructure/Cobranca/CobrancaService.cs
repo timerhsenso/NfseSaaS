@@ -16,10 +16,10 @@ namespace NfseSaaS.Infrastructure.Cobranca;
 /// Assinatura da conta: situação (tela e emissão), assinar e cancelar.
 /// Regras de decisão ficam em RegrasCobranca; aqui só banco e gateway.
 /// </summary>
-public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseCase, IAssinarUseCase, ICancelarAssinaturaUseCase
+public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseCase, IAssinarUseCase, ICancelarAssinaturaUseCase, ITrocarPlanoUseCase
 {
-    // Um "Assinar" por vez no processo: o botão pode ser clicado duas vezes
-    // e criaria duas assinaturas no Asaas.
+    // Um "Assinar"/"Trocar plano" por vez no processo: o botão pode ser
+    // clicado duas vezes e criaria duas assinaturas (ou duas trocas) no Asaas.
     private static readonly SemaphoreSlim TravaAssinar = new(1, 1);
 
     private readonly AppDbContext _db;
@@ -100,17 +100,26 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
         foreach (var publico in Enum.GetValues<PublicoPlano>())
             vagasPorGrupo[publico] = await _catalogo.VagasFundadorRestantesAsync(publico, cancellationToken);
 
+        var temAssinaturaNoGateway = assinatura.AsaasAssinaturaId is not null && assinatura.Status != StatusAssinatura.Cancelada;
+        var planoAtual = assinatura.Plano is { } codigo ? await _catalogo.ObterAsync(codigo, cancellationToken) : null;
+        var planoNome = planoAtual?.Nome;
+
         var ofertas = (await _catalogo.PlanosAVendaAsync(perfil, cancellationToken)).Select(p =>
         {
             var vagasPlano = vagasPorGrupo[p.Publico];
+            if (temAssinaturaNoGateway)
+            {
+                // Quem já assina vê o preço que pagaria trocando para este plano.
+                var troca = RegrasTrocaPlano.Preco(planoAtual, assinatura.Fundador, p, vagasPlano);
+                return new PlanoOfertaResponse(
+                    p.Codigo, p.Nome, p.Descricao, p.MaxEmpresas, p.NotasPorMes,
+                    troca.Preco, p.PrecoMensal, troca.Fundador, vagasPlano);
+            }
             return new PlanoOfertaResponse(
                 p.Codigo, p.Nome, p.Descricao, p.MaxEmpresas, p.NotasPorMes,
                 vagasPlano > 0 ? p.PrecoFundador : p.PrecoMensal, p.PrecoMensal, vagasPlano > 0, vagasPlano);
         }).ToList();
         var vagas = vagasPorGrupo[perfil == PerfilConta.Contador ? PublicoPlano.Escritorios : PublicoPlano.Empresas];
-
-        var temAssinaturaNoGateway = assinatura.AsaasAssinaturaId is not null && assinatura.Status != StatusAssinatura.Cancelada;
-        var planoNome = assinatura.Plano is { } codigo ? (await _catalogo.ObterAsync(codigo, cancellationToken))?.Nome : null;
 
         return new AssinaturaResponse(
             cobrancaAtiva, isenta, assinatura.Status, assinatura.Plano, planoNome, assinatura.PrecoMensal, assinatura.Fundador,
@@ -120,6 +129,7 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
             AguardandoPrimeiroPagamento: temAssinaturaNoGateway && assinatura.Status == StatusAssinatura.Teste,
             PodeAssinar: cobrancaAtiva && !isenta && !temAssinaturaNoGateway,
             PodeCancelar: temAssinaturaNoGateway,
+            PodeTrocarPlano: cobrancaAtiva && !isenta && temAssinaturaNoGateway,
             vagas, ofertas);
     }
 
@@ -140,7 +150,7 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
         {
             var assinatura = await ObterOuCriarAsync(tenantId, cancellationToken);
             if (assinatura.AsaasAssinaturaId is not null && assinatura.Status != StatusAssinatura.Cancelada)
-                throw new RegraNegocioException("Esta conta já tem uma assinatura. Para trocar de plano, fale com o suporte.");
+                throw new RegraNegocioException("Esta conta já tem uma assinatura. Para mudar de plano, use \"Trocar para este plano\" na lista de planos.");
 
             var tenant = await _db.Tenants.AsNoTracking().FirstAsync(t => t.Id == tenantId, cancellationToken);
             // Só planos à venda para o perfil da conta (o mesmo que a tela mostra).
@@ -194,6 +204,67 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
             await _db.SaveChangesAsync(cancellationToken);
 
             return new AssinarResponse(assinatura.UrlFaturaPendente);
+        }
+        finally
+        {
+            TravaAssinar.Release();
+        }
+    }
+
+    // ---------- Trocar plano ----------
+
+    async Task<TrocarPlanoResponse> ITrocarPlanoUseCase.ExecutarAsync(TrocarPlanoRequest request, CancellationToken cancellationToken)
+    {
+        var tenantId = TenantAtual();
+        if (!_options.AtivaPara(tenantId))
+            throw new RegraNegocioException("Estamos em beta: o uso é gratuito e ainda não há assinatura para trocar.");
+        if (_options.ContasIsentas.Contains(tenantId))
+            throw new RegraNegocioException("Esta conta é isenta de cobrança.");
+
+        await TravaAssinar.WaitAsync(cancellationToken);
+        try
+        {
+            var assinatura = await ObterOuCriarAsync(tenantId, cancellationToken);
+            if (assinatura.AsaasAssinaturaId is null || assinatura.Status == StatusAssinatura.Cancelada)
+                throw new RegraNegocioException("Esta conta não tem assinatura ativa. Escolha um plano e assine.");
+
+            var tenant = await _db.Tenants.AsNoTracking().FirstAsync(t => t.Id == tenantId, cancellationToken);
+            var novo = await _catalogo.ObterAsync(request.Plano, cancellationToken);
+            // Só planos à venda para o perfil da conta (o mesmo que a tela mostra).
+            if (novo is null || !novo.AVenda
+                || !(tenant.Perfil == PerfilConta.Contador ? novo.OfertarParaContador : novo.OfertarParaEmpresa))
+                throw new RegraNegocioException("Plano inválido ou fora de venda. Atualize a página e escolha outro.");
+
+            var atual = assinatura.Plano is { } codigo ? await _catalogo.ObterAsync(codigo, cancellationToken) : null;
+            var empresas = await _db.Empresas.IgnoreQueryFilters().AsNoTracking()
+                .CountAsync(e => e.TenantId == tenantId && e.Ativo, cancellationToken);
+            var vagas = await _catalogo.VagasFundadorRestantesAsync(novo.Publico, cancellationToken);
+
+            var troca = RegrasTrocaPlano.Calcular(atual, assinatura.Fundador, novo, vagas, empresas);
+
+            await _gateway.AlterarValorAssinaturaAsync(assinatura.AsaasAssinaturaId, troca.Preco,
+                $"micoempresa - plano {novo.Nome}{(troca.Fundador ? " (preço de fundador)" : "")}", cancellationToken);
+
+            var descricao = RegrasTrocaPlano.Descrever(atual?.Nome, assinatura.PrecoMensal, novo.Nome, troca.Preco);
+            _auditLogWriter.Registrar("TrocarPlano", "Assinatura", assinatura.Id, new
+            {
+                de = atual?.Nome,
+                precoAnterior = assinatura.PrecoMensal,
+                fundadorAnterior = assinatura.Fundador,
+                para = novo.Nome,
+                preco = troca.Preco,
+                fundador = troca.Fundador
+            });
+
+            assinatura.Plano = novo.Codigo;
+            assinatura.PrecoMensal = troca.Preco;
+            assinatura.Fundador = troca.Fundador;
+            // A fatura em aberto foi atualizada no Asaas (updatePendingPayments).
+            if (assinatura.UrlFaturaPendente is not null)
+                assinatura.ValorFaturaPendente = troca.Preco;
+            await _db.SaveChangesAsync(cancellationToken);
+
+            return new TrocarPlanoResponse(novo.Nome, troca.Preco, troca.Fundador, descricao);
         }
         finally
         {

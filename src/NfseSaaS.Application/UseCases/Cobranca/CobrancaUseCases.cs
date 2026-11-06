@@ -7,6 +7,7 @@ namespace NfseSaaS.Application.UseCases.Cobranca;
 /// <param name="PrecoNormal">Preço cheio do plano.</param>
 /// <param name="NotasPorMes">Nulo = sem limite de notas.</param>
 /// <param name="VagasFundadorRestantes">Vagas de fundador que sobram no grupo do plano.</param>
+/// <remarks>Para quem já assina, <c>Preco</c> e <c>PrecoDeFundador</c> são os da troca para este plano (RegrasTrocaPlano).</remarks>
 public sealed record PlanoOfertaResponse(
     int Codigo,
     string Nome,
@@ -42,12 +43,27 @@ public sealed record AssinaturaResponse(
     bool AguardandoPrimeiroPagamento,
     bool PodeAssinar,
     bool PodeCancelar,
+    bool PodeTrocarPlano,
     int VagasFundadorRestantes,
     IReadOnlyList<PlanoOfertaResponse> Planos);
 
 public sealed record AssinarRequest(int Plano);
 
 public sealed record AssinarResponse(string? UrlFatura);
+
+public sealed record TrocarPlanoRequest(int Plano);
+
+/// <param name="Descricao">"Mico (R$ 19,00) → Empresa (R$ 39,00)".</param>
+public sealed record TrocarPlanoResponse(string PlanoNome, decimal PrecoMensal, bool Fundador, string Descricao);
+
+/// <summary>
+/// Troca o plano de quem já assina (sobe ou desce, inclusive Escritórios).
+/// O novo valor vale a partir da próxima fatura em aberto ou a gerar.
+/// </summary>
+public interface ITrocarPlanoUseCase
+{
+    Task<TrocarPlanoResponse> ExecutarAsync(TrocarPlanoRequest request, CancellationToken cancellationToken);
+}
 
 /// <summary>
 /// Chamado pela emissão (tela, lote e automação) antes de emitir em
@@ -94,6 +110,12 @@ public interface IGatewayCobranca
     Task<string?> ObterUrlFaturaPendenteAsync(string assinaturaId, CancellationToken cancellationToken);
 
     Task CancelarAssinaturaAsync(string assinaturaId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Novo valor mensal da assinatura (troca de plano). Atualiza também as
+    /// faturas pendentes ainda não pagas, para "a próxima fatura" já vir certa.
+    /// </summary>
+    Task AlterarValorAssinaturaAsync(string assinaturaId, decimal valor, string descricao, CancellationToken cancellationToken);
 
     /// <summary>
     /// Fatura em aberto (PENDING, ainda não vencida) mais próxima da assinatura,

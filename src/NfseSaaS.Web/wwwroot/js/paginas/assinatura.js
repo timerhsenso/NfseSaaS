@@ -60,11 +60,16 @@ async function carregarAssinatura() {
         const preco = p.precoDeFundador
             ? `<span class="text-muted text-decoration-line-through me-1">${reais(p.precoNormal)}</span><strong class="fs-4">${reais(p.preco)}</strong><small>/mês</small><div class="small text-success fw-semibold">preço de fundador · ${p.vagasFundadorRestantes} vaga(s)</div>`
             : `<strong class="fs-4">${reais(p.preco)}</strong><small>/mês</small>`;
+        const excede = a.empresasAtivas > p.maxEmpresas;
         const botao = atual
             ? '<span class="badge text-bg-success">Seu plano</span>'
             : a.podeAssinar
                 ? `<button type="button" class="btn btn-primary w-100 btn-assinar" data-plano="${p.codigo}" data-nome="${escaparHtml(p.nome)}" data-preco="${p.preco}">Assinar ${escaparHtml(p.nome)}</button>`
-                : '';
+                : a.podeTrocarPlano
+                    ? excede
+                        ? `<div class="small text-muted">Para trocar, a conta precisa ter até ${p.maxEmpresas} empresa(s) ativa(s) (hoje: ${a.empresasAtivas}).</div>`
+                        : `<button type="button" class="btn btn-outline-primary w-100 btn-trocar-plano" data-plano="${p.codigo}" data-nome="${escaparHtml(p.nome)}" data-preco="${p.preco}">Trocar para ${escaparHtml(p.nome)}</button>`
+                    : '';
         return `<div class="col-md-6"><div class="border rounded-3 p-3 h-100 d-flex flex-column">
                     <h3 class="h6 mb-0">${escaparHtml(p.nome)}</h3>
                     <p class="small text-muted mb-2">${escaparHtml(p.descricao)}</p>
@@ -91,6 +96,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 const r = await apiFetch('/api/assinatura/assinar', { method: 'POST', body: JSON.stringify({ plano: Number(botao.dataset.plano) }) });
                 if (r.urlFatura) window.open(r.urlFatura, '_blank', 'noopener');
                 mostrarToast('Assinatura criada. Pague a fatura para ativar.');
+                await carregarAssinatura();
+            } catch (err) {
+                mostrarErro(err.message);
+            }
+        });
+    });
+
+    document.getElementById('ass-planos').addEventListener('click', async function (e) {
+        const botao = e.target.closest('.btn-trocar-plano');
+        if (!botao) return;
+        await executarComBotaoDesabilitado(botao, async function () {
+            if (!await confirmarAcao(
+                `Trocar para o plano ${botao.dataset.nome} por ${reais(botao.dataset.preco)} por mês? O novo valor vale a partir da próxima fatura (inclusive a que já estiver em aberto).`,
+                { titulo: 'Trocar de plano', textoBotao: 'Trocar plano' })) return;
+            try {
+                const r = await apiFetch('/api/assinatura/trocar-plano', { method: 'POST', body: JSON.stringify({ plano: Number(botao.dataset.plano) }) });
+                mostrarToast(`Plano trocado: ${r.descricao}.`);
                 await carregarAssinatura();
             } catch (err) {
                 mostrarErro(err.message);
