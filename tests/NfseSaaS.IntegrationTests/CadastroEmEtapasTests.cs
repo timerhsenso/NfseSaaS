@@ -92,6 +92,7 @@ public class CadastroEmEtapasTests
         await db.Users.Where(x => ids.Contains(x.TenantId)).ExecuteDeleteAsync();
         await db.GrupoTelas.IgnoreQueryFilters().Where(x => ids.Contains(x.TenantId)).ExecuteDeleteAsync();
         await db.Grupos.IgnoreQueryFilters().Where(x => ids.Contains(x.TenantId)).ExecuteDeleteAsync();
+        await db.Assinaturas.Where(x => ids.Contains(x.TenantId)).ExecuteDeleteAsync();
         await db.Tenants.Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync();
     }
 

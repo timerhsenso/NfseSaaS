@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.Consultas;
+using NfseSaaS.Infrastructure.Cobranca;
 using Xunit;
 
 namespace NfseSaaS.IntegrationTests;
@@ -29,6 +30,9 @@ public sealed class AplicacaoEmMemoriaCollection : ICollectionFixture<AplicacaoT
 /// do Hangfire, disparado pelo webhook num teste, chamava o sandbox e
 /// disputava os mesmos registros com o teste. Pelo mesmo motivo a consulta
 /// de CNPJ (BrasilAPI) é trocada por <see cref="ConsultaCnpjFalsa"/>.
+/// A cobrança também é desligada (sem contas piloto nem isentas) por cima
+/// dos user-secrets: os testes que precisam dela montam o CobrancaService
+/// com as opções que querem.
 /// </summary>
 public sealed class AplicacaoTesteFactory : WebApplicationFactory<Program>
 {
@@ -39,7 +43,16 @@ public sealed class AplicacaoTesteFactory : WebApplicationFactory<Program>
             ["Asaas:ApiKey"] = "",
             ["Asaas:WebhookToken"] = ""
         }));
-        builder.ConfigureTestServices(servicos => servicos.AddScoped<IConsultarCnpjUseCase, ConsultaCnpjFalsa>());
+        builder.ConfigureTestServices(servicos =>
+        {
+            servicos.AddScoped<IConsultarCnpjUseCase, ConsultaCnpjFalsa>();
+            servicos.PostConfigure<CobrancaOptions>(cobranca =>
+            {
+                cobranca.Ativa = false;
+                cobranca.ContasPiloto.Clear();
+                cobranca.ContasIsentas.Clear();
+            });
+        });
     }
 }
 
