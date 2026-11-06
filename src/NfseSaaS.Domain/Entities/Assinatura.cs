@@ -45,4 +45,22 @@ public sealed class Assinatura : BaseEntity
 
     /// <summary>Link da fatura em aberto (Pix, boleto ou cartão), para o botão "Pagar".</summary>
     public string? UrlFaturaPendente { get; set; }
+
+    /// <summary>
+    /// Vencimento da fatura em aberto (a do <see cref="UrlFaturaPendente"/>).
+    /// Usado nos avisos "fatura criada", "vence amanhã" e "vencida" e na
+    /// faixa do painel; nulo quando não há fatura em aberto.
+    /// </summary>
+    public DateOnly? VencimentoFaturaPendente { get; set; }
+
+    /// <summary>Valor da fatura em aberto (nulo quando não há).</summary>
+    public decimal? ValorFaturaPendente { get; set; }
+
+    /// <summary>Esquece a fatura em aberto (paga, removida ou assinatura cancelada).</summary>
+    public void LimparFaturaPendente()
+    {
+        UrlFaturaPendente = null;
+        VencimentoFaturaPendente = null;
+        ValorFaturaPendente = null;
+    }
 }

@@ -16,7 +16,18 @@ public static class DestinatariosAviso
     /// bloqueio. AspNetUsers não tem filtro de tenant — o filtro aqui é
     /// manual; Grupos tem, então o Tenant precisa estar definido no escopo.
     /// </summary>
-    public static async Task<List<string>> AdministradoresDaContaAsync(AppDbContext db, Guid tenantId, CancellationToken cancellationToken)
+    public static Task<List<string>> AdministradoresDaContaAsync(AppDbContext db, Guid tenantId, CancellationToken cancellationToken) =>
+        AdministradoresAsync(db, tenantId, apenasEmailConfirmado: false, cancellationToken);
+
+    /// <summary>
+    /// Como <see cref="AdministradoresDaContaAsync"/>, mas só quem já
+    /// confirmou o e-mail (avisos de cobrança: falam de dinheiro e de
+    /// bloqueio, então não vão para endereço nunca confirmado).
+    /// </summary>
+    public static Task<List<string>> AdministradoresConfirmadosDaContaAsync(AppDbContext db, Guid tenantId, CancellationToken cancellationToken) =>
+        AdministradoresAsync(db, tenantId, apenasEmailConfirmado: true, cancellationToken);
+
+    private static async Task<List<string>> AdministradoresAsync(AppDbContext db, Guid tenantId, bool apenasEmailConfirmado, CancellationToken cancellationToken)
     {
         var agora = DateTimeOffset.UtcNow;
 
@@ -28,6 +39,7 @@ public static class DestinatariosAviso
                 && u.Email != null
                 && (u.ConvidadoEm == null || u.ConviteAceitoEm != null)
                 && (u.LockoutEnd == null || u.LockoutEnd < agora)
+                && (!apenasEmailConfirmado || u.EmailConfirmed)
             select u.Email!).ToListAsync(cancellationToken);
 
         return Normalizar(emails);

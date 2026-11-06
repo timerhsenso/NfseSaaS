@@ -148,7 +148,7 @@ public sealed class PremioIndicacaoService : IAplicarPremiosIndicacaoUseCase, IL
                 premio.VencimentoDispensado = fatura.Vencimento;
                 premio.Detalhe = $"Fatura de {fatura.Vencimento.ToString("dd/MM/yyyy", PtBr)} dispensada (1 mês grátis).";
                 if (fatura.Url is not null && assinatura.UrlFaturaPendente == fatura.Url)
-                    assinatura.UrlFaturaPendente = null;
+                    assinatura.LimparFaturaPendente();
             }
             else
             {

@@ -3,6 +3,7 @@ using System.Text.Json;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NfseSaaS.Application.UseCases.Cobranca;
 using NfseSaaS.Application.UseCases.Indicacao;
 using NfseSaaS.Domain.Entities;
@@ -28,17 +29,25 @@ namespace NfseSaaS.Infrastructure.Cobranca;
 /// - PAYMENT_CREATED / PAYMENT_UPDATED / PAYMENT_RESTORED: guarda o link da fatura em aberto.
 /// - PAYMENT_DELETED: esquece o link se era o da fatura removida (ex.: mês grátis).
 /// - SUBSCRIPTION_DELETED / SUBSCRIPTION_INACTIVATED: Cancelada.
+/// Depois de aplicar, se a cobrança vale para a conta, agenda os avisos de
+/// cobrança dela (IAvisarCobrancaJob) por job, nunca dentro do webhook.
 /// </summary>
 public sealed class ProcessarWebhookAsaasUseCase : IProcessarWebhookAsaasUseCase
 {
     private readonly AppDbContext _db;
     private readonly IBackgroundJobClient _jobs;
+    private readonly CobrancaOptions _cobranca;
     private readonly ILogger<ProcessarWebhookAsaasUseCase> _logger;
 
-    public ProcessarWebhookAsaasUseCase(AppDbContext db, IBackgroundJobClient jobs, ILogger<ProcessarWebhookAsaasUseCase> logger)
+    public ProcessarWebhookAsaasUseCase(
+        AppDbContext db,
+        IBackgroundJobClient jobs,
+        IOptions<CobrancaOptions> cobranca,
+        ILogger<ProcessarWebhookAsaasUseCase> logger)
     {
         _db = db;
         _jobs = jobs;
+        _cobranca = cobranca.Value;
         _logger = logger;
     }
 
@@ -46,6 +55,7 @@ public sealed class ProcessarWebhookAsaasUseCase : IProcessarWebhookAsaasUseCase
     {
         string? eventoId, tipo, pagamentoId = null, assinaturaId = null, faturaUrl = null, statusPagamento = null;
         DateOnly? vencimento = null;
+        decimal? valor = null;
         try
         {
             using var doc = JsonDocument.Parse(payload);
@@ -61,6 +71,8 @@ public sealed class ProcessarWebhookAsaasUseCase : IProcessarWebhookAsaasUseCase
                 statusPagamento = Texto(pagamento, "status");
                 if (DateOnly.TryParseExact(Texto(pagamento, "dueDate"), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d))
                     vencimento = d;
+                if (pagamento.TryGetProperty("value", out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetDecimal(out var dec))
+                    valor = decimal.Round(dec, 2);
             }
             else if (raiz.TryGetProperty("subscription", out var assinatura) && assinatura.ValueKind == JsonValueKind.Object)
             {
@@ -103,7 +115,7 @@ public sealed class ProcessarWebhookAsaasUseCase : IProcessarWebhookAsaasUseCase
         else
         {
             var primeiroPagamento = assinaturaLocal.UltimoPagamentoEm is null;
-            evento.Resultado = Aplicar(assinaturaLocal, tipo, vencimento, faturaUrl, statusPagamento);
+            evento.Resultado = Aplicar(assinaturaLocal, tipo, vencimento, valor, faturaUrl, statusPagamento);
 
             if (tipo is "PAYMENT_CONFIRMED" or "PAYMENT_RECEIVED")
             {
@@ -133,6 +145,9 @@ public sealed class ProcessarWebhookAsaasUseCase : IProcessarWebhookAsaasUseCase
         _logger.LogInformation("Webhook Asaas {Tipo} ({EventoId}) da assinatura {AssinaturaId}: {Resultado}",
             tipo, eventoId, assinaturaId, evento.Resultado);
 
+        if (assinaturaLocal is not null)
+            AgendarAvisosCobranca(assinaturaLocal.TenantId);
+
         if (dispararPremios)
         {
             try
@@ -147,6 +162,26 @@ public sealed class ProcessarWebhookAsaasUseCase : IProcessarWebhookAsaasUseCase
         }
 
         return evento.Resultado;
+    }
+
+    /// <summary>
+    /// Avisos de cobrança da conta logo após o evento (pagamento confirmado,
+    /// fatura criada, vencida, cancelamento). Só quando a cobrança vale para
+    /// a conta; a falha em agendar não afeta o webhook (o job diário cobre).
+    /// </summary>
+    private void AgendarAvisosCobranca(Guid tenantId)
+    {
+        if (!_cobranca.AtivaPara(tenantId) || _cobranca.ContasIsentas.Contains(tenantId))
+            return;
+
+        try
+        {
+            _jobs.Enqueue<IAvisarCobrancaJob>(job => job.ExecutarContaAsync(tenantId));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Não foi possível agendar os avisos de cobrança da conta {TenantId}; ficam para o job diário.", tenantId);
+        }
     }
 
     /// <summary>
@@ -181,7 +216,7 @@ public sealed class ProcessarWebhookAsaasUseCase : IProcessarWebhookAsaasUseCase
         return true;
     }
 
-    private static string Aplicar(Assinatura assinatura, string tipo, DateOnly? vencimento, string? faturaUrl, string? statusPagamento)
+    private static string Aplicar(Assinatura assinatura, string tipo, DateOnly? vencimento, decimal? valor, string? faturaUrl, string? statusPagamento)
     {
         switch (tipo)
         {
@@ -191,7 +226,7 @@ public sealed class ProcessarWebhookAsaasUseCase : IProcessarWebhookAsaasUseCase
                 assinatura.AtrasadaDesde = null;
                 assinatura.CanceladaEm = null;
                 assinatura.UltimoPagamentoEm = DateTimeOffset.UtcNow;
-                assinatura.UrlFaturaPendente = null;
+                assinatura.LimparFaturaPendente();
                 return "assinatura ativa";
 
             case "PAYMENT_OVERDUE":
@@ -206,7 +241,7 @@ public sealed class ProcessarWebhookAsaasUseCase : IProcessarWebhookAsaasUseCase
                     assinatura.AtrasadaDesde = assinatura.AtrasadaDesde is { } atual && atual < desde ? atual : desde;
                 }
                 if (!string.IsNullOrWhiteSpace(faturaUrl))
-                    assinatura.UrlFaturaPendente = Limitar(faturaUrl, 300);
+                    GuardarFaturaPendente(assinatura, faturaUrl, vencimento, valor);
                 return "fatura vencida";
 
             case "PAYMENT_CREATED":
@@ -214,7 +249,7 @@ public sealed class ProcessarWebhookAsaasUseCase : IProcessarWebhookAsaasUseCase
             case "PAYMENT_RESTORED":
                 if (statusPagamento is "PENDING" or "OVERDUE" && !string.IsNullOrWhiteSpace(faturaUrl))
                 {
-                    assinatura.UrlFaturaPendente = Limitar(faturaUrl, 300);
+                    GuardarFaturaPendente(assinatura, faturaUrl, vencimento, valor);
                     return "fatura em aberto registrada";
                 }
                 return "sem mudança";
@@ -222,7 +257,7 @@ public sealed class ProcessarWebhookAsaasUseCase : IProcessarWebhookAsaasUseCase
             case "PAYMENT_DELETED":
                 if (!string.IsNullOrWhiteSpace(faturaUrl) && assinatura.UrlFaturaPendente == Limitar(faturaUrl, 300))
                 {
-                    assinatura.UrlFaturaPendente = null;
+                    assinatura.LimparFaturaPendente();
                     return "fatura removida";
                 }
                 return "sem mudança";
@@ -231,12 +266,19 @@ public sealed class ProcessarWebhookAsaasUseCase : IProcessarWebhookAsaasUseCase
             case "SUBSCRIPTION_INACTIVATED":
                 assinatura.Status = StatusAssinatura.Cancelada;
                 assinatura.CanceladaEm ??= DateTimeOffset.UtcNow;
-                assinatura.UrlFaturaPendente = null;
+                assinatura.LimparFaturaPendente();
                 return "assinatura cancelada";
 
             default:
                 return "sem mudança";
         }
+    }
+
+    private static void GuardarFaturaPendente(Assinatura assinatura, string faturaUrl, DateOnly? vencimento, decimal? valor)
+    {
+        assinatura.UrlFaturaPendente = Limitar(faturaUrl, 300);
+        assinatura.VencimentoFaturaPendente = vencimento;
+        assinatura.ValorFaturaPendente = valor;
     }
 
     private static string? Texto(JsonElement elemento, string propriedade) =>

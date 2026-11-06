@@ -305,6 +305,11 @@ public static class DependencyInjection
         services.AddScoped<NfseSaaS.Application.UseCases.Indicacao.IListarPremiosIndicacaoPlataformaUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.PremioIndicacaoService>());
         services.AddScoped<NfseSaaS.Application.UseCases.Indicacao.IReabrirPremioIndicacaoUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.PremioIndicacaoService>());
         services.AddScoped<IAplicarPremiosIndicacaoJob, AplicarPremiosIndicacaoJob>();
+        // Avisos de cobrança por e-mail (job diário + disparo pelo webhook) e faixa do painel.
+        services.AddScoped<NfseSaaS.Infrastructure.Cobranca.AvisosCobrancaService>();
+        services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IEnviarAvisosCobrancaUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.AvisosCobrancaService>());
+        services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IObterFaixaCobrancaUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.AvisosCobrancaService>());
+        services.AddScoped<IAvisarCobrancaJob, AvisarCobrancaJob>();
         services.AddScoped<IAlterarBloqueioTenantUseCase, AlterarBloqueioTenantUseCase>();
         // Exclusão definitiva de conta pelo operador (código por e-mail).
         services.AddScoped<ExclusaoContaService>();

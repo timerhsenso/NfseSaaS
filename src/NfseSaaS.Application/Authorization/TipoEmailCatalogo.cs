@@ -22,4 +22,7 @@ public static class TipoEmailCatalogo
 
     /// <summary>Alerta técnico para o operador da plataforma: erro no sistema ou job que falhou.</summary>
     public const string AlertaOperador = "AlertaOperador";
+
+    /// <summary>Avisos de cobrança aos administradores: teste acabando, fatura criada/vencendo/vencida, bloqueio, cancelamento, pagamento.</summary>
+    public const string AvisoCobranca = "AvisoCobranca";
 }

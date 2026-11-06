@@ -258,6 +258,12 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
+                    b.Property<decimal?>("ValorFaturaPendente")
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<DateOnly?>("VencimentoFaturaPendente")
+                        .HasColumnType("date");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AsaasAssinaturaId")

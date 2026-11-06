@@ -177,6 +177,12 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
             try
             {
                 assinatura.UrlFaturaPendente = await _gateway.ObterUrlFaturaPendenteAsync(assinaturaId, cancellationToken);
+                if (assinatura.UrlFaturaPendente is not null)
+                {
+                    // A primeira fatura vence hoje (primeiroVencimento acima).
+                    assinatura.VencimentoFaturaPendente = DataBrasilia.Hoje();
+                    assinatura.ValorFaturaPendente = preco;
+                }
             }
             catch (Exception ex)
             {
@@ -208,7 +214,7 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
 
         assinatura.Status = StatusAssinatura.Cancelada;
         assinatura.CanceladaEm = DateTimeOffset.UtcNow;
-        assinatura.UrlFaturaPendente = null;
+        assinatura.LimparFaturaPendente();
         _auditLogWriter.Registrar("CancelarAssinatura", "Assinatura", assinatura.Id, new { assinatura.AsaasAssinaturaId });
         await _db.SaveChangesAsync(cancellationToken);
     }
@@ -243,14 +249,17 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
         RegrasCobranca.Avaliar(assinatura.Status, assinatura.TesteIniciadoEm, await NotasDoTesteAsync(assinatura, cancellationToken),
             assinatura.AtrasadaDesde, DateTimeOffset.UtcNow, DataBrasilia.Hoje());
 
+    private Task<int> NotasDoTesteAsync(Assinatura assinatura, CancellationToken cancellationToken) =>
+        ContarNotasDoTesteAsync(_db, assinatura, cancellationToken);
+
     /// <summary>Notas autorizadas em produção desde o início do teste (rejeitadas não contam).</summary>
-    private async Task<int> NotasDoTesteAsync(Assinatura assinatura, CancellationToken cancellationToken)
+    internal static async Task<int> ContarNotasDoTesteAsync(AppDbContext db, Assinatura assinatura, CancellationToken cancellationToken)
     {
         if (assinatura.TesteIniciadoEm is not { } inicio)
             return 0;
 
         var inicioUtc = inicio.ToUniversalTime();
-        return await _db.NotasFiscais.IgnoreQueryFilters().AsNoTracking()
+        return await db.NotasFiscais.IgnoreQueryFilters().AsNoTracking()
             .CountAsync(n => n.TenantId == assinatura.TenantId && n.TipoAmbiente == TipoAmbiente.Producao
                              && n.Status == NfseStatus.Autorizada && n.DataEmissao >= inicioUtc, cancellationToken);
     }

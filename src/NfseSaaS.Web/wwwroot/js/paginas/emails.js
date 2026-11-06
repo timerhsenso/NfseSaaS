@@ -80,6 +80,7 @@ function rotuloTipo(tipo) {
         case 'ConfirmacaoEmail': return 'Confirmação de e-mail';
         case 'ReajustesAniversario': return 'Reajustes de contrato';
         case 'AlertaOperador': return 'Alerta do sistema';
+        case 'AvisoCobranca': return 'Aviso de cobrança';
         default: return tipo;
     }
 }

@@ -114,3 +114,29 @@ public interface IGatewayCobranca
 
 /// <summary>Uma fatura (cobrança) de assinatura no gateway.</summary>
 public sealed record FaturaGateway(string Id, DateOnly Vencimento, string? Url);
+
+/// <summary>Faixa no topo do painel (ver RegrasAvisoCobranca.Faixa).</summary>
+/// <param name="Nivel">"info", "atencao" ou "bloqueio".</param>
+/// <param name="UrlPagar">Link da fatura em aberto; só para quem pode ver a tela Assinatura.</param>
+public sealed record FaixaCobrancaResponse(string Nivel, string Mensagem, string? UrlPagar);
+
+/// <summary>Faixa de cobrança da conta logada (nulo = nada a mostrar, inclusive com a cobrança desligada).</summary>
+public interface IObterFaixaCobrancaUseCase
+{
+    Task<FaixaCobrancaResponse?> ExecutarAsync(bool incluirLinkPagamento, CancellationToken cancellationToken);
+}
+
+/// <summary>Resultado de uma passada dos avisos de cobrança numa conta.</summary>
+/// <param name="Enviados">Avisos que saíram agora (os já avisados antes não entram).</param>
+/// <param name="Motivo">Por que nada saiu, quando nada saiu.</param>
+public sealed record AvisosCobrancaResult(IReadOnlyList<TipoAvisoCobranca> Enviados, IReadOnlyList<string> Destinatarios, string? Motivo);
+
+/// <summary>
+/// Manda os avisos de cobrança devidos a uma conta (RegrasAvisoCobranca),
+/// um e-mail por administrador com e-mail confirmado, sem repetir aviso.
+/// O Tenant da conta precisa estar definido no escopo (o EmailLog é por conta).
+/// </summary>
+public interface IEnviarAvisosCobrancaUseCase
+{
+    Task<AvisosCobrancaResult> ExecutarAsync(Guid tenantId, CancellationToken cancellationToken);
+}

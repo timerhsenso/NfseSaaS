@@ -134,3 +134,44 @@ document.addEventListener('click', function (e) {
     cabecalho.insertAdjacentElement('afterend', aviso);
     document.getElementById('btn-reenviar-confirmacao').addEventListener('click', e => reenviarConfirmacaoEmail(e.currentTarget));
 })();
+
+// Faixa de cobrança no topo de todas as telas: fatura em aberto, atraso,
+// emissão bloqueada ou teste grátis acabando. 204 = nada a mostrar (também
+// com a cobrança desligada, no beta). Na própria tela Assinatura não
+// aparece: ela já mostra a mesma situação com mais detalhe.
+(async function faixaCobranca() {
+    const cabecalho = document.querySelector('.content .page-head');
+    if (!cabecalho || window.location.pathname.toLowerCase().startsWith('/assinatura')) return;
+    let faixa;
+    try {
+        faixa = await apiFetch('/api/assinatura/faixa');
+    } catch {
+        return;
+    }
+    if (!faixa || !faixa.mensagem) return;
+
+    const estilos = {
+        bloqueio: { cor: 'danger', icone: 'bi-slash-circle' },
+        atencao: { cor: 'warning', icone: 'bi-exclamation-triangle' },
+        info: { cor: 'info', icone: 'bi-receipt' }
+    };
+    const estilo = estilos[faixa.nivel] ?? estilos.info;
+
+    let botoes = '';
+    if (faixa.urlPagar) {
+        botoes += `<a class="btn btn-sm btn-${estilo.cor}" href="${escaparHtml(faixa.urlPagar)}" target="_blank" rel="noopener">` +
+            '<i class="bi bi-qr-code" aria-hidden="true"></i> Pagar fatura</a>';
+    }
+    if (faixa.podeVerAssinatura) {
+        botoes += `<a class="btn btn-sm btn-outline-${estilo.cor}" href="/Assinatura">Ver assinatura</a>`;
+    }
+
+    const aviso = document.createElement('div');
+    aviso.id = 'faixa-cobranca';
+    aviso.setAttribute('role', faixa.nivel === 'bloqueio' ? 'alert' : 'status');
+    aviso.className = `alert alert-${estilo.cor} d-flex align-items-center justify-content-between gap-2 flex-wrap`;
+    aviso.innerHTML =
+        `<span><i class="bi ${estilo.icone}" aria-hidden="true"></i> ${escaparHtml(faixa.mensagem)}</span>` +
+        (botoes ? `<span class="d-flex gap-2 flex-wrap">${botoes}</span>` : '');
+    cabecalho.insertAdjacentElement('afterend', aviso);
+})();
