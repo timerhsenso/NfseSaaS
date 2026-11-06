@@ -1,11 +1,19 @@
 @inject NfseSaaS.Application.UseCases.Empresas.IObterEmpresaPorIdUseCase ObterEmpresaPorIdUseCase
 @inject Microsoft.Extensions.Options.IOptions<NfseSaaS.Application.Common.SuporteOptions> SuporteOpcoes
+@inject NfseSaaS.Application.UseCases.Aparencia.IAparenciaUseCase AparenciaUseCase
 @{
     var papelAdministrador = User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Usuarios)
         || User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Grupos)
         || User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Auditoria)
         || User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Assinatura);
     var caminhoAtual = Context.Request.Path.Value?.TrimEnd('/') ?? "";
+
+    // Aparência (paleta da conta + preferências do usuário) já no <html>:
+    // a página nasce com as cores e tamanhos certos, sem "piscar". Quem
+    // nunca salvou fica sem data-modo/classe de menu: tema-inicial.js usa o
+    // que o navegador tinha guardado e aparencia.js grava isso no banco.
+    var aparencia = await AparenciaUseCase.AtualAsync(Context.RequestAborted);
+    var preferencias = aparencia.Preferencias;
     string Ativo(string caminho) => caminhoAtual.Equals(caminho, StringComparison.OrdinalIgnoreCase) ? "active" : "";
     var nomeUsuario = User.Identity?.Name ?? "Usuário";
     var iniciais = string.Concat(nomeUsuario.Split(new[] { '@', '.', ' ' }, StringSplitOptions.RemoveEmptyEntries)
@@ -42,7 +50,9 @@
     }
 }
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" data-paleta="@aparencia.Paleta" data-fonte="@preferencias.Fonte" data-densidade="@preferencias.Densidade"
+      data-modo="@(aparencia.Salvo ? preferencias.Modo : null)" data-aparencia-salva="@(aparencia.Salvo ? "1" : "0")"
+      class="@(aparencia.Salvo && preferencias.MenuRecolhido ? "menu-recolhido" : null)">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -182,6 +192,11 @@
                         <i class="bi bi-moon-stars" id="iconeTema"></i>
                     </button>
 
+                    <button class="btn-tema" id="botaoAparencia" type="button" data-bs-toggle="offcanvas" data-bs-target="#painelAparencia"
+                            aria-controls="painelAparencia" aria-label="Aparência do sistema" title="Aparência">
+                        <i class="bi bi-sliders2" aria-hidden="true"></i>
+                    </button>
+
                     <div class="dropdown">
                         <div class="user-menu" data-bs-toggle="dropdown" role="button">
                             <div class="avatar">@iniciais</div>
@@ -292,6 +307,9 @@
     <script src="~/js/empresa-atual.js" asp-append-version="true"></script>
     <script src="~/js/exportacao.js" asp-append-version="true"></script>
 
+    <partial name="_PainelAparencia" model="aparencia.PodeAlterarPaleta" />
+
+    <script src="~/js/aparencia.js" asp-append-version="true"></script>
     <script src="~/js/layout.js" asp-append-version="true"></script>
 
     @await RenderSectionAsync("Scripts", required: false)

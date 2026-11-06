@@ -33,6 +33,9 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.Property(t => t.MotivoBloqueio)
             .HasMaxLength(300);
 
+        builder.Property(t => t.PaletaCores)
+            .HasMaxLength(30);
+
         builder.HasIndex(t => t.Documento)
             .IsUnique();
 

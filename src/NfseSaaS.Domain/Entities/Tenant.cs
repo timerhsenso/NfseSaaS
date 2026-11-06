@@ -53,4 +53,10 @@ public sealed class Tenant : BaseEntity
     /// que trouxe a pessoa ao site. Só para o operador medir os canais.
     /// </summary>
     public string? OrigemCadastro { get; set; }
+
+    /// <summary>
+    /// Paleta de cores da conta (Aparência), escolhida pelo administrador e
+    /// válida para todos os usuários. Código do AparenciaCatalogo; nulo = padrão.
+    /// </summary>
+    public string? PaletaCores { get; set; }
 }

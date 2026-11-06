@@ -42,6 +42,8 @@ window.usuarioAtual = document.body.dataset.usuarioAtual;
             var recolher = !raiz.classList.contains('menu-recolhido');
             raiz.classList.toggle('menu-recolhido', recolher);
             try { localStorage.setItem('micoempresa-menu', recolher ? 'recolhido' : 'aberto'); } catch (e) { }
+            // Também na conta do usuário (vale em qualquer computador) — aparencia.js.
+            if (typeof window.salvarPreferenciasAparencia === 'function') window.salvarPreferenciasAparencia({ menuRecolhido: recolher });
         }
         atualizarRotulo();
     });
@@ -68,9 +70,10 @@ document.getElementById('link-sair')?.addEventListener('click', async function (
     window.location.href = '/Account/Login';
 });
 
-// Tema claro/escuro — preferência só deste navegador (localStorage, sem
-// banco). tema-inicial.js já aplicou o tema salvo antes de renderizar
-// (evita o "flash" de tela clara); aqui só cuida do clique.
+// Atalho claro/escuro do topo (sol/lua). tema-inicial.js já aplicou o tema
+// antes de renderizar (evita o "flash"); aqui o clique grava a escolha na
+// conta do usuário (aparencia.js), além deste navegador. O ícone também
+// acompanha mudanças feitas pelo painel Aparência.
 (function () {
     var icone = document.getElementById('iconeTema');
 
@@ -79,14 +82,21 @@ document.getElementById('link-sair')?.addEventListener('click', async function (
     }
 
     atualizarIcone(document.documentElement.getAttribute('data-theme'));
+    document.addEventListener('aparencia:aplicada', function () {
+        atualizarIcone(document.documentElement.getAttribute('data-theme'));
+    });
 
     document.getElementById('botaoTema')?.addEventListener('click', function () {
         var temaAtual = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
         var novoTema = temaAtual === 'dark' ? 'light' : 'dark';
 
         document.documentElement.setAttribute('data-theme', novoTema);
-        localStorage.setItem('nfsesaas-tema', novoTema);
+        document.documentElement.dataset.modo = novoTema === 'dark' ? 'escuro' : 'claro';
+        try { localStorage.setItem('nfsesaas-tema', novoTema); } catch (e) { }
         atualizarIcone(novoTema);
+        if (typeof window.salvarPreferenciasAparencia === 'function') {
+            window.salvarPreferenciasAparencia({ modo: novoTema === 'dark' ? 'escuro' : 'claro' });
+        }
     });
 })();
 

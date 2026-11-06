@@ -36,4 +36,11 @@ public sealed class ApplicationUser : IdentityUser<Guid>
     /// pro novo mecanismo de permissão.
     /// </summary>
     public Guid? GrupoId { get; set; }
+
+    /// <summary>
+    /// Preferências de aparência só deste usuário (tamanho do texto, dos
+    /// botões e campos, modo claro/escuro, menu recolhido), em JSON curto —
+    /// ver PreferenciasAparencia. Nulo = nunca salvou (usa o padrão).
+    /// </summary>
+    public string? PreferenciasAparencia { get; set; }
 }

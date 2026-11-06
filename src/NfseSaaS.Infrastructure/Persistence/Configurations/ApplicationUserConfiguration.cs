@@ -14,6 +14,9 @@ public sealed class ApplicationUserConfiguration : IEntityTypeConfiguration<Appl
 {
     public void Configure(EntityTypeBuilder<ApplicationUser> builder)
     {
+        builder.Property(u => u.PreferenciasAparencia)
+            .HasMaxLength(300);
+
         // SetNull, não Restrict/Cascade: excluir um Grupo com usuário
         // vinculado não pode ser bloqueado só por isso (ver
         // ExcluirGrupoUseCase, que já valida isso explicitamente antes

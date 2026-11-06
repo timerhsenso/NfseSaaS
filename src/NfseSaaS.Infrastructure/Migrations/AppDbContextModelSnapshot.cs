@@ -1687,6 +1687,10 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
+                    b.Property<string>("PaletaCores")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
                     b.Property<int>("Perfil")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -1781,6 +1785,10 @@ namespace NfseSaaS.Infrastructure.Migrations
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("PreferenciasAparencia")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");

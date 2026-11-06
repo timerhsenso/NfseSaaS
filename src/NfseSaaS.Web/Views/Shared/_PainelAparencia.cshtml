@@ -1,0 +1,86 @@
+@model bool
+@using NfseSaaS.Application.UseCases.Aparencia
+@*
+    Painel lateral (offcanvas) "Aparência", aberto pelo botão do topo.
+    Model = o usuário pode mudar as cores da conta (administrador).
+    Cada clique já mostra o resultado na tela (pré-visualização);
+    "Salvar" grava, fechar sem salvar volta ao que estava (aparencia.js).
+*@
+<div class="offcanvas offcanvas-end painel-aparencia" tabindex="-1" id="painelAparencia" aria-labelledby="tituloAparencia">
+    <div class="offcanvas-header">
+        <div>
+            <h5 class="offcanvas-title" id="tituloAparencia"><i class="bi bi-sliders2" aria-hidden="true"></i> Aparência</h5>
+            <small class="text-muted">As mudanças aparecem na hora; salve para manter.</small>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+    </div>
+    <div class="offcanvas-body">
+        <section class="aparencia-secao">
+            <h6>Cores da conta</h6>
+            @if (Model)
+            {
+                <p class="aparencia-ajuda">Vale para todos os usuários desta conta.</p>
+            }
+            else
+            {
+                <p class="aparencia-ajuda">Definidas pelo administrador da conta.</p>
+            }
+            <div class="aparencia-paletas" role="radiogroup" aria-label="Cores da conta">
+                @foreach (var p in AparenciaCatalogo.Paletas)
+                {
+                    <button type="button" class="aparencia-paleta" role="radio" data-paleta="@p.Codigo" aria-checked="false"
+                            title="@p.Descricao" @(Model ? null : "disabled")>
+                        <span class="amostra" aria-hidden="true">
+                            <span class="amostra-menu" style="background:@p.CorMenu"></span>
+                            <span class="amostra-tela">
+                                <span class="amostra-linha"></span>
+                                <span class="amostra-botao" style="background:@p.CorPrincipal"></span>
+                            </span>
+                        </span>
+                        <span class="nome">@p.Nome</span>
+                    </button>
+                }
+            </div>
+        </section>
+
+        <section class="aparencia-secao">
+            <h6>Minhas preferências</h6>
+            <p class="aparencia-ajuda">Só para você, em qualquer computador.</p>
+
+            <label class="form-label" id="rotulo-modo">Modo</label>
+            <div class="btn-group w-100 aparencia-opcoes" role="radiogroup" aria-labelledby="rotulo-modo" data-campo="modo">
+                @foreach (var o in AparenciaCatalogo.Modos)
+                {
+                    <button type="button" class="btn btn-outline-secondary" role="radio" data-valor="@o.Codigo" aria-checked="false">@o.Nome</button>
+                }
+            </div>
+
+            <label class="form-label mt-3" id="rotulo-fonte">Tamanho do texto</label>
+            <div class="btn-group w-100 aparencia-opcoes" role="radiogroup" aria-labelledby="rotulo-fonte" data-campo="fonte">
+                @foreach (var o in AparenciaCatalogo.Fontes)
+                {
+                    <button type="button" class="btn btn-outline-secondary" role="radio" data-valor="@o.Codigo" aria-checked="false" title="@o.Nome">
+                        <span class="aparencia-letra aparencia-letra-@o.Codigo" aria-hidden="true">A</span><span class="visually-hidden">@o.Nome</span>
+                    </button>
+                }
+            </div>
+
+            <label class="form-label mt-3" id="rotulo-densidade">Botões e campos</label>
+            <div class="btn-group w-100 aparencia-opcoes" role="radiogroup" aria-labelledby="rotulo-densidade" data-campo="densidade">
+                @foreach (var o in AparenciaCatalogo.Densidades)
+                {
+                    <button type="button" class="btn btn-outline-secondary" role="radio" data-valor="@o.Codigo" aria-checked="false">@o.Nome</button>
+                }
+            </div>
+
+            <div class="form-check form-switch mt-3 d-none d-lg-block">
+                <input class="form-check-input" type="checkbox" role="switch" id="aparencia-menu-recolhido" />
+                <label class="form-check-label" for="aparencia-menu-recolhido">Menu lateral recolhido (só ícones)</label>
+            </div>
+        </section>
+    </div>
+    <div class="offcanvas-footer">
+        <button type="button" class="btn btn-outline-secondary" id="aparencia-restaurar">Restaurar padrão</button>
+        <button type="button" class="btn btn-primary" id="aparencia-salvar"><i class="bi bi-check2" aria-hidden="true"></i> Salvar</button>
+    </div>
+</div>
