@@ -21,8 +21,19 @@ public enum TipoAvisoCobranca
     EmissaoBloqueada = 6,
 
     AssinaturaCancelada = 7,
-    PagamentoConfirmado = 8
+    PagamentoConfirmado = 8,
+
+    /// <summary>Notas em produção no mês chegaram a 80% ou a 100% do plano (nunca bloqueia).</summary>
+    LimiteNotas = 9,
+
+    /// <summary>Mais empresas ativas do que o plano permite (nunca bloqueia).</summary>
+    LimiteEmpresas = 10
 }
+
+/// <summary>Uso da conta frente ao plano assinado (nulo para quem não tem plano).</summary>
+/// <param name="NotasPorMes">Nulo = plano sem limite de notas.</param>
+/// <param name="NotasNoMes">Notas autorizadas em produção no mês corrente (Brasília).</param>
+public sealed record UsoPlano(string PlanoNome, int MaxEmpresas, int? NotasPorMes, int EmpresasAtivas, int NotasNoMes);
 
 /// <summary>
 /// Foto da assinatura de uma conta, já com o que precisa ser contado no
@@ -39,7 +50,8 @@ public sealed record EstadoAvisoCobranca(
     DateOnly? VencimentoFaturaPendente,
     decimal? ValorFaturaPendente,
     DateTimeOffset? UltimoPagamentoEm,
-    DateTimeOffset? CanceladaEm);
+    DateTimeOffset? CanceladaEm,
+    UsoPlano? Uso = null);
 
 /// <summary>
 /// Um aviso a mandar. <paramref name="Chave"/> vai para
@@ -58,7 +70,8 @@ public enum NivelFaixaCobranca
 }
 
 /// <summary>Faixa no topo do painel. <paramref name="MostrarPagar"/>: há fatura em aberto para pagar.</summary>
-public sealed record FaixaCobranca(NivelFaixaCobranca Nivel, string Mensagem, bool MostrarPagar);
+/// <param name="SugerirTroca">Limite do plano: o botão leva a "Trocar de plano".</param>
+public sealed record FaixaCobranca(NivelFaixaCobranca Nivel, string Mensagem, bool MostrarPagar, bool SugerirTroca = false);
 
 /// <summary>
 /// Quais avisos de cobrança uma conta deve receber AGORA e qual faixa o
@@ -82,6 +95,9 @@ public static class RegrasAvisoCobranca
     public const int NotasRestantesAviso = 2;
 
     public const int JanelaEventoDias = 3;
+
+    /// <summary>Avisa quando as notas do mês chegam a este percentual do plano (e de novo aos 100%).</summary>
+    public const int PercentualAvisoNotas = 80;
 
     public static IReadOnlyList<AvisoCobranca> Avaliar(EstadoAvisoCobranca estado, DateTimeOffset agora, DateOnly hoje)
     {
@@ -151,7 +167,30 @@ public static class RegrasAvisoCobranca
                     $"cob:teste-notas:{conta}:{testeInicio.ToUniversalTime():yyyyMMddHHmmss}", DiaEmBrasilia(termina), notasRestantes));
         }
 
+        // Limite do plano (suave): um aviso por mês e por faixa, nunca bloqueia.
+        if (estado.Uso is { } uso)
+        {
+            var mes = hoje.ToString("yyyyMM", CultureInfo.InvariantCulture);
+            if (uso.EmpresasAtivas > uso.MaxEmpresas)
+                avisos.Add(new AvisoCobranca(TipoAvisoCobranca.LimiteEmpresas,
+                    $"cob:limite-empresas:{conta}:{mes}", hoje, uso.EmpresasAtivas));
+
+            if (FaixaNotas(uso) is { } faixaNotas)
+                avisos.Add(new AvisoCobranca(TipoAvisoCobranca.LimiteNotas,
+                    $"cob:limite-notas:{conta}:{mes}:{faixaNotas}", hoje, uso.NotasNoMes));
+        }
+
         return avisos;
+    }
+
+    /// <summary>100 quando as notas do mês chegaram ao limite, 80 quando passaram de 80%, nulo abaixo disso ou sem limite.</summary>
+    public static int? FaixaNotas(UsoPlano uso)
+    {
+        if (uso.NotasPorMes is not { } limite || limite <= 0)
+            return null;
+        if (uso.NotasNoMes >= limite)
+            return 100;
+        return uso.NotasNoMes * 100 >= limite * PercentualAvisoNotas ? PercentualAvisoNotas : null;
     }
 
     /// <summary>
@@ -200,6 +239,19 @@ public static class RegrasAvisoCobranca
                 return new FaixaCobranca(NivelFaixaCobranca.Info,
                     $"O teste grátis termina em {Data(DiaEmBrasilia(termina))} ou ao chegar a {Planos.TesteNotas} notas em produção (faltam {dias} dia(s) e {notas} nota(s)). Assine um plano para não parar de emitir.",
                     false);
+        }
+
+        if (estado.Uso is { } uso)
+        {
+            if (uso.EmpresasAtivas > uso.MaxEmpresas)
+                return new FaixaCobranca(NivelFaixaCobranca.Atencao,
+                    $"A conta tem {uso.EmpresasAtivas} empresas ativas e o plano {uso.PlanoNome} permite até {uso.MaxEmpresas}. Nada foi bloqueado, mas o plano certo para esse uso é um maior.",
+                    false, SugerirTroca: true);
+
+            if (FaixaNotas(uso) is { } faixaNotas)
+                return new FaixaCobranca(faixaNotas == 100 ? NivelFaixaCobranca.Atencao : NivelFaixaCobranca.Info,
+                    $"Este mês a conta já emitiu {uso.NotasNoMes} de {uso.NotasPorMes} notas do plano {uso.PlanoNome}. A emissão continua normalmente{(faixaNotas == 100 ? "; se o uso seguir acima do plano, troque para um maior" : "")}.",
+                    false, SugerirTroca: true);
         }
 
         return null;

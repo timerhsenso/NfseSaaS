@@ -9,7 +9,7 @@ namespace NfseSaaS.Web.Controllers.Api;
 
 /// <summary>
 /// Faixa de cobrança no topo do painel (fatura em aberto, atraso, bloqueio,
-/// teste acabando). Para qualquer usuário logado da conta, porque o bloqueio
+/// teste acabando, limite do plano). Para qualquer usuário logado da conta, porque o bloqueio
 /// afeta quem emite; o link para pagar só vai para quem pode consultar a
 /// tela Assinatura. 204 = nada a mostrar (inclusive com a cobrança desligada).
 /// </summary>
@@ -33,7 +33,7 @@ public sealed class FaixaCobrancaController : ControllerBase
         if (faixa is null)
             return NoContent();
 
-        return Ok(new { faixa.Nivel, faixa.Mensagem, faixa.UrlPagar, podeVerAssinatura });
+        return Ok(new { faixa.Nivel, faixa.Mensagem, faixa.UrlPagar, faixa.SugerirTroca, podeVerAssinatura });
     }
 
     /// <summary>Mesma regra do RequerPermissao(Assinatura, Consultar), sem barrar a requisição.</summary>

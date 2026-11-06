@@ -22,8 +22,12 @@ public class RegrasAvisoCobrancaTests
         DateOnly? vencimento = null,
         decimal? valor = null,
         DateTimeOffset? pagoEm = null,
-        DateTimeOffset? canceladaEm = null) =>
-        new(Conta, status, testeIniciadoEm, notas, assinaturaId, atrasadaDesde, url, vencimento, valor, pagoEm, canceladaEm);
+        DateTimeOffset? canceladaEm = null,
+        UsoPlano? uso = null) =>
+        new(Conta, status, testeIniciadoEm, notas, assinaturaId, atrasadaDesde, url, vencimento, valor, pagoEm, canceladaEm, uso);
+
+    private static UsoPlano Uso(int empresas = 1, int notas = 0, int maxEmpresas = 1, int? notasPorMes = 15) =>
+        new("Mico", maxEmpresas, notasPorMes, empresas, notas);
 
     private static IReadOnlyList<TipoAvisoCobranca> Tipos(EstadoAvisoCobranca estado) =>
         RegrasAvisoCobranca.Avaliar(estado, Agora, Hoje).Select(a => a.Tipo).ToList();
@@ -178,6 +182,68 @@ public class RegrasAvisoCobrancaTests
         Assert.Null(RegrasAvisoCobranca.Faixa(Estado(StatusAssinatura.Ativa, pagoEm: Agora.AddDays(-20)), Agora, Hoje));
     }
 
+    [Theory]
+    [InlineData(11, null)]
+    [InlineData(12, 80)]   // 80% de 15
+    [InlineData(14, 80)]
+    [InlineData(15, 100)]
+    [InlineData(22, 100)]
+    public void Limite_de_notas_avisa_aos_80_e_aos_100_por_cento(int notas, int? faixa)
+    {
+        Assert.Equal(faixa, RegrasAvisoCobranca.FaixaNotas(Uso(notas: notas)));
+
+        var avisos = RegrasAvisoCobranca.Avaliar(Estado(StatusAssinatura.Ativa, assinaturaId: "sub_1", uso: Uso(notas: notas)), Agora, Hoje);
+        if (faixa is null)
+            Assert.Empty(avisos);
+        else
+            Assert.Equal($"cob:limite-notas:{Conta:N}:202611:{faixa}", Assert.Single(avisos).Chave);
+    }
+
+    [Fact]
+    public void Plano_sem_limite_de_notas_nunca_avisa_notas()
+    {
+        Assert.Null(RegrasAvisoCobranca.FaixaNotas(Uso(notas: 5000, notasPorMes: null)));
+    }
+
+    [Fact]
+    public void Empresas_acima_do_plano_avisam_uma_vez_por_mes_e_a_faixa_sugere_trocar()
+    {
+        var estado = Estado(StatusAssinatura.Ativa, assinaturaId: "sub_1", uso: Uso(empresas: 2));
+
+        var aviso = RegrasAvisoCobranca.Avaliar(estado, Agora, Hoje).Single();
+        Assert.Equal(TipoAvisoCobranca.LimiteEmpresas, aviso.Tipo);
+        Assert.Equal($"cob:limite-empresas:{Conta:N}:202611", aviso.Chave);
+        Assert.NotEqual(aviso.Chave, RegrasAvisoCobranca.Avaliar(estado, Agora.AddMonths(1), Hoje.AddMonths(1)).Single().Chave);
+
+        var faixa = RegrasAvisoCobranca.Faixa(estado, Agora, Hoje)!;
+        Assert.True(faixa.SugerirTroca);
+        Assert.Equal(NivelFaixaCobranca.Atencao, faixa.Nivel);
+        Assert.Contains("Nada foi bloqueado", faixa.Mensagem);
+    }
+
+    [Fact]
+    public void Fatura_em_aberto_tem_prioridade_sobre_o_limite_na_faixa()
+    {
+        var estado = Estado(StatusAssinatura.Ativa, assinaturaId: "sub_1", url: "https://asaas/i/1", vencimento: Hoje.AddDays(5), uso: Uso(empresas: 3));
+        var faixa = RegrasAvisoCobranca.Faixa(estado, Agora, Hoje)!;
+        Assert.True(faixa.MostrarPagar);
+        Assert.False(faixa.SugerirTroca);
+    }
+
+    [Fact]
+    public void Mensagem_de_limite_diz_que_nada_e_bloqueado_e_leva_a_trocar_de_plano()
+    {
+        var estado = Estado(StatusAssinatura.Ativa, assinaturaId: "sub_1", uso: Uso(notas: 15));
+        var aviso = RegrasAvisoCobranca.Avaliar(estado, Agora, Hoje).Single();
+
+        var (assunto, corpo) = MensagensAvisoCobranca.Montar(aviso, estado, "Mico", "https://app/Assinatura");
+
+        Assert.Equal("Limite de notas do plano Mico atingido neste mês", assunto);
+        Assert.Contains("Nada é bloqueado", corpo);
+        Assert.Contains("Trocar de plano", corpo);
+        Assert.Contains("15 de 15 notas", corpo);
+    }
+
     [Fact]
     public void Mensagens_codificam_o_link_e_levam_o_botao_certo()
     {
@@ -197,7 +263,7 @@ public class RegrasAvisoCobrancaTests
     [Fact]
     public void Todos_os_tipos_tem_mensagem()
     {
-        var estado = Estado(StatusAssinatura.Ativa, url: "https://asaas/i/1", vencimento: Hoje);
+        var estado = Estado(StatusAssinatura.Ativa, url: "https://asaas/i/1", vencimento: Hoje, uso: Uso(empresas: 2, notas: 15));
         foreach (var tipo in Enum.GetValues<TipoAvisoCobranca>())
         {
             var (assunto, corpo) = MensagensAvisoCobranca.Montar(new AvisoCobranca(tipo, "k", Hoje, 2), estado, null, null);

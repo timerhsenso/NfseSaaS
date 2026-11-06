@@ -87,12 +87,8 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
             ? RegrasCobranca.Avaliar(assinatura.Status, assinatura.TesteIniciadoEm, notasTeste, assinatura.AtrasadaDesde, DateTimeOffset.UtcNow, DataBrasilia.Hoje())
             : new SituacaoCobranca(true, null, null, assinatura.TesteIniciadoEm?.AddDays(Planos.TesteDias));
 
-        var inicioMes = InicioDoMesUtc();
-        var notasMes = await _db.NotasFiscais.IgnoreQueryFilters().AsNoTracking()
-            .CountAsync(n => n.TenantId == tenantId && n.TipoAmbiente == TipoAmbiente.Producao
-                             && n.Status == NfseStatus.Autorizada && n.DataEmissao >= inicioMes, cancellationToken);
-        var empresas = await _db.Empresas.IgnoreQueryFilters().AsNoTracking()
-            .CountAsync(e => e.TenantId == tenantId && e.Ativo, cancellationToken);
+        var notasMes = await ContarNotasDoMesAsync(_db, tenantId, cancellationToken);
+        var empresas = await ContarEmpresasAtivasAsync(_db, tenantId, cancellationToken);
 
         // Planos do perfil da conta (empresa ou contador), com o preço de hoje.
         var perfil = await _db.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.Perfil).FirstAsync(cancellationToken);
@@ -236,8 +232,7 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
                 throw new RegraNegocioException("Plano inválido ou fora de venda. Atualize a página e escolha outro.");
 
             var atual = assinatura.Plano is { } codigo ? await _catalogo.ObterAsync(codigo, cancellationToken) : null;
-            var empresas = await _db.Empresas.IgnoreQueryFilters().AsNoTracking()
-                .CountAsync(e => e.TenantId == tenantId && e.Ativo, cancellationToken);
+            var empresas = await ContarEmpresasAtivasAsync(_db, tenantId, cancellationToken);
             var vagas = await _catalogo.VagasFundadorRestantesAsync(novo.Publico, cancellationToken);
 
             var troca = RegrasTrocaPlano.Calcular(atual, assinatura.Fundador, novo, vagas, empresas);
@@ -334,6 +329,20 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
             .CountAsync(n => n.TenantId == assinatura.TenantId && n.TipoAmbiente == TipoAmbiente.Producao
                              && n.Status == NfseStatus.Autorizada && n.DataEmissao >= inicioUtc, cancellationToken);
     }
+
+    /// <summary>Notas autorizadas em produção no mês corrente (Brasília) — o "notas/mês" dos planos.</summary>
+    internal static Task<int> ContarNotasDoMesAsync(AppDbContext db, Guid tenantId, CancellationToken cancellationToken)
+    {
+        var inicioMes = InicioDoMesUtc();
+        return db.NotasFiscais.IgnoreQueryFilters().AsNoTracking()
+            .CountAsync(n => n.TenantId == tenantId && n.TipoAmbiente == TipoAmbiente.Producao
+                             && n.Status == NfseStatus.Autorizada && n.DataEmissao >= inicioMes, cancellationToken);
+    }
+
+    /// <summary>Empresas ativas da conta — o "empresas" dos planos.</summary>
+    internal static Task<int> ContarEmpresasAtivasAsync(AppDbContext db, Guid tenantId, CancellationToken cancellationToken) =>
+        db.Empresas.IgnoreQueryFilters().AsNoTracking()
+            .CountAsync(e => e.TenantId == tenantId && e.Ativo, cancellationToken);
 
     private static DateTimeOffset InicioDoMesUtc()
     {

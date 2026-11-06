@@ -140,7 +140,8 @@ public sealed record FaturaGateway(string Id, DateOnly Vencimento, string? Url);
 /// <summary>Faixa no topo do painel (ver RegrasAvisoCobranca.Faixa).</summary>
 /// <param name="Nivel">"info", "atencao" ou "bloqueio".</param>
 /// <param name="UrlPagar">Link da fatura em aberto; só para quem pode ver a tela Assinatura.</param>
-public sealed record FaixaCobrancaResponse(string Nivel, string Mensagem, string? UrlPagar);
+/// <param name="SugerirTroca">Limite do plano: o botão da faixa é "Trocar de plano".</param>
+public sealed record FaixaCobrancaResponse(string Nivel, string Mensagem, string? UrlPagar, bool SugerirTroca);
 
 /// <summary>Faixa de cobrança da conta logada (nulo = nada a mostrar, inclusive com a cobrança desligada).</summary>
 public interface IObterFaixaCobrancaUseCase

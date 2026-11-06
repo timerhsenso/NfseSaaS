@@ -71,6 +71,18 @@ public static class MensagensAvisoCobranca
                 $"Recebemos o pagamento da sua assinatura{plano}. A emissão em produção está liberada. Obrigado por usar o micoempresa!",
                 Botao.Assinatura),
 
+            TipoAvisoCobranca.LimiteNotas => (
+                aviso.Quantidade >= estado.Uso?.NotasPorMes
+                    ? $"Limite de notas do plano {estado.Uso?.PlanoNome} atingido neste mês"
+                    : $"Você já emitiu {aviso.Quantidade} de {estado.Uso?.NotasPorMes} notas do plano {estado.Uso?.PlanoNome} neste mês",
+                $"Este mês a conta já emitiu <strong>{aviso.Quantidade} de {estado.Uso?.NotasPorMes} notas</strong> em produção, o limite do plano {Html(estado.Uso?.PlanoNome ?? "")}. <strong>Nada é bloqueado</strong>: a emissão continua normalmente. Se esse volume for o normal da sua conta, troque para um plano maior em <em>Assinatura</em>; o novo valor vale a partir da próxima fatura.",
+                Botao.Trocar),
+
+            TipoAvisoCobranca.LimiteEmpresas => (
+                $"Sua conta passou do limite de empresas do plano {estado.Uso?.PlanoNome}",
+                $"A conta tem <strong>{aviso.Quantidade} empresas ativas</strong> e o plano {Html(estado.Uso?.PlanoNome ?? "")} permite até {estado.Uso?.MaxEmpresas}. <strong>Nada é bloqueado</strong>. Para regularizar, troque para um plano maior em <em>Assinatura</em> ou desative em <em>Empresas</em> as que não usa.",
+                Botao.Trocar),
+
             _ => throw new ArgumentOutOfRangeException(nameof(aviso), aviso.Tipo, null)
         };
 
@@ -79,7 +91,7 @@ public static class MensagensAvisoCobranca
             Botao.Fatura when urlFatura is not null =>
                 $"""<p><a href="{Html(urlFatura)}" style="display:inline-block;padding:10px 18px;background:#16a34a;color:#fff;border-radius:6px;text-decoration:none;font-weight:600">Pagar a fatura</a></p>""",
             _ when linkAssinatura is not null =>
-                $"""<p><a href="{Html(linkAssinatura)}" style="display:inline-block;padding:10px 18px;background:#2563eb;color:#fff;border-radius:6px;text-decoration:none;font-weight:600">Abrir Assinatura</a></p>""",
+                $"""<p><a href="{Html(linkAssinatura)}" style="display:inline-block;padding:10px 18px;background:#2563eb;color:#fff;border-radius:6px;text-decoration:none;font-weight:600">{(botao == Botao.Trocar ? "Trocar de plano" : "Abrir Assinatura")}</a></p>""",
             _ => string.Empty
         };
 
@@ -95,7 +107,8 @@ public static class MensagensAvisoCobranca
     private enum Botao
     {
         Assinatura,
-        Fatura
+        Fatura,
+        Trocar
     }
 
     private static string Html(string texto) => WebUtility.HtmlEncode(texto);

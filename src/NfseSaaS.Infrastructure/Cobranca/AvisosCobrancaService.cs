@@ -142,7 +142,7 @@ public sealed class AvisosCobrancaService : IEnviarAvisosCobrancaUseCase, IObter
             _ => "info"
         };
         var url = incluirLinkPagamento && faixa.MostrarPagar ? assinatura.UrlFaturaPendente : null;
-        return new FaixaCobrancaResponse(nivel, faixa.Mensagem, url);
+        return new FaixaCobrancaResponse(nivel, faixa.Mensagem, url, faixa.SugerirTroca);
     }
 
     // ---------- Apoio ----------
@@ -151,7 +151,23 @@ public sealed class AvisosCobrancaService : IEnviarAvisosCobrancaUseCase, IObter
         new(a.TenantId, a.Status, a.TesteIniciadoEm,
             await CobrancaService.ContarNotasDoTesteAsync(_db, a, cancellationToken),
             a.AsaasAssinaturaId, a.AtrasadaDesde, a.UrlFaturaPendente, a.VencimentoFaturaPendente, a.ValorFaturaPendente,
-            a.UltimoPagamentoEm, a.CanceladaEm);
+            a.UltimoPagamentoEm, a.CanceladaEm,
+            await UsoAsync(a, cancellationToken));
+
+    /// <summary>Uso frente ao plano, só para quem assinou um plano (não cancelado).</summary>
+    private async Task<UsoPlano?> UsoAsync(Assinatura a, CancellationToken cancellationToken)
+    {
+        if (a.Plano is not { } codigo || a.AsaasAssinaturaId is null || a.Status == Domain.Enums.StatusAssinatura.Cancelada)
+            return null;
+
+        var plano = await _catalogo.ObterAsync(codigo, cancellationToken);
+        if (plano is null)
+            return null;
+
+        return new UsoPlano(plano.Nome, plano.MaxEmpresas, plano.NotasPorMes,
+            await CobrancaService.ContarEmpresasAtivasAsync(_db, a.TenantId, cancellationToken),
+            await CobrancaService.ContarNotasDoMesAsync(_db, a.TenantId, cancellationToken));
+    }
 
     private static AvisosCobrancaResult Nada(string motivo) =>
         new(Array.Empty<TipoAvisoCobranca>(), Array.Empty<string>(), motivo);

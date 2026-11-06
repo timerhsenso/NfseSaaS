@@ -136,7 +136,7 @@ document.addEventListener('click', function (e) {
 })();
 
 // Faixa de cobrança no topo de todas as telas: fatura em aberto, atraso,
-// emissão bloqueada ou teste grátis acabando. 204 = nada a mostrar (também
+// emissão bloqueada, teste grátis acabando ou limite do plano (que nunca bloqueia). 204 = nada a mostrar (também
 // com a cobrança desligada, no beta). Na própria tela Assinatura não
 // aparece: ela já mostra a mesma situação com mais detalhe.
 (async function faixaCobranca() {
@@ -163,7 +163,7 @@ document.addEventListener('click', function (e) {
             '<i class="bi bi-qr-code" aria-hidden="true"></i> Pagar fatura</a>';
     }
     if (faixa.podeVerAssinatura) {
-        botoes += `<a class="btn btn-sm btn-outline-${estilo.cor}" href="/Assinatura">Ver assinatura</a>`;
+        botoes += `<a class="btn btn-sm btn-outline-${estilo.cor}" href="/Assinatura">${faixa.sugerirTroca ? 'Trocar de plano' : 'Ver assinatura'}</a>`;
     }
 
     const aviso = document.createElement('div');

@@ -6,6 +6,7 @@ using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Authorization;
 using NfseSaaS.Application.Common;
 using NfseSaaS.Application.UseCases.Cobranca;
+using NfseSaaS.Domain.Cobranca;
 using NfseSaaS.Domain.Entities;
 using NfseSaaS.Domain.Enums;
 using NfseSaaS.Infrastructure.Cobranca;
@@ -149,6 +150,46 @@ public class AvisosCobrancaTests
         }
         finally
         {
+            await LimparAsync(db, conta.Id);
+        }
+    }
+
+    [Fact]
+    public async Task Empresas_acima_do_plano_geram_aviso_e_faixa_de_troca_sem_bloquear()
+    {
+        using var escopo = _factory.Services.CreateScope();
+        var sp = escopo.ServiceProvider;
+        var db = sp.GetRequiredService<AppDbContext>();
+        var s = Guid.NewGuid().ToString("N");
+        var (conta, confirmado) = await MontarAsync(db, s);
+
+        try
+        {
+            // Mico (1 empresa), sem fatura em aberto, com 2 empresas ativas.
+            var assinatura = await db.Assinaturas.SingleAsync(a => a.TenantId == conta.Id);
+            assinatura.Plano = Planos.CodigoMico;
+            assinatura.LimparFaturaPendente();
+            db.TenantIdOverrideDeSistema = conta.Id;
+            db.Empresas.Add(new Empresa { Cnpj = s[..14], RazaoSocial = "E1 " + s });
+            db.Empresas.Add(new Empresa { Cnpj = s[14..28], RazaoSocial = "E2 " + s });
+            await db.SaveChangesAsync();
+            db.TenantIdOverrideDeSistema = null;
+            sp.GetRequiredService<ICurrentTenant>().DefinirTenantIdDeSistema(conta.Id);
+
+            var piloto = Servico(sp, new CobrancaOptions { Ativa = false, ContasPiloto = { conta.Id } });
+            var resultado = await piloto.ExecutarAsync(conta.Id, CancellationToken.None);
+            Assert.Equal(new[] { TipoAvisoCobranca.LimiteEmpresas }, resultado.Enviados);
+            Assert.Equal(new[] { confirmado }, resultado.Destinatarios);
+            Assert.Empty((await piloto.ExecutarAsync(conta.Id, CancellationToken.None)).Enviados);
+
+            var faixa = await ((IObterFaixaCobrancaUseCase)piloto).ExecutarAsync(true, CancellationToken.None);
+            Assert.Equal("atencao", faixa!.Nivel);
+            Assert.True(faixa.SugerirTroca);
+            Assert.Null(faixa.UrlPagar);
+        }
+        finally
+        {
+            await db.Empresas.IgnoreQueryFilters().Where(x => x.TenantId == conta.Id).ExecuteDeleteAsync();
             await LimparAsync(db, conta.Id);
         }
     }
