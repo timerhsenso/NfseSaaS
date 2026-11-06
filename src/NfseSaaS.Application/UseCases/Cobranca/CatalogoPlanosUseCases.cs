@@ -150,6 +150,12 @@ public interface IConfirmarExclusaoPlanoUseCase
 public static class RegrasCatalogoPlanos
 {
     public const decimal PrecoMaximo = 99_999m;
+
+    /// <summary>
+    /// Menor valor que o Asaas aceita numa cobrança (R$ 5,00): abaixo disso
+    /// a assinatura e a troca de plano são recusadas pelo gateway.
+    /// </summary>
+    public const decimal PrecoMinimo = 5m;
     public const int MaxEmpresasLimite = 10_000;
     public const int NotasPorMesLimite = 1_000_000;
     public const int VagasLimite = 10_000;
@@ -229,10 +235,10 @@ public static class RegrasCatalogoPlanos
 
     private static IEnumerable<string> ErrosPreco(decimal mensal, decimal fundador)
     {
-        if (mensal <= 0 || mensal > PrecoMaximo || decimal.Round(mensal, 2) != mensal)
-            yield return "Preço normal: maior que zero, com até 2 casas decimais.";
-        if (fundador <= 0 || fundador > PrecoMaximo || decimal.Round(fundador, 2) != fundador)
-            yield return "Preço de fundador: maior que zero, com até 2 casas decimais.";
+        if (mensal < PrecoMinimo || mensal > PrecoMaximo || decimal.Round(mensal, 2) != mensal)
+            yield return "Preço normal: a partir de R$ 5,00 (mínimo de cobrança do Asaas), com até 2 casas decimais.";
+        if (fundador < PrecoMinimo || fundador > PrecoMaximo || decimal.Round(fundador, 2) != fundador)
+            yield return "Preço de fundador: a partir de R$ 5,00 (mínimo de cobrança do Asaas), com até 2 casas decimais.";
         if (fundador > mensal)
             yield return "O preço de fundador não pode ser maior que o normal.";
     }

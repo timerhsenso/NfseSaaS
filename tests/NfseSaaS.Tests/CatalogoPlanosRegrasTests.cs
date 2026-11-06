@@ -75,6 +75,11 @@ public class CatalogoPlanosRegrasTests
             Assert.Throws<RegraNegocioException>(() => RegrasCatalogoPlanos.ValidarNovoPreco(new NovoPrecoPlanoRequest(39, 29, Hoje.AddDays(-1), null), Hoje)).Message);
         Assert.Throws<RegraNegocioException>(() => RegrasCatalogoPlanos.ValidarNovoPreco(new NovoPrecoPlanoRequest(0, 0, Hoje, null), Hoje));
 
+        // Mínimo de cobrança do Asaas: R$ 5,00 (normal e fundador).
+        Assert.Contains("R$ 5,00",
+            Assert.Throws<RegraNegocioException>(() => RegrasCatalogoPlanos.ValidarNovoPreco(new NovoPrecoPlanoRequest(9.99m, 1.99m, Hoje, null), Hoje)).Message);
+        RegrasCatalogoPlanos.ValidarNovoPreco(new NovoPrecoPlanoRequest(5m, 5m, Hoje, null), Hoje);
+
         RegrasCatalogoPlanos.ValidarVagas(new AlterarVagasFundadorRequest(PublicoPlano.Empresas, 0, null));
         Assert.Throws<RegraNegocioException>(() => RegrasCatalogoPlanos.ValidarVagas(new AlterarVagasFundadorRequest(PublicoPlano.Empresas, -1, null)));
         Assert.Throws<RegraNegocioException>(() => RegrasCatalogoPlanos.ValidarVagas(new AlterarVagasFundadorRequest((PublicoPlano)0, 5, null)));

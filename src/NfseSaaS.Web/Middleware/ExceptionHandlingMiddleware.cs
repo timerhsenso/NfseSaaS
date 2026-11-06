@@ -114,6 +114,15 @@ public sealed class ExceptionHandlingMiddleware
                     erro = "Sessão de segurança expirada. Atualize a página e tente novamente.",
                     erros = (object?)null
                 },
+                // Regra de negócio e "não encontrado" são mensagens escritas
+                // para o usuário (o que fazer): vão em QUALQUER ambiente.
+                // Antes caíam no genérico em produção e a tela mostrava só
+                // "Ocorreu um erro" (ex.: "Esta conta está suspensa").
+                RegraNegocioException or RecursoNaoEncontradoException => new
+                {
+                    erro = ex.Message,
+                    erros = (object?)null
+                },
                 _ when _environment.IsDevelopment() => new { erro = ex.Message, detalhe = ex.ToString() },
                 _ => new { erro = "Ocorreu um erro ao processar a solicitação.", detalhe = (string?)null }
             };
