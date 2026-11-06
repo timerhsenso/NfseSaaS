@@ -1,0 +1,38 @@
+@using Microsoft.Extensions.Options
+@using NfseSaaS.Application.Common
+@inject IOptions<SuporteOptions> SuporteOpcoes
+@*
+    Contato do suporte (configuração "Suporte"). Uso:
+    <partial name="_ContatoSuporte" />               — linha com e-mail/WhatsApp
+    <partial name="_ContatoSuporte" model="@("bloco")" /> — com título e horário
+    Sem contato configurado, não renderiza nada.
+*@
+@{
+    var s = SuporteOpcoes.Value;
+    var bloco = (Model as string) == "bloco";
+}
+@if (s.TemContato)
+{
+    <span class="contato-suporte">
+        @if (bloco)
+        {
+            <strong>Fale com o suporte:</strong>
+        }
+        @if (s.TemEmail)
+        {
+            <a href="mailto:@s.Email.Trim()"><i class="bi bi-envelope" aria-hidden="true"></i> @s.Email.Trim()</a>
+        }
+        @if (s.TemEmail && s.TemWhatsApp)
+        {
+            <span aria-hidden="true"> · </span>
+        }
+        @if (s.TemWhatsApp)
+        {
+            <a href="@s.WhatsAppLink" target="_blank" rel="noopener"><i class="bi bi-whatsapp" aria-hidden="true"></i> @s.WhatsAppFormatado</a>
+        }
+        @if (bloco && !string.IsNullOrWhiteSpace(s.Horario))
+        {
+            <span class="text-muted"> (@s.Horario)</span>
+        }
+    </span>
+}

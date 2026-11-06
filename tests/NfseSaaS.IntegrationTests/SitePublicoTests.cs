@@ -29,6 +29,13 @@ public class SitePublicoTests
         Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
         var html = await resposta.Content.ReadAsStringAsync();
         Assert.Contains("Criar conta grátis", html);
+        // Contato do suporte (appsettings "Suporte") no rodapé; WhatsApp vazio não aparece.
+        Assert.Contains("mailto:suporte@micoempresa.com.br", html);
+        Assert.DoesNotContain("wa.me/", html);
+
+        // Tela de login (layout de autenticação): contato para as mensagens de erro.
+        var login = await Cliente().GetStringAsync("/Account/Login");
+        Assert.Contains("data-suporte=\"suporte@micoempresa.com.br\"", login);
         Assert.Contains("/Account/Registrar", html);
     }
 

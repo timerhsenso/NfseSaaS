@@ -18,8 +18,9 @@ public static class MensagensAvisoCobranca
         "As notas em homologação, as consultas e os downloads continuam liberados.";
 
     /// <param name="linkAssinatura">Endereço da tela Assinatura (nulo sem Email:AppBaseUrl).</param>
+    /// <param name="contatoSuporte">"suporte@... ou WhatsApp ..." (SuporteOptions.TextoContato); vazio = sem a linha.</param>
     public static (string Assunto, string CorpoHtml) Montar(
-        AvisoCobranca aviso, EstadoAvisoCobranca estado, string? planoNome, string? linkAssinatura)
+        AvisoCobranca aviso, EstadoAvisoCobranca estado, string? planoNome, string? linkAssinatura, string? contatoSuporte = null)
     {
         var data = aviso.Referencia is { } r ? r.ToString("dd/MM/yyyy", PtBr) : string.Empty;
         var valor = estado.ValorFaturaPendente is { } v ? $" de <strong>{Html(v.ToString("C", PtBr))}</strong>" : string.Empty;
@@ -95,9 +96,14 @@ public static class MensagensAvisoCobranca
             _ => string.Empty
         };
 
+        var suporte = string.IsNullOrWhiteSpace(contatoSuporte)
+            ? string.Empty
+            : $"<p>Dúvidas sobre o plano ou a fatura? Fale com o suporte: {Html(contatoSuporte)}.</p>";
+
         var corpoHtml = $"""
             <p>{paragrafo}</p>
             {acao}
+            {suporte}
             <p style="color:#64748b;font-size:12px">Aviso automático da plataforma micoempresa. Você recebe por ser administrador da conta.</p>
             """;
 

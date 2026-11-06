@@ -39,6 +39,7 @@ public class AvisosCobrancaTests
         sp.GetRequiredService<ICatalogoPlanos>(),
         Options.Create(opcoes),
         Options.Create(new EmailOptions { AppBaseUrl = "https://app.teste" }),
+        Options.Create(new SuporteOptions { Email = "suporte@teste.com" }),
         NullLogger<AvisosCobrancaService>.Instance);
 
     private static async Task<(Tenant Conta, string EmailConfirmado)> MontarAsync(AppDbContext db, string s)
@@ -116,6 +117,7 @@ public class AvisosCobrancaTests
             Assert.Equal(confirmado, email.Destinatario);
             Assert.Equal("Sua fatura do micoempresa vence amanhã", email.Assunto);
             Assert.Contains("https://asaas.teste/i/" + s, email.CorpoHtml);
+            Assert.Contains("suporte@teste.com", email.CorpoHtml);
         }
         finally
         {

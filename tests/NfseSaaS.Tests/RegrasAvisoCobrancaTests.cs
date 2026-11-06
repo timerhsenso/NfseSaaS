@@ -236,9 +236,10 @@ public class RegrasAvisoCobrancaTests
         var estado = Estado(StatusAssinatura.Ativa, assinaturaId: "sub_1", uso: Uso(notas: 15));
         var aviso = RegrasAvisoCobranca.Avaliar(estado, Agora, Hoje).Single();
 
-        var (assunto, corpo) = MensagensAvisoCobranca.Montar(aviso, estado, "Mico", "https://app/Assinatura");
+        var (assunto, corpo) = MensagensAvisoCobranca.Montar(aviso, estado, "Mico", "https://app/Assinatura", "suporte@x.com ou WhatsApp (71) 99999-8888");
 
         Assert.Equal("Limite de notas do plano Mico atingido neste mês", assunto);
+        Assert.Contains("Fale com o suporte: suporte@x.com ou WhatsApp (71) 99999-8888.", corpo);
         Assert.Contains("Nada é bloqueado", corpo);
         Assert.Contains("Trocar de plano", corpo);
         Assert.Contains("15 de 15 notas", corpo);

@@ -91,6 +91,7 @@ public static class DependencyInjection
         services.AddScoped<INfseEventoWriter, NfseEventoWriter>();
 
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
+        services.Configure<NfseSaaS.Application.Common.SuporteOptions>(configuration.GetSection(NfseSaaS.Application.Common.SuporteOptions.SectionName));
         services.Configure<PlataformaOptions>(configuration.GetSection(PlataformaOptions.SectionName));
         services.AddScoped<IEmailSender, SmtpEmailSender>();
         services.AddSingleton<IBackgroundEmailQueue, BackgroundEmailQueue>();

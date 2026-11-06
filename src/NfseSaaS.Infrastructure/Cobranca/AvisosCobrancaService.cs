@@ -33,6 +33,7 @@ public sealed class AvisosCobrancaService : IEnviarAvisosCobrancaUseCase, IObter
     private readonly ICatalogoPlanos _catalogo;
     private readonly CobrancaOptions _cobranca;
     private readonly EmailOptions _email;
+    private readonly SuporteOptions _suporte;
     private readonly ILogger<AvisosCobrancaService> _logger;
 
     public AvisosCobrancaService(
@@ -42,6 +43,7 @@ public sealed class AvisosCobrancaService : IEnviarAvisosCobrancaUseCase, IObter
         ICatalogoPlanos catalogo,
         IOptions<CobrancaOptions> cobranca,
         IOptions<EmailOptions> email,
+        IOptions<SuporteOptions> suporte,
         ILogger<AvisosCobrancaService> logger)
     {
         _db = db;
@@ -50,6 +52,7 @@ public sealed class AvisosCobrancaService : IEnviarAvisosCobrancaUseCase, IObter
         _catalogo = catalogo;
         _cobranca = cobranca.Value;
         _email = email.Value;
+        _suporte = suporte.Value;
         _logger = logger;
     }
 
@@ -98,7 +101,7 @@ public sealed class AvisosCobrancaService : IEnviarAvisosCobrancaUseCase, IObter
 
             foreach (var aviso in pendentes)
             {
-                var (assunto, corpoHtml) = MensagensAvisoCobranca.Montar(aviso, estado, planoNome, link);
+                var (assunto, corpoHtml) = MensagensAvisoCobranca.Montar(aviso, estado, planoNome, link, _suporte.TextoContato);
                 foreach (var destinatario in destinatarios)
                 {
                     await _emailQueue.EnfileirarAsync(

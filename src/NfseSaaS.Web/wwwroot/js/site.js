@@ -157,7 +157,8 @@ function mostrarToast(mensagem, tipo) {
     `;
     // .textContent, não interpolado no innerHTML acima — mensagem pode
     // vir de erro de API/validação, nunca confiar nela como HTML.
-    toast.querySelector('.toast-nfse-texto').textContent = mensagem;
+    const contato = ehErro ? contatoSuporteParaMensagem(mensagem) : '';
+    toast.querySelector('.toast-nfse-texto').textContent = contato ? `${mensagem} Suporte: ${contato}.` : mensagem;
 
     function remover() {
         toast.classList.remove('show');
@@ -202,10 +203,22 @@ function mostrarToast(mensagem, tipo) {
  *    consistente. Retorna uma Promise<boolean>.
  */
 
+/**
+ * Contato do suporte (configuração "Suporte", vem no data-suporte do
+ * <body>) para completar mensagens de erro que dizem "fale com o suporte"
+ * (cobrança, conta suspensa, cadastro fechado...). Vazio = sem contato.
+ */
+function contatoSuporteParaMensagem(mensagem) {
+    const contato = document.body?.dataset?.suporte;
+    if (!contato || !/suporte/i.test(String(mensagem ?? ''))) return '';
+    return contato;
+}
+
 function mostrarErroFormulario(idDiv, mensagem) {
     const div = document.getElementById(idDiv);
     if (!div) return;
-    div.textContent = mensagem;
+    const contato = contatoSuporteParaMensagem(mensagem);
+    div.textContent = contato ? `${mensagem} Suporte: ${contato}.` : mensagem;
     div.classList.remove('d-none');
 }
 

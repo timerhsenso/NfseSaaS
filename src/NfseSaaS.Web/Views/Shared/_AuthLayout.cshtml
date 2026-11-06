@@ -9,7 +9,8 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
-<body class="auth-page">
+@inject Microsoft.Extensions.Options.IOptions<NfseSaaS.Application.Common.SuporteOptions> SuporteOpcoes
+<body class="auth-page" data-suporte="@SuporteOpcoes.Value.TextoContato">
     <div class="auth-split">
         <aside class="auth-marca">
             <div class="brand">
