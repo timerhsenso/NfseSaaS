@@ -63,7 +63,7 @@ public sealed class EmailDispatchHostedService : BackgroundService
 
         log.Tentativas++;
 
-        var resultado = await EnviarAsync(scope.ServiceProvider, emailSender, log.TenantId, log.NfseId, item, cancellationToken);
+        var resultado = await EnviarAsync(scope.ServiceProvider, emailSender, log.TenantId, log.NfseId, log.ResponderPara, item, cancellationToken);
 
         if (resultado.Sucesso)
         {
@@ -95,10 +95,12 @@ public sealed class EmailDispatchHostedService : BackgroundService
     /// no próprio EmailLog — nunca um e-mail de nota sem a nota.
     /// </summary>
     private async Task<ResultadoEnvioEmail> EnviarAsync(
-        IServiceProvider servicos, IEmailSender emailSender, Guid tenantId, Guid? nfseId, ItemFilaEmail item, CancellationToken cancellationToken)
+        IServiceProvider servicos, IEmailSender emailSender, Guid tenantId, Guid? nfseId, string? responderPara, ItemFilaEmail item, CancellationToken cancellationToken)
     {
         if (nfseId is not { } idNota)
-            return await emailSender.EnviarAsync(item.Destinatario, item.Assunto, item.CorpoHtml, cancellationToken);
+            return responderPara is null
+                ? await emailSender.EnviarAsync(item.Destinatario, item.Assunto, item.CorpoHtml, cancellationToken)
+                : await emailSender.EnviarAsync(new MensagemEmail(item.Destinatario, item.Assunto, item.CorpoHtml, null, responderPara), cancellationToken);
 
         IReadOnlyCollection<AnexoEmail> anexos;
         try
@@ -112,6 +114,6 @@ public sealed class EmailDispatchHostedService : BackgroundService
             return new ResultadoEnvioEmail(false, $"Não foi possível anexar a nota: {ex.Message}");
         }
 
-        return await emailSender.EnviarAsync(item.Destinatario, item.Assunto, item.CorpoHtml, anexos, cancellationToken);
+        return await emailSender.EnviarAsync(new MensagemEmail(item.Destinatario, item.Assunto, item.CorpoHtml, anexos, responderPara), cancellationToken);
     }
 }

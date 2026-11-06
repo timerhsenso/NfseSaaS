@@ -12,7 +12,8 @@ public sealed record EmailParaEnfileirar(
     string Assunto,
     string CorpoHtml,
     Guid? NfseId = null,
-    string? ChaveDeduplicacao = null);
+    string? ChaveDeduplicacao = null,
+    string? ResponderPara = null);
 
 /// <summary>
 /// Ponto único que os controllers usam pra "enviar" um e-mail — na

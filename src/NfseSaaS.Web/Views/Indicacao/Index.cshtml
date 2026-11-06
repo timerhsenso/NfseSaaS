@@ -28,6 +28,32 @@
                 </div>
             </div>
         </div>
+
+        <div class="card mt-3">
+            <div class="card-header"><i class="bi bi-envelope-paper" aria-hidden="true"></i> Convidar por e-mail</div>
+            <div class="card-body">
+                <form id="form-convite" novalidate>
+                    <label class="form-label" for="emails-convite">E-mails de quem você quer convidar</label>
+                    <textarea class="form-control" id="emails-convite" rows="3" maxlength="3000"
+                              placeholder="fulano@empresa.com.br, ciclana@escritorio.com.br"></textarea>
+                    <div class="form-text">
+                        Separe por vírgula ou um por linha. O convite sai com um texto padrão do micoempresa e o seu link;
+                        se a pessoa responder, a resposta vai para o seu e-mail.
+                        Até <span id="limite-convites">10</span> convites por dia (restam <strong id="restam-convites">-</strong> hoje),
+                        e o mesmo endereço recebe no máximo um convite a cada 30 dias.
+                    </div>
+                    <button type="submit" class="btn btn-primary mt-2" id="btn-enviar-convites">
+                        <i class="bi bi-send" aria-hidden="true"></i> Enviar convites
+                    </button>
+                </form>
+                <ul class="list-unstyled small mt-3 mb-0 d-none" id="resultado-convites"></ul>
+
+                <h6 class="mt-4 mb-2">Convites enviados nos últimos 30 dias</h6>
+                <ul class="list-unstyled small mb-0" id="lista-convites">
+                    <li class="text-muted">Carregando…</li>
+                </ul>
+            </div>
+        </div>
     </div>
     <div class="col-lg-5">
         <div class="card">

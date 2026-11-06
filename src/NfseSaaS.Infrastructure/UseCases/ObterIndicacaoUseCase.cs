@@ -73,6 +73,15 @@ public sealed class ObterIndicacaoUseCase : IObterIndicacaoUseCase
                 .ToListAsync(cancellationToken))
                 .ToDictionary(p => p.IndicadoTenantId, p => (p.Status, p.AplicadoEm));
 
+        var desde = DateTimeOffset.UtcNow.AddDays(-RegrasConviteIndicacao.IntervaloMesmoEmailDias);
+        var convites = await _db.ConvitesIndicacao.AsNoTracking()
+            .Where(c => c.TenantId == tenantId && c.CreatedAt >= desde)
+            .OrderByDescending(c => c.CreatedAt)
+            .Take(100)
+            .Select(c => new ConviteEnviado(c.Email, c.CreatedAt))
+            .ToListAsync(cancellationToken);
+        var restamHoje = await ConvidarPorEmailUseCase.RestamHojeAsync(_db, tenantId, cancellationToken);
+
         return new IndicacaoResponse(
             tenant.CodigoIndicacao!,
             indicadas.Select(t =>
@@ -80,6 +89,8 @@ public sealed class ObterIndicacaoUseCase : IObterIndicacaoUseCase
                 var temPremio = premios.TryGetValue(t.Id, out var premio);
                 return new ContaIndicada(t.CreatedAt, comNota.Contains(t.Id), t.Ativo,
                     temPremio ? premio.Status : null, temPremio ? premio.AplicadoEm : null);
-            }).ToList());
+            }).ToList(),
+            convites,
+            restamHoje);
     }
 }

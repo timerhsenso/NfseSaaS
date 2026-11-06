@@ -55,4 +55,11 @@ public sealed class EmailLog : BaseEntity, ITenantEntity
     /// já existe um EmailLog com a mesma chave antes de mandar de novo.
     /// </summary>
     public string? ChaveDeduplicacao { get; set; }
+
+    /// <summary>
+    /// Endereço do "Responder para" (Reply-To). Ex.: convite de indicação —
+    /// a resposta vai para quem indicou, não para o remetente da plataforma.
+    /// Nulo = sem Reply-To.
+    /// </summary>
+    public string? ResponderPara { get; set; }
 }

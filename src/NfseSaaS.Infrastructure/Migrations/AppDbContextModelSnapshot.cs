@@ -717,6 +717,41 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.ToTable("contrato_servicos", (string)null);
                 });
 
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.ConviteIndicacao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid?>("EmailLogId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("EnviadoPorUsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email", "CreatedAt");
+
+                    b.HasIndex("TenantId", "CreatedAt");
+
+                    b.ToTable("convites_indicacao", (string)null);
+                });
+
             modelBuilder.Entity("NfseSaaS.Domain.Entities.EmailLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -753,6 +788,10 @@ namespace NfseSaaS.Infrastructure.Migrations
 
                     b.Property<Guid?>("NfseId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("ResponderPara")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");

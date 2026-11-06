@@ -29,7 +29,8 @@ public sealed class EmailQueueService : IEmailQueueService
             Assunto = email.Assunto,
             CorpoHtml = email.CorpoHtml,
             NfseId = email.NfseId,
-            ChaveDeduplicacao = email.ChaveDeduplicacao
+            ChaveDeduplicacao = email.ChaveDeduplicacao,
+            ResponderPara = email.ResponderPara
         };
 
         _db.EmailLogs.Add(log);

@@ -34,6 +34,9 @@ public sealed class EmailLogConfiguration : IEntityTypeConfiguration<EmailLog>
         builder.Property(e => e.ChaveDeduplicacao)
             .HasMaxLength(150);
 
+        builder.Property(e => e.ResponderPara)
+            .HasMaxLength(256);
+
         builder.HasIndex(e => new { e.TenantId, e.Status, e.CreatedAt });
 
         builder.HasIndex(e => new { e.TenantId, e.ChaveDeduplicacao })

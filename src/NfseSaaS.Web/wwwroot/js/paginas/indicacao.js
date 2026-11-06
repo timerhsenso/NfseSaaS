@@ -1,4 +1,4 @@
-// Tela "Indique e ganhe": link da conta, atalhos de envio e as contas indicadas.
+// Tela "Indique e ganhe": link da conta, atalhos de envio, convite por e-mail e as contas indicadas.
 document.addEventListener('DOMContentLoaded', async function () {
     const campo = document.getElementById('link-indicacao');
     const lista = document.getElementById('lista-indicacoes');
@@ -27,6 +27,53 @@ document.addEventListener('DOMContentLoaded', async function () {
             campo.select();
             mostrarToast('Selecione e copie o link com Ctrl+C.');
         }
+    });
+
+    // ---------- Convite por e-mail ----------
+    const listaConvites = document.getElementById('lista-convites');
+    const resultadoConvites = document.getElementById('resultado-convites');
+
+    function mostrarConvites(convites, restam) {
+        document.getElementById('restam-convites').textContent = restam;
+        if (!convites || convites.length === 0) {
+            listaConvites.innerHTML = '<li class="text-muted">Nenhum convite enviado.</li>';
+            return;
+        }
+        listaConvites.innerHTML = convites.map(c =>
+            `<li class="d-flex justify-content-between py-1 border-bottom"><span>${escaparHtml(c.email)}</span>` +
+            `<span class="text-muted">${new Date(c.enviadoEm).toLocaleDateString('pt-BR')}</span></li>`).join('');
+    }
+
+    document.getElementById('limite-convites').textContent = dados.limitePorDia;
+    mostrarConvites(dados.convites, dados.convitesRestamHoje);
+
+    document.getElementById('form-convite').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const campoEmails = document.getElementById('emails-convite');
+        if (!campoEmails.value.trim()) {
+            mostrarErro('Informe pelo menos um e-mail.');
+            return;
+        }
+        await executarComBotaoDesabilitado(document.getElementById('btn-enviar-convites'), async function () {
+            try {
+                const r = await apiFetch('/api/indicacao/convites', { method: 'POST', body: JSON.stringify({ emails: campoEmails.value }) });
+                resultadoConvites.classList.remove('d-none');
+                resultadoConvites.innerHTML = r.resultados.map(x => x.enviado
+                    ? `<li class="text-success"><i class="bi bi-check-circle" aria-hidden="true"></i> ${escaparHtml(x.email)}: convite enviado.</li>`
+                    : `<li class="text-danger"><i class="bi bi-x-circle" aria-hidden="true"></i> ${escaparHtml(x.email)}: ${escaparHtml(x.motivo)}</li>`).join('');
+                const enviados = r.resultados.filter(x => x.enviado).length;
+                if (enviados > 0) {
+                    mostrarToast(enviados === 1 ? 'Convite enviado.' : `${enviados} convites enviados.`);
+                    campoEmails.value = '';
+                    const atual = await apiFetch('/api/indicacao');
+                    mostrarConvites(atual.convites, atual.convitesRestamHoje);
+                } else {
+                    document.getElementById('restam-convites').textContent = r.restamHoje;
+                }
+            } catch (err) {
+                mostrarErro(err.message);
+            }
+        });
     });
 
     document.getElementById('total-indicacoes').textContent = dados.indicadas.length;

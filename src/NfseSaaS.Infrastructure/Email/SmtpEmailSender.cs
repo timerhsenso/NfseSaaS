@@ -32,8 +32,16 @@ public sealed class SmtpEmailSender : IEmailSender
     public Task<ResultadoEnvioEmail> EnviarAsync(string destinatarioEmail, string assunto, string corpoHtml, CancellationToken cancellationToken) =>
         EnviarAsync(destinatarioEmail, assunto, corpoHtml, Array.Empty<AnexoEmail>(), cancellationToken);
 
-    public async Task<ResultadoEnvioEmail> EnviarAsync(string destinatarioEmail, string assunto, string corpoHtml, IReadOnlyCollection<AnexoEmail> anexos, CancellationToken cancellationToken)
+    public Task<ResultadoEnvioEmail> EnviarAsync(string destinatarioEmail, string assunto, string corpoHtml, IReadOnlyCollection<AnexoEmail> anexos, CancellationToken cancellationToken) =>
+        EnviarAsync(new MensagemEmail(destinatarioEmail, assunto, corpoHtml, anexos), cancellationToken);
+
+    public async Task<ResultadoEnvioEmail> EnviarAsync(MensagemEmail email, CancellationToken cancellationToken)
     {
+        var destinatarioEmail = email.Destinatario;
+        var assunto = email.Assunto;
+        var corpoHtml = email.CorpoHtml;
+        var anexos = email.Anexos ?? Array.Empty<AnexoEmail>();
+
         if (string.IsNullOrWhiteSpace(_options.SmtpHost))
         {
             _logger.LogWarning("Email:SmtpHost não configurado — e-mail para {Destinatario} NÃO foi enviado.", destinatarioEmail);
@@ -48,6 +56,9 @@ public sealed class SmtpEmailSender : IEmailSender
         var mensagem = new MimeMessage();
         mensagem.From.Add(new MailboxAddress(_options.RemetenteNome, _options.RemetenteEmail));
         mensagem.To.Add(destinatario);
+        // Reply-To inválido não impede o envio: só fica sem ele.
+        if (!string.IsNullOrWhiteSpace(email.ResponderPara) && MailboxAddress.TryParse(email.ResponderPara, out var responderPara))
+            mensagem.ReplyTo.Add(responderPara);
         mensagem.Subject = assunto;
 
         var corpo = new BodyBuilder { HtmlBody = corpoHtml };

@@ -59,7 +59,13 @@ public sealed record ContaIndicada(
     DateTimeOffset? PremioAplicadoEm = null);
 
 /// <summary>Dados da tela "Indique e ganhe".</summary>
-public sealed record IndicacaoResponse(string Codigo, IReadOnlyList<ContaIndicada> Indicadas);
+/// <param name="Convites">Convites por e-mail enviados pela conta nos últimos 30 dias (mais novos primeiro).</param>
+/// <param name="ConvitesRestamHoje">Quantos convites a conta ainda pode mandar hoje.</param>
+public sealed record IndicacaoResponse(
+    string Codigo,
+    IReadOnlyList<ContaIndicada> Indicadas,
+    IReadOnlyList<ConviteEnviado>? Convites = null,
+    int ConvitesRestamHoje = 0);
 
 /// <summary>Código de indicação da conta atual (cria na primeira vez) e as contas que vieram por ele.</summary>
 public interface IObterIndicacaoUseCase
