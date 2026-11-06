@@ -261,6 +261,6 @@ public sealed class CatalogoPlanosService : ICatalogoPlanos, IAdministrarPlanosU
             vigente?.PrecoMensal, vigente?.PrecoFundador, vigente?.VigenteDesde,
             proximo?.PrecoMensal, proximo?.PrecoFundador, proximo?.VigenteDesde,
             assinantes,
-            RegrasCatalogoPlanos.MotivoNaoPodeExcluir(p.Codigo, assinaturasJaFeitas) is null);
+            RegrasCatalogoPlanos.MotivoNaoPodeExcluir(assinaturasJaFeitas) is null);
     }
 }

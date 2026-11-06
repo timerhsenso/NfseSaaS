@@ -7,9 +7,11 @@ vagas de fundador ficam no banco e são administrados em **Plataforma › Planos
 
 ## Planos e preços (Plataforma › Planos)
 
-- **Planos iniciais** (criados no startup por `PlanosSeeder`, só se faltarem):
-  Mico (1), Empresa (2), Escritório 10 (3), Escritório 25 (4) e Escritório 50 (5).
-  Depois de criados, quem manda é a tela: mudar o seeder não altera o banco.
+- **Planos iniciais** (criados no startup por `PlanosSeeder` **só com o catálogo
+  vazio**, ou seja, banco novo): Mico (1), Empresa (2), Escritório 10 (3),
+  Escritório 25 (4) e Escritório 50 (5). Depois disso o catálogo é do operador:
+  plano excluído não volta e mudar o seeder não altera o banco. As vagas de
+  fundador são criadas se faltar o grupo.
 - **Aparece para**: empresas, contadores ou ambos (pelo perfil da conta).
   Contador vê Empresa + Escritórios; empresa vê Mico + Empresa.
 - **Preço com histórico** (`precos_planos`): cada mudança é uma linha nova com
@@ -24,8 +26,8 @@ vagas de fundador ficam no banco e são administrados em **Plataforma › Planos
   do grupo (cancelada também conta). Diminuir não tira o preço de quem já é fundador.
 - **Fora de venda**: o plano some da tela Assinatura; quem já assina continua nele.
 - **Excluir** (lixeira, só aparece quando pode): só plano que **nunca foi assinado**
-  (nem assinatura cancelada) e que **não é inicial** (códigos 1 a 5, que o seeder
-  recriaria). Pede confirmação e envia um código de 6 dígitos ao **seu e-mail**
+  (nem assinatura cancelada, que guarda o código dele); vale também para os
+  iniciais. Já assinado: "Fora de venda". Pede confirmação e envia um código de 6 dígitos ao **seu e-mail**
   (o mesmo esquema da exclusão de conta: 10 minutos, uso único, 5 tentativas,
   direto pelo SMTP, sem gravar no EmailLog). Apaga o plano e o histórico de
   preços; na Auditoria fica `ExcluirPlano` com os preços que existiam.

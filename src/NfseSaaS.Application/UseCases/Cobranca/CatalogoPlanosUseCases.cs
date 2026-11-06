@@ -41,7 +41,7 @@ public interface ICatalogoPlanos
 /// <summary>Linha da tela Plataforma › Planos.</summary>
 /// <param name="ProximoPrecoMensal">Preço já agendado para uma data futura (nulo se não há).</param>
 /// <param name="Assinantes">Assinaturas não canceladas neste plano.</param>
-/// <param name="PodeExcluir">Nunca foi assinado (nem cancelado) e não é um plano inicial.</param>
+/// <param name="PodeExcluir">Nunca foi assinado (nem assinatura cancelada).</param>
 public sealed record PlanoAdminResponse(
     Guid Id,
     int Codigo,
@@ -132,8 +132,8 @@ public sealed class ConfirmarExclusaoPlanoRequestValidator : AbstractValidator<C
 }
 
 /// <summary>
-/// Passo 1: confere se o plano pode ser excluído (nunca assinado, não é
-/// plano inicial) e envia o código ao e-mail do OPERADOR logado.
+/// Passo 1: confere se o plano pode ser excluído (nunca assinado) e envia o
+/// código ao e-mail do OPERADOR logado.
 /// </summary>
 public interface ISolicitarExclusaoPlanoUseCase
 {
@@ -155,16 +155,14 @@ public static class RegrasCatalogoPlanos
     public const int VagasLimite = 10_000;
 
     /// <summary>Preço que vale na data: o de maior VigenteDesde até ela (nulo se nenhum começou).</summary>
-    /// <summary>Códigos dos planos que o PlanosSeeder cria (e recriaria se sumissem): use "Fora de venda".</summary>
-    public static bool EhPlanoInicial(int codigo) => codigo is >= Planos.CodigoMico and <= Planos.CodigoEscritorio50;
-
-    /// <summary>Só plano que nunca teve assinatura (nem cancelada) e não é inicial.</summary>
-    public static string? MotivoNaoPodeExcluir(int codigo, int assinaturasJaFeitas) =>
-        EhPlanoInicial(codigo)
-            ? "Os planos iniciais (Mico, Empresa e Escritórios) não são excluídos: o sistema os recriaria. Use \"Fora de venda\"."
-            : assinaturasJaFeitas > 0
-                ? $"Este plano já foi assinado ({assinaturasJaFeitas} assinatura(s), contando as canceladas). Use \"Fora de venda\"."
-                : null;
+    /// <summary>
+    /// Só plano que nunca teve assinatura (nem cancelada, que guarda o código
+    /// dele). Plano já assinado sai de venda, nunca do banco.
+    /// </summary>
+    public static string? MotivoNaoPodeExcluir(int assinaturasJaFeitas) =>
+        assinaturasJaFeitas > 0
+            ? $"Este plano já foi assinado ({assinaturasJaFeitas} assinatura(s), contando as canceladas). Use \"Fora de venda\"."
+            : null;
 
     public static PrecoPlano? PrecoVigente(IEnumerable<PrecoPlano> precos, DateOnly hoje) =>
         precos.Where(p => p.VigenteDesde <= hoje)

@@ -11,14 +11,15 @@ using NfseSaaS.Domain.Entities;
 using NfseSaaS.Infrastructure.Cobranca;
 using NfseSaaS.Infrastructure.Identity;
 using NfseSaaS.Infrastructure.Persistence;
+using NfseSaaS.Infrastructure.Persistence.Seeders;
 using Xunit;
 
 namespace NfseSaaS.IntegrationTests;
 
 /// <summary>
 /// Excluir plano (Plataforma › Planos): código no e-mail do operador, só
-/// plano nunca assinado e que não seja inicial; apaga o histórico de preços
-/// junto e deixa o registro na Auditoria do operador.
+/// plano nunca assinado; apaga o histórico de preços junto e deixa o
+/// registro na Auditoria do operador. Plano inicial excluído não volta.
 /// </summary>
 [Collection(AplicacaoEmMemoriaCollection.Nome)]
 public class ExclusaoPlanoTests
@@ -54,7 +55,7 @@ public class ExclusaoPlanoTests
         NullLogger<ExclusaoPlanoService>.Instance);
 
     [Fact]
-    public async Task Plano_nunca_assinado_sai_com_o_codigo_certo_e_plano_assinado_ou_inicial_nao()
+    public async Task Plano_nunca_assinado_sai_com_o_codigo_certo_e_plano_assinado_nao()
     {
         using var escopo = _factory.Services.CreateScope();
         var sp = escopo.ServiceProvider;
@@ -88,14 +89,10 @@ public class ExclusaoPlanoTests
             var lista = await admin.ListarAsync(CancellationToken.None);
             Assert.True(lista.Single(p => p.Id == livre.Id).PodeExcluir);
             Assert.False(lista.Single(p => p.Id == assinado.Id).PodeExcluir);
-            Assert.False(lista.Single(p => p.Codigo == Planos.CodigoEscritorio10).PodeExcluir);
 
-            // Plano assinado e plano inicial: recusados já no pedido do código, sem e-mail.
+            // Plano assinado: recusado já no pedido do código, sem e-mail.
             Assert.Contains("já foi assinado", (await Assert.ThrowsAsync<RegraNegocioException>(() =>
                 solicitar.ExecutarAsync(assinado.Id, usuario.Id, CancellationToken.None))).Message);
-            var inicial = lista.Single(p => p.Codigo == Planos.CodigoMico);
-            Assert.Contains("iniciais", (await Assert.ThrowsAsync<RegraNegocioException>(() =>
-                solicitar.ExecutarAsync(inicial.Id, usuario.Id, CancellationToken.None))).Message);
             Assert.Empty(email.Enviados);
 
             // Sem pedir o código não exclui.
@@ -129,6 +126,33 @@ public class ExclusaoPlanoTests
             await db.AuditLogs.IgnoreQueryFilters().Where(a => a.TenantId == operador.Id).ExecuteDeleteAsync();
             await db.Users.Where(u => u.Id == usuario.Id).ExecuteDeleteAsync();
             await db.Tenants.Where(t => t.Id == operador.Id || t.Id == assinante.Id).ExecuteDeleteAsync();
+        }
+    }
+
+    [Fact]
+    public async Task Plano_inicial_excluido_nao_volta_quando_o_sistema_liga()
+    {
+        using var escopo = _factory.Services.CreateScope();
+        var db = escopo.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        // Tira o Escritório 50 (nunca assinado nos testes) e devolve igualzinho no fim.
+        var plano = await db.Planos.AsNoTracking().SingleAsync(p => p.Codigo == Planos.CodigoEscritorio50);
+        var precos = await db.PrecosPlanos.AsNoTracking().Where(p => p.PlanoId == plano.Id).ToListAsync();
+        await db.PrecosPlanos.Where(p => p.PlanoId == plano.Id).ExecuteDeleteAsync();
+        await db.Planos.Where(p => p.Id == plano.Id).ExecuteDeleteAsync();
+
+        try
+        {
+            await PlanosSeeder.SeedAsync(_factory.Services);
+            Assert.False(await db.Planos.AnyAsync(p => p.Codigo == Planos.CodigoEscritorio50));
+            Assert.True(await db.Planos.AnyAsync(p => p.Codigo == Planos.CodigoMico));
+        }
+        finally
+        {
+            db.ChangeTracker.Clear();
+            db.Planos.Add(plano);
+            db.PrecosPlanos.AddRange(precos);
+            await db.SaveChangesAsync();
         }
     }
 }

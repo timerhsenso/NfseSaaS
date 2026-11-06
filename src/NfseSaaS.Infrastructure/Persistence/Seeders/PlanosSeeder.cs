@@ -6,10 +6,12 @@ using NfseSaaS.Domain.Entities;
 namespace NfseSaaS.Infrastructure.Persistence.Seeders;
 
 /// <summary>
-/// Planos e vagas de fundador iniciais (claude/plano-comercial.md). Só INSERE
-/// o que falta, pelo código do plano / grupo: depois de criado, quem manda é a
-/// tela Plataforma › Planos — mudar um valor aqui NÃO altera o banco.
-/// Idempotente; roda no startup.
+/// Planos e vagas de fundador iniciais (claude/plano-comercial.md). Roda no
+/// startup e é idempotente:
+/// - planos: só quando o catálogo está VAZIO (banco novo). Depois disso o
+///   catálogo é do operador (Plataforma › Planos): plano excluído não volta e
+///   mudar um valor aqui NÃO altera o banco;
+/// - vagas de fundador: cria o grupo que faltar (não há tela para excluir).
 /// </summary>
 public static class PlanosSeeder
 {
@@ -45,8 +47,8 @@ public static class PlanosSeeder
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var codigos = (await db.Planos.Select(p => p.Codigo).ToListAsync()).ToHashSet();
-        foreach (var inicial in Iniciais.Where(i => !codigos.Contains(i.Codigo)))
+        var catalogoVazio = !await db.Planos.AnyAsync();
+        foreach (var inicial in catalogoVazio ? Iniciais : [])
         {
             var plano = new Plano
             {

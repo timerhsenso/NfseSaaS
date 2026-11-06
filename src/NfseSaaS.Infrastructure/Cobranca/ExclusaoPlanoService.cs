@@ -17,9 +17,9 @@ namespace NfseSaaS.Infrastructure.Cobranca;
 /// vai direto pelo SMTP ao e-mail do operador logado, vale 10 minutos, uso
 /// único, 5 tentativas; em memória fica só o hash.
 ///
-/// Regras (conferidas nos dois passos): o plano nunca foi assinado (nem
-/// assinatura cancelada, que guarda o código dele) e não é um dos planos
-/// iniciais (o PlanosSeeder o recriaria). Para os demais casos: "Fora de venda".
+/// Regra (conferida nos dois passos): o plano nunca foi assinado (nem
+/// assinatura cancelada, que guarda o código dele). Já assinado: "Fora de
+/// venda". Plano inicial excluído não volta (o PlanosSeeder só semeia catálogo vazio).
 /// Apaga o plano e o histórico de preços dele; fica o registro ExcluirPlano
 /// no Histórico do operador, com os preços que existiam.
 /// </summary>
@@ -129,7 +129,7 @@ public sealed class ExclusaoPlanoService : ISolicitarExclusaoPlanoUseCase, IConf
         var plano = await _db.Planos.FirstOrDefaultAsync(p => p.Id == planoId, cancellationToken)
             ?? throw new RecursoNaoEncontradoException("Plano não encontrado.");
         var assinaturas = await _db.Assinaturas.CountAsync(a => a.Plano == plano.Codigo, cancellationToken);
-        if (RegrasCatalogoPlanos.MotivoNaoPodeExcluir(plano.Codigo, assinaturas) is { } motivo)
+        if (RegrasCatalogoPlanos.MotivoNaoPodeExcluir(assinaturas) is { } motivo)
             throw new RegraNegocioException(motivo);
         return plano;
     }

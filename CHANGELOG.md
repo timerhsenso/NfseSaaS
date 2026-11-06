@@ -5,12 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Alterado (catálogo de planos)
+- Os planos iniciais são criados **só com o catálogo vazio** (banco novo).
+  Depois disso o catálogo é todo do operador: qualquer plano nunca assinado
+  pode ser excluído, inclusive Empresa e Escritórios, e não volta quando o
+  sistema liga. Plano já assinado continua só com "Fora de venda".
+
 ### Adicionado (excluir plano)
 - **Plataforma › Planos › Excluir**: plano que nunca foi assinado (nem
-  cancelado) e não é inicial pode ser excluído, com código de 6 dígitos no
+  cancelado) pode ser excluído, com código de 6 dígitos no
   e-mail do operador (10 min, uso único, 5 tentativas). Apaga o plano e o
-  histórico de preços; registro `ExcluirPlano` na Auditoria. Planos iniciais e
-  já assinados: usar "Fora de venda".
+  histórico de preços; registro `ExcluirPlano` na Auditoria. Plano já
+  assinado: usar "Fora de venda".
 
 ### Adicionado (catálogo de planos e plano Escritório)
 - **Plataforma › Planos** (só operador): planos, preços e vagas de fundador
