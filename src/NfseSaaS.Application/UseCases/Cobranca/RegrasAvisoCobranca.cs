@@ -81,8 +81,10 @@ public sealed record FaixaCobranca(NivelFaixaCobranca Nivel, string Mensagem, bo
 /// diário + disparo pelo webhook) nunca repete o mesmo e-mail.
 ///
 /// Eventos (pagamento confirmado, cancelamento) só geram aviso dentro de
-/// <see cref="JanelaEventoDias"/> dias: ligar a cobrança não manda e-mail
-/// de coisa antiga.
+/// <see cref="JanelaEventoDias"/> dia: na prática saem segundos depois do
+/// webhook; a janela só cobre o webhook perdido (o job diário manda) e
+/// evita avisar pagamento antigo depois de um deploy (06/11: o pagamento de
+/// teste da véspera foi avisado na troca de plano do dia seguinte).
 /// </summary>
 public static class RegrasAvisoCobranca
 {
@@ -94,7 +96,7 @@ public static class RegrasAvisoCobranca
     /// <summary>Avisa quando sobram estas notas no teste (8 de 10 usadas).</summary>
     public const int NotasRestantesAviso = 2;
 
-    public const int JanelaEventoDias = 3;
+    public const int JanelaEventoDias = 1;
 
     /// <summary>Avisa quando as notas do mês chegam a este percentual do plano (e de novo aos 100%).</summary>
     public const int PercentualAvisoNotas = 80;

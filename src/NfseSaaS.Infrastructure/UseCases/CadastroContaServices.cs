@@ -145,7 +145,9 @@ public sealed class ConfirmacaoEmailService : IConfirmacaoEmailService
         _db.TenantIdOverrideDeSistema = usuario.TenantId;
         try
         {
-            await _emailQueue.EnfileirarAsync(TipoEmailCatalogo.ConfirmacaoEmail, usuario.Id, usuario.Email, "Confirme seu e-mail — micoempresa", corpo, cancellationToken);
+            await _emailQueue.EnfileirarAsync(
+                new EmailParaEnfileirar(TipoEmailCatalogo.ConfirmacaoEmail, usuario.Id, usuario.Email, "Confirme seu e-mail — micoempresa", corpo, Segredos: new[] { token }),
+                cancellationToken);
         }
         finally
         {

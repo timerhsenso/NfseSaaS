@@ -94,6 +94,9 @@ public sealed class EmailLogsController : ControllerBase
         if (log.Status != StatusEmailLog.Falhou)
             return Conflict(new { erro = "Só é possível reenviar e-mails com status Falhou." });
 
+        if (MascaramentoEmail.TemSegredoOculto(log.CorpoHtml))
+            return Conflict(new { erro = MascaramentoEmail.GereNovoLink });
+
         if (log.Tipo == TipoEmailCatalogo.Convite && log.UsuarioId is { } usuarioId)
         {
             var conviteJaAceito = await _db.Users.AnyAsync(

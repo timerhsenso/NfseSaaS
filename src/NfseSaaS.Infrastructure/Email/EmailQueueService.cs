@@ -1,3 +1,4 @@
+using NfseSaaS.Application.Common;
 using Microsoft.EntityFrameworkCore;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Domain.Entities;
@@ -27,7 +28,8 @@ public sealed class EmailQueueService : IEmailQueueService
             UsuarioId = email.UsuarioId,
             Destinatario = email.Destinatario,
             Assunto = email.Assunto,
-            CorpoHtml = email.CorpoHtml,
+            // Com segredo: o log guarda o corpo sem o token; o envio usa o corpo verdadeiro (só na memória).
+            CorpoHtml = MascaramentoEmail.Mascarar(email.CorpoHtml, email.Segredos),
             NfseId = email.NfseId,
             ChaveDeduplicacao = email.ChaveDeduplicacao,
             ResponderPara = email.ResponderPara

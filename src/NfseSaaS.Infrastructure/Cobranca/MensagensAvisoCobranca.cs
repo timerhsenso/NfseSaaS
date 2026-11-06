@@ -69,7 +69,7 @@ public static class MensagensAvisoCobranca
 
             TipoAvisoCobranca.PagamentoConfirmado => (
                 "Pagamento confirmado — obrigado!",
-                $"Recebemos o pagamento da sua assinatura{plano}. A emissão em produção está liberada. Obrigado por usar o micoempresa!",
+                $"Recebemos em <strong>{data}</strong> o pagamento da sua assinatura. A emissão em produção está liberada. Obrigado por usar o micoempresa!",
                 Botao.Assinatura),
 
             TipoAvisoCobranca.LimiteNotas => (

@@ -1,3 +1,4 @@
+using NfseSaaS.Application.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NfseSaaS.Domain.Enums;
@@ -22,9 +23,25 @@ public static class EmailPendenteRecuperador
 
         var pendentes = await db.EmailLogs.IgnoreQueryFilters()
             .Where(e => e.Status == StatusEmailLog.Pendente)
+            .AsNoTracking()
             .ToListAsync();
 
-        foreach (var log in pendentes)
+        // Corpo com token escondido (convite, senha, confirmação): o link
+        // verdadeiro se perdeu com o reinício; mandar o corpo gravado
+        // entregaria um link quebrado. Vira Falhou com a orientação.
+        // ExecuteUpdate: roda sem conta definida (boot), para todas as contas.
+        var comSegredo = pendentes.Where(l => MascaramentoEmail.TemSegredoOculto(l.CorpoHtml)).Select(l => l.Id).ToList();
+        if (comSegredo.Count > 0)
+        {
+            var erro = "Aplicação reiniciada antes do envio. " + MascaramentoEmail.GereNovoLink;
+            await db.EmailLogs.IgnoreQueryFilters()
+                .Where(e => comSegredo.Contains(e.Id))
+                .ExecuteUpdateAsync(u => u
+                    .SetProperty(e => e.Status, StatusEmailLog.Falhou)
+                    .SetProperty(e => e.ErroDetalhe, erro));
+        }
+
+        foreach (var log in pendentes.Where(l => !comSegredo.Contains(l.Id)))
             fila.Enfileirar(new ItemFilaEmail(log.Id, log.Destinatario, log.Assunto, log.CorpoHtml));
     }
 }

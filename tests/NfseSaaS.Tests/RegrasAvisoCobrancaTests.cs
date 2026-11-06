@@ -142,6 +142,21 @@ public class RegrasAvisoCobrancaTests
     }
 
     [Fact]
+    public void Pagamento_confirmado_diz_a_data_e_nao_cita_o_plano_atual()
+    {
+        var estado = Estado(StatusAssinatura.Ativa, pagoEm: new DateTimeOffset(2026, 11, 10, 10, 0, 0, TimeSpan.Zero));
+        var aviso = RegrasAvisoCobranca.Avaliar(estado, Agora, Hoje).Single();
+
+        var (_, corpo) = MensagensAvisoCobranca.Montar(aviso, estado, "deu a louca no chefe", null);
+
+        Assert.Contains("Recebemos em <strong>10/11/2026</strong>", corpo);
+        Assert.DoesNotContain("louca", corpo);
+
+        // Pagamento de ontem à tarde (mais de 1 dia antes de Agora) não avisa mais.
+        Assert.Empty(Tipos(Estado(StatusAssinatura.Ativa, pagoEm: Agora.AddHours(-25))));
+    }
+
+    [Fact]
     public void Cancelamento_pela_tela_e_pelo_webhook_tem_a_mesma_chave()
     {
         var pelaTela = RegrasAvisoCobranca.Avaliar(Estado(StatusAssinatura.Cancelada, assinaturaId: "sub_1", canceladaEm: Agora.AddMinutes(-5)), Agora, Hoje).Single();

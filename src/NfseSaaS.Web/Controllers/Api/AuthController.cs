@@ -913,7 +913,9 @@ public sealed class AuthController : ControllerBase
             </ul>
             """;
 
-        return _emailQueueService.EnfileirarAsync(TipoEmailCatalogo.Convite, usuarioId, destinatarioEmail, $"Convite — {nomeExibicao}", corpoHtml, cancellationToken);
+        return _emailQueueService.EnfileirarAsync(
+            new EmailParaEnfileirar(TipoEmailCatalogo.Convite, usuarioId, destinatarioEmail, $"Convite — {nomeExibicao}", corpoHtml, Segredos: new[] { token }),
+            cancellationToken);
     }
 
     private Task<Guid> EnfileirarEmailDeRedefinicaoSenhaAsync(Guid usuarioId, string destinatarioEmail, string token, string? razaoSocialTenant, CancellationToken cancellationToken)
@@ -935,7 +937,9 @@ public sealed class AuthController : ControllerBase
             </ul>
             """;
 
-        return _emailQueueService.EnfileirarAsync(TipoEmailCatalogo.EsqueciSenha, usuarioId, destinatarioEmail, $"Redefinição de senha — {nomeExibicao}", corpoHtml, cancellationToken);
+        return _emailQueueService.EnfileirarAsync(
+            new EmailParaEnfileirar(TipoEmailCatalogo.EsqueciSenha, usuarioId, destinatarioEmail, $"Redefinição de senha — {nomeExibicao}", corpoHtml, Segredos: new[] { token }),
+            cancellationToken);
     }
 
     /// <summary>Variação de EnfileirarEmailDeRedefinicaoSenhaAsync — mesmo link, mas avisando que foi o Administrador quem resetou (não um pedido do próprio usuário).</summary>
@@ -958,7 +962,9 @@ public sealed class AuthController : ControllerBase
             </ul>
             """;
 
-        return _emailQueueService.EnfileirarAsync(TipoEmailCatalogo.ResetSenha, usuarioId, destinatarioEmail, $"Sua senha foi resetada — {nomeExibicao}", corpoHtml, cancellationToken);
+        return _emailQueueService.EnfileirarAsync(
+            new EmailParaEnfileirar(TipoEmailCatalogo.ResetSenha, usuarioId, destinatarioEmail, $"Sua senha foi resetada — {nomeExibicao}", corpoHtml, Segredos: new[] { token }),
+            cancellationToken);
     }
 
     /// <summary>Disparado em TODA troca de senha (alterar ou redefinir por "esqueci") — detecção de troca que o dono da conta não reconhece.</summary>
