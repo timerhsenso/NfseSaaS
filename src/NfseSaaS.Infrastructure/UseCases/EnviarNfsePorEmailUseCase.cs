@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Authorization;
 using NfseSaaS.Application.Exceptions;
+using NfseSaaS.Application.UseCases.Clientes;
 using NfseSaaS.Application.UseCases.Nfse;
 using NfseSaaS.Domain.Enums;
 using NfseSaaS.Infrastructure.Persistence;
@@ -55,7 +56,9 @@ public sealed class EnviarNfsePorEmailUseCase : IEnviarNfsePorEmailUseCase
                 n.TipoAmbiente,
                 ClienteNome = c.Nome,
                 ClienteEmail = c.Email,
-                c.NaoEnviarNfsePorEmail,
+                c.EnviarNfsePorEmail,
+                c.EmailsCopia,
+                c.CopiaOculta,
                 EmpresaNome = e.NomeFantasia ?? e.RazaoSocial,
                 EmpresaRazaoSocial = e.RazaoSocial,
                 EmpresaEmail = e.Email
@@ -69,7 +72,7 @@ public sealed class EnviarNfsePorEmailUseCase : IEnviarNfsePorEmailUseCase
             throw new RegraNegocioException("Só é possível enviar por e-mail uma nota autorizada.");
         }
 
-        if (automatico && dados.NaoEnviarNfsePorEmail)
+        if (automatico && !dados.EnviarNfsePorEmail)
             return new EnviarNfsePorEmailResult(false, null, "Envio automático desligado no cadastro do cliente.");
 
         var destinatario = dados.ClienteEmail?.Trim();
@@ -107,14 +110,21 @@ public sealed class EnviarNfsePorEmailUseCase : IEnviarNfsePorEmailUseCase
             <p style="color:#64748b;font-size:12px">Você também presta serviço? Emita suas notas com o <a href="{LinkDivulgacao}" style="color:#2563eb">micoempresa</a>: nota mensal automática e nota enviada por e-mail ao seu cliente. Crie sua conta grátis.</p>
             """;
 
+        // Cópia igual ao principal não sai duas vezes (cadastro antigo/editado no banco).
+        var copias = EmailsCopiaCliente.Separar(dados.EmailsCopia)
+            .Where(c => !string.Equals(c, destinatario, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
         var emailLogId = await _emailQueue.EnfileirarAsync(
-            new EmailParaEnfileirar(TipoEmailCatalogo.NfseTomador, null, destinatario, assunto, corpoHtml, NfseId: nfseId),
+            new EmailParaEnfileirar(TipoEmailCatalogo.NfseTomador, null, destinatario, assunto, corpoHtml, NfseId: nfseId,
+                Copias: copias, CopiasOcultas: dados.CopiaOculta),
             cancellationToken);
 
-        _auditLogWriter.Registrar("EnviarNfsePorEmail", "Nfse", nfseId, new { destinatario, automatico, emailLogId });
+        _auditLogWriter.Registrar("EnviarNfsePorEmail", "Nfse", nfseId,
+            new { destinatario, copias, copiasOcultas = dados.CopiaOculta, automatico, emailLogId });
         await _db.SaveChangesAsync(cancellationToken);
 
-        return new EnviarNfsePorEmailResult(true, destinatario, null);
+        return new EnviarNfsePorEmailResult(true, destinatario, null, copias);
     }
 
     private static string Resumir(string texto, int maximo) =>

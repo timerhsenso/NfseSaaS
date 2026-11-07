@@ -89,16 +89,36 @@
                         <section class="form-secao">
                             <div class="form-secao-titulo">
                                 <h3>Contato</h3>
-                                <p>Para onde vai o PDF da nota.</p>
+                                <p>E-mail e envio da nota.</p>
                             </div>
                             <div class="row">
                                 <div class="col-md-7 mb-3">
                                     <label class="form-label" for="email">E-mail</label>
-                                    <input type="email" class="form-control" id="email" />
+                                    <input type="email" class="form-control" id="email" maxlength="200" />
                                 </div>
                                 <div class="col-md-5 mb-3">
                                     <label class="form-label" for="telefone">Telefone</label>
                                     <input type="text" class="form-control" id="telefone" maxlength="20" inputmode="tel" />
+                                </div>
+                                <div class="col-12 mb-3">
+                                    <div class="form-check form-switch m-0">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="enviarNfsePorEmail" />
+                                        <label class="form-check-label" for="enviarNfsePorEmail">Enviar a nota por e-mail</label>
+                                        <i class="bi bi-info-circle text-muted ms-1" tabindex="0"
+                                           title="Assim que a nota é autorizada, o PDF e o XML vão para o e-mail acima (e para as cópias). Ao ligar, o e-mail passa a ser obrigatório."></i>
+                                    </div>
+                                </div>
+                                <div class="col-12 mb-3 d-none" id="bloco-copias-cliente">
+                                    <label class="form-label" for="emailsCopia">Com cópia para <span class="text-muted fw-normal">(opcional, até 5)</span></label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="emailsCopia" maxlength="510"
+                                               placeholder="financeiro@empresa.com, contador@escritorio.com" />
+                                        <input type="radio" class="btn-check" name="tipoCopiaCliente" id="copiaCc" value="cc" checked />
+                                        <label class="btn btn-outline-primary" for="copiaCc" title="Cópia: todos veem quem recebeu">Cc</label>
+                                        <input type="radio" class="btn-check" name="tipoCopiaCliente" id="copiaCco" value="cco" />
+                                        <label class="btn btn-outline-primary" for="copiaCco" title="Cópia oculta: cada um vê só o próprio endereço">Cco</label>
+                                    </div>
+                                    <div class="form-text">Separe por vírgula. <strong>Cc</strong>: todos veem quem recebeu. <strong>Cco</strong>: cópia oculta.</div>
                                 </div>
                             </div>
                         </section>
@@ -106,12 +126,17 @@
                         <section class="form-secao">
                             <div class="form-secao-titulo">
                                 <h3>Endereço</h3>
-                                <p>Digite o CEP: rua, bairro, UF e município vêm sozinhos.</p>
+                                <p>Digite o CEP ou clique na lupa: rua, bairro, UF e município vêm sozinhos.</p>
                             </div>
                             <div class="row">
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label" for="cep">CEP</label>
-                                    <input type="text" class="form-control" id="cep" maxlength="9" required inputmode="numeric" placeholder="00000-000" />
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="cep" maxlength="9" required inputmode="numeric" placeholder="00000-000" />
+                                        <button type="button" class="btn btn-outline-primary" id="btn-buscar-cep-cliente" title="Buscar o endereço pelo CEP" aria-label="Buscar o endereço pelo CEP">
+                                            <i class="bi bi-search"></i>
+                                        </button>
+                                    </div>
                                     <div class="form-text" id="status-cep-cliente"></div>
                                 </div>
                                 <div class="col-md-8 mb-3">
@@ -147,24 +172,16 @@
                                 <h3>Fiscal</h3>
                                 <p>Padrão das notas para este cliente.</p>
                             </div>
-                            <label class="cartao-opcao" for="retemIss">
-                                <span class="form-check form-switch m-0">
-                                    <input class="form-check-input" type="checkbox" id="retemIss" />
-                                </span>
-                                <span>
-                                    <strong>Retém o ISS na fonte</strong>
-                                    <span class="d-block form-text mt-1">Órgão público ou empresa que a prefeitura obriga a reter. As notas para este cliente já saem com ISS retido (dá para mudar na hora de emitir).</span>
-                                </span>
-                            </label>
-                            <label class="cartao-opcao mt-2" for="enviarNfsePorEmail">
-                                <span class="form-check form-switch m-0">
-                                    <input class="form-check-input" type="checkbox" id="enviarNfsePorEmail" checked />
-                                </span>
-                                <span>
-                                    <strong>Enviar a nota por e-mail</strong>
-                                    <span class="d-block form-text mt-1">Assim que a nota é autorizada, o PDF e o XML vão para o e-mail acima. Sem e-mail cadastrado, nada é enviado.</span>
-                                </span>
-                            </label>
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <div class="form-check form-switch m-0">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="retemIss" />
+                                        <label class="form-check-label" for="retemIss">Retém o ISS na fonte</label>
+                                        <i class="bi bi-info-circle text-muted ms-1" tabindex="0"
+                                           title="Órgão público ou empresa que a prefeitura obriga a reter. As notas para este cliente já saem com ISS retido (dá para mudar na hora de emitir)."></i>
+                                    </div>
+                                </div>
+                            </div>
                         </section>
                     </div>
                     <div class="modal-footer">

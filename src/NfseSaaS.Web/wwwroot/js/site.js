@@ -366,7 +366,9 @@ async function mostrarNomeMunicipio(idCodigo, idRotulo) {
  * CEP → preenche logradouro, bairro, UF e código IBGE do município
  * (ViaCEP, via /api/consultas/cep). ids: { cep, logradouro, bairro,
  * complemento, uf, codigoMunicipio, nomeMunicipio, statusCep, numero,
- * aoPreencher }. Busca sozinho ao completar 8 dígitos.
+ * botao, aoPreencher }. Busca sozinho ao completar 8 dígitos; o botão
+ * (lupa) busca de novo mesmo com o CEP já consultado — para corrigir um
+ * endereço digitado errado.
  */
 function configurarBuscaCep(ids) {
     const campoCep = document.getElementById(ids.cep);
@@ -376,9 +378,14 @@ function configurarBuscaCep(ids) {
 
     let ultimoBuscado = null;
 
-    async function buscar() {
+    async function buscar(forcar) {
         const cep = campoCep.value.replace(/\D/g, '');
-        if (cep.length !== 8 || cep === ultimoBuscado) return;
+        if (forcar === true && cep.length !== 8) {
+            if (status) { status.textContent = 'Digite os 8 dígitos do CEP.'; status.classList.add('text-danger'); }
+            campoCep.focus();
+            return;
+        }
+        if (cep.length !== 8 || (cep === ultimoBuscado && forcar !== true)) return;
         ultimoBuscado = cep;
 
         if (status) { status.classList.remove('text-danger'); status.textContent = 'Buscando endereço…'; }
@@ -408,7 +415,11 @@ function configurarBuscaCep(ids) {
         if (campoCep.value !== digitos) campoCep.value = digitos;
         if (digitos.length === 8) buscar();
     });
-    campoCep.addEventListener('blur', buscar);
+    campoCep.addEventListener('blur', () => buscar());
+    if (ids.botao) {
+        const botao = document.getElementById(ids.botao);
+        botao?.addEventListener('click', () => executarComBotaoDesabilitado(botao, () => buscar(true)));
+    }
 
     campoCodigo?.addEventListener('change', () => mostrarNomeMunicipio(ids.codigoMunicipio, ids.nomeMunicipio));
 

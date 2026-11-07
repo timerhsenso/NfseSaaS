@@ -39,7 +39,9 @@ public sealed class AtualizarClienteUseCase : IAtualizarClienteUseCase
         cliente.Bairro = request.Bairro;
         cliente.Uf = request.Uf;
         cliente.RetemIss = request.RetemIss;
-        cliente.NaoEnviarNfsePorEmail = !request.EnviarNfsePorEmail;
+        cliente.EnviarNfsePorEmail = request.EnviarNfsePorEmail;
+        cliente.EmailsCopia = EmailsCopiaCliente.Juntar(request.EmailsCopia);
+        cliente.CopiaOculta = request.CopiaOculta;
 
         _auditLogWriter.Registrar("AtualizarCliente", "Cliente", cliente.Id, new { cliente.Nome, cliente.Apelido });
 

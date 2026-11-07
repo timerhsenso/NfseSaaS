@@ -59,6 +59,7 @@ public sealed class SmtpEmailSender : IEmailSender
         // Reply-To inválido não impede o envio: só fica sem ele.
         if (!string.IsNullOrWhiteSpace(email.ResponderPara) && MailboxAddress.TryParse(email.ResponderPara, out var responderPara))
             mensagem.ReplyTo.Add(responderPara);
+        AdicionarCopias(mensagem, email, _logger);
         mensagem.Subject = assunto;
 
         var corpo = new BodyBuilder { HtmlBody = corpoHtml };
@@ -88,6 +89,27 @@ public sealed class SmtpEmailSender : IEmailSender
         {
             _logger.LogError(ex, "Falha ao enviar e-mail para {Destinatario}.", destinatarioEmail);
             return new ResultadoEnvioEmail(false, ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Cópias em Cc ou Cco. Endereço de cópia inválido (o cadastro valida,
+    /// então só por dado antigo) não impede o envio ao destinatário
+    /// principal: fica de fora e vai para o log.
+    /// </summary>
+    public static void AdicionarCopias(MimeMessage mensagem, MensagemEmail email, ILogger logger)
+    {
+        if (email.Copias is not { Count: > 0 } copias)
+            return;
+
+        var lista = email.CopiasOcultas ? mensagem.Bcc : mensagem.Cc;
+        foreach (var copia in copias)
+        {
+            // TryParse aceita "fulano" sem domínio: exige o "@" também.
+            if (MailboxAddress.TryParse(copia, out var endereco) && endereco.Address.Contains('@'))
+                lista.Add(endereco);
+            else
+                logger.LogWarning("Cópia com endereço inválido ignorada: {Copia}.", copia);
         }
     }
 }

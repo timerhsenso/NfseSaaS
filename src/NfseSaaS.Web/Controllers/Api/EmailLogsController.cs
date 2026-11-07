@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NfseSaaS.Application.Authorization;
 using NfseSaaS.Application.Common;
+using NfseSaaS.Application.UseCases.Clientes;
 using NfseSaaS.Domain.Enums;
 using NfseSaaS.Infrastructure.Email;
 using NfseSaaS.Infrastructure.Persistence;
@@ -18,7 +19,9 @@ public sealed record EmailLogResponse(
     string? ErroDetalhe,
     int Tentativas,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? EnviadoEm);
+    DateTimeOffset? EnviadoEm,
+    IReadOnlyList<string> Copias,
+    bool CopiasOcultas);
 
 /// <summary>
 /// Consulta e reenvio dos e-mails que o sistema tenta mandar (convite,
@@ -61,7 +64,8 @@ public sealed class EmailLogsController : ControllerBase
             query = query.Where(e => e.Tipo == tipo);
 
         if (!string.IsNullOrWhiteSpace(busca))
-            query = query.Where(e => EF.Functions.ILike(e.Destinatario, $"%{busca}%"));
+            query = query.Where(e => EF.Functions.ILike(e.Destinatario, $"%{busca}%") ||
+                (e.Copias != null && EF.Functions.ILike(e.Copias, $"%{busca}%")));
 
         var totalCount = await query.CountAsync(cancellationToken);
 
@@ -70,7 +74,8 @@ public sealed class EmailLogsController : ControllerBase
             .Skip((paginaNormalizada - 1) * tamanhoNormalizado)
             .Take(tamanhoNormalizado)
             .Select(e => new EmailLogResponse(
-                e.Id, e.Tipo, e.Destinatario, e.Assunto, e.Status.ToString(), e.ErroDetalhe, e.Tentativas, e.CreatedAt, e.EnviadoEm))
+                e.Id, e.Tipo, e.Destinatario, e.Assunto, e.Status.ToString(), e.ErroDetalhe, e.Tentativas, e.CreatedAt, e.EnviadoEm,
+                EmailsCopiaCliente.Separar(e.Copias), e.CopiasOcultas))
             .ToListAsync(cancellationToken);
 
         return Ok(new PagedResult<EmailLogResponse>

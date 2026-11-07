@@ -12,7 +12,9 @@ public sealed record MensagemEmail(
     string Assunto,
     string CorpoHtml,
     IReadOnlyCollection<AnexoEmail>? Anexos = null,
-    string? ResponderPara = null);
+    string? ResponderPara = null,
+    IReadOnlyCollection<string>? Copias = null,
+    bool CopiasOcultas = false);
 
 /// <summary>
 /// Abstração de envio de e-mail. Implementação real via SMTP em
@@ -28,8 +30,9 @@ public interface IEmailSender
     Task<ResultadoEnvioEmail> EnviarAsync(string destinatarioEmail, string assunto, string corpoHtml, IReadOnlyCollection<AnexoEmail> anexos, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Mesmo contrato, com Reply-To. A implementação padrão ignora o
-    /// Reply-To (implementações de teste não precisam mudar); o SMTP real usa.
+    /// Mesmo contrato, com Reply-To e cópias (Cc/Cco). A implementação
+    /// padrão ignora os dois (implementações de teste não precisam mudar);
+    /// o SMTP real usa.
     /// </summary>
     Task<ResultadoEnvioEmail> EnviarAsync(MensagemEmail mensagem, CancellationToken cancellationToken) =>
         EnviarAsync(mensagem.Destinatario, mensagem.Assunto, mensagem.CorpoHtml, mensagem.Anexos ?? Array.Empty<AnexoEmail>(), cancellationToken);

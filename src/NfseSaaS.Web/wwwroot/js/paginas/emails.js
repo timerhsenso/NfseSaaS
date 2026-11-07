@@ -4,7 +4,7 @@ let modalErroEmail;
 document.addEventListener('DOMContentLoaded', function () {
     tabelaEmails = new DataTable('#tabela-emails', {
         columns: [
-            { data: 'destinatario' },
+            { data: 'destinatario', render: (v, type, email) => renderDestinatarioEmail(email, type) },
             { data: 'tipo', render: v => rotuloTipo(v) },
             { data: 'assunto' },
             { data: 'status', render: v => rotuloStatus(v) },
@@ -122,4 +122,16 @@ function debounce(fn, atrasoMs) {
         clearTimeout(timer);
         timer = setTimeout(() => fn.apply(this, args), atrasoMs);
     };
+}
+
+/** Destinatário + cópias ("+2 em Cc"), com a lista no title. Na exportação/busca, texto puro. */
+function renderDestinatarioEmail(email, type) {
+    const copias = email.copias || [];
+    const rotulo = email.copiasOcultas ? 'Cco' : 'Cc';
+    if (type !== 'display') {
+        return copias.length ? `${email.destinatario}; ${rotulo}: ${copias.join('; ')}` : email.destinatario;
+    }
+    if (!copias.length) return escaparHtml(email.destinatario);
+    return `${escaparHtml(email.destinatario)}
+        <span class="badge text-bg-light border ms-1" title="${escaparHtml(rotulo + ': ' + copias.join(', '))}">+${copias.length} em ${rotulo}</span>`;
 }

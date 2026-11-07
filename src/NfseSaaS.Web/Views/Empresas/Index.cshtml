@@ -123,7 +123,12 @@
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label class="form-label" for="cep">CEP</label>
-                                <input type="text" class="form-control" id="cep" maxlength="9" required inputmode="numeric" placeholder="00000-000" />
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="cep" maxlength="9" required inputmode="numeric" placeholder="00000-000" />
+                                    <button type="button" class="btn btn-outline-primary" id="btn-buscar-cep-empresa" title="Buscar o endereço pelo CEP" aria-label="Buscar o endereço pelo CEP">
+                                        <i class="bi bi-search"></i>
+                                    </button>
+                                </div>
                                 <div class="form-text" id="status-cep-empresa"></div>
                             </div>
                             <div class="col-md-8 mb-3">

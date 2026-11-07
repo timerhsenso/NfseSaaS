@@ -24,6 +24,7 @@ public sealed class ObterClientePorIdUseCase : IObterClientePorIdUseCase
         return new ClienteResponse(
             cliente.Id, cliente.EmpresaId, cliente.CpfCnpj, cliente.Nome, cliente.Apelido, cliente.Email, cliente.Telefone,
             cliente.CodigoMunicipio, cliente.Cep, cliente.Logradouro, cliente.Numero, cliente.Complemento,
-            cliente.Bairro, cliente.Uf, cliente.Ativo, cliente.RetemIss, !cliente.NaoEnviarNfsePorEmail, cliente.CreatedAt, cliente.UpdatedAt);
+            cliente.Bairro, cliente.Uf, cliente.Ativo, cliente.RetemIss, cliente.EnviarNfsePorEmail,
+            EmailsCopiaCliente.Separar(cliente.EmailsCopia), cliente.CopiaOculta, cliente.CreatedAt, cliente.UpdatedAt);
     }
 }

@@ -62,4 +62,14 @@ public sealed class EmailLog : BaseEntity, ITenantEntity
     /// Nulo = sem Reply-To.
     /// </summary>
     public string? ResponderPara { get; set; }
+
+    /// <summary>
+    /// Endereços em cópia, separados por ";" (ex.: e-mail da nota com as
+    /// cópias do cadastro do cliente). Nulo = sem cópia. O "Reenviar"
+    /// manda de novo para eles também.
+    /// </summary>
+    public string? Copias { get; set; }
+
+    /// <summary>true = Copias vão em Cco (ocultas); false = Cc.</summary>
+    public bool CopiasOcultas { get; set; }
 }

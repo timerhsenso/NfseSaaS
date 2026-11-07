@@ -50,8 +50,9 @@ document.addEventListener('DOMContentLoaded', function () {
         buscaCepCliente = configurarBuscaCep({
             cep: 'cep', logradouro: 'logradouro', bairro: 'bairro', complemento: 'complemento', uf: 'uf',
             codigoMunicipio: 'codigoMunicipio', nomeMunicipio: 'nome-municipio-cliente', statusCep: 'status-cep-cliente',
-            numero: 'numero'
+            numero: 'numero', botao: 'btn-buscar-cep-cliente'
         });
+        document.getElementById('enviarNfsePorEmail').addEventListener('change', atualizarEnvioEmailCliente);
 
         document.getElementById('tabela-clientes').addEventListener('click', async function (e) {
             const botao = e.target.closest('button');
@@ -93,6 +94,27 @@ function limparFormularioCliente() {
     document.getElementById('subtitulo-modal-cliente').textContent = 'O tomador do serviço — como sai na nota.';
     document.getElementById('clienteId').value = '';
     document.getElementById('erro-cliente').classList.add('d-none');
+    atualizarEnvioEmailCliente();
+}
+
+/**
+ * Envio ligado: o e-mail vira obrigatório (o asterisco aparece sozinho
+ * pelo CSS de [required]) e surgem as cópias. Desligado: as cópias
+ * somem da tela, mas continuam no cadastro.
+ */
+function atualizarEnvioEmailCliente() {
+    const ligado = document.getElementById('enviarNfsePorEmail').checked;
+    document.getElementById('email').required = ligado;
+    document.getElementById('bloco-copias-cliente').classList.toggle('d-none', !ligado);
+}
+
+/** "a@x.com, b@y.com; c@z.com" → ['a@x.com', 'b@y.com', 'c@z.com'] (sem vazios e sem repetidos). */
+function lerEmailsCopiaCliente() {
+    const vistos = new Set();
+    return document.getElementById('emailsCopia').value
+        .split(/[,;\s]+/)
+        .map(e => e.trim())
+        .filter(e => e && !vistos.has(e.toLowerCase()) && vistos.add(e.toLowerCase()));
 }
 
 function abrirModalNovoCliente() {
@@ -124,7 +146,10 @@ async function abrirModalEditarCliente(id) {
         document.getElementById('bairro').value = cliente.bairro;
         document.getElementById('uf').value = cliente.uf;
         document.getElementById('retemIss').checked = cliente.retemIss === true;
-        document.getElementById('enviarNfsePorEmail').checked = cliente.enviarNfsePorEmail !== false;
+        document.getElementById('enviarNfsePorEmail').checked = cliente.enviarNfsePorEmail === true;
+        document.getElementById('emailsCopia').value = (cliente.emailsCopia || []).join(', ');
+        document.getElementById(cliente.copiaOculta ? 'copiaCco' : 'copiaCc').checked = true;
+        atualizarEnvioEmailCliente();
 
         const nomeExibicao = cliente.apelido || cliente.nome;
         document.getElementById('titulo-modal-cliente').textContent = nomeExibicao;
@@ -159,7 +184,9 @@ function montarPayloadCliente() {
         bairro: document.getElementById('bairro').value,
         uf: document.getElementById('uf').value.toUpperCase(),
         retemIss: document.getElementById('retemIss').checked,
-        enviarNfsePorEmail: document.getElementById('enviarNfsePorEmail').checked
+        enviarNfsePorEmail: document.getElementById('enviarNfsePorEmail').checked,
+        emailsCopia: lerEmailsCopiaCliente(),
+        copiaOculta: document.getElementById('copiaCco').checked
     };
 }
 
@@ -169,6 +196,10 @@ async function salvarCliente(e) {
 
     const id = document.getElementById('clienteId').value;
     const payload = montarPayloadCliente();
+    if (payload.emailsCopia.length > 5) {
+        mostrarErroFormulario('erro-cliente', 'Informe no máximo 5 e-mails em cópia.');
+        return;
+    }
 
     try {
         if (id) {

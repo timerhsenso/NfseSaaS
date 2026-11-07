@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NfseSaaS.Application.Abstractions;
+using NfseSaaS.Application.UseCases.Clientes;
+using NfseSaaS.Domain.Entities;
 using NfseSaaS.Domain.Enums;
 using NfseSaaS.Infrastructure.Persistence;
 
@@ -63,7 +65,7 @@ public sealed class EmailDispatchHostedService : BackgroundService
 
         log.Tentativas++;
 
-        var resultado = await EnviarAsync(scope.ServiceProvider, emailSender, log.TenantId, log.NfseId, log.ResponderPara, item, cancellationToken);
+        var resultado = await EnviarAsync(scope.ServiceProvider, emailSender, log, item, cancellationToken);
 
         if (resultado.Sucesso)
         {
@@ -95,17 +97,20 @@ public sealed class EmailDispatchHostedService : BackgroundService
     /// no próprio EmailLog — nunca um e-mail de nota sem a nota.
     /// </summary>
     private async Task<ResultadoEnvioEmail> EnviarAsync(
-        IServiceProvider servicos, IEmailSender emailSender, Guid tenantId, Guid? nfseId, string? responderPara, ItemFilaEmail item, CancellationToken cancellationToken)
+        IServiceProvider servicos, IEmailSender emailSender, EmailLog log, ItemFilaEmail item, CancellationToken cancellationToken)
     {
-        if (nfseId is not { } idNota)
-            return responderPara is null
+        var responderPara = log.ResponderPara;
+        var copias = EmailsCopiaCliente.Separar(log.Copias);
+
+        if (log.NfseId is not { } idNota)
+            return responderPara is null && copias.Count == 0
                 ? await emailSender.EnviarAsync(item.Destinatario, item.Assunto, item.CorpoHtml, cancellationToken)
-                : await emailSender.EnviarAsync(new MensagemEmail(item.Destinatario, item.Assunto, item.CorpoHtml, null, responderPara), cancellationToken);
+                : await emailSender.EnviarAsync(new MensagemEmail(item.Destinatario, item.Assunto, item.CorpoHtml, null, responderPara, copias, log.CopiasOcultas), cancellationToken);
 
         IReadOnlyCollection<AnexoEmail> anexos;
         try
         {
-            servicos.GetRequiredService<ICurrentTenant>().DefinirTenantIdDeSistema(tenantId);
+            servicos.GetRequiredService<ICurrentTenant>().DefinirTenantIdDeSistema(log.TenantId);
             anexos = await servicos.GetRequiredService<AnexosNfseEmail>().MontarAsync(idNota, cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -114,6 +119,6 @@ public sealed class EmailDispatchHostedService : BackgroundService
             return new ResultadoEnvioEmail(false, $"Não foi possível anexar a nota: {ex.Message}");
         }
 
-        return await emailSender.EnviarAsync(new MensagemEmail(item.Destinatario, item.Assunto, item.CorpoHtml, anexos, responderPara), cancellationToken);
+        return await emailSender.EnviarAsync(new MensagemEmail(item.Destinatario, item.Assunto, item.CorpoHtml, anexos, responderPara, copias, log.CopiasOcultas), cancellationToken);
     }
 }

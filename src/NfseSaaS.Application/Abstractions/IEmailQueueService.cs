@@ -6,6 +6,8 @@ namespace NfseSaaS.Application.Abstractions;
 /// <param name="NfseId">Nota cujo PDF e XML vão anexados — gerados na hora do envio (ver EmailLog.NfseId).</param>
 /// <param name="ChaveDeduplicacao">Aviso que só pode sair uma vez — ver EmailLog.ChaveDeduplicacao.</param>
 /// <param name="ResponderPara">Reply-To — ver EmailLog.ResponderPara.</param>
+/// <param name="Copias">Endereços em cópia — ver EmailLog.Copias.</param>
+/// <param name="CopiasOcultas">true = cópias em Cco.</param>
 /// <param name="Segredos">Tokens do corpo: o e-mail sai com eles, mas o EmailLog grava o corpo com eles escondidos (MascaramentoEmail).</param>
 public sealed record EmailParaEnfileirar(
     string Tipo,
@@ -16,7 +18,9 @@ public sealed record EmailParaEnfileirar(
     Guid? NfseId = null,
     string? ChaveDeduplicacao = null,
     string? ResponderPara = null,
-    IReadOnlyCollection<string>? Segredos = null);
+    IReadOnlyCollection<string>? Segredos = null,
+    IReadOnlyCollection<string>? Copias = null,
+    bool CopiasOcultas = false);
 
 /// <summary>
 /// Ponto único que os controllers usam pra "enviar" um e-mail — na

@@ -357,6 +357,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<bool>("CopiaOculta")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("CpfCnpj")
                         .IsRequired()
                         .HasMaxLength(14)
@@ -369,16 +372,20 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("EmailsCopia")
+                        .HasMaxLength(505)
+                        .HasColumnType("character varying(505)");
+
                     b.Property<Guid>("EmpresaId")
                         .HasColumnType("uuid");
+
+                    b.Property<bool>("EnviarNfsePorEmail")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Logradouro")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
-
-                    b.Property<bool>("NaoEnviarNfsePorEmail")
-                        .HasColumnType("boolean");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -766,6 +773,13 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<string>("ChaveDeduplicacao")
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
+
+                    b.Property<string>("Copias")
+                        .HasMaxLength(600)
+                        .HasColumnType("character varying(600)");
+
+                    b.Property<bool>("CopiasOcultas")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("CorpoHtml")
                         .IsRequired()

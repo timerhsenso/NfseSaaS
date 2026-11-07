@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', function () {
         buscaCepEmpresa = configurarBuscaCep({
             cep: 'cep', logradouro: 'logradouro', bairro: 'bairro', complemento: 'complemento', uf: 'uf',
             codigoMunicipio: 'codigoMunicipio', nomeMunicipio: 'nome-municipio-empresa', statusCep: 'status-cep-empresa',
-            numero: 'numero', aoPreencher: atualizarStatusSecoesEmpresa
+            numero: 'numero', botao: 'btn-buscar-cep-empresa', aoPreencher: atualizarStatusSecoesEmpresa
         });
 
         // ✓ / ! em cada seção conforme o preenchimento.

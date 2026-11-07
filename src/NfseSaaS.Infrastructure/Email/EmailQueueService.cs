@@ -32,7 +32,9 @@ public sealed class EmailQueueService : IEmailQueueService
             CorpoHtml = MascaramentoEmail.Mascarar(email.CorpoHtml, email.Segredos),
             NfseId = email.NfseId,
             ChaveDeduplicacao = email.ChaveDeduplicacao,
-            ResponderPara = email.ResponderPara
+            ResponderPara = email.ResponderPara,
+            Copias = email.Copias is { Count: > 0 } ? string.Join(';', email.Copias) : null,
+            CopiasOcultas = email.CopiasOcultas
         };
 
         _db.EmailLogs.Add(log);

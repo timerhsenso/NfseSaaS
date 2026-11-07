@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using NfseSaaS.Application.UseCases.Clientes;
 using NfseSaaS.Domain.Entities;
 
 namespace NfseSaaS.Infrastructure.Persistence.Configurations;
@@ -31,6 +32,9 @@ public sealed class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
 
         builder.Property(c => c.Email)
             .HasMaxLength(200);
+
+        builder.Property(c => c.EmailsCopia)
+            .HasMaxLength(EmailsCopiaCliente.TamanhoMaximoColuna);
 
         builder.Property(c => c.Telefone)
             .HasMaxLength(20);

@@ -1085,7 +1085,8 @@ async function enviarNfsePorEmail(id) {
 
     try {
         const resultado = await apiFetch(`/api/nfse/${id}/enviar-email`, { method: 'POST' });
-        mostrarToast(`Nota enviada para ${resultado.destinatario}. Acompanhe a entrega na tela de E-mails.`);
+        const copias = resultado.copias?.length ? ` (+${resultado.copias.length} em cópia)` : '';
+        mostrarToast(`Nota enviada para ${resultado.destinatario}${copias}. Acompanhe a entrega na tela de E-mails.`);
     } catch (err) {
         mostrarErro(err.message);
     }

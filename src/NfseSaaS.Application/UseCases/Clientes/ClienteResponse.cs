@@ -18,5 +18,7 @@ public sealed record ClienteResponse(
     bool Ativo,
     bool RetemIss,
     bool EnviarNfsePorEmail,
+    IReadOnlyList<string> EmailsCopia,
+    bool CopiaOculta,
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt);

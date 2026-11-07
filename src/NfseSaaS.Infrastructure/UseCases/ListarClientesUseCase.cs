@@ -45,7 +45,9 @@ public sealed class ListarClientesUseCase : IListarClientesUseCase
             .Take(pageSize)
             .Select(c => new ClienteResponse(
                 c.Id, c.EmpresaId, c.CpfCnpj, c.Nome, c.Apelido, c.Email, c.Telefone, c.CodigoMunicipio,
-                c.Cep, c.Logradouro, c.Numero, c.Complemento, c.Bairro, c.Uf, c.Ativo, c.RetemIss, !c.NaoEnviarNfsePorEmail, c.CreatedAt, c.UpdatedAt))
+                c.Cep, c.Logradouro, c.Numero, c.Complemento, c.Bairro, c.Uf, c.Ativo, c.RetemIss, c.EnviarNfsePorEmail,
+                // Projeção final: o EF lê a coluna e separa na memória.
+                EmailsCopiaCliente.Separar(c.EmailsCopia), c.CopiaOculta, c.CreatedAt, c.UpdatedAt))
             .ToListAsync(cancellationToken);
 
         return new PagedResult<ClienteResponse>

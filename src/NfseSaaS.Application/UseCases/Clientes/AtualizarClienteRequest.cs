@@ -14,4 +14,6 @@ public sealed record AtualizarClienteRequest(
     string Bairro,
     string Uf,
     bool RetemIss = false,
-    bool EnviarNfsePorEmail = true);
+    bool EnviarNfsePorEmail = false,
+    IReadOnlyList<string>? EmailsCopia = null,
+    bool CopiaOculta = false) : IDadosEnvioEmailCliente;

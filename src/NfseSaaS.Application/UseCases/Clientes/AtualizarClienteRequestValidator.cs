@@ -18,6 +18,7 @@ public sealed class AtualizarClienteRequestValidator : AbstractValidator<Atualiz
 
         RuleFor(x => x.Email).EmailAddress().When(x => !string.IsNullOrWhiteSpace(x.Email));
         RuleFor(x => x.Telefone).MaximumLength(20);
+        Include(new EnvioEmailClienteValidator());
 
         RuleFor(x => x.CodigoMunicipio)
             .NotEmpty()

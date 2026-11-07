@@ -60,12 +60,21 @@ public sealed class Cliente : BaseEntity, ITenantEntity
     public bool RetemIss { get; set; }
 
     /// <summary>
-    /// true = NÃO mandar a nota autorizada (PDF e XML) por e-mail a este
-    /// tomador. O padrão é mandar sempre que houver e-mail cadastrado.
-    /// Gravado "pelo avesso" de propósito: com false como padrão, os
-    /// clientes que já existem passam a receber sem precisar de valor
-    /// padrão no banco (o EF ignora HasDefaultValue(true) quando o valor
-    /// em memória é false — o mesmo aviso de "sentinel" de outros campos).
+    /// true = mandar a nota autorizada (PDF e XML) por e-mail a este tomador
+    /// logo depois da autorização. Padrão: NÃO manda — quem liga precisa
+    /// informar o e-mail (o validator exige). Substituiu o antigo
+    /// NaoEnviarNfsePorEmail ("pelo avesso"), que fazia todo cliente com
+    /// e-mail receber sem ninguém ter pedido.
     /// </summary>
-    public bool NaoEnviarNfsePorEmail { get; set; }
+    public bool EnviarNfsePorEmail { get; set; }
+
+    /// <summary>
+    /// Até 5 endereços que recebem o mesmo e-mail da nota, em cópia,
+    /// separados por ";" (ver EmailsCopiaCliente). Nulo = sem cópia. Só
+    /// valem com EnviarNfsePorEmail ligado (ficam guardados se desligar).
+    /// </summary>
+    public string? EmailsCopia { get; set; }
+
+    /// <summary>true = cópias em Cco (ocultas); false = Cc (todos veem quem recebeu).</summary>
+    public bool CopiaOculta { get; set; }
 }
