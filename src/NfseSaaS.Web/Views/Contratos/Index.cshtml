@@ -13,11 +13,11 @@
             <div id="botoes-exportacao-tabela-contratos"></div>
             @if (podeEditar)
             {
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-verificar-reajustes"
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-verificar-reajustes" data-requer-empresa
                         title="Calcula agora os reajustes de aniversário pelo índice (o sistema também faz isso todo dia às 10:10)">
                     <i class="bi bi-arrow-repeat"></i> Verificar reajustes
                 </button>
-                <button type="button" class="btn btn-primary btn-sm" id="btn-novo-contrato">
+                <button type="button" class="btn btn-primary btn-sm" id="btn-novo-contrato" data-requer-empresa>
                     <i class="bi bi-plus-lg"></i> Novo contrato
                 </button>
             }

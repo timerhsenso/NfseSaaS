@@ -343,7 +343,7 @@ async function alternarAtivo(id, ativoAtualmente) {
 async function alterarAmbiente(id, nomeEmpresa, novoAmbiente) {
     const indoPraProducao = novoAmbiente === AMBIENTE_PRODUCAO;
     const mensagem = indoPraProducao
-        ? `Promover "${nomeEmpresa}" para Produção? A partir de agora, toda nota emitida por ela terá efeito fiscal real.`
+        ? `Promover "${nomeEmpresa}" para Produção? Antes, o sistema testa o certificado digital com a SEFIN Nacional de produção; se o teste falhar, a empresa continua em homologação. Passando, toda nota emitida por ela terá efeito fiscal real.`
         : `Voltar "${nomeEmpresa}" para Homologação? A partir de agora, as notas emitidas por ela voltam a ser de teste (sem efeito fiscal). Notas já emitidas em Produção continuam valendo — isso só afeta o que for emitido daqui pra frente.`;
 
     const confirmado = await confirmarAcao(mensagem, {
@@ -352,6 +352,23 @@ async function alterarAmbiente(id, nomeEmpresa, novoAmbiente) {
         variante: 'perigo'
     });
     if (!confirmado) return;
+
+    // Produção exige certificado: sem nenhum cadastrado, nem chama a SEFIN,
+    // já oferece enviar (o servidor confere de novo e testa na hora).
+    if (indoPraProducao) {
+        try {
+            const status = await apiFetch(`/api/empresas/${id}/certificado`);
+            if (!status.existe) {
+                await oferecerCertificado(id, nomeEmpresa,
+                    `"${nomeEmpresa}" ainda não tem certificado digital (A1, arquivo .pfx). Sem ele a SEFIN Nacional não aceita a nota, por isso a empresa continua em homologação. Enviar o certificado agora?`);
+                return;
+            }
+        } catch (err) {
+            mostrarErro(err.message);
+            return;
+        }
+        mostrarToast('Testando o certificado com a SEFIN Nacional de produção…');
+    }
 
     try {
         await apiFetch(`/api/empresas/${id}/ambiente`, {
@@ -371,8 +388,19 @@ async function alterarAmbiente(id, nomeEmpresa, novoAmbiente) {
         await carregarEmpresas();
         mostrarToast(`"${nomeEmpresa}" agora está em ${indoPraProducao ? 'Produção' : 'Homologação'}.`);
     } catch (err) {
-        mostrarErro(err.message);
+        // Recusa do teste do certificado: mensagem longa, fica numa janela
+        // (não num toast que some) com o atalho para o certificado.
+        if (indoPraProducao) await oferecerCertificado(id, nomeEmpresa, err.message);
+        else mostrarErro(err.message);
     }
+}
+
+async function oferecerCertificado(id, nomeEmpresa, mensagem) {
+    const abrir = await confirmarAcao(mensagem, {
+        titulo: 'Não foi possível colocar em produção',
+        textoBotao: 'Abrir certificado'
+    });
+    if (abrir) await abrirModalCertificado(id, nomeEmpresa);
 }
 
 async function excluirEmpresa(id) {

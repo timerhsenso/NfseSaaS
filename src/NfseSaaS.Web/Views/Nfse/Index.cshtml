@@ -14,13 +14,13 @@
             <div id="botoes-exportacao-tabela-nfse"></div>
             @if (podeEmitir)
             {
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-sincronizar-sefin">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-sincronizar-sefin" data-requer-empresa>
                     <i class="bi bi-cloud-download"></i> Buscar notas da SEFIN
                 </button>
-                <button type="button" class="btn btn-outline-primary btn-sm" id="btn-nota-mensal">
+                <button type="button" class="btn btn-outline-primary btn-sm" id="btn-nota-mensal" data-requer-empresa>
                     <i class="bi bi-calendar-check"></i> Nota Mensal
                 </button>
-                <button type="button" class="btn btn-primary btn-sm" id="btn-emitir-nfse">
+                <button type="button" class="btn btn-primary btn-sm" id="btn-emitir-nfse" data-requer-empresa>
                     <i class="bi bi-plus-lg"></i> Emitir nota
                 </button>
             }

@@ -360,6 +360,10 @@ let etapaResumoEmissao = false;
 let chaveIdempotenciaEmissao = null;
 
 async function abrirModalEmitirNfse() {
+    if (!empresaAtualIdNfse) {
+        mostrarToast('Cadastre a sua empresa em Empresas antes de emitir notas.', 'erro');
+        return;
+    }
     try {
         await prepararModalEmitirNfse();
         modalEmitirNfse.show();
@@ -866,6 +870,10 @@ function mesAtualIso() {
 }
 
 async function abrirModalNotaMensal(competenciaMesOverride) {
+    if (!empresaAtualIdNfse) {
+        mostrarToast('Cadastre a sua empresa em Empresas antes de emitir notas.', 'erro');
+        return;
+    }
     ocultarErroFormulario('erro-nota-mensal');
     candidatosNotaMensal = [];
     document.getElementById('nota-mensal-competencia').value = competenciaMesOverride || mesAtualIso();

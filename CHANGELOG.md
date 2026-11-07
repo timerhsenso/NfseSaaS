@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Corrigido (emissão e produção)
+- **Sem empresa cadastrada, os botões que dependem dela ficam desligados**
+  (Emitir nota, Nota Mensal, Buscar notas da SEFIN, Novo cliente, Novo
+  serviço, Novo contrato, Verificar reajustes). Antes, clicar mandava a
+  requisição sem empresa e aparecia só um erro 404 solto.
+- **Colocar em produção exige certificado digital testado na hora**: sem
+  certificado, vencido ou sem chave, a passagem é recusada com o motivo; com
+  certificado, o sistema faz o teste de conexão com a SEFIN Nacional de
+  PRODUÇÃO a cada tentativa e só muda o ambiente se ele passar. O certificado
+  testado fica no Histórico (auditoria). Voltar para homologação continua livre.
+
 ### Adicionado (site)
 - **Página pública /precos** lendo o catálogo (Plataforma › Planos): planos para
   empresas e para contadores/escritórios, preço cheio riscado e preço de

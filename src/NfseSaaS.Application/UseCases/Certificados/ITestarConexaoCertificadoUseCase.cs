@@ -1,3 +1,5 @@
+using NfseSaaS.Domain.Enums;
+
 namespace NfseSaaS.Application.UseCases.Certificados;
 
 /// <summary>
@@ -7,5 +9,9 @@ namespace NfseSaaS.Application.UseCases.Certificados;
 /// </summary>
 public interface ITestarConexaoCertificadoUseCase
 {
+    /// <summary>Testa no ambiente atual da Empresa (botão Testar conexão).</summary>
     Task<TesteConexaoResponse> ExecutarAsync(Guid empresaId, CancellationToken cancellationToken);
+
+    /// <summary>Testa num ambiente escolhido (ex.: produção, antes de a Empresa passar para lá).</summary>
+    Task<TesteConexaoResponse> ExecutarAsync(Guid empresaId, TipoAmbiente ambiente, CancellationToken cancellationToken);
 }

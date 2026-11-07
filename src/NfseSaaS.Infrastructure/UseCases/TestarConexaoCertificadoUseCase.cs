@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.Certificados;
+using NfseSaaS.Domain.Enums;
 using NfseSaaS.Infrastructure.Persistence;
 using NfseSaaS.Nacional.Clients;
 using NfseSaaS.Nacional.Exceptions;
@@ -32,7 +33,14 @@ public sealed class TestarConexaoCertificadoUseCase : ITestarConexaoCertificadoU
         _apiClient = apiClient;
     }
 
-    public async Task<TesteConexaoResponse> ExecutarAsync(Guid empresaId, CancellationToken cancellationToken)
+    public Task<TesteConexaoResponse> ExecutarAsync(Guid empresaId, CancellationToken cancellationToken) =>
+        TestarAsync(empresaId, ambiente: null, cancellationToken);
+
+    public Task<TesteConexaoResponse> ExecutarAsync(Guid empresaId, TipoAmbiente ambiente, CancellationToken cancellationToken) =>
+        TestarAsync(empresaId, ambiente, cancellationToken);
+
+    /// <param name="ambiente">Nulo: o ambiente atual da Empresa.</param>
+    private async Task<TesteConexaoResponse> TestarAsync(Guid empresaId, TipoAmbiente? ambiente, CancellationToken cancellationToken)
     {
         // Ver comentário completo em EnviarCertificadoUseCase — mesma
         // checagem obrigatória de tenant via _db.Empresas. Carrega a
@@ -44,7 +52,7 @@ public sealed class TestarConexaoCertificadoUseCase : ITestarConexaoCertificadoU
 
         try
         {
-            var (statusCode, _) = await _apiClient.ConsultarPorChaveAsync(empresaId, empresa.TipoAmbiente.ParaTpAmb(), ChaveDeTeste, cancellationToken);
+            var (statusCode, _) = await _apiClient.ConsultarPorChaveAsync(empresaId, (ambiente ?? empresa.TipoAmbiente).ParaTpAmb(), ChaveDeTeste, cancellationToken);
 
             return new TesteConexaoResponse(
                 Sucesso: true,

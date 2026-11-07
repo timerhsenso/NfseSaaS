@@ -40,6 +40,19 @@ function mostrarAvisoSemEmpresa() {
     cabecalho.insertAdjacentElement('afterend', aviso);
 }
 
+/**
+ * Sem Empresa selecionada, os botões que dependem dela (marcados com
+ * data-requer-empresa: Emitir nota, Nota Mensal, Novo cliente...) ficam
+ * desligados: clicar mandaria "empresaId" vazio para a API e o usuário
+ * veria só um erro solto. O aviso do topo diz o que fazer.
+ */
+function bloquearAcoesSemEmpresa() {
+    document.querySelectorAll('[data-requer-empresa]').forEach(botao => {
+        botao.disabled = true;
+        botao.title = 'Cadastre a sua empresa primeiro (menu Empresas).';
+    });
+}
+
 function definirEmpresaAtualId(empresaId) {
     const expira = new Date();
     expira.setDate(expira.getDate() + 365);
@@ -62,6 +75,11 @@ async function inicializarSeletorEmpresaTopo() {
     const select = document.getElementById('seletor-empresa-topo');
     if (!select) return;
 
+    // Sem cookie, nenhuma Empresa escolhida ainda: desliga já, antes da
+    // resposta da API (se a conta tiver Empresa, a página recarrega logo
+    // abaixo com ela selecionada).
+    if (!obterEmpresaAtualId()) bloquearAcoesSemEmpresa();
+
     try {
         const resultado = await apiFetch('/api/empresas?pageSize=200');
         select.innerHTML = '';
@@ -78,6 +96,7 @@ async function inicializarSeletorEmpresaTopo() {
             }
             select.innerHTML = '<option value="">Nenhuma empresa cadastrada</option>';
             mostrarAvisoSemEmpresa();
+            bloquearAcoesSemEmpresa();
             return;
         }
 
