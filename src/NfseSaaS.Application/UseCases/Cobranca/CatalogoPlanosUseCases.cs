@@ -32,8 +32,15 @@ public interface ICatalogoPlanos
     /// <summary>Nome dos planos por código (para listas).</summary>
     Task<IReadOnlyDictionary<int, string>> NomesAsync(CancellationToken cancellationToken);
 
-    /// <summary>Vagas de fundador que sobram no grupo (nunca negativo).</summary>
+    /// <summary>
+    /// Vagas de fundador que sobram no grupo (nunca negativo): total menos
+    /// assinaturas fundador e reservas válidas. Zero com a campanha encerrada
+    /// pela data (CampanhaAte).
+    /// </summary>
     Task<int> VagasFundadorRestantesAsync(PublicoPlano publico, CancellationToken cancellationToken);
+
+    /// <summary>Data-fim da campanha de fundador do grupo (nula = sem data-fim).</summary>
+    Task<DateOnly?> CampanhaFundadorAteAsync(PublicoPlano publico, CancellationToken cancellationToken);
 }
 
 // ---------- Plataforma › Planos ----------
@@ -92,9 +99,14 @@ public sealed record PrecoPlanoResponse(
     string? CadastradoPor,
     string Situacao);
 
-public sealed record VagasFundadorResponse(PublicoPlano Publico, int Quantidade, int Usadas, int Restantes);
+/// <param name="Usadas">Assinaturas fundador (inclusive canceladas) mais reservas válidas.</param>
+/// <param name="Reservas">Das usadas, quantas são reservas ainda sem assinatura.</param>
+/// <param name="CampanhaAte">Último dia da campanha (nulo = sem data-fim).</param>
+/// <param name="CampanhaAberta">Aceita novas reservas hoje (sobra vaga e não passou da data).</param>
+public sealed record VagasFundadorResponse(PublicoPlano Publico, int Quantidade, int Usadas, int Restantes, int Reservas, DateOnly? CampanhaAte, bool CampanhaAberta);
 
-public sealed record AlterarVagasFundadorRequest(PublicoPlano Publico, int Quantidade, string? Motivo);
+/// <param name="CampanhaAte">Último dia da campanha do grupo (nulo = sem data-fim).</param>
+public sealed record AlterarVagasFundadorRequest(PublicoPlano Publico, int Quantidade, string? Motivo, DateOnly? CampanhaAte = null);
 
 /// <summary>Plataforma › Planos (só operador da plataforma). Toda mudança vai para o Histórico do operador.</summary>
 public interface IAdministrarPlanosUseCase
@@ -229,6 +241,8 @@ public static class RegrasCatalogoPlanos
             throw new RegraNegocioException("Grupo de fundador inválido.");
         if (r.Quantidade < 0 || r.Quantidade > VagasLimite)
             throw new RegraNegocioException($"Vagas: de 0 a {VagasLimite}.");
+        if (r.CampanhaAte is { } fim && (fim.Year < 2026 || fim.Year > 2100))
+            throw new RegraNegocioException("Data-fim da campanha inválida.");
         if ((r.Motivo ?? string.Empty).Trim().Length > 200)
             throw new RegraNegocioException("Motivo: até 200 caracteres.");
     }

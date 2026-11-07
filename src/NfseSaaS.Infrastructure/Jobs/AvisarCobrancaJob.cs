@@ -51,6 +51,8 @@ public sealed class AvisarCobrancaJob : IAvisarCobrancaJob
 
     public async Task ExecutarAsync()
     {
+        await ReservarFundadoresAsync();
+
         List<Guid> contas;
         using (var scope = _scopeFactory.CreateScope())
         {
@@ -83,6 +85,27 @@ public sealed class AvisarCobrancaJob : IAvisarCobrancaJob
     }
 
     public Task ExecutarContaAsync(Guid tenantId) => AvisarAsync(tenantId);
+
+    /// <summary>
+    /// Guarda a vaga de fundador de quem confirmou o e-mail por um caminho
+    /// que não reserva na hora (convite, senha redefinida, contas antigas).
+    /// Falha aqui não impede os avisos.
+    /// </summary>
+    private async Task ReservarFundadoresAsync()
+    {
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var feitas = await scope.ServiceProvider.GetRequiredService<IReservaFundador>()
+                .ReservarPendentesAsync(CancellationToken.None);
+            if (feitas > 0)
+                _logger.LogInformation("Varredura de fundador: {Quantidade} vaga(s) reservada(s).", feitas);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falha na varredura de reservas de fundador.");
+        }
+    }
 
     private async Task AvisarAsync(Guid tenantId)
     {

@@ -14,9 +14,18 @@ public static class Planos
     public const int CodigoEscritorio25 = 4;
     public const int CodigoEscritorio50 = 5;
 
-    /// <summary>Teste grátis em produção: o que acabar primeiro (homologação é sempre livre).</summary>
+    /// <summary>
+    /// Teste grátis em produção, em dias, sem limite de notas (homologação é
+    /// sempre livre). Conta da primeira nota em produção ou da assinatura,
+    /// o que vier primeiro.
+    /// </summary>
     public const int TesteDias = 30;
-    public const int TesteNotas = 10;
+
+    /// <summary>
+    /// A vaga de fundador reservada no cadastro vale até estes dias depois do
+    /// fim do teste grátis (Roadmap, seção 2: "reserva até 7 dias após o teste").
+    /// </summary>
+    public const int DiasReservaFundadorAposTeste = 7;
 
     /// <summary>
     /// Dias depois do vencimento em que a emissão em produção ainda funciona

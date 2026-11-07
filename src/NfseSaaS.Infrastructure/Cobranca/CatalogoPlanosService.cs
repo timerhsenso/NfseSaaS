@@ -49,16 +49,32 @@ public sealed class CatalogoPlanosService : ICatalogoPlanos, IAdministrarPlanosU
 
     public async Task<int> VagasFundadorRestantesAsync(PublicoPlano publico, CancellationToken cancellationToken)
     {
-        var quantidade = await _db.VagasFundador.AsNoTracking()
-            .Where(v => v.Publico == publico).Select(v => (int?)v.Quantidade).FirstOrDefaultAsync(cancellationToken) ?? 0;
-        return Math.Max(0, quantidade - await FundadoresUsadosAsync(publico, cancellationToken));
+        var vagas = await _db.VagasFundador.AsNoTracking().FirstOrDefaultAsync(v => v.Publico == publico, cancellationToken);
+        if (vagas is null || !RegrasFundador.CampanhaAbertaNaData(vagas.CampanhaAte, DataBrasilia.Hoje()))
+            return 0;
+        var usadas = await FundadoresUsadosAsync(publico, cancellationToken) + await ReservasValidasAsync(publico, cancellationToken);
+        return Math.Max(0, vagas.Quantidade - usadas);
     }
+
+    public async Task<DateOnly?> CampanhaFundadorAteAsync(PublicoPlano publico, CancellationToken cancellationToken) =>
+        await _db.VagasFundador.AsNoTracking().Where(v => v.Publico == publico).Select(v => v.CampanhaAte).FirstOrDefaultAsync(cancellationToken);
 
     /// <summary>Assinaturas com preço de fundador em planos do grupo (as canceladas também contam: a vaga foi usada).</summary>
     private Task<int> FundadoresUsadosAsync(PublicoPlano publico, CancellationToken cancellationToken)
     {
         var codigos = _db.Planos.Where(p => p.Publico == publico).Select(p => (int?)p.Codigo);
         return _db.Assinaturas.AsNoTracking().CountAsync(a => a.Fundador && codigos.Contains(a.Plano), cancellationToken);
+    }
+
+    /// <summary>Reservas de fundador do grupo ainda válidas (mesma regra de RegrasFundador.ReservaValida).</summary>
+    private Task<int> ReservasValidasAsync(PublicoPlano publico, CancellationToken cancellationToken)
+    {
+        var inicioMinimo = RegrasFundador.InicioTesteMinimoParaReserva(DateTimeOffset.UtcNow);
+        return _db.Assinaturas.AsNoTracking().CountAsync(a =>
+            a.FundadorReservadoEm != null && a.FundadorReservaGrupo == publico
+            && !a.Fundador && a.Status != StatusAssinatura.Cancelada
+            && (a.FundadorReservaSemPrazo || a.TesteIniciadoEm == null || a.TesteIniciadoEm >= inicioMinimo),
+            cancellationToken);
     }
 
     private async Task<IReadOnlyList<PlanoVigente>> ComPrecoVigenteAsync(IReadOnlyList<Plano> planos, CancellationToken cancellationToken)
@@ -208,10 +224,14 @@ public sealed class CatalogoPlanosService : ICatalogoPlanos, IAdministrarPlanosU
     {
         var vagas = await _db.VagasFundador.AsNoTracking().OrderBy(v => v.Publico).ToListAsync(cancellationToken);
         var resposta = new List<VagasFundadorResponse>();
+        var hoje = DataBrasilia.Hoje();
         foreach (var v in vagas)
         {
-            var usadas = await FundadoresUsadosAsync(v.Publico, cancellationToken);
-            resposta.Add(new VagasFundadorResponse(v.Publico, v.Quantidade, usadas, Math.Max(0, v.Quantidade - usadas)));
+            var reservas = await ReservasValidasAsync(v.Publico, cancellationToken);
+            var usadas = await FundadoresUsadosAsync(v.Publico, cancellationToken) + reservas;
+            var restantes = Math.Max(0, v.Quantidade - usadas);
+            resposta.Add(new VagasFundadorResponse(v.Publico, v.Quantidade, usadas, restantes, reservas, v.CampanhaAte,
+                restantes > 0 && RegrasFundador.CampanhaAbertaNaData(v.CampanhaAte, hoje)));
         }
         return resposta;
     }
@@ -228,10 +248,16 @@ public sealed class CatalogoPlanosService : ICatalogoPlanos, IAdministrarPlanosU
         }
 
         var antes = vagas.Quantidade;
+        var campanhaAntes = vagas.CampanhaAte;
         vagas.Quantidade = request.Quantidade;
+        vagas.CampanhaAte = request.CampanhaAte;
         vagas.UpdatedAt = DateTimeOffset.UtcNow;
         _auditLogWriter.Registrar("AlterarVagasFundador", "VagasFundador", null,
-            new { request.Publico, antes, depois = request.Quantidade, Motivo = string.IsNullOrWhiteSpace(request.Motivo) ? null : request.Motivo.Trim() });
+            new
+            {
+                request.Publico, antes, depois = request.Quantidade, campanhaAntes, campanhaAte = request.CampanhaAte,
+                Motivo = string.IsNullOrWhiteSpace(request.Motivo) ? null : request.Motivo.Trim()
+            });
         await _db.SaveChangesAsync(cancellationToken);
     }
 

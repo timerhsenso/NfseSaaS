@@ -7,6 +7,7 @@ using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Authorization;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.Cadastro;
+using NfseSaaS.Application.UseCases.Cobranca;
 using NfseSaaS.Application.UseCases.Consultas;
 using NfseSaaS.Application.Validation;
 using NfseSaaS.Domain.Entities;
@@ -103,6 +104,7 @@ public sealed class ConfirmacaoEmailService : IConfirmacaoEmailService
     private readonly IEmailQueueService _emailQueue;
     private readonly IAuditLogWriter _auditLogWriter;
     private readonly EmailOptions _emailOptions;
+    private readonly IReservaFundador _reservaFundador;
     private readonly ILogger<ConfirmacaoEmailService> _logger;
 
     public ConfirmacaoEmailService(
@@ -111,8 +113,10 @@ public sealed class ConfirmacaoEmailService : IConfirmacaoEmailService
         IEmailQueueService emailQueue,
         IAuditLogWriter auditLogWriter,
         IOptions<EmailOptions> emailOptions,
+        IReservaFundador reservaFundador,
         ILogger<ConfirmacaoEmailService> logger)
     {
+        _reservaFundador = reservaFundador;
         _userManager = userManager;
         _db = db;
         _emailQueue = emailQueue;
@@ -176,6 +180,17 @@ public sealed class ConfirmacaoEmailService : IConfirmacaoEmailService
         finally
         {
             _db.TenantIdOverrideDeSistema = null;
+        }
+
+        // Entrou durante a campanha: guarda a vaga de fundador agora. Nunca
+        // atrapalha a confirmação (a tela Assinatura e a varredura diária tentam de novo).
+        try
+        {
+            await _reservaFundador.TentarReservarAsync(usuario.TenantId, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Não foi possível reservar a vaga de fundador da conta {TenantId} na confirmação do e-mail.", usuario.TenantId);
         }
         return true;
     }

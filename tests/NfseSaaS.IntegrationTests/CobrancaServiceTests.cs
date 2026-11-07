@@ -57,7 +57,7 @@ public class CobrancaServiceTests
             await db.SaveChangesAsync();
 
             var erro = await Assert.ThrowsAsync<RegraNegocioException>(() => ligada.GarantirPodeEmitirEmProducaoAsync(tenant.Id, CancellationToken.None));
-            Assert.Contains("teste grátis terminou", erro.Message);
+            Assert.Contains("teste grátis de 30 dias terminou", erro.Message);
 
             await Servico(sp, new CobrancaOptions { Ativa = true, ContasIsentas = { tenant.Id } })
                 .GarantirPodeEmitirEmProducaoAsync(tenant.Id, CancellationToken.None);

@@ -10,7 +10,10 @@ public enum TipoAvisoCobranca
     /// <summary>Faltam 7 (ou 2) dias para o teste grátis em produção acabar.</summary>
     TesteAcabandoDias = 1,
 
-    /// <summary>Faltam 2 notas (8 de 10 usadas) para o teste grátis acabar.</summary>
+    /// <summary>
+    /// Não é mais gerado: o teste grátis passou a ser só por dias (07/11/2026).
+    /// Fica no enum porque já existe no histórico de e-mails.
+    /// </summary>
     TesteAcabandoNotas = 2,
 
     FaturaCriada = 3,
@@ -36,14 +39,16 @@ public enum TipoAvisoCobranca
 public sealed record UsoPlano(string PlanoNome, int MaxEmpresas, int? NotasPorMes, int EmpresasAtivas, int NotasNoMes);
 
 /// <summary>
-/// Foto da assinatura de uma conta, já com o que precisa ser contado no
-/// banco (notas do teste). É tudo o que as regras de aviso olham.
+/// Foto da assinatura de uma conta. É tudo o que as regras de aviso olham.
 /// </summary>
+/// <param name="PrimeiraCobrancaEm">Vencimento da primeira fatura de quem assinou durante o teste.</param>
+/// <param name="AcessoAteAposCancelar">Cancelada pela tela: último dia com emissão em produção.</param>
+/// <param name="FundadorReservado">Tem vaga de fundador reservada e válida (entra no texto do teste acabando).</param>
 public sealed record EstadoAvisoCobranca(
     Guid TenantId,
     StatusAssinatura Status,
     DateTimeOffset? TesteIniciadoEm,
-    int NotasProducaoNoTeste,
+    DateOnly? PrimeiraCobrancaEm,
     string? AsaasAssinaturaId,
     DateOnly? AtrasadaDesde,
     string? UrlFaturaPendente,
@@ -51,7 +56,9 @@ public sealed record EstadoAvisoCobranca(
     decimal? ValorFaturaPendente,
     DateTimeOffset? UltimoPagamentoEm,
     DateTimeOffset? CanceladaEm,
-    UsoPlano? Uso = null);
+    UsoPlano? Uso = null,
+    DateOnly? AcessoAteAposCancelar = null,
+    bool FundadorReservado = false);
 
 /// <summary>
 /// Um aviso a mandar. <paramref name="Chave"/> vai para
@@ -93,9 +100,6 @@ public static class RegrasAvisoCobranca
     /// <summary>Faixas do aviso de teste acabando, em dias restantes (a menor que couber vale).</summary>
     public static readonly int[] FaixasDiasTeste = { 2, 7 };
 
-    /// <summary>Avisa quando sobram estas notas no teste (8 de 10 usadas).</summary>
-    public const int NotasRestantesAviso = 2;
-
     public const int JanelaEventoDias = 1;
 
     /// <summary>Avisa quando as notas do mês chegam a este percentual do plano (e de novo aos 100%).</summary>
@@ -121,8 +125,7 @@ public static class RegrasAvisoCobranca
             return avisos;
         }
 
-        var situacao = RegrasCobranca.Avaliar(estado.Status, estado.TesteIniciadoEm, estado.NotasProducaoNoTeste,
-            estado.AtrasadaDesde, agora, hoje);
+        var situacao = Situacao(estado, agora, hoje);
 
         // Emissão em produção bloqueada.
         if (!situacao.PodeEmitirEmProducao)
@@ -130,6 +133,9 @@ public static class RegrasAvisoCobranca
             if (estado.Status == StatusAssinatura.Atrasada && estado.AtrasadaDesde is { } desde)
                 avisos.Add(new AvisoCobranca(TipoAvisoCobranca.EmissaoBloqueada,
                     $"cob:bloqueio:atraso:{conta}:{desde:yyyyMMdd}", desde.AddDays(Planos.ToleranciaAtrasoDias + 1)));
+            else if (estado.Status == StatusAssinatura.Teste && estado.PrimeiraCobrancaEm is { } primeira)
+                avisos.Add(new AvisoCobranca(TipoAvisoCobranca.EmissaoBloqueada,
+                    $"cob:bloqueio:primeira:{conta}:{primeira:yyyyMMdd}", primeira.AddDays(Planos.ToleranciaAtrasoDias + 1)));
             else if (estado.TesteIniciadoEm is { } inicio)
                 avisos.Add(new AvisoCobranca(TipoAvisoCobranca.EmissaoBloqueada,
                     $"cob:bloqueio:teste:{conta}:{inicio.ToUniversalTime():yyyyMMddHHmmss}", hoje));
@@ -162,11 +168,6 @@ public static class RegrasAvisoCobranca
             if (faixa is { } f)
                 avisos.Add(new AvisoCobranca(TipoAvisoCobranca.TesteAcabandoDias,
                     $"cob:teste:{conta}:{testeInicio.ToUniversalTime():yyyyMMddHHmmss}:{f}d", DiaEmBrasilia(termina), dias));
-
-            var notasRestantes = Planos.TesteNotas - estado.NotasProducaoNoTeste;
-            if (notasRestantes <= NotasRestantesAviso)
-                avisos.Add(new AvisoCobranca(TipoAvisoCobranca.TesteAcabandoNotas,
-                    $"cob:teste-notas:{conta}:{testeInicio.ToUniversalTime():yyyyMMddHHmmss}", DiaEmBrasilia(termina), notasRestantes));
         }
 
         // Limite do plano (suave): um aviso por mês e por faixa, nunca bloqueia.
@@ -204,21 +205,27 @@ public static class RegrasAvisoCobranca
         var temFatura = estado.UrlFaturaPendente is not null;
 
         if (estado.Status == StatusAssinatura.Cancelada)
-            return estado.AsaasAssinaturaId is null
-                ? null
-                : new FaixaCobranca(NivelFaixaCobranca.Bloqueio,
-                    "A assinatura desta conta foi cancelada: a emissão em produção está bloqueada. Assine de novo para voltar a emitir.", false);
+        {
+            if (estado.AsaasAssinaturaId is null)
+                return null;
+            if (estado.AcessoAteAposCancelar is { } ate && hoje <= ate)
+                return new FaixaCobranca(NivelFaixaCobranca.Info,
+                    $"A assinatura foi cancelada. A emissão em produção continua até {Data(ate)}; depois disso, só com uma nova assinatura.", false);
+            return new FaixaCobranca(NivelFaixaCobranca.Bloqueio,
+                "A assinatura desta conta foi cancelada: a emissão em produção está bloqueada. Assine de novo para voltar a emitir.", false);
+        }
 
-        var situacao = RegrasCobranca.Avaliar(estado.Status, estado.TesteIniciadoEm, estado.NotasProducaoNoTeste,
-            estado.AtrasadaDesde, agora, hoje);
+        var situacao = Situacao(estado, agora, hoje);
 
         if (!situacao.PodeEmitirEmProducao)
             return new FaixaCobranca(NivelFaixaCobranca.Bloqueio, situacao.Bloqueio!, temFatura);
 
         if (VencimentoEmAtraso(estado, hoje) is { } vencidaEm)
         {
-            // Atrasada: o aviso das regras já diz quando a emissão para.
-            var mensagem = estado.Status == StatusAssinatura.Atrasada && situacao.Aviso is not null
+            // Atrasada (ou primeira fatura vencida): o aviso das regras já diz quando a emissão para.
+            var regrasDizemQuando = estado.Status == StatusAssinatura.Atrasada
+                || (estado.Status == StatusAssinatura.Teste && estado.PrimeiraCobrancaEm is not null);
+            var mensagem = regrasDizemQuando && situacao.Aviso is not null
                 ? situacao.Aviso
                 : $"A fatura{Valor(estado)} vencida em {Data(vencidaEm)} ainda não foi paga.";
             return new FaixaCobranca(NivelFaixaCobranca.Atencao, mensagem, temFatura);
@@ -236,10 +243,10 @@ public static class RegrasAvisoCobranca
         {
             var termina = inicio.AddDays(Planos.TesteDias);
             var dias = DiasRestantes(termina, agora);
-            var notas = Planos.TesteNotas - estado.NotasProducaoNoTeste;
-            if (dias <= FaixasDiasTeste.Max() || notas <= NotasRestantesAviso)
+            if (dias <= FaixasDiasTeste.Max())
                 return new FaixaCobranca(NivelFaixaCobranca.Info,
-                    $"O teste grátis termina em {Data(DiaEmBrasilia(termina))} ou ao chegar a {Planos.TesteNotas} notas em produção (faltam {dias} dia(s) e {notas} nota(s)). Assine um plano para não parar de emitir.",
+                    $"O teste grátis termina em {Data(DiaEmBrasilia(termina))} (falta(m) {dias} dia(s)). Escolha um plano para não parar de emitir: a primeira cobrança só vence no fim do teste."
+                    + (estado.FundadorReservado ? " Seu preço de fundador está garantido." : string.Empty),
                     false);
         }
 
@@ -258,6 +265,10 @@ public static class RegrasAvisoCobranca
 
         return null;
     }
+
+    private static SituacaoCobranca Situacao(EstadoAvisoCobranca estado, DateTimeOffset agora, DateOnly hoje) =>
+        RegrasCobranca.Avaliar(estado.Status, estado.TesteIniciadoEm, estado.PrimeiraCobrancaEm,
+            estado.AtrasadaDesde, estado.AcessoAteAposCancelar, agora, hoje);
 
     /// <summary>Vencimento da fatura em atraso (Atrasada, ou fatura em aberto com vencimento passado), ou nulo.</summary>
     private static DateOnly? VencimentoEmAtraso(EstadoAvisoCobranca estado, DateOnly hoje)

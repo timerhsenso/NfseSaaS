@@ -75,5 +75,12 @@ public sealed class VagasFundador
 
     public int Quantidade { get; set; }
 
+    /// <summary>
+    /// Último dia da campanha de fundador do grupo (inclusive). Depois dele
+    /// ninguém novo ganha vaga, mesmo sobrando; quem já reservou mantém.
+    /// Nulo = sem data-fim (só o número de vagas limita).
+    /// </summary>
+    public DateOnly? CampanhaAte { get; set; }
+
     public DateTimeOffset? UpdatedAt { get; set; }
 }

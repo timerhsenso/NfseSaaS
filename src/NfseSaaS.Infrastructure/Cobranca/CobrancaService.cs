@@ -13,13 +13,16 @@ using NfseSaaS.Infrastructure.Persistence;
 namespace NfseSaaS.Infrastructure.Cobranca;
 
 /// <summary>
-/// Assinatura da conta: situação (tela e emissão), assinar e cancelar.
-/// Regras de decisão ficam em RegrasCobranca; aqui só banco e gateway.
+/// Assinatura da conta: situação (tela e emissão), reserva de fundador,
+/// assinar, trocar de plano e cancelar. Regras de decisão ficam em
+/// RegrasCobranca e RegrasFundador; aqui só banco e gateway.
 /// </summary>
-public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseCase, IAssinarUseCase, ICancelarAssinaturaUseCase, ITrocarPlanoUseCase
+public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseCase, IAssinarUseCase, ICancelarAssinaturaUseCase, ITrocarPlanoUseCase, IReservaFundador
 {
-    // Um "Assinar"/"Trocar plano" por vez no processo: o botão pode ser
-    // clicado duas vezes e criaria duas assinaturas (ou duas trocas) no Asaas.
+    // Um "Assinar"/"Trocar plano"/reserva de fundador por vez no processo: o
+    // botão pode ser clicado duas vezes e criaria duas assinaturas (ou duas
+    // trocas) no Asaas, e duas reservas ao mesmo tempo poderiam passar da
+    // última vaga.
     private static readonly SemaphoreSlim TravaAssinar = new(1, 1);
 
     private readonly AppDbContext _db;
@@ -68,7 +71,7 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
             return;
         }
 
-        var situacao = await AvaliarAsync(assinatura, cancellationToken);
+        var situacao = Avaliar(assinatura, DateTimeOffset.UtcNow, DataBrasilia.Hoje());
         if (!situacao.PodeEmitirEmProducao)
             throw new RegraNegocioException(situacao.Bloqueio!);
     }
@@ -78,13 +81,19 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
     async Task<AssinaturaResponse> IObterAssinaturaUseCase.ExecutarAsync(CancellationToken cancellationToken)
     {
         var tenantId = TenantAtual();
+
+        // Quem confirmou o e-mail por um caminho sem reserva (convite, senha
+        // redefinida) ganha a vaga aqui, se ainda houver.
+        await TentarReservarAsync(tenantId, cancellationToken);
+
         var assinatura = await ObterOuCriarAsync(tenantId, cancellationToken);
         var isenta = _options.ContasIsentas.Contains(tenantId);
         var cobrancaAtiva = _options.AtivaPara(tenantId);
+        var agora = DateTimeOffset.UtcNow;
+        var hoje = DataBrasilia.Hoje();
 
-        var notasTeste = await NotasDoTesteAsync(assinatura, cancellationToken);
         var situacao = cobrancaAtiva && !isenta
-            ? RegrasCobranca.Avaliar(assinatura.Status, assinatura.TesteIniciadoEm, notasTeste, assinatura.AtrasadaDesde, DateTimeOffset.UtcNow, DataBrasilia.Hoje())
+            ? Avaliar(assinatura, agora, hoje)
             : new SituacaoCobranca(true, null, null, assinatura.TesteIniciadoEm?.AddDays(Planos.TesteDias));
 
         var notasMes = await ContarNotasDoMesAsync(_db, tenantId, cancellationToken);
@@ -99,6 +108,7 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
         var temAssinaturaNoGateway = assinatura.AsaasAssinaturaId is not null && assinatura.Status != StatusAssinatura.Cancelada;
         var planoAtual = assinatura.Plano is { } codigo ? await _catalogo.ObterAsync(codigo, cancellationToken) : null;
         var planoNome = planoAtual?.Nome;
+        var reservaValida = ReservaValida(assinatura, agora);
 
         var ofertas = (await _catalogo.PlanosAVendaAsync(perfil, cancellationToken)).Select(p =>
         {
@@ -111,22 +121,38 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
                     p.Codigo, p.Nome, p.Descricao, p.MaxEmpresas, p.NotasPorMes,
                     troca.Preco, p.PrecoMensal, troca.Fundador, vagasPlano);
             }
+            var fundadorAqui = RegrasFundador.AssinaComoFundador(reservaValida, assinatura.FundadorReservaGrupo, p.Publico, vagasPlano);
             return new PlanoOfertaResponse(
                 p.Codigo, p.Nome, p.Descricao, p.MaxEmpresas, p.NotasPorMes,
-                vagasPlano > 0 ? p.PrecoFundador : p.PrecoMensal, p.PrecoMensal, vagasPlano > 0, vagasPlano);
+                fundadorAqui ? p.PrecoFundador : p.PrecoMensal, p.PrecoMensal, fundadorAqui, vagasPlano);
         }).ToList();
-        var vagas = vagasPorGrupo[perfil == PerfilConta.Contador ? PublicoPlano.Escritorios : PublicoPlano.Empresas];
+        var grupoConta = RegrasFundador.GrupoDoPerfil(perfil);
+        var vagas = vagasPorGrupo[grupoConta];
+        var podeAssinar = cobrancaAtiva && !isenta && !temAssinaturaNoGateway;
+
+        // Primeira cobrança: a marcada (assinou no teste) ou a que valeria assinando agora.
+        DateOnly? primeiraCobranca = temAssinaturaNoGateway
+            ? assinatura.Status == StatusAssinatura.Teste ? assinatura.PrimeiraCobrancaEm : null
+            : podeAssinar
+                ? RegrasCobranca.PrimeiroVencimento(assinatura.Status, assinatura.TesteIniciadoEm, assinatura.AcessoAteAposCancelar, agora, hoje).Vencimento
+                : null;
 
         return new AssinaturaResponse(
             cobrancaAtiva, isenta, assinatura.Status, assinatura.Plano, planoNome, assinatura.PrecoMensal, assinatura.Fundador,
-            assinatura.TesteIniciadoEm, situacao.TesteTerminaEm, notasTeste, Planos.TesteNotas,
+            assinatura.TesteIniciadoEm, situacao.TesteTerminaEm,
             situacao.PodeEmitirEmProducao, situacao.Bloqueio, situacao.Aviso,
             notasMes, empresas, assinatura.AtrasadaDesde, assinatura.UrlFaturaPendente,
             AguardandoPrimeiroPagamento: temAssinaturaNoGateway && assinatura.Status == StatusAssinatura.Teste,
-            PodeAssinar: cobrancaAtiva && !isenta && !temAssinaturaNoGateway,
+            PodeAssinar: podeAssinar,
             PodeCancelar: temAssinaturaNoGateway,
             PodeTrocarPlano: cobrancaAtiva && !isenta && temAssinaturaNoGateway,
-            vagas, ofertas);
+            vagas, ofertas,
+            PrimeiraCobrancaEm: primeiraCobranca,
+            FundadorReservado: reservaValida,
+            FundadorReservaAte: reservaValida ? RegrasFundador.ReservaValeAte(assinatura.FundadorReservaSemPrazo, assinatura.TesteIniciadoEm) : null,
+            FundadorReservaSemPrazo: reservaValida && assinatura.FundadorReservaSemPrazo,
+            CampanhaFundadorAte: await _catalogo.CampanhaFundadorAteAsync(grupoConta, cancellationToken),
+            AcessoAteAposCancelar: assinatura.Status == StatusAssinatura.Cancelada ? assinatura.AcessoAteAposCancelar : null);
     }
 
     // ---------- Assinar ----------
@@ -157,15 +183,28 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
                 ? await _db.Users.AsNoTracking().Where(u => u.Id == usuarioId).Select(u => u.Email).FirstOrDefaultAsync(cancellationToken)
                 : null;
 
-            var fundador = await _catalogo.VagasFundadorRestantesAsync(plano.Publico, cancellationToken) > 0;
+            var agora = DateTimeOffset.UtcNow;
+            var hoje = DataBrasilia.Hoje();
+            var reservaValida = ReservaValida(assinatura, agora);
+            var vagas = await _catalogo.VagasFundadorRestantesAsync(plano.Publico, cancellationToken);
+            var fundador = RegrasFundador.AssinaComoFundador(reservaValida, assinatura.FundadorReservaGrupo, plano.Publico, vagas);
             var preco = fundador ? plano.PrecoFundador : plano.PrecoMensal;
+
+            // Primeira fatura no fim do teste (ninguém perde dia de teste por assinar cedo).
+            var statusAntes = assinatura.Status;
+            var (vencimento, iniciarTeste) = RegrasCobranca.PrimeiroVencimento(
+                assinatura.Status, assinatura.TesteIniciadoEm, assinatura.AcessoAteAposCancelar, agora, hoje);
+            // Tolerância na primeira fatura: só para quem nunca pagou ou ainda tem dias pagos
+            // depois de cancelar (cancelar e assinar de novo não abre outra tolerância).
+            var primeiraComTolerancia = statusAntes == StatusAssinatura.Teste
+                || (statusAntes == StatusAssinatura.Cancelada && vencimento > hoje);
 
             // Cliente no Asaas: reaproveita o de uma assinatura anterior (cancelada).
             assinatura.AsaasClienteId ??= await _gateway.CriarClienteAsync(tenant.RazaoSocial, tenant.Documento, email, tenantId.ToString(), cancellationToken);
             await _db.SaveChangesAsync(cancellationToken);
 
             var assinaturaId = await _gateway.CriarAssinaturaMensalAsync(
-                assinatura.AsaasClienteId, preco, DataBrasilia.Hoje(),
+                assinatura.AsaasClienteId, preco, vencimento,
                 $"micoempresa - plano {plano.Nome}{(fundador ? " (preço de fundador)" : "")}",
                 tenantId.ToString(), cancellationToken);
 
@@ -173,9 +212,15 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
             assinatura.Plano = plano.Codigo;
             assinatura.PrecoMensal = preco;
             assinatura.Fundador = fundador;
-            assinatura.AssinadaEm = DateTimeOffset.UtcNow;
+            assinatura.AssinadaEm = agora;
             assinatura.CanceladaEm = null;
+            assinatura.AcessoAteAposCancelar = null;
             assinatura.AtrasadaDesde = null;
+            assinatura.PrimeiraCobrancaEm = primeiraComTolerancia ? vencimento : null;
+            if (iniciarTeste)
+                assinatura.TesteIniciadoEm = agora;
+            // A reserva de fundador acaba aqui (usada ou não): cancelar depois perde o preço.
+            LimparReserva(assinatura);
             // Continua "Teste" até o Asaas confirmar o primeiro pagamento (webhook).
             if (assinatura.Status == StatusAssinatura.Cancelada)
                 assinatura.Status = StatusAssinatura.Teste;
@@ -185,8 +230,7 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
                 assinatura.UrlFaturaPendente = await _gateway.ObterUrlFaturaPendenteAsync(assinaturaId, cancellationToken);
                 if (assinatura.UrlFaturaPendente is not null)
                 {
-                    // A primeira fatura vence hoje (primeiroVencimento acima).
-                    assinatura.VencimentoFaturaPendente = DataBrasilia.Hoje();
+                    assinatura.VencimentoFaturaPendente = vencimento;
                     assinatura.ValorFaturaPendente = preco;
                 }
             }
@@ -196,7 +240,8 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
                 _logger.LogWarning(ex, "Não foi possível obter a fatura da assinatura {AssinaturaId} logo após criar.", assinaturaId);
             }
 
-            _auditLogWriter.Registrar("Assinar", "Assinatura", assinatura.Id, new { plano = plano.Nome, preco, fundador, assinaturaId });
+            _auditLogWriter.Registrar("Assinar", "Assinatura", assinatura.Id,
+                new { plano = plano.Nome, preco, fundador, fundadorPelaReserva = reservaValida, primeiroVencimento = vencimento, assinaturaId });
             await _db.SaveChangesAsync(cancellationToken);
 
             return new AssinarResponse(assinatura.UrlFaturaPendente);
@@ -276,13 +321,128 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
         if (assinatura.AsaasAssinaturaId is null || assinatura.Status == StatusAssinatura.Cancelada)
             throw new RegraNegocioException("Não há assinatura ativa para cancelar.");
 
+        // Até quando a emissão continua: fim do teste ou do mês já pago.
+        // Precisa ser lido ANTES de cancelar (depois o Asaas não informa mais).
+        var acessoAte = await AcessoAposCancelarAsync(assinatura, cancellationToken);
+
         await _gateway.CancelarAssinaturaAsync(assinatura.AsaasAssinaturaId, cancellationToken);
 
         assinatura.Status = StatusAssinatura.Cancelada;
         assinatura.CanceladaEm = DateTimeOffset.UtcNow;
+        assinatura.AcessoAteAposCancelar = acessoAte;
+        assinatura.PrimeiraCobrancaEm = null;
         assinatura.LimparFaturaPendente();
-        _auditLogWriter.Registrar("CancelarAssinatura", "Assinatura", assinatura.Id, new { assinatura.AsaasAssinaturaId });
+        LimparReserva(assinatura);
+        _auditLogWriter.Registrar("CancelarAssinatura", "Assinatura", assinatura.Id,
+            new { assinatura.AsaasAssinaturaId, acessoAte, fundadorPerdido = assinatura.Fundador });
         await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Último dia com emissão em produção depois de cancelar: no teste, o fim
+    /// do teste; ativa, a véspera do próximo vencimento (o mês já pago); em
+    /// atraso, nenhum. Falha ao consultar o Asaas = sem dias extras.
+    /// </summary>
+    private async Task<DateOnly?> AcessoAposCancelarAsync(Assinatura assinatura, CancellationToken cancellationToken)
+    {
+        var hoje = DataBrasilia.Hoje();
+        if (assinatura.Status == StatusAssinatura.Teste)
+        {
+            if (assinatura.TesteIniciadoEm is not { } inicio)
+                return null;
+            var termina = inicio.AddDays(Planos.TesteDias);
+            return DateTimeOffset.UtcNow < termina ? DiaEmBrasilia(termina) : null;
+        }
+
+        if (assinatura.Status != StatusAssinatura.Ativa || assinatura.AsaasAssinaturaId is null)
+            return null;
+
+        try
+        {
+            var proximo = await _gateway.ObterProximoVencimentoAsync(assinatura.AsaasAssinaturaId, cancellationToken);
+            return proximo is { } p && p.AddDays(-1) >= hoje ? p.AddDays(-1) : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Não foi possível ler o próximo vencimento da assinatura {AssinaturaId}; cancela sem dias extras.", assinatura.AsaasAssinaturaId);
+            return null;
+        }
+    }
+
+    // ---------- Reserva de fundador ----------
+
+    public async Task<bool> TentarReservarAsync(Guid tenantId, CancellationToken cancellationToken)
+    {
+        if (_options.ContasIsentas.Contains(tenantId))
+            return false;
+
+        // Checagens baratas antes da trava (a tela Assinatura passa por aqui).
+        var atual = await _db.Assinaturas.AsNoTracking()
+            .Where(a => a.TenantId == tenantId)
+            .Select(a => new { a.FundadorReservadoEm, a.Fundador, a.AssinadaEm })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (atual is not null && (atual.FundadorReservadoEm is not null || atual.Fundador || atual.AssinadaEm is not null))
+            return false;
+
+        var tenant = await _db.Tenants.AsNoTracking()
+            .Where(t => t.Id == tenantId)
+            .Select(t => new { t.Ativo, t.BloqueadoEm, t.Perfil })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (tenant is null || !tenant.Ativo || tenant.BloqueadoEm is not null)
+            return false;
+        if (!await _db.Users.AsNoTracking().AnyAsync(u => u.TenantId == tenantId && u.EmailConfirmed, cancellationToken))
+            return false;
+
+        var grupo = RegrasFundador.GrupoDoPerfil(tenant.Perfil);
+
+        await TravaAssinar.WaitAsync(cancellationToken);
+        try
+        {
+            // Sem vaga (ou campanha encerrada), nem cria a assinatura da conta.
+            var vagas = await _catalogo.VagasFundadorRestantesAsync(grupo, cancellationToken);
+            if (vagas <= 0)
+                return false;
+
+            var assinatura = await ObterOuCriarAsync(tenantId, cancellationToken);
+            if (!RegrasFundador.PodeReservar(emailConfirmado: true, contaAtiva: true, isenta: false,
+                    assinatura.FundadorReservadoEm, assinatura.Fundador, assinatura.AssinadaEm, vagas))
+                return false;
+
+            assinatura.FundadorReservadoEm = DateTimeOffset.UtcNow;
+            assinatura.FundadorReservaGrupo = grupo;
+            // Beta (cobrança ainda desligada para a conta): vale sem prazo.
+            assinatura.FundadorReservaSemPrazo = !_options.AtivaPara(tenantId);
+            await _db.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("Vaga de fundador reservada para a conta {TenantId} ({Grupo}, sem prazo: {SemPrazo}).",
+                tenantId, grupo, assinatura.FundadorReservaSemPrazo);
+            return true;
+        }
+        finally
+        {
+            TravaAssinar.Release();
+        }
+    }
+
+    public async Task<int> ReservarPendentesAsync(CancellationToken cancellationToken)
+    {
+        // Mais antigas primeiro: quem entrou antes leva a vaga.
+        var candidatas = await _db.Tenants.AsNoTracking()
+            .Where(t => t.Ativo && t.BloqueadoEm == null)
+            .Where(t => _db.Users.Any(u => u.TenantId == t.Id && u.EmailConfirmed))
+            .Where(t => !_db.Assinaturas.Any(a => a.TenantId == t.Id
+                && (a.FundadorReservadoEm != null || a.Fundador || a.AssinadaEm != null)))
+            .OrderBy(t => t.CreatedAt)
+            .Select(t => t.Id)
+            .ToListAsync(cancellationToken);
+
+        var feitas = 0;
+        foreach (var tenantId in candidatas)
+        {
+            if (await TentarReservarAsync(tenantId, cancellationToken))
+                feitas++;
+        }
+        return feitas;
     }
 
     // ---------- Apoio ----------
@@ -311,24 +471,23 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
         }
     }
 
-    private async Task<SituacaoCobranca> AvaliarAsync(Assinatura assinatura, CancellationToken cancellationToken) =>
-        RegrasCobranca.Avaliar(assinatura.Status, assinatura.TesteIniciadoEm, await NotasDoTesteAsync(assinatura, cancellationToken),
-            assinatura.AtrasadaDesde, DateTimeOffset.UtcNow, DataBrasilia.Hoje());
+    internal static SituacaoCobranca Avaliar(Assinatura assinatura, DateTimeOffset agora, DateOnly hoje) =>
+        RegrasCobranca.Avaliar(assinatura.Status, assinatura.TesteIniciadoEm, assinatura.PrimeiraCobrancaEm,
+            assinatura.AtrasadaDesde, assinatura.AcessoAteAposCancelar, agora, hoje);
 
-    private Task<int> NotasDoTesteAsync(Assinatura assinatura, CancellationToken cancellationToken) =>
-        ContarNotasDoTesteAsync(_db, assinatura, cancellationToken);
+    internal static bool ReservaValida(Assinatura assinatura, DateTimeOffset agora) =>
+        RegrasFundador.ReservaValida(assinatura.FundadorReservadoEm, assinatura.FundadorReservaSemPrazo,
+            assinatura.Fundador, assinatura.Status, assinatura.TesteIniciadoEm, agora);
 
-    /// <summary>Notas autorizadas em produção desde o início do teste (rejeitadas não contam).</summary>
-    internal static async Task<int> ContarNotasDoTesteAsync(AppDbContext db, Assinatura assinatura, CancellationToken cancellationToken)
+    private static void LimparReserva(Assinatura assinatura)
     {
-        if (assinatura.TesteIniciadoEm is not { } inicio)
-            return 0;
-
-        var inicioUtc = inicio.ToUniversalTime();
-        return await db.NotasFiscais.IgnoreQueryFilters().AsNoTracking()
-            .CountAsync(n => n.TenantId == assinatura.TenantId && n.TipoAmbiente == TipoAmbiente.Producao
-                             && n.Status == NfseStatus.Autorizada && n.DataEmissao >= inicioUtc, cancellationToken);
+        assinatura.FundadorReservadoEm = null;
+        assinatura.FundadorReservaGrupo = null;
+        assinatura.FundadorReservaSemPrazo = false;
     }
+
+    private static DateOnly DiaEmBrasilia(DateTimeOffset quando) =>
+        DateOnly.FromDateTime(quando.ToUniversalTime().AddHours(-3).DateTime);
 
     /// <summary>Notas autorizadas em produção no mês corrente (Brasília) — o "notas/mês" dos planos.</summary>
     internal static Task<int> ContarNotasDoMesAsync(AppDbContext db, Guid tenantId, CancellationToken cancellationToken)

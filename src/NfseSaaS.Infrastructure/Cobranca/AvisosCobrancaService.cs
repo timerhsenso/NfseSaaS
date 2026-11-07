@@ -151,11 +151,12 @@ public sealed class AvisosCobrancaService : IEnviarAvisosCobrancaUseCase, IObter
     // ---------- Apoio ----------
 
     private async Task<EstadoAvisoCobranca> EstadoAsync(Assinatura a, CancellationToken cancellationToken) =>
-        new(a.TenantId, a.Status, a.TesteIniciadoEm,
-            await CobrancaService.ContarNotasDoTesteAsync(_db, a, cancellationToken),
+        new(a.TenantId, a.Status, a.TesteIniciadoEm, a.PrimeiraCobrancaEm,
             a.AsaasAssinaturaId, a.AtrasadaDesde, a.UrlFaturaPendente, a.VencimentoFaturaPendente, a.ValorFaturaPendente,
             a.UltimoPagamentoEm, a.CanceladaEm,
-            await UsoAsync(a, cancellationToken));
+            await UsoAsync(a, cancellationToken),
+            a.AcessoAteAposCancelar,
+            CobrancaService.ReservaValida(a, DateTimeOffset.UtcNow));
 
     /// <summary>Uso frente ao plano, só para quem assinou um plano (não cancelado).</summary>
     private async Task<UsoPlano?> UsoAsync(Assinatura a, CancellationToken cancellationToken)

@@ -10,54 +10,82 @@ public class RegrasCobrancaTests
     private static readonly DateTimeOffset Agora = new(2026, 11, 10, 12, 0, 0, TimeSpan.Zero);
     private static readonly DateOnly Hoje = new(2026, 11, 10);
 
+    private static SituacaoCobranca Avaliar(
+        StatusAssinatura status,
+        DateTimeOffset? testeIniciadoEm = null,
+        DateOnly? primeiraCobrancaEm = null,
+        DateOnly? atrasadaDesde = null,
+        DateOnly? acessoAte = null,
+        DateTimeOffset? agora = null,
+        DateOnly? hoje = null) =>
+        RegrasCobranca.Avaliar(status, testeIniciadoEm, primeiraCobrancaEm, atrasadaDesde, acessoAte, agora ?? Agora, hoje ?? Hoje);
+
     [Fact]
     public void Teste_que_nao_comecou_libera_sem_aviso()
     {
-        var s = RegrasCobranca.Avaliar(StatusAssinatura.Teste, null, 0, null, Agora, Hoje);
+        var s = Avaliar(StatusAssinatura.Teste);
         Assert.True(s.PodeEmitirEmProducao);
         Assert.Null(s.Aviso);
     }
 
     [Fact]
-    public void Teste_em_andamento_libera_e_avisa_o_que_falta()
+    public void Teste_em_andamento_libera_e_avisa_so_os_dias()
     {
-        var s = RegrasCobranca.Avaliar(StatusAssinatura.Teste, Agora.AddDays(-10), 3, null, Agora, Hoje);
+        var s = Avaliar(StatusAssinatura.Teste, Agora.AddDays(-10));
         Assert.True(s.PodeEmitirEmProducao);
-        Assert.Contains("20 dia(s) e 7 nota(s)", s.Aviso);
+        Assert.Contains("faltam 20 dia(s)", s.Aviso);
+        Assert.DoesNotContain("nota", s.Aviso);
         Assert.Equal(Agora.AddDays(20), s.TesteTerminaEm);
     }
 
     [Fact]
-    public void Teste_acaba_pelo_prazo()
+    public void Teste_acaba_so_pelo_prazo()
     {
-        var s = RegrasCobranca.Avaliar(StatusAssinatura.Teste, Agora.AddDays(-Planos.TesteDias), 0, null, Agora, Hoje);
+        Assert.Equal(30, Planos.TesteDias);
+        var s = Avaliar(StatusAssinatura.Teste, Agora.AddDays(-Planos.TesteDias));
         Assert.False(s.PodeEmitirEmProducao);
-        Assert.Contains("teste grátis terminou", s.Bloqueio);
+        Assert.Contains("teste grátis de 30 dias terminou", s.Bloqueio);
         Assert.Contains("homologação", s.Bloqueio);
     }
 
     [Fact]
-    public void Teste_acaba_pelas_notas_antes_do_prazo()
+    public void Quem_assinou_no_teste_emite_ate_a_primeira_fatura_mais_a_tolerancia()
     {
-        var s = RegrasCobranca.Avaliar(StatusAssinatura.Teste, Agora.AddDays(-2), Planos.TesteNotas, null, Agora, Hoje);
-        Assert.False(s.PodeEmitirEmProducao);
+        var inicio = new DateTimeOffset(2026, 10, 1, 15, 0, 0, TimeSpan.Zero);
+        var primeira = new DateOnly(2026, 10, 31);
+
+        var noTeste = Avaliar(StatusAssinatura.Teste, inicio, primeira, agora: inicio.AddDays(5), hoje: new DateOnly(2026, 10, 6));
+        Assert.True(noTeste.PodeEmitirEmProducao);
+        Assert.Contains("primeira fatura da assinatura vence em 31/10/2026", noTeste.Aviso);
+
+        var noVencimento = Avaliar(StatusAssinatura.Teste, inicio, primeira, agora: inicio.AddDays(30).AddHours(1), hoje: primeira);
+        Assert.True(noVencimento.PodeEmitirEmProducao);
+
+        var dia10 = Avaliar(StatusAssinatura.Teste, inicio, primeira, agora: inicio.AddDays(40), hoje: primeira.AddDays(10));
+        Assert.True(dia10.PodeEmitirEmProducao);
+        Assert.Contains("primeira fatura da assinatura vencida em 31/10/2026", dia10.Aviso);
+        Assert.Contains("para em 11/11/2026", dia10.Aviso);
+
+        var dia11 = Avaliar(StatusAssinatura.Teste, inicio, primeira, agora: inicio.AddDays(41), hoje: primeira.AddDays(11));
+        Assert.False(dia11.PodeEmitirEmProducao);
+        Assert.Contains("não foi paga", dia11.Bloqueio);
     }
 
     [Fact]
     public void Ativa_libera()
     {
-        Assert.True(RegrasCobranca.Avaliar(StatusAssinatura.Ativa, Agora.AddDays(-90), 500, null, Agora, Hoje).PodeEmitirEmProducao);
+        Assert.True(Avaliar(StatusAssinatura.Ativa, Agora.AddDays(-90)).PodeEmitirEmProducao);
     }
 
     [Fact]
     public void Atrasada_dentro_da_tolerancia_libera_com_aviso_e_depois_bloqueia()
     {
         var vencimento = Hoje.AddDays(-Planos.ToleranciaAtrasoDias);
-        var dentro = RegrasCobranca.Avaliar(StatusAssinatura.Atrasada, null, 0, vencimento, Agora, Hoje);
+        var dentro = Avaliar(StatusAssinatura.Atrasada, atrasadaDesde: vencimento);
         Assert.True(dentro.PodeEmitirEmProducao);
         Assert.Contains("ainda não foi paga", dentro.Aviso);
 
-        var fora = RegrasCobranca.Avaliar(StatusAssinatura.Atrasada, null, 0, vencimento.AddDays(-1), Agora, Hoje);
+        var fora = Avaliar(StatusAssinatura.Atrasada, atrasadaDesde: vencimento.AddDays(-1));
         Assert.False(fora.PodeEmitirEmProducao);
         Assert.Contains("não foi paga", fora.Bloqueio);
     }
@@ -69,17 +97,51 @@ public class RegrasCobrancaTests
         Assert.Equal(10, Planos.ToleranciaAtrasoDias);
 
         var vencimento = new DateOnly(2026, 11, 1);
-        var dia10 = RegrasCobranca.Avaliar(StatusAssinatura.Atrasada, null, 0, vencimento, Agora, new DateOnly(2026, 11, 11));
+        var dia10 = Avaliar(StatusAssinatura.Atrasada, atrasadaDesde: vencimento, hoje: new DateOnly(2026, 11, 11));
         Assert.True(dia10.PodeEmitirEmProducao);
         Assert.Contains("para em 12/11/2026", dia10.Aviso);
 
-        var dia11 = RegrasCobranca.Avaliar(StatusAssinatura.Atrasada, null, 0, vencimento, Agora, new DateOnly(2026, 11, 12));
+        var dia11 = Avaliar(StatusAssinatura.Atrasada, atrasadaDesde: vencimento, hoje: new DateOnly(2026, 11, 12));
         Assert.False(dia11.PodeEmitirEmProducao);
     }
 
     [Fact]
-    public void Cancelada_bloqueia()
+    public void Cancelada_emite_ate_o_fim_do_periodo_pago_e_depois_bloqueia()
     {
-        Assert.False(RegrasCobranca.Avaliar(StatusAssinatura.Cancelada, null, 0, null, Agora, Hoje).PodeEmitirEmProducao);
+        Assert.False(Avaliar(StatusAssinatura.Cancelada).PodeEmitirEmProducao);
+
+        var ate = Hoje.AddDays(5);
+        var dentro = Avaliar(StatusAssinatura.Cancelada, acessoAte: ate);
+        Assert.True(dentro.PodeEmitirEmProducao);
+        Assert.Contains("continua até 15/11/2026", dentro.Aviso);
+
+        Assert.True(Avaliar(StatusAssinatura.Cancelada, acessoAte: Hoje).PodeEmitirEmProducao);
+        Assert.False(Avaliar(StatusAssinatura.Cancelada, acessoAte: Hoje.AddDays(-1)).PodeEmitirEmProducao);
+    }
+
+    [Fact]
+    public void Primeiro_vencimento_e_no_fim_do_teste_e_nunca_tira_dia_de_teste()
+    {
+        // Teste em andamento (começou há 10 dias às 12h UTC = 9h de Brasília): vence no dia em que o teste acaba.
+        var (venc, iniciar) = RegrasCobranca.PrimeiroVencimento(StatusAssinatura.Teste, Agora.AddDays(-10), null, Agora, Hoje);
+        Assert.Equal(new DateOnly(2026, 11, 30), venc);
+        Assert.False(iniciar);
+
+        // Teste que não começou: começa ao assinar, e a fatura vence em 30 dias.
+        (venc, iniciar) = RegrasCobranca.PrimeiroVencimento(StatusAssinatura.Teste, null, null, Agora, Hoje);
+        Assert.Equal(new DateOnly(2026, 12, 10), venc);
+        Assert.True(iniciar);
+
+        // Teste acabado: vence hoje.
+        (venc, _) = RegrasCobranca.PrimeiroVencimento(StatusAssinatura.Teste, Agora.AddDays(-40), null, Agora, Hoje);
+        Assert.Equal(Hoje, venc);
+
+        // Cancelada com dias pagos: vence no dia seguinte ao último dia pago.
+        (venc, _) = RegrasCobranca.PrimeiroVencimento(StatusAssinatura.Cancelada, Agora.AddDays(-90), Hoje.AddDays(12), Agora, Hoje);
+        Assert.Equal(Hoje.AddDays(13), venc);
+
+        // Cancelada sem dias pagos: vence hoje.
+        (venc, _) = RegrasCobranca.PrimeiroVencimento(StatusAssinatura.Cancelada, Agora.AddDays(-90), null, Agora, Hoje);
+        Assert.Equal(Hoje, venc);
     }
 }

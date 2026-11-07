@@ -6,13 +6,13 @@
     <i class="bi bi-info-circle"></i>
     Preço novo vale <strong>só para novas assinaturas</strong>: quem já assina continua pagando o preço contratado.
     Cada mudança de preço fica no histórico do plano, e toda alteração desta tela fica no seu Histórico.
-    Teste grátis (30 dias ou 10 notas) e tolerância de atraso (10 dias após o vencimento) são fixos.
+    Teste grátis (30 dias, sem limite de notas) e tolerância de atraso (10 dias após o vencimento) são fixos.
 </div>
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="bi bi-star"></i> Vagas de fundador</span>
-        <span class="small text-muted">Preço de fundador fica preso enquanto a assinatura existir</span>
+        <span class="small text-muted">A vaga é guardada para quem confirma o e-mail durante a campanha; o preço fica preso enquanto a assinatura existir</span>
     </div>
     <div class="card-body">
         <div class="row g-3" id="vagas-fundador">
@@ -209,7 +209,10 @@
                     <p class="mb-2">Grupo <strong id="vagas-grupo"></strong> · <span id="vagas-usadas"></span> já usada(s)</p>
                     <label class="form-label" for="vagas-quantidade">Total de vagas</label>
                     <input type="number" class="form-control" id="vagas-quantidade" min="0" step="1" required />
-                    <div class="form-text">Diminuir não tira o preço de quem já é fundador; só para de oferecer.</div>
+                    <div class="form-text">Diminuir não tira o preço de quem já é fundador nem de quem já reservou; só para de oferecer.</div>
+                    <label class="form-label mt-3" for="vagas-campanha-ate">Campanha até (inclusive)</label>
+                    <input type="date" class="form-control" id="vagas-campanha-ate" />
+                    <div class="form-text">Depois desta data ninguém novo ganha vaga, mesmo sobrando. Em branco = sem data-fim.</div>
                     <label class="form-label mt-3" for="vagas-motivo">Motivo</label>
                     <input type="text" class="form-control" id="vagas-motivo" maxlength="200" />
                 </div>

@@ -15,7 +15,7 @@ public class RegrasAvisoCobrancaTests
     private static EstadoAvisoCobranca Estado(
         StatusAssinatura status = StatusAssinatura.Teste,
         DateTimeOffset? testeIniciadoEm = null,
-        int notas = 0,
+        DateOnly? primeiraCobranca = null,
         string? assinaturaId = null,
         DateOnly? atrasadaDesde = null,
         string? url = null,
@@ -23,8 +23,11 @@ public class RegrasAvisoCobrancaTests
         decimal? valor = null,
         DateTimeOffset? pagoEm = null,
         DateTimeOffset? canceladaEm = null,
-        UsoPlano? uso = null) =>
-        new(Conta, status, testeIniciadoEm, notas, assinaturaId, atrasadaDesde, url, vencimento, valor, pagoEm, canceladaEm, uso);
+        UsoPlano? uso = null,
+        DateOnly? acessoAte = null,
+        bool fundadorReservado = false) =>
+        new(Conta, status, testeIniciadoEm, primeiraCobranca, assinaturaId, atrasadaDesde, url, vencimento, valor, pagoEm, canceladaEm, uso,
+            acessoAte, fundadorReservado);
 
     private static UsoPlano Uso(int empresas = 1, int notas = 0, int maxEmpresas = 1, int? notasPorMes = 15) =>
         new("Mico", maxEmpresas, notasPorMes, empresas, notas);
@@ -42,7 +45,7 @@ public class RegrasAvisoCobrancaTests
     [Fact]
     public void Teste_no_meio_nao_avisa()
     {
-        Assert.Empty(Tipos(Estado(testeIniciadoEm: Agora.AddDays(-10), notas: 3)));
+        Assert.Empty(Tipos(Estado(testeIniciadoEm: Agora.AddDays(-10))));
     }
 
     [Theory]
@@ -60,16 +63,52 @@ public class RegrasAvisoCobrancaTests
     }
 
     [Fact]
-    public void Teste_com_8_de_10_notas_avisa_uma_vez_por_teste()
+    public void Teste_so_por_dias_nunca_avisa_notas()
     {
-        var inicio = Agora.AddDays(-5);
-        var com8 = RegrasAvisoCobranca.Avaliar(Estado(testeIniciadoEm: inicio, notas: 8), Agora, Hoje).Single();
-        var com9 = RegrasAvisoCobranca.Avaliar(Estado(testeIniciadoEm: inicio, notas: 9), Agora, Hoje).Single();
+        Assert.DoesNotContain(TipoAvisoCobranca.TesteAcabandoNotas, Tipos(Estado(testeIniciadoEm: Agora.AddDays(-5))));
+        Assert.DoesNotContain(TipoAvisoCobranca.TesteAcabandoNotas, Tipos(Estado(testeIniciadoEm: Agora.AddDays(-29))));
+    }
 
-        Assert.Equal(TipoAvisoCobranca.TesteAcabandoNotas, com8.Tipo);
-        Assert.Equal(2, com8.Quantidade);
-        Assert.Equal(com8.Chave, com9.Chave);
-        Assert.Empty(Tipos(Estado(testeIniciadoEm: inicio, notas: 7)));
+    [Fact]
+    public void Faixa_do_teste_acabando_lembra_o_fundador_garantido()
+    {
+        var com = RegrasAvisoCobranca.Faixa(Estado(testeIniciadoEm: Agora.AddDays(-25), fundadorReservado: true), Agora, Hoje)!;
+        var sem = RegrasAvisoCobranca.Faixa(Estado(testeIniciadoEm: Agora.AddDays(-25)), Agora, Hoje)!;
+
+        Assert.Contains("primeira cobrança só vence no fim do teste", com.Mensagem);
+        Assert.Contains("fundador está garantido", com.Mensagem);
+        Assert.DoesNotContain("fundador", sem.Mensagem);
+        Assert.DoesNotContain("nota", sem.Mensagem);
+    }
+
+    [Fact]
+    public void Primeira_fatura_de_quem_assinou_no_teste_tem_tolerancia_e_depois_bloqueia_com_chave_propria()
+    {
+        var primeira = Hoje.AddDays(-3);
+        var dentro = Estado(testeIniciadoEm: Agora.AddDays(-33), primeiraCobranca: primeira, assinaturaId: "sub_1",
+            url: "https://asaas/i/1", vencimento: primeira);
+        Assert.Equal(new[] { TipoAvisoCobranca.FaturaVencida }, Tipos(dentro));
+        var faixa = RegrasAvisoCobranca.Faixa(dentro, Agora, Hoje)!;
+        Assert.Equal(NivelFaixaCobranca.Atencao, faixa.Nivel);
+        Assert.Contains("primeira fatura", faixa.Mensagem);
+
+        var vencidaHaMuito = Hoje.AddDays(-(Planos.ToleranciaAtrasoDias + 1));
+        var fora = Estado(testeIniciadoEm: Agora.AddDays(-45), primeiraCobranca: vencidaHaMuito, assinaturaId: "sub_1",
+            url: "https://asaas/i/1", vencimento: vencidaHaMuito);
+        var bloqueio = RegrasAvisoCobranca.Avaliar(fora, Agora, Hoje).Single();
+        Assert.Equal(TipoAvisoCobranca.EmissaoBloqueada, bloqueio.Tipo);
+        Assert.Contains(":primeira:", bloqueio.Chave);
+    }
+
+    [Fact]
+    public void Cancelada_com_dias_pagos_mostra_faixa_informativa_e_depois_bloqueio()
+    {
+        var com = RegrasAvisoCobranca.Faixa(Estado(StatusAssinatura.Cancelada, assinaturaId: "sub_1", acessoAte: Hoje.AddDays(3)), Agora, Hoje)!;
+        Assert.Equal(NivelFaixaCobranca.Info, com.Nivel);
+        Assert.Contains("continua até 13/11/2026", com.Mensagem);
+
+        var sem = RegrasAvisoCobranca.Faixa(Estado(StatusAssinatura.Cancelada, assinaturaId: "sub_1", acessoAte: Hoje.AddDays(-1)), Agora, Hoje)!;
+        Assert.Equal(NivelFaixaCobranca.Bloqueio, sem.Nivel);
     }
 
     [Fact]
@@ -170,7 +209,7 @@ public class RegrasAvisoCobrancaTests
     {
         var estados = new[]
         {
-            Estado(testeIniciadoEm: Agora.AddDays(-29), notas: 9),
+            Estado(testeIniciadoEm: Agora.AddDays(-29)),
             Estado(StatusAssinatura.Cancelada, assinaturaId: new string('x', 60), canceladaEm: Agora),
             Estado(StatusAssinatura.Atrasada, atrasadaDesde: Hoje.AddDays(-9), url: "u", vencimento: Hoje.AddDays(-9))
         };

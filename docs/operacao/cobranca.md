@@ -2,9 +2,10 @@
 
 Regras comerciais: `claude/plano-comercial.md` (projeto). Planos, preços e
 vagas de fundador ficam no banco e são administrados em **Plataforma › Planos**
-(ver abaixo). Fixos no código (`Domain/Cobranca/Planos.cs`): teste de 30 dias ou
-10 notas em produção e 10 dias de tolerância para fatura vencida (a emissão
-bloqueia no 11º dia; os Termos de uso, item 8, citam o mesmo prazo).
+(ver abaixo). Fixos no código (`Domain/Cobranca/Planos.cs`): teste de 30 dias
+(sem limite de notas), reserva de fundador até 7 dias depois do fim do teste e
+10 dias de tolerância para fatura vencida (a emissão bloqueia no 11º dia; os
+Termos de uso, item 8, citam o mesmo prazo).
 
 ## Planos e preços (Plataforma › Planos)
 
@@ -23,8 +24,27 @@ bloqueia no 11º dia; os Termos de uso, item 8, citam o mesmo prazo).
   valor da assinatura no Asaas). O preço novo vale só para novas assinaturas.
   Reajuste de assinantes atuais: ainda não automatizado (precisa aviso de 30 dias).
 - **Vagas de fundador separadas por grupo** (`vagas_fundador`): Empresas (20) e
-  Escritórios (10), editáveis. Usada = assinatura com preço de fundador em plano
-  do grupo (cancelada também conta). Diminuir não tira o preço de quem já é fundador.
+  Escritórios (10), editáveis, com **data-fim da campanha** opcional (inclusive).
+  Usada = assinatura com preço de fundador em plano do grupo (cancelada também
+  conta) + **reserva válida** de quem ainda não assinou. Diminuir não tira o
+  preço de quem já é fundador nem de quem já reservou.
+
+## Campanha de fundador (reserva para quem entra)
+
+- **Quando a vaga é guardada:** ao confirmar o e-mail (cadastro), ao abrir a tela
+  Assinatura e na varredura diária do job `avisar-cobranca` (pega quem confirmou
+  por convite ou senha redefinida, e as contas antigas). Só para conta ativa, com
+  e-mail confirmado, que nunca assinou, não isenta, e enquanto a campanha do grupo
+  está aberta (sobra vaga e não passou da data-fim). Grupo pelo perfil: contador
+  → Escritórios; empresa → Empresas. Mais antigas primeiro na varredura.
+- **Validade:** até 7 dias depois do fim do teste grátis. Reserva feita com a
+  cobrança desligada para a conta (beta) **vale sem prazo**. Teste que não
+  começou: o prazo ainda não corre.
+- **Ao assinar:** fundador pela reserva (mesmo sem vaga sobrando) se o plano é do
+  grupo da reserva; senão, só se sobrar vaga. A reserva é consumida (limpa) ao
+  assinar. Cancelar perde o preço de fundador; voltando, paga o preço do dia.
+- Campos em `assinaturas`: `FundadorReservadoEm`, `FundadorReservaGrupo`,
+  `FundadorReservaSemPrazo`.
 - **Fora de venda**: o plano some da tela Assinatura; quem já assina continua nele.
 - **Excluir** (lixeira, só aparece quando pode): só plano que **nunca foi assinado**
   (nem assinatura cancelada, que guarda o código dele); vale também para os
@@ -42,14 +62,20 @@ bloqueia no 11º dia; os Termos de uso, item 8, citam o mesmo prazo).
 
 - **Desligada por padrão** (`Cobranca:Ativa=false`): ninguém é bloqueado, o
   teste grátis não começa a contar e não há botão de assinar. É o beta.
-- Ligada: o teste começa na **primeira nota em produção** (homologação é
-  sempre livre). Acabado o teste sem assinatura, fatura vencida há mais de 7
-  dias ou assinatura cancelada: só a **emissão em produção** para (tela, lote e
-  automação). Consulta e download nunca são bloqueados.
+- Ligada: o teste (30 dias, sem limite de notas) começa na **primeira nota em
+  produção** ou ao assinar, o que vier primeiro (homologação é sempre livre).
+  Acabado o teste sem assinatura, fatura vencida há mais de 10 dias ou assinatura
+  cancelada (depois dos dias pagos): só a **emissão em produção** para (tela, lote
+  e automação). Consulta e download nunca são bloqueados.
 - **Assinar** (tela Assinatura, só Administrador): cria o cliente e a
-  assinatura mensal no Asaas (forma de pagamento à escolha do cliente) e abre a
-  primeira fatura, que vence no dia. A conta fica ativa quando o Asaas avisa o
+  assinatura mensal no Asaas (forma de pagamento à escolha do cliente). A
+  **primeira fatura vence no dia em que o teste acaba** (`assinaturas.PrimeiraCobrancaEm`);
+  depois do teste, vence no dia. Sem pagar, a emissão segue até esse vencimento
+  mais a tolerância de 10 dias. A conta fica ativa quando o Asaas avisa o
   pagamento pelo webhook.
+- **Cancelar** (tela Assinatura): sem multa. A emissão continua até o fim do
+  teste ou do mês já pago (véspera do próximo vencimento lido no Asaas antes de
+  cancelar; `assinaturas.AcessoAteAposCancelar`). Em atraso, para na hora.
 - **Webhook** `POST /api/webhooks/asaas`: autenticado pelo token do header
   `asaas-access-token`; cada evento é gravado em `eventos_cobranca` com o id do
   Asaas como chave única (evento repetido não reaplica nada).

@@ -5,6 +5,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (campanha de lançamento)
+- **Vaga de fundador guardada para quem entra**: ao confirmar o e-mail durante a
+  campanha, a conta reserva o preço de fundador do grupo (empresas ou
+  escritórios). Vale até 7 dias depois do fim do teste; no beta, sem prazo.
+  Também reserva ao abrir Assinatura e na varredura diária.
+- **Data-fim da campanha** por grupo em Plataforma › Planos, com reservas e
+  situação (aberta/encerrada) no card das vagas.
+- **Primeira cobrança no fim do teste**: quem assina durante o teste não perde
+  nenhum dia; a primeira fatura vence quando o teste acaba (assinar antes de
+  emitir já começa o teste).
+- **Cancelar mantém os dias pagos**: a emissão continua até o fim do teste ou do
+  mês já pago; o cancelamento avisa a perda do preço de fundador.
+- Tela Assinatura: linhas "Preço de fundador" e "Primeira cobrança".
+
+### Alterado (teste grátis)
+- **Teste grátis só por dias** (30 dias, sem limite de notas). Sai o aviso de
+  "8 de 10 notas".
+
 ### Alterado (cobrança)
 - **Tolerância de atraso de 10 dias** (antes 7): a emissão em produção continua
   até 10 dias depois do vencimento e bloqueia no 11º, como dizem os Termos de

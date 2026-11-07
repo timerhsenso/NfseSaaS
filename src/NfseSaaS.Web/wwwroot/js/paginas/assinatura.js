@@ -15,6 +15,35 @@ function dataBr(iso) {
     return iso ? new Date(iso).toLocaleDateString('pt-BR') : '—';
 }
 
+// Data sem hora (DateOnly, "2026-12-10"): formata sem passar por Date, que
+// leria como meia-noite UTC e mostraria o dia anterior no horário de Brasília.
+function diaBr(iso) {
+    if (!iso) return '—';
+    const [ano, mes, dia] = iso.split('-');
+    return `${dia}/${mes}/${ano}`;
+}
+
+function hojeIso() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Última leitura da tela (para os textos de confirmação).
+let assinaturaAtual = null;
+
+function textoFundador(a) {
+    if (a.fundador && a.status !== 4) return 'sim, preso enquanto a assinatura estiver ativa';
+    if (a.fundadorReservado) {
+        if (a.fundadorReservaSemPrazo) return 'garantido para você';
+        return a.fundadorReservaAte
+            ? `garantido para você até ${diaBr(a.fundadorReservaAte)}`
+            : 'garantido para você até 7 dias depois do fim do teste';
+    }
+    if (a.vagasFundadorRestantes > 0)
+        return `${a.vagasFundadorRestantes} vaga(s)${a.campanhaFundadorAte ? ` até ${diaBr(a.campanhaFundadorAte)}` : ''}`;
+    return 'vagas encerradas';
+}
+
 async function carregarAssinatura() {
     let a;
     try {
@@ -24,13 +53,18 @@ async function carregarAssinatura() {
         return;
     }
 
+    assinaturaAtual = a;
     const alerta = document.getElementById('assinatura-alerta');
+    const primeiraNoFuturo = a.primeiraCobrancaEm && a.primeiraCobrancaEm > hojeIso();
     const mensagem = !a.cobrancaAtiva
-        ? { cor: 'info', texto: 'Estamos em beta: o uso é gratuito. Quando a cobrança começar, você será avisado com antecedência e quem entrar agora garante o preço de fundador.' }
+        ? { cor: 'info', texto: 'Estamos em beta: o uso é gratuito. Quando a cobrança começar, você será avisado com antecedência.'
+            + (a.fundadorReservado ? ' Seu preço de fundador já está garantido.' : ' Quem entrar agora garante o preço de fundador.') }
         : a.isenta ? { cor: 'info', texto: 'Esta conta é isenta de cobrança.' }
         : a.bloqueio ? { cor: 'danger', texto: a.bloqueio }
+        : a.aguardandoPrimeiroPagamento && primeiraNoFuturo
+            ? { cor: 'info', texto: `Assinatura criada. Você segue no teste grátis, e a primeira fatura vence em ${diaBr(a.primeiraCobrancaEm)}: pode pagar antes ou até lá pelo botão "Pagar fatura".` }
         : a.aguardandoPrimeiroPagamento ? { cor: 'warning', texto: 'Assinatura criada: falta pagar a primeira fatura. A confirmação é automática (Pix em segundos, boleto em até 3 dias úteis).' }
-        : a.aviso ? { cor: 'warning', texto: a.aviso }
+        : a.aviso ? { cor: a.status === 4 ? 'info' : 'warning', texto: a.aviso }
         : null;
     alerta.className = mensagem ? `alert alert-${mensagem.cor}` : 'alert d-none';
     alerta.textContent = mensagem?.texto ?? '';
@@ -41,8 +75,16 @@ async function carregarAssinatura() {
         ? `${a.planoNome} · ${reais(a.precoMensal)}/mês${a.fundador ? ' (fundador)' : ''}`
         : '—';
     document.getElementById('ass-teste').textContent = a.testeIniciadoEm
-        ? `${a.notasTesteUsadas} de ${a.notasTesteLimite} notas · até ${dataBr(a.testeTerminaEm)}`
-        : 'começa na primeira nota em produção';
+        ? `30 dias, sem limite de notas · até ${dataBr(a.testeTerminaEm)}`
+        : '30 dias, sem limite de notas · começa na primeira nota em produção';
+    document.getElementById('ass-fundador').textContent = textoFundador(a);
+    const temPrimeira = !!a.primeiraCobrancaEm;
+    document.getElementById('ass-primeira-cobranca-rotulo').classList.toggle('d-none', !temPrimeira);
+    const primeira = document.getElementById('ass-primeira-cobranca');
+    primeira.classList.toggle('d-none', !temPrimeira);
+    primeira.textContent = temPrimeira
+        ? (a.podeAssinar ? `${diaBr(a.primeiraCobrancaEm)} (se assinar hoje)` : diaBr(a.primeiraCobrancaEm))
+        : '';
     document.getElementById('ass-notas-mes').textContent = a.notasProducaoNoMes;
     document.getElementById('ass-empresas').textContent = a.empresasAtivas;
 
@@ -51,14 +93,16 @@ async function carregarAssinatura() {
     if (a.urlFaturaPendente) pagar.href = a.urlFaturaPendente;
     document.getElementById('btn-cancelar-assinatura').classList.toggle('d-none', !a.podeCancelar);
 
-    document.getElementById('ass-vagas').textContent = a.vagasFundadorRestantes > 0
-        ? `${a.vagasFundadorRestantes} vaga(s) com preço de fundador`
-        : '';
+    document.getElementById('ass-vagas').textContent = a.fundadorReservado
+        ? 'preço de fundador garantido para você'
+        : a.vagasFundadorRestantes > 0
+            ? `${a.vagasFundadorRestantes} vaga(s) com preço de fundador${a.campanhaFundadorAte ? ` até ${diaBr(a.campanhaFundadorAte)}` : ''}`
+            : '';
 
     document.getElementById('ass-planos').innerHTML = a.planos.map(p => {
         const atual = a.plano === p.codigo && a.status !== 4;
         const preco = p.precoDeFundador
-            ? `<span class="text-muted text-decoration-line-through me-1">${reais(p.precoNormal)}</span><strong class="fs-4">${reais(p.preco)}</strong><small>/mês</small><div class="small text-success fw-semibold">preço de fundador · ${p.vagasFundadorRestantes} vaga(s)</div>`
+            ? `<span class="text-muted text-decoration-line-through me-1">${reais(p.precoNormal)}</span><strong class="fs-4">${reais(p.preco)}</strong><small>/mês</small><div class="small text-success fw-semibold">preço de fundador${a.fundadorReservado ? ' · garantido para você' : ` · ${p.vagasFundadorRestantes} vaga(s)`}</div>`
             : `<strong class="fs-4">${reais(p.preco)}</strong><small>/mês</small>`;
         const excede = a.empresasAtivas > p.maxEmpresas;
         const botao = atual
@@ -89,13 +133,20 @@ document.addEventListener('DOMContentLoaded', function () {
         const botao = e.target.closest('.btn-assinar');
         if (!botao) return;
         await executarComBotaoDesabilitado(botao, async function () {
+            const venc = assinaturaAtual?.primeiraCobrancaEm;
+            const venceHoje = !venc || venc <= hojeIso();
+            const quando = venceHoje
+                ? 'A primeira fatura vence hoje e abre numa nova aba para pagamento.'
+                : `A primeira fatura só vence em ${diaBr(venc)}, quando o teste grátis acaba. Até lá você continua no teste.`;
             if (!await confirmarAcao(
-                `Assinar o plano ${botao.dataset.nome} por ${reais(botao.dataset.preco)} por mês? A primeira fatura vence hoje e abre numa nova aba para pagamento.`,
-                { titulo: 'Assinar', textoBotao: 'Assinar e pagar' })) return;
+                `Assinar o plano ${botao.dataset.nome} por ${reais(botao.dataset.preco)} por mês? ${quando}`,
+                { titulo: 'Assinar', textoBotao: venceHoje ? 'Assinar e pagar' : 'Assinar' })) return;
             try {
                 const r = await apiFetch('/api/assinatura/assinar', { method: 'POST', body: JSON.stringify({ plano: Number(botao.dataset.plano) }) });
-                if (r.urlFatura) window.open(r.urlFatura, '_blank', 'noopener');
-                mostrarToast('Assinatura criada. Pague a fatura para ativar.');
+                if (venceHoje && r.urlFatura) window.open(r.urlFatura, '_blank', 'noopener');
+                mostrarToast(venceHoje
+                    ? 'Assinatura criada. Pague a fatura para ativar.'
+                    : `Assinatura criada. A primeira fatura vence em ${diaBr(venc)}.`);
                 await carregarAssinatura();
             } catch (err) {
                 mostrarErro(err.message);
@@ -122,8 +173,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('btn-cancelar-assinatura').addEventListener('click', async function () {
         await executarComBotaoDesabilitado(this, async function () {
+            const fundador = assinaturaAtual?.fundador
+                ? ' Você perde o preço de fundador: se voltar, paga o preço do dia.'
+                : '';
             if (!await confirmarAcao(
-                'Cancelar a assinatura? Não haverá novas faturas e a emissão em produção será bloqueada. As notas emitidas continuam valendo e você pode baixá-las.',
+                `Cancelar a assinatura? Não haverá novas faturas. A emissão em produção continua até o fim do mês já pago (ou do teste grátis) e depois para.${fundador} As notas emitidas continuam valendo e você pode baixá-las.`,
                 { titulo: 'Cancelar assinatura', textoBotao: 'Cancelar assinatura', variante: 'perigo' })) return;
             try {
                 await apiFetch('/api/assinatura/cancelar', { method: 'POST' });

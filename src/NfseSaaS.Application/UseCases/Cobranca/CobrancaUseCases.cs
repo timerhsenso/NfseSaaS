@@ -21,6 +21,13 @@ public sealed record PlanoOfertaResponse(
 
 /// <summary>Tela "Assinatura".</summary>
 /// <param name="VagasFundadorRestantes">Vagas de fundador no grupo do perfil da conta (empresas ou escritórios).</param>
+/// <param name="PrimeiraCobrancaEm">
+/// Vencimento da primeira fatura: o já marcado (assinou durante o teste) ou,
+/// para quem ainda pode assinar, o que valeria assinando agora.
+/// </param>
+/// <param name="FundadorReservado">Tem vaga de fundador guardada (válida) para esta conta.</param>
+/// <param name="FundadorReservaAte">Último dia da reserva; nulo = sem prazo ou o teste ainda não começou.</param>
+/// <param name="CampanhaFundadorAte">Data-fim da campanha de fundador do grupo da conta (nula = sem data).</param>
 public sealed record AssinaturaResponse(
     bool CobrancaAtiva,
     bool Isenta,
@@ -31,8 +38,6 @@ public sealed record AssinaturaResponse(
     bool Fundador,
     DateTimeOffset? TesteIniciadoEm,
     DateTimeOffset? TesteTerminaEm,
-    int NotasTesteUsadas,
-    int NotasTesteLimite,
     bool PodeEmitirEmProducao,
     string? Bloqueio,
     string? Aviso,
@@ -45,7 +50,13 @@ public sealed record AssinaturaResponse(
     bool PodeCancelar,
     bool PodeTrocarPlano,
     int VagasFundadorRestantes,
-    IReadOnlyList<PlanoOfertaResponse> Planos);
+    IReadOnlyList<PlanoOfertaResponse> Planos,
+    DateOnly? PrimeiraCobrancaEm,
+    bool FundadorReservado,
+    DateOnly? FundadorReservaAte,
+    bool FundadorReservaSemPrazo,
+    DateOnly? CampanhaFundadorAte,
+    DateOnly? AcessoAteAposCancelar);
 
 public sealed record AssinarRequest(int Plano);
 
@@ -89,6 +100,21 @@ public interface IAssinarUseCase
 public interface ICancelarAssinaturaUseCase
 {
     Task ExecutarAsync(CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// Guarda a vaga de fundador de quem entrou durante a campanha (e-mail
+/// confirmado). Chamado na confirmação do e-mail, na tela Assinatura e pela
+/// varredura diária; nunca lança por falta de vaga (só não reserva).
+/// </summary>
+public interface IReservaFundador
+{
+    /// <returns>Se reservou agora.</returns>
+    Task<bool> TentarReservarAsync(Guid tenantId, CancellationToken cancellationToken);
+
+    /// <summary>Varredura: contas com e-mail confirmado ainda sem reserva (mais antigas primeiro).</summary>
+    /// <returns>Quantas reservas foram feitas.</returns>
+    Task<int> ReservarPendentesAsync(CancellationToken cancellationToken);
 }
 
 /// <summary>Grava e aplica um evento do webhook do Asaas (a autenticação do token é feita antes, no controller).</summary>

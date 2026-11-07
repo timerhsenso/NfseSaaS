@@ -31,12 +31,13 @@ public static class MensagensAvisoCobranca
         {
             TipoAvisoCobranca.TesteAcabandoDias => (
                 aviso.Quantidade == 1 ? "O seu teste grátis termina amanhã" : $"O seu teste grátis termina em {aviso.Quantidade} dias",
-                $"O teste grátis em produção desta conta termina em <strong>{data}</strong> (ou ao chegar a {Planos.TesteNotas} notas em produção, o que acontecer primeiro). Para não parar de emitir, escolha um plano em <em>Assinatura</em>.",
+                $"O teste grátis em produção desta conta termina em <strong>{data}</strong>. Para não parar de emitir, escolha um plano em <em>Assinatura</em>: dá para assinar agora, e a primeira cobrança só vence no fim do teste."
+                + (estado.FundadorReservado ? " <strong>O seu preço de fundador está garantido</strong>: veja o prazo em <em>Assinatura</em>." : string.Empty),
                 Botao.Assinatura),
 
             TipoAvisoCobranca.TesteAcabandoNotas => (
                 aviso.Quantidade == 1 ? "Resta 1 nota no seu teste grátis" : $"Restam {aviso.Quantidade} notas no seu teste grátis",
-                $"Esta conta já usou {Planos.TesteNotas - aviso.Quantidade} das {Planos.TesteNotas} notas do teste grátis em produção. Depois da última, a emissão em produção para até a assinatura de um plano em <em>Assinatura</em>.",
+                "O teste grátis desta conta é contado em dias, sem limite de notas. Veja a data em <em>Assinatura</em>.",
                 Botao.Assinatura),
 
             TipoAvisoCobranca.FaturaCriada => (
@@ -58,13 +59,17 @@ public static class MensagensAvisoCobranca
                 "Emissão em produção bloqueada no micoempresa",
                 (estado.Status == Domain.Enums.StatusAssinatura.Atrasada
                     ? "A fatura da sua assinatura não foi paga dentro da tolerância: <strong>a emissão de notas em produção está bloqueada</strong>, inclusive a nota mensal automática. A liberação é automática assim que o pagamento for confirmado."
-                    : $"O teste grátis terminou ({Planos.TesteDias} dias ou {Planos.TesteNotas} notas em produção, o que acabou primeiro): <strong>a emissão de notas em produção está bloqueada</strong>, inclusive a nota mensal automática. Assine um plano em <em>Assinatura</em> para voltar a emitir.")
+                    : estado.PrimeiraCobrancaEm is not null
+                        ? "A primeira fatura da sua assinatura não foi paga dentro da tolerância: <strong>a emissão de notas em produção está bloqueada</strong>, inclusive a nota mensal automática. A liberação é automática assim que o pagamento for confirmado."
+                        : $"O teste grátis de {Planos.TesteDias} dias terminou: <strong>a emissão de notas em produção está bloqueada</strong>, inclusive a nota mensal automática. Assine um plano em <em>Assinatura</em> para voltar a emitir.")
                 + " " + Homologacao,
                 urlFatura is null ? Botao.Assinatura : Botao.Fatura),
 
             TipoAvisoCobranca.AssinaturaCancelada => (
                 "Sua assinatura do micoempresa foi cancelada",
-                $"A assinatura desta conta{plano} foi cancelada em <strong>{data}</strong>. A partir de agora <strong>a emissão em produção está bloqueada</strong>, inclusive a nota mensal automática, e não haverá novas faturas. {Homologacao} Para voltar a emitir, assine de novo em <em>Assinatura</em>.",
+                estado.AcessoAteAposCancelar is { } ate
+                    ? $"A assinatura desta conta{plano} foi cancelada em <strong>{data}</strong>. Não haverá novas faturas, e a emissão em produção continua até <strong>{ate.ToString("dd/MM/yyyy", PtBr)}</strong>; depois disso para, inclusive a nota mensal automática. {Homologacao} Para continuar, assine de novo em <em>Assinatura</em> (o preço de fundador não volta)."
+                    : $"A assinatura desta conta{plano} foi cancelada em <strong>{data}</strong>. A partir de agora <strong>a emissão em produção está bloqueada</strong>, inclusive a nota mensal automática, e não haverá novas faturas. {Homologacao} Para voltar a emitir, assine de novo em <em>Assinatura</em>.",
                 Botao.Assinatura),
 
             TipoAvisoCobranca.PagamentoConfirmado => (

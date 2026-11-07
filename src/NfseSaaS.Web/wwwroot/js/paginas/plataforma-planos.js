@@ -111,6 +111,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('vagas-grupo').textContent = GRUPOS_FUNDADOR[grupoDasVagas];
         document.getElementById('vagas-usadas').textContent = botao.dataset.usadas;
         document.getElementById('vagas-quantidade').value = botao.dataset.quantidade;
+        document.getElementById('vagas-campanha-ate').value = botao.dataset.campanhaAte || '';
         document.getElementById('vagas-motivo').value = '';
         ocultarErroFormulario('erro-vagas');
         modalVagas.show();
@@ -138,6 +139,12 @@ async function carregarPlanos() {
     }
 }
 
+// DateOnly ("2027-01-31") sem passar por Date (evita mostrar o dia anterior).
+function diaBrVagas(iso) {
+    const [ano, mes, dia] = iso.split('-');
+    return `${dia}/${mes}/${ano}`;
+}
+
 async function carregarVagas() {
     try {
         const vagas = await apiFetch('/api/plataforma/vagas-fundador');
@@ -146,11 +153,14 @@ async function carregarVagas() {
                 <div class="border rounded-3 p-3 d-flex justify-content-between align-items-center">
                     <div>
                         <div class="fw-semibold">${GRUPOS_FUNDADOR[v.publico] ?? v.publico}</div>
-                        <div class="small text-muted">${v.usadas} de ${v.quantidade} usada(s) ·
+                        <div class="small text-muted">${v.usadas} de ${v.quantidade} usada(s), ${v.reservas} reservada(s) sem assinar ·
                             <span class="${v.restantes > 0 ? 'text-success' : 'text-danger'} fw-semibold">${v.restantes} sobrando</span></div>
+                        <div class="small ${v.campanhaAberta ? 'text-success' : 'text-muted'}">
+                            ${v.campanhaAberta ? 'Campanha aberta' : 'Campanha encerrada'}${v.campanhaAte ? ` · até ${diaBrVagas(v.campanhaAte)}` : ' · sem data-fim'}
+                        </div>
                     </div>
                     <button type="button" class="btn btn-outline-secondary btn-sm btn-alterar-vagas"
-                            data-publico="${v.publico}" data-quantidade="${v.quantidade}" data-usadas="${v.usadas}">
+                            data-publico="${v.publico}" data-quantidade="${v.quantidade}" data-usadas="${v.usadas}" data-campanha-ate="${v.campanhaAte ?? ''}">
                         <i class="bi bi-pencil"></i> Alterar
                     </button>
                 </div>
@@ -285,7 +295,8 @@ async function salvarVagas(e) {
     const corpo = {
         publico: grupoDasVagas,
         quantidade: numeroOuNulo('vagas-quantidade') ?? -1,
-        motivo: document.getElementById('vagas-motivo').value.trim() || null
+        motivo: document.getElementById('vagas-motivo').value.trim() || null,
+        campanhaAte: document.getElementById('vagas-campanha-ate').value || null
     };
     await executarComBotaoDesabilitado(botaoSalvar(e), async function () {
         try {

@@ -17,7 +17,7 @@ namespace NfseSaaS.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.10")
+                .HasAnnotation("ProductVersion", "10.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -210,6 +210,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateOnly?>("AcessoAteAposCancelar")
+                        .HasColumnType("date");
+
                     b.Property<string>("AsaasAssinaturaId")
                         .HasMaxLength(60)
                         .HasColumnType("character varying(60)");
@@ -233,11 +236,23 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<bool>("Fundador")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("FundadorReservaGrupo")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("FundadorReservaSemPrazo")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("FundadorReservadoEm")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int?>("Plano")
                         .HasColumnType("integer");
 
                     b.Property<decimal?>("PrecoMensal")
                         .HasColumnType("numeric(10,2)");
+
+                    b.Property<DateOnly?>("PrimeiraCobrancaEm")
+                        .HasColumnType("date");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -1736,6 +1751,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                 {
                     b.Property<int>("Publico")
                         .HasColumnType("integer");
+
+                    b.Property<DateOnly?>("CampanhaAte")
+                        .HasColumnType("date");
 
                     b.Property<int>("Quantidade")
                         .HasColumnType("integer");
