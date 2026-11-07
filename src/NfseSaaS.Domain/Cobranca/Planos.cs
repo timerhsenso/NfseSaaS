@@ -18,8 +18,12 @@ public static class Planos
     public const int TesteDias = 30;
     public const int TesteNotas = 10;
 
-    /// <summary>Dias depois do vencimento em que a emissão em produção ainda funciona.</summary>
-    public const int ToleranciaAtrasoDias = 7;
+    /// <summary>
+    /// Dias depois do vencimento em que a emissão em produção ainda funciona
+    /// (bloqueia no dia seguinte). Os Termos de uso (item 8) falam em 10 dias:
+    /// mudar aqui exige mudar lá e subir a versão dos termos.
+    /// </summary>
+    public const int ToleranciaAtrasoDias = 10;
 }
 
 /// <summary>

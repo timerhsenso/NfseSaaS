@@ -63,6 +63,21 @@ public class RegrasCobrancaTests
     }
 
     [Fact]
+    public void Tolerancia_de_atraso_e_de_10_dias_como_nos_termos()
+    {
+        // Termos de uso, item 8: suspensão só depois de 10 dias de atraso.
+        Assert.Equal(10, Planos.ToleranciaAtrasoDias);
+
+        var vencimento = new DateOnly(2026, 11, 1);
+        var dia10 = RegrasCobranca.Avaliar(StatusAssinatura.Atrasada, null, 0, vencimento, Agora, new DateOnly(2026, 11, 11));
+        Assert.True(dia10.PodeEmitirEmProducao);
+        Assert.Contains("para em 12/11/2026", dia10.Aviso);
+
+        var dia11 = RegrasCobranca.Avaliar(StatusAssinatura.Atrasada, null, 0, vencimento, Agora, new DateOnly(2026, 11, 12));
+        Assert.False(dia11.PodeEmitirEmProducao);
+    }
+
+    [Fact]
     public void Cancelada_bloqueia()
     {
         Assert.False(RegrasCobranca.Avaliar(StatusAssinatura.Cancelada, null, 0, null, Agora, Hoje).PodeEmitirEmProducao);

@@ -5,6 +5,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Alterado (cobrança)
+- **Tolerância de atraso de 10 dias** (antes 7): a emissão em produção continua
+  até 10 dias depois do vencimento e bloqueia no 11º, como dizem os Termos de
+  uso. Avisos, faixa do painel e e-mails acompanham a nova data.
+
 ### Corrigido (deploy)
 - **Rollback do Deploy Production**: a imagem em produção ganha o nome
   `nfsesaas-app:anterior` antes do build. Com o Docker 29 o rollback antigo

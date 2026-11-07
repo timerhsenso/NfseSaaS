@@ -3,7 +3,8 @@
 Regras comerciais: `claude/plano-comercial.md` (projeto). Planos, preços e
 vagas de fundador ficam no banco e são administrados em **Plataforma › Planos**
 (ver abaixo). Fixos no código (`Domain/Cobranca/Planos.cs`): teste de 30 dias ou
-10 notas em produção e 7 dias de tolerância para fatura vencida.
+10 notas em produção e 10 dias de tolerância para fatura vencida (a emissão
+bloqueia no 11º dia; os Termos de uso, item 8, citam o mesmo prazo).
 
 ## Planos e preços (Plataforma › Planos)
 
