@@ -74,9 +74,11 @@ async function carregarAssinatura() {
     document.getElementById('ass-plano').textContent = a.planoNome
         ? `${a.planoNome} · ${reais(a.precoMensal)}/mês${a.fundador ? ' (fundador)' : ''}`
         : '—';
-    document.getElementById('ass-teste').textContent = a.testeIniciadoEm
-        ? `30 dias, sem limite de notas · até ${dataBr(a.testeTerminaEm)}`
-        : '30 dias, sem limite de notas · começa na primeira nota em produção';
+    document.getElementById('ass-teste').textContent = a.semTesteGratis
+        ? 'não disponível: o CNPJ já usou o teste grátis em outra conta'
+        : a.testeIniciadoEm
+            ? `30 dias, sem limite de notas · até ${dataBr(a.testeTerminaEm)}`
+            : '30 dias, sem limite de notas · começa na primeira nota em produção';
     document.getElementById('ass-fundador').textContent = textoFundador(a);
     const temPrimeira = !!a.primeiraCobrancaEm;
     document.getElementById('ass-primeira-cobranca-rotulo').classList.toggle('d-none', !temPrimeira);

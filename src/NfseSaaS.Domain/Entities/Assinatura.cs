@@ -59,6 +59,12 @@ public sealed class Assinatura : BaseEntity
     /// </summary>
     public DateOnly? PrimeiraCobrancaEm { get; set; }
 
+    /// <summary>
+    /// A conta não tem teste grátis: um CNPJ dela já usou o teste em outra
+    /// conta (tabela testes_gratis_cnpj). Produção só com assinatura.
+    /// </summary>
+    public bool SemTesteGratis { get; set; }
+
     /// <summary>Vencimento da fatura em atraso (nulo quando em dia).</summary>
     public DateOnly? AtrasadaDesde { get; set; }
 

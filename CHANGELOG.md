@@ -5,6 +5,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (teste grátis)
+- **Um teste grátis por CNPJ**: a conta de empresa cujo CNPJ já usou o teste
+  em outra conta (mesmo excluída) não ganha teste; emite em produção só com
+  assinatura, e a tela Assinatura explica o motivo. Contas de contador não
+  entram na regra.
+
 ### Adicionado (campanha de lançamento)
 - **Vaga de fundador guardada para quem entra**: ao confirmar o e-mail durante a
   campanha, a conta reserva o preço de fundador do grupo (empresas ou

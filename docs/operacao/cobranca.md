@@ -29,6 +29,22 @@ Termos de uso, item 8, citam o mesmo prazo).
   conta) + **reserva válida** de quem ainda não assinou. Diminuir não tira o
   preço de quem já é fundador nem de quem já reservou.
 
+## Um teste grátis por CNPJ
+
+- Quando o teste de uma conta de perfil **Empresa** começa (primeira nota em
+  produção ou assinatura antes dela), os CNPJs das empresas da conta (ativas e
+  desativadas) vão para `testes_gratis_cnpj` (chave = CNPJ).
+- Se algum desses CNPJs já está lá em nome de **outra** conta, a conta fica
+  `assinaturas.SemTesteGratis = true`: a emissão em produção só com assinatura,
+  e quem assina tem a primeira fatura vencendo no dia (com a tolerância normal).
+- A tabela não tem FK e **não é apagada na exclusão de conta**: excluir e criar
+  outra conta não devolve o teste.
+- **Contas de contador** não entram (cadastram CNPJs de clientes, que podem ter
+  conta própria): nunca perdem o teste e não registram CNPJ.
+- Engano (ex.: CNPJ vendido ou conta antiga abandonada): por enquanto, apagar a
+  linha do CNPJ e zerar `SemTesteGratis` direto no banco; a tela do operador
+  para isso entra no L6.
+
 ## Campanha de fundador (reserva para quem entra)
 
 - **Quando a vaga é guardada:** ao confirmar o e-mail (cadastro), ao abrir a tela

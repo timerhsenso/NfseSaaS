@@ -254,6 +254,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<DateOnly?>("PrimeiraCobrancaEm")
                         .HasColumnType("date");
 
+                    b.Property<bool>("SemTesteGratis")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
@@ -1745,6 +1748,25 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.HasIndex("IndicadoPorTenantId");
 
                     b.ToTable("tenants", (string)null);
+                });
+
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.TesteGratisCnpj", b =>
+                {
+                    b.Property<string>("Cnpj")
+                        .HasMaxLength(14)
+                        .HasColumnType("character varying(14)");
+
+                    b.Property<DateTimeOffset>("IniciadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Cnpj");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("testes_gratis_cnpj", (string)null);
                 });
 
             modelBuilder.Entity("NfseSaaS.Domain.Entities.VagasFundador", b =>

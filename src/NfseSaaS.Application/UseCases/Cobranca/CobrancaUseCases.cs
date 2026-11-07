@@ -56,7 +56,8 @@ public sealed record AssinaturaResponse(
     DateOnly? FundadorReservaAte,
     bool FundadorReservaSemPrazo,
     DateOnly? CampanhaFundadorAte,
-    DateOnly? AcessoAteAposCancelar);
+    DateOnly? AcessoAteAposCancelar,
+    bool SemTesteGratis);
 
 public sealed record AssinarRequest(int Plano);
 

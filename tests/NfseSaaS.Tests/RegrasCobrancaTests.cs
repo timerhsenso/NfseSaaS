@@ -72,6 +72,22 @@ public class RegrasCobrancaTests
     }
 
     [Fact]
+    public void Sem_teste_gratis_bloqueia_na_hora_e_a_primeira_fatura_vence_hoje()
+    {
+        var s = RegrasCobranca.Avaliar(StatusAssinatura.Teste, Agora, null, null, null, Agora, Hoje, semTesteGratis: true);
+        Assert.False(s.PodeEmitirEmProducao);
+        Assert.Contains("já usou o teste grátis em outra conta", s.Bloqueio);
+
+        // Assinou: emite até a primeira fatura (hoje) mais a tolerância, como quem já acabou o teste.
+        var assinou = RegrasCobranca.Avaliar(StatusAssinatura.Teste, Agora, Hoje, null, null, Agora, Hoje, semTesteGratis: true);
+        Assert.True(assinou.PodeEmitirEmProducao);
+
+        var (venc, iniciar) = RegrasCobranca.PrimeiroVencimento(StatusAssinatura.Teste, null, null, Agora, Hoje, semTesteGratis: true);
+        Assert.Equal(Hoje, venc);
+        Assert.True(iniciar);
+    }
+
+    [Fact]
     public void Ativa_libera()
     {
         Assert.True(Avaliar(StatusAssinatura.Ativa, Agora.AddDays(-90)).PodeEmitirEmProducao);

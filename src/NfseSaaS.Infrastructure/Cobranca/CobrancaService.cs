@@ -63,12 +63,15 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
 
         var assinatura = await ObterOuCriarAsync(tenantId, cancellationToken);
 
-        // Primeira nota em produção: começa a contar o teste grátis.
+        // Primeira nota em produção: começa a contar o teste grátis (se o
+        // CNPJ ainda não usou o teste em outra conta).
         if (assinatura.Status == StatusAssinatura.Teste && assinatura.TesteIniciadoEm is null)
         {
-            assinatura.TesteIniciadoEm = DateTimeOffset.UtcNow;
+            var (cnpjJaUsouTeste, cnpjsNovos) = await ConsultarTesteDosCnpjsAsync(tenantId, cancellationToken);
+            RegistrarInicioDoTeste(assinatura, cnpjJaUsouTeste, cnpjsNovos, DateTimeOffset.UtcNow);
             await _db.SaveChangesAsync(cancellationToken);
-            return;
+            if (!cnpjJaUsouTeste)
+                return;
         }
 
         var situacao = Avaliar(assinatura, DateTimeOffset.UtcNow, DataBrasilia.Hoje());
@@ -134,7 +137,8 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
         DateOnly? primeiraCobranca = temAssinaturaNoGateway
             ? assinatura.Status == StatusAssinatura.Teste ? assinatura.PrimeiraCobrancaEm : null
             : podeAssinar
-                ? RegrasCobranca.PrimeiroVencimento(assinatura.Status, assinatura.TesteIniciadoEm, assinatura.AcessoAteAposCancelar, agora, hoje).Vencimento
+                ? RegrasCobranca.PrimeiroVencimento(assinatura.Status, assinatura.TesteIniciadoEm, assinatura.AcessoAteAposCancelar, agora, hoje,
+                    assinatura.SemTesteGratis).Vencimento
                 : null;
 
         return new AssinaturaResponse(
@@ -152,7 +156,8 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
             FundadorReservaAte: reservaValida ? RegrasFundador.ReservaValeAte(assinatura.FundadorReservaSemPrazo, assinatura.TesteIniciadoEm) : null,
             FundadorReservaSemPrazo: reservaValida && assinatura.FundadorReservaSemPrazo,
             CampanhaFundadorAte: await _catalogo.CampanhaFundadorAteAsync(grupoConta, cancellationToken),
-            AcessoAteAposCancelar: assinatura.Status == StatusAssinatura.Cancelada ? assinatura.AcessoAteAposCancelar : null);
+            AcessoAteAposCancelar: assinatura.Status == StatusAssinatura.Cancelada ? assinatura.AcessoAteAposCancelar : null,
+            SemTesteGratis: assinatura.SemTesteGratis);
     }
 
     // ---------- Assinar ----------
@@ -190,10 +195,20 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
             var fundador = RegrasFundador.AssinaComoFundador(reservaValida, assinatura.FundadorReservaGrupo, plano.Publico, vagas);
             var preco = fundador ? plano.PrecoFundador : plano.PrecoMensal;
 
+            // Assinar antes da primeira nota começa o teste: confere antes se o
+            // CNPJ já usou o teste em outra conta (aí a fatura vence hoje).
+            var cnpjJaUsouTeste = assinatura.SemTesteGratis;
+            IReadOnlyList<string> cnpjsNovos = Array.Empty<string>();
+            if (assinatura.Status == StatusAssinatura.Teste && assinatura.TesteIniciadoEm is null)
+            {
+                (var usado, cnpjsNovos) = await ConsultarTesteDosCnpjsAsync(assinatura.TenantId, cancellationToken);
+                cnpjJaUsouTeste |= usado;
+            }
+
             // Primeira fatura no fim do teste (ninguém perde dia de teste por assinar cedo).
             var statusAntes = assinatura.Status;
             var (vencimento, iniciarTeste) = RegrasCobranca.PrimeiroVencimento(
-                assinatura.Status, assinatura.TesteIniciadoEm, assinatura.AcessoAteAposCancelar, agora, hoje);
+                assinatura.Status, assinatura.TesteIniciadoEm, assinatura.AcessoAteAposCancelar, agora, hoje, cnpjJaUsouTeste);
             // Tolerância na primeira fatura: só para quem nunca pagou ou ainda tem dias pagos
             // depois de cancelar (cancelar e assinar de novo não abre outra tolerância).
             var primeiraComTolerancia = statusAntes == StatusAssinatura.Teste
@@ -218,7 +233,7 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
             assinatura.AtrasadaDesde = null;
             assinatura.PrimeiraCobrancaEm = primeiraComTolerancia ? vencimento : null;
             if (iniciarTeste)
-                assinatura.TesteIniciadoEm = agora;
+                RegistrarInicioDoTeste(assinatura, cnpjJaUsouTeste, cnpjsNovos, agora);
             // A reserva de fundador acaba aqui (usada ou não): cancelar depois perde o preço.
             LimparReserva(assinatura);
             // Continua "Teste" até o Asaas confirmar o primeiro pagamento (webhook).
@@ -473,7 +488,48 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
 
     internal static SituacaoCobranca Avaliar(Assinatura assinatura, DateTimeOffset agora, DateOnly hoje) =>
         RegrasCobranca.Avaliar(assinatura.Status, assinatura.TesteIniciadoEm, assinatura.PrimeiraCobrancaEm,
-            assinatura.AtrasadaDesde, assinatura.AcessoAteAposCancelar, agora, hoje);
+            assinatura.AtrasadaDesde, assinatura.AcessoAteAposCancelar, agora, hoje, assinatura.SemTesteGratis);
+
+    /// <summary>
+    /// Um teste por CNPJ: algum CNPJ das empresas da conta já usou o teste em
+    /// OUTRA conta? Devolve também os CNPJs ainda não registrados. Conta de
+    /// contador não entra (cadastra CNPJs de clientes, que podem ter conta
+    /// própria): nunca perde o teste e não registra nada.
+    /// </summary>
+    private async Task<(bool JaUsado, IReadOnlyList<string> Novos)> ConsultarTesteDosCnpjsAsync(Guid tenantId, CancellationToken cancellationToken)
+    {
+        var perfil = await _db.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.Perfil).FirstOrDefaultAsync(cancellationToken);
+        if (perfil == PerfilConta.Contador)
+            return (false, Array.Empty<string>());
+
+        // Ativas e desativadas: desativar a empresa não devolve o teste.
+        var cnpjs = await _db.Empresas.IgnoreQueryFilters().AsNoTracking()
+            .Where(e => e.TenantId == tenantId)
+            .Select(e => e.Cnpj)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        if (cnpjs.Count == 0)
+            return (false, Array.Empty<string>());
+
+        var registrados = await _db.TestesGratisCnpj.AsNoTracking()
+            .Where(t => cnpjs.Contains(t.Cnpj))
+            .ToListAsync(cancellationToken);
+        var jaUsado = registrados.Any(r => r.TenantId != tenantId);
+        var novos = cnpjs.Except(registrados.Select(r => r.Cnpj)).ToList();
+        return (jaUsado, novos);
+    }
+
+    /// <summary>Marca o início do teste (ou a falta dele) e registra os CNPJs que passam a ter usado o teste.</summary>
+    private void RegistrarInicioDoTeste(Assinatura assinatura, bool cnpjJaUsouTeste, IReadOnlyList<string> cnpjsNovos, DateTimeOffset agora)
+    {
+        assinatura.TesteIniciadoEm = agora;
+        assinatura.SemTesteGratis = cnpjJaUsouTeste;
+        foreach (var cnpj in cnpjsNovos)
+            _db.TestesGratisCnpj.Add(new TesteGratisCnpj { Cnpj = cnpj, TenantId = assinatura.TenantId, IniciadoEm = agora });
+
+        if (cnpjJaUsouTeste)
+            _logger.LogInformation("Conta {TenantId} sem teste grátis: um CNPJ dela já usou o teste em outra conta.", assinatura.TenantId);
+    }
 
     internal static bool ReservaValida(Assinatura assinatura, DateTimeOffset agora) =>
         RegrasFundador.ReservaValida(assinatura.FundadorReservadoEm, assinatura.FundadorReservaSemPrazo,

@@ -59,6 +59,8 @@ public static class MensagensAvisoCobranca
                 "Emissão em produção bloqueada no micoempresa",
                 (estado.Status == Domain.Enums.StatusAssinatura.Atrasada
                     ? "A fatura da sua assinatura não foi paga dentro da tolerância: <strong>a emissão de notas em produção está bloqueada</strong>, inclusive a nota mensal automática. A liberação é automática assim que o pagamento for confirmado."
+                    : estado.SemTesteGratis && estado.PrimeiraCobrancaEm is null
+                        ? "O CNPJ da empresa desta conta já usou o teste grátis em outra conta: <strong>a emissão de notas em produção está bloqueada</strong> até a assinatura de um plano em <em>Assinatura</em>. Se achar que é engano, responda este e-mail ou fale com o suporte."
                     : estado.PrimeiraCobrancaEm is not null
                         ? "A primeira fatura da sua assinatura não foi paga dentro da tolerância: <strong>a emissão de notas em produção está bloqueada</strong>, inclusive a nota mensal automática. A liberação é automática assim que o pagamento for confirmado."
                         : $"O teste grátis de {Planos.TesteDias} dias terminou: <strong>a emissão de notas em produção está bloqueada</strong>, inclusive a nota mensal automática. Assine um plano em <em>Assinatura</em> para voltar a emitir.")

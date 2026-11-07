@@ -25,9 +25,10 @@ public class RegrasAvisoCobrancaTests
         DateTimeOffset? canceladaEm = null,
         UsoPlano? uso = null,
         DateOnly? acessoAte = null,
-        bool fundadorReservado = false) =>
+        bool fundadorReservado = false,
+        bool semTeste = false) =>
         new(Conta, status, testeIniciadoEm, primeiraCobranca, assinaturaId, atrasadaDesde, url, vencimento, valor, pagoEm, canceladaEm, uso,
-            acessoAte, fundadorReservado);
+            acessoAte, fundadorReservado, semTeste);
 
     private static UsoPlano Uso(int empresas = 1, int notas = 0, int maxEmpresas = 1, int? notasPorMes = 15) =>
         new("Mico", maxEmpresas, notasPorMes, empresas, notas);
@@ -60,6 +61,16 @@ public class RegrasAvisoCobrancaTests
         var aviso = Assert.Single(avisos);
         Assert.Equal(TipoAvisoCobranca.TesteAcabandoDias, aviso.Tipo);
         Assert.EndsWith(":" + faixa, aviso.Chave);
+    }
+
+    [Fact]
+    public void Sem_teste_gratis_nao_avisa_teste_acabando_so_o_bloqueio()
+    {
+        var estado = Estado(testeIniciadoEm: Agora.AddMinutes(-5), semTeste: true);
+        Assert.Equal(new[] { TipoAvisoCobranca.EmissaoBloqueada }, Tipos(estado));
+        var faixa = RegrasAvisoCobranca.Faixa(estado, Agora, Hoje)!;
+        Assert.Equal(NivelFaixaCobranca.Bloqueio, faixa.Nivel);
+        Assert.Contains("já usou o teste grátis", faixa.Mensagem);
     }
 
     [Fact]

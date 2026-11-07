@@ -246,6 +246,8 @@ public sealed class ExclusaoContaService : ISolicitarExclusaoContaUseCase, IConf
             await _db.PremiosIndicacao.Where(x => x.TenantId == tenantId || x.IndicadoTenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
             await _db.EventosCobranca.Where(x => x.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
             await _db.Assinaturas.Where(x => x.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
+            // testes_gratis_cnpj fica de propósito: guarda só o CNPJ que já usou o
+            // teste grátis (senão bastaria excluir a conta e criar outra).
 
             // Contas que vieram pelo link desta continuam existindo, só sem "indicada por".
             await _db.Tenants.Where(x => x.IndicadoPorTenantId == tenantId)

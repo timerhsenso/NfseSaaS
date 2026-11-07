@@ -32,8 +32,12 @@ public static class RegrasCobranca
     public const string ComplementoBloqueio =
         " As notas em homologação, as consultas e os downloads continuam liberados.";
 
+    public const string MensagemSemTesteGratis =
+        "O CNPJ desta empresa já usou o teste grátis em outra conta, por isso esta conta não tem teste: assine um plano em Assinatura para emitir em produção. Se achar que é engano, fale com o suporte.";
+
     /// <param name="primeiraCobrancaEm">Vencimento da primeira fatura de quem assinou durante o teste (nulo sem assinatura).</param>
     /// <param name="acessoAteAposCancelar">Cancelada pela tela: último dia com emissão em produção.</param>
+    /// <param name="semTesteGratis">Um CNPJ da conta já usou o teste em outra conta: o teste "acaba" ao começar.</param>
     public static SituacaoCobranca Avaliar(
         StatusAssinatura status,
         DateTimeOffset? testeIniciadoEm,
@@ -41,7 +45,8 @@ public static class RegrasCobranca
         DateOnly? atrasadaDesde,
         DateOnly? acessoAteAposCancelar,
         DateTimeOffset agora,
-        DateOnly hoje)
+        DateOnly hoje,
+        bool semTesteGratis = false)
     {
         switch (status)
         {
@@ -65,7 +70,7 @@ public static class RegrasCobranca
                 if (testeIniciadoEm is null)
                     return new SituacaoCobranca(true, null, null, null);
 
-                var termina = testeIniciadoEm.Value.AddDays(Planos.TesteDias);
+                var termina = semTesteGratis ? testeIniciadoEm.Value : testeIniciadoEm.Value.AddDays(Planos.TesteDias);
                 if (agora < termina)
                 {
                     var dias = Math.Max(1, (int)Math.Ceiling((termina - agora).TotalDays));
@@ -86,7 +91,10 @@ public static class RegrasCobranca
                 }
 
                 return new SituacaoCobranca(false,
-                    $"O teste grátis de {Planos.TesteDias} dias terminou. Assine um plano em Assinatura para continuar emitindo em produção." + ComplementoBloqueio,
+                    (semTesteGratis
+                        ? MensagemSemTesteGratis
+                        : $"O teste grátis de {Planos.TesteDias} dias terminou. Assine um plano em Assinatura para continuar emitindo em produção.")
+                    + ComplementoBloqueio,
                     null, termina);
             }
         }
@@ -103,13 +111,19 @@ public static class RegrasCobranca
         DateTimeOffset? testeIniciadoEm,
         DateOnly? acessoAteAposCancelar,
         DateTimeOffset agora,
-        DateOnly hoje)
+        DateOnly hoje,
+        bool semTesteGratis = false)
     {
         if (status == StatusAssinatura.Cancelada)
             return (acessoAteAposCancelar is { } ate && ate >= hoje ? ate.AddDays(1) : hoje, false);
 
         if (status != StatusAssinatura.Teste)
             return (hoje, false);
+
+        // Sem teste (CNPJ já usou em outra conta): vence hoje; o registro do
+        // início do teste fica com quem chama.
+        if (semTesteGratis)
+            return (hoje, testeIniciadoEm is null);
 
         if (testeIniciadoEm is null)
             return (Maior(DiaEmBrasilia(agora.AddDays(Planos.TesteDias)), hoje), true);

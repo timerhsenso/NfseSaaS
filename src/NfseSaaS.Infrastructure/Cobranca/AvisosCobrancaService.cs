@@ -156,7 +156,8 @@ public sealed class AvisosCobrancaService : IEnviarAvisosCobrancaUseCase, IObter
             a.UltimoPagamentoEm, a.CanceladaEm,
             await UsoAsync(a, cancellationToken),
             a.AcessoAteAposCancelar,
-            CobrancaService.ReservaValida(a, DateTimeOffset.UtcNow));
+            CobrancaService.ReservaValida(a, DateTimeOffset.UtcNow),
+            a.SemTesteGratis);
 
     /// <summary>Uso frente ao plano, só para quem assinou um plano (não cancelado).</summary>
     private async Task<UsoPlano?> UsoAsync(Assinatura a, CancellationToken cancellationToken)

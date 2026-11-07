@@ -58,7 +58,8 @@ public sealed record EstadoAvisoCobranca(
     DateTimeOffset? CanceladaEm,
     UsoPlano? Uso = null,
     DateOnly? AcessoAteAposCancelar = null,
-    bool FundadorReservado = false);
+    bool FundadorReservado = false,
+    bool SemTesteGratis = false);
 
 /// <summary>
 /// Um aviso a mandar. <paramref name="Chave"/> vai para
@@ -159,7 +160,7 @@ public static class RegrasAvisoCobranca
         }
 
         // Teste grátis acabando: só para quem ainda não assinou e ainda pode emitir.
-        if (estado.Status == StatusAssinatura.Teste && estado.AsaasAssinaturaId is null
+        if (estado.Status == StatusAssinatura.Teste && estado.AsaasAssinaturaId is null && !estado.SemTesteGratis
             && situacao.PodeEmitirEmProducao && estado.TesteIniciadoEm is { } testeInicio)
         {
             var termina = testeInicio.AddDays(Planos.TesteDias);
@@ -239,7 +240,7 @@ public static class RegrasAvisoCobranca
             return new FaixaCobranca(NivelFaixaCobranca.Info, $"A fatura{Valor(estado)}{quando}.", true);
         }
 
-        if (estado.Status == StatusAssinatura.Teste && estado.AsaasAssinaturaId is null && estado.TesteIniciadoEm is { } inicio)
+        if (estado.Status == StatusAssinatura.Teste && estado.AsaasAssinaturaId is null && !estado.SemTesteGratis && estado.TesteIniciadoEm is { } inicio)
         {
             var termina = inicio.AddDays(Planos.TesteDias);
             var dias = DiasRestantes(termina, agora);
@@ -268,7 +269,7 @@ public static class RegrasAvisoCobranca
 
     private static SituacaoCobranca Situacao(EstadoAvisoCobranca estado, DateTimeOffset agora, DateOnly hoje) =>
         RegrasCobranca.Avaliar(estado.Status, estado.TesteIniciadoEm, estado.PrimeiraCobrancaEm,
-            estado.AtrasadaDesde, estado.AcessoAteAposCancelar, agora, hoje);
+            estado.AtrasadaDesde, estado.AcessoAteAposCancelar, agora, hoje, estado.SemTesteGratis);
 
     /// <summary>Vencimento da fatura em atraso (Atrasada, ou fatura em aberto com vencimento passado), ou nulo.</summary>
     private static DateOnly? VencimentoEmAtraso(EstadoAvisoCobranca estado, DateOnly hoje)
