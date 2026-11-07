@@ -1,0 +1,27 @@
+@model (NfseSaaS.Web.Site.PlanoPublico Plano, bool Fundador, string LinkCadastro)
+@using NfseSaaS.Web.Site
+@{
+    var p = Model.Plano;
+    var fundador = Model.Fundador && p.PrecoFundador < p.PrecoMensal;
+}
+<div class="site-plano @(p.Destaque ? "site-plano-destaque" : null)">
+    <h3>@p.Nome</h3>
+    <p class="site-plano-para">@p.Descricao</p>
+    @if (fundador)
+    {
+        <p class="site-plano-preco"><span class="site-preco-de">@PrecosPublicosViewModel.Reais(p.PrecoMensal)</span> <strong>@PrecosPublicosViewModel.Reais(p.PrecoFundador)</strong><small>/mês</small></p>
+        <p class="site-plano-fundador">preço de fundador</p>
+    }
+    else
+    {
+        <p class="site-plano-preco"><strong>@PrecosPublicosViewModel.Reais(p.PrecoMensal)</strong><small>/mês</small></p>
+        <p class="site-plano-fundador">&nbsp;</p>
+    }
+    <ul>
+        <li>@p.Empresas</li>
+        <li>@p.Notas</li>
+        <li>Nota mensal automática e reajuste</li>
+        <li>Nota por e-mail ao cliente</li>
+    </ul>
+    <a href="@Model.LinkCadastro" class="btn @(p.Destaque ? "btn-primary" : "btn-outline-primary") w-100">Começar grátis</a>
+</div>

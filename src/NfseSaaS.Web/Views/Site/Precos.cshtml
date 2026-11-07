@@ -1,0 +1,74 @@
+@{
+    Layout = "_SiteLayout";
+    ViewData["Title"] = "Preços do emissor de NFS-e";
+    ViewData["Descricao"] = "Planos do micoempresa a partir de R$ 19/mês no preço de fundador. 30 dias grátis, sem cartão e sem limite de notas. Planos para empresas e para contadores.";
+    ViewData["Canonical"] = "/precos";
+    var linkCadastro = NfseSaaS.Web.Site.LinkCadastroExtensions.LinkCadastro(Context);
+}
+
+<section class="site-secao">
+    <div class="site-container">
+        <h1 class="site-titulo-pagina">Preço de micro empresa</h1>
+        <p class="site-secao-sub">Todos os planos têm tudo: nota mensal automática, reajuste por índice, nota por e-mail ao cliente, erros explicados e aviso de certificado. O que muda é quantas empresas e notas.</p>
+        @await Component.InvokeAsync("Precos", new { completo = true })
+    </div>
+</section>
+
+<section class="site-secao site-secao-alt">
+    <div class="site-container">
+        <h2>O portal do governo é grátis. Por que pagar?</h2>
+        <p class="site-secao-sub">O Emissor Nacional emite a nota. O micoempresa faz o resto do trabalho por você.</p>
+        <div class="table-responsive">
+            <table class="table site-comparacao">
+                <thead>
+                    <tr><th scope="col"></th><th scope="col">Portal do Emissor Nacional</th><th scope="col">micoempresa</th></tr>
+                </thead>
+                <tbody>
+                    <tr><th scope="row">Notas do mês</th><td>Uma a uma, digitando de novo</td><td><i class="bi bi-check-lg" aria-hidden="true"></i> Saem sozinhas, a partir do contrato</td></tr>
+                    <tr><th scope="row">Reajuste do contrato</th><td>Conta feita à mão</td><td><i class="bi bi-check-lg" aria-hidden="true"></i> Pelo índice do Banco Central, você só aprova</td></tr>
+                    <tr><th scope="row">Nota para o cliente</th><td>Baixar e mandar por conta própria</td><td><i class="bi bi-check-lg" aria-hidden="true"></i> PDF e XML no e-mail do cliente, com cópias</td></tr>
+                    <tr><th scope="row">Rejeição da SEFIN</th><td>Só o código</td><td><i class="bi bi-check-lg" aria-hidden="true"></i> O que significa e onde corrigir</td></tr>
+                    <tr><th scope="row">Certificado vencendo</th><td>Você descobre quando a nota falha</td><td><i class="bi bi-check-lg" aria-hidden="true"></i> Aviso 30, 15 e 7 dias antes</td></tr>
+                    <tr><th scope="row">Equipe e contador</th><td>Uma senha para todos</td><td><i class="bi bi-check-lg" aria-hidden="true"></i> Cada um com o seu acesso e histórico</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<section id="duvidas" class="site-secao">
+    <div class="site-container site-faq">
+        <h2>Dúvidas sobre os planos</h2>
+        <details>
+            <summary>Como funciona o teste grátis?</summary>
+            <p>São 30 dias, sem cartão e sem limite de notas, contados da primeira nota em produção. Antes disso você testa à vontade no ambiente de homologação, que é sempre livre. O teste vale uma vez por CNPJ.</p>
+        </details>
+        <details>
+            <summary>O que é o preço de fundador?</summary>
+            <p>Um desconto para os primeiros clientes. A vaga fica guardada para você quando cria a conta e confirma o e-mail, e vale até 7 dias depois do fim do teste. Assinando, o preço fica preso enquanto a assinatura estiver ativa; se cancelar, ao voltar vale o preço do dia.</p>
+        </details>
+        <details>
+            <summary>Quando eu pago a primeira vez?</summary>
+            <p>Você pode escolher o plano durante o teste, sem perder nenhum dia: a primeira fatura só vence no dia em que o teste acaba. Pague por Pix, boleto ou cartão.</p>
+        </details>
+        <details>
+            <summary>E se eu passar do limite de notas do plano?</summary>
+            <p>A emissão nunca é bloqueada no meio do mês. Avisamos quando você chega perto do limite e sugerimos o plano certo para o mês seguinte.</p>
+        </details>
+        <details>
+            <summary>E se eu atrasar o pagamento?</summary>
+            <p>Você tem 10 dias de tolerância depois do vencimento. Depois disso só a emissão em produção para; consultas e downloads continuam liberados, e a liberação é automática quando o pagamento é confirmado.</p>
+        </details>
+        <details>
+            <summary>Posso cancelar quando quiser?</summary>
+            <p>Sim, pela própria tela, sem multa. A emissão continua até o fim do mês já pago. As notas emitidas continuam valendo, e você pode baixar os PDFs e XMLs. Veja os <a href="/termos">termos de uso</a>.</p>
+        </details>
+    </div>
+</section>
+
+<section class="site-cta">
+    <div class="site-container site-cta-inner">
+        <h2>Teste 30 dias grátis, sem cartão.</h2>
+        <a href="@linkCadastro" class="btn btn-light btn-lg">Criar conta grátis</a>
+    </div>
+</section>

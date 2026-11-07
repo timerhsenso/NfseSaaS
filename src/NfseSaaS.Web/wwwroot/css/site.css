@@ -2540,6 +2540,75 @@ html[data-theme="dark"] .list-group-item {
     margin-bottom: 6px;
 }
 
+.site-planos-3 {
+    grid-template-columns: repeat(3, minmax(0, 320px));
+}
+
+.site-precos-grupo {
+    font-size: calc(20px * var(--escala-fonte));
+    font-weight: 700;
+    color: var(--text);
+    margin: 32px 0 8px;
+}
+
+.site-titulo-pagina {
+    font-size: calc(32px * var(--escala-fonte));
+    font-weight: 700;
+    letter-spacing: -.02em;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+
+.site-regras-teste {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin: 8px 0 24px;
+    max-width: 1100px;
+}
+
+.site-regras-teste > div {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-field);
+    padding: 14px 16px;
+    font-size: calc(14px * var(--escala-fonte));
+    color: var(--muted);
+}
+
+.site-regras-teste i {
+    color: var(--primary);
+    font-size: calc(18px * var(--escala-fonte));
+    line-height: 1.2;
+}
+
+.site-regras-teste strong {
+    color: var(--text);
+}
+
+.site-comparacao {
+    max-width: 960px;
+    background: var(--surface);
+}
+
+.site-comparacao th[scope="row"] {
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+}
+
+.site-comparacao td:last-child {
+    color: var(--text);
+}
+
+.site-comparacao td:last-child i {
+    color: var(--success-ink);
+    margin-right: 4px;
+}
+
 .site-planos-nota {
     margin-top: 20px;
     font-size: calc(13px * var(--escala-fonte));
@@ -2798,7 +2867,9 @@ html[data-theme="dark"] .list-group-item {
         display: none;
     }
 
-    .site-planos {
+    .site-planos,
+    .site-planos-3,
+    .site-regras-teste {
         grid-template-columns: 1fr;
     }
 }

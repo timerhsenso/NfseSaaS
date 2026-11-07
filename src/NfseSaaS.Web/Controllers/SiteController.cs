@@ -24,7 +24,7 @@ public sealed class SiteController : Controller
     private const int MaxRelacionadas = 6;
 
     /// <summary>Páginas públicas fora das de erro (entram no sitemap).</summary>
-    public static readonly string[] PaginasFixas = { "/", "/erros-nfse", "/ajuda/certificado-digital-a1", "/termos", "/privacidade" };
+    public static readonly string[] PaginasFixas = { "/", "/precos", "/erros-nfse", "/ajuda/certificado-digital-a1", "/termos", "/privacidade" };
 
     [AcceptVerbs("GET", "HEAD", Route = "/erros-nfse")]
     public IActionResult Erros() => View(new ErrosNfseViewModel(CatalogoRejeicoesSefin.Todas));
@@ -56,6 +56,10 @@ public sealed class SiteController : Controller
 
         return View(new ErroNfseViewModel(rejeicao, campo, documento, relacionadas));
     }
+
+    /// <summary>Planos e preços (do catálogo de Plataforma › Planos), comparação com o portal gratuito e dúvidas de cobrança.</summary>
+    [AcceptVerbs("GET", "HEAD", Route = "/precos")]
+    public IActionResult Precos() => View();
 
     /// <summary>Como conseguir o certificado digital A1 (.pfx): o passo que mais trava quem começa.</summary>
     [AcceptVerbs("GET", "HEAD", Route = "/ajuda/certificado-digital-a1")]

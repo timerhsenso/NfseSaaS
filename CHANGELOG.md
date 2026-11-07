@@ -5,6 +5,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (site)
+- **Página pública /precos** lendo o catálogo (Plataforma › Planos): planos para
+  empresas e para contadores/escritórios, preço cheio riscado e preço de
+  fundador enquanto houver vaga, vagas restantes e data da campanha, as 3
+  regras do teste, comparação com o portal gratuito e dúvidas de cobrança.
+  A página inicial usa a mesma tabela (só empresas) e aponta para /precos.
+  Menu, rodapé e sitemap com /precos.
+
 ### Adicionado (operador)
 - **Plataforma › Contas › Cobrança**: prorrogar teste (com motivo), liberar novo
   teste (inclusive para CNPJ que já tinha usado) e isentar de cobrança até uma

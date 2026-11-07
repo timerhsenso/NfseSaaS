@@ -1,0 +1,58 @@
+@model NfseSaaS.Web.Site.PrecosPublicosViewModel
+@using NfseSaaS.Web.Site
+@*
+    Tabela de preços do site público ("/" e "/precos"), sempre a do catálogo
+    (Plataforma › Planos). Completo = página /precos (inclui escritórios).
+*@
+@{
+    var linkCadastro = LinkCadastroExtensions.LinkCadastro(Context);
+    var empresas = Model.Empresas;
+    var escritorios = Model.Escritorios;
+}
+
+<div class="site-regras-teste" role="list">
+    <div role="listitem"><i class="bi bi-hourglass-split" aria-hidden="true"></i><span><strong>30 dias grátis, sem cartão.</strong> O teste começa na sua primeira nota em produção, sem limite de notas.</span></div>
+    @if (empresas.FundadorAberto)
+    {
+        <div role="listitem"><i class="bi bi-star" aria-hidden="true"></i><span><strong>Preço de fundador garantido</strong> para quem entrar@(empresas.CampanhaAte is { } ate ? $" até {PrecosPublicosViewModel.Data(ate)}" : " agora") (restam @empresas.VagasFundador vagas): fica enquanto a assinatura estiver ativa.</span></div>
+    }
+    <div role="listitem"><i class="bi bi-calendar-check" aria-hidden="true"></i><span><strong>Escolha o plano quando quiser:</strong> a primeira cobrança só vem no fim do teste. Pix, boleto ou cartão. Cancele pela tela, sem multa.</span></div>
+</div>
+
+@if (!Model.CobrancaAtiva)
+{
+    <p class="site-planos-nota mt-0 mb-4">Estamos em beta: por enquanto o uso é gratuito. Quando a cobrança começar, você é avisado com antecedência.</p>
+}
+
+@if (Model.Completo)
+{
+    <h3 class="site-precos-grupo">Para empresas</h3>
+}
+<div class="site-planos">
+    @foreach (var plano in empresas.Planos)
+    {
+        <partial name="~/Views/Shared/Components/Precos/_Plano.cshtml" model="(plano, empresas.FundadorAberto, linkCadastro)" />
+    }
+</div>
+
+@if (Model.Completo && escritorios.Planos.Count > 0)
+{
+    <h3 class="site-precos-grupo" id="escritorios">Para contadores e escritórios</h3>
+    <p class="site-secao-sub">Cobrança pelas empresas ativas que você atende: por empresa sai bem abaixo do plano Mico, com margem para repassar.
+        @if (escritorios.FundadorAberto)
+        {
+            <span>Preço de fundador para os primeiros escritórios@(escritorios.CampanhaAte is { } ateEsc ? $", até {PrecosPublicosViewModel.Data(ateEsc)}" : "") (restam @escritorios.VagasFundador vagas).</span>
+        }
+    </p>
+    <div class="site-planos site-planos-3">
+        @foreach (var plano in escritorios.Planos)
+        {
+            <partial name="~/Views/Shared/Components/Precos/_Plano.cshtml" model="(plano, escritorios.FundadorAberto, linkCadastro)" />
+        }
+    </div>
+    <p class="site-planos-nota">Atende 1 a 3 empresas? O plano Empresa sai mais em conta. Acima de 50 empresas, fale com a gente.</p>
+}
+else if (escritorios.Planos.Count > 0)
+{
+    <p class="site-planos-nota">É contador? Veja os <a href="/precos#escritorios">planos para escritórios</a>.</p>
+}

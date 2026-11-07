@@ -85,39 +85,9 @@
 <section id="precos" class="site-secao">
     <div class="site-container">
         <h2>Preço de micro empresa</h2>
-        <p class="site-secao-sub">Estamos em beta: durante o beta o uso é gratuito. Quem entrar agora garante o preço de fundador.</p>
-        <div class="site-planos">
-            <div class="site-plano">
-                <h3>Mico</h3>
-                <p class="site-plano-para">Para quem emite poucas notas</p>
-                <p class="site-plano-preco"><span class="site-preco-de">R$ 29</span> <strong>R$ 19</strong><small>/mês</small></p>
-                <p class="site-plano-fundador">preço de fundador</p>
-                <ul>
-                    <li>1 empresa</li>
-                    <li>até 15 notas por mês</li>
-                    <li>Nota mensal automática e reajuste</li>
-                    <li>Nota por e-mail ao cliente</li>
-                </ul>
-                <a href="@NfseSaaS.Web.Site.LinkCadastroExtensions.LinkCadastro(Context)" class="btn btn-outline-primary w-100">Começar grátis</a>
-            </div>
-            <div class="site-plano site-plano-destaque">
-                <h3>Empresa</h3>
-                <p class="site-plano-para">Para carteira de contratos</p>
-                <p class="site-plano-preco"><span class="site-preco-de">R$ 59</span> <strong>R$ 39</strong><small>/mês</small></p>
-                <p class="site-plano-fundador">preço de fundador</p>
-                <ul>
-                    <li>até 3 empresas</li>
-                    <li>até 100 notas por mês</li>
-                    <li>Nota mensal automática e reajuste</li>
-                    <li>Nota por e-mail ao cliente</li>
-                </ul>
-                <a href="@NfseSaaS.Web.Site.LinkCadastroExtensions.LinkCadastro(Context)" class="btn btn-primary w-100">Começar grátis</a>
-            </div>
-        </div>
-        <p class="site-planos-nota">
-            Preço de fundador para os 20 primeiros clientes, mantido enquanto a assinatura estiver ativa.
-            Quando a cobrança começar, você é avisado com antecedência e escolhe se quer continuar.
-        </p>
+        <p class="site-secao-sub">Todos os planos têm tudo. O que muda é quantas empresas e notas.</p>
+        @await Component.InvokeAsync("Precos", new { completo = false })
+        <p class="mt-3"><a href="/precos">Ver todos os planos, inclusive para contadores <i class="bi bi-arrow-right" aria-hidden="true"></i></a></p>
     </div>
 </section>
 
