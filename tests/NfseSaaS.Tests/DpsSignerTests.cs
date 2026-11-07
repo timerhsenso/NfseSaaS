@@ -25,7 +25,7 @@ public class DpsSignerTests
 
         var certificado = request.CreateSelfSigned(DateTimeOffset.Now.AddDays(-1), DateTimeOffset.Now.AddDays(1));
 
-        return new X509Certificate2(
+        return X509CertificateLoader.LoadPkcs12(
             certificado.Export(X509ContentType.Pfx),
             (string?)null,
             X509KeyStorageFlags.Exportable);
@@ -56,7 +56,7 @@ public class DpsSignerTests
         var request = DpsRequestFactory.CriarRequestDeTeste();
         var (xmlDps, infDpsId) = builder.Construir(request);
 
-        using var certificadoSemChavePrivada = new X509Certificate2(CriarCertificadoDeTeste().Export(X509ContentType.Cert));
+        using var certificadoSemChavePrivada = X509CertificateLoader.LoadCertificate(CriarCertificadoDeTeste().Export(X509ContentType.Cert));
 
         Assert.Throws<NfseSaaS.Nacional.Exceptions.NfseCertificateException>(
             () => signer.Assinar(xmlDps, infDpsId, certificadoSemChavePrivada));

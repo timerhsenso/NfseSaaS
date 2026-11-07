@@ -121,7 +121,7 @@ public sealed class ProtecaoChavesServiceTests : IDisposable
         using var rsa = RSA.Create(2048);
         var request = new CertificateRequest("CN=NfseSaaS DataProtection (teste)", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
         using var certificado = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
-        return new X509Certificate2(certificado.Export(X509ContentType.Pfx, "p"), "p", X509KeyStorageFlags.Exportable);
+        return X509CertificateLoader.LoadPkcs12(certificado.Export(X509ContentType.Pfx, "p"), "p", X509KeyStorageFlags.Exportable);
     }
 
     private static byte[] CriarPfxCliente(string senha)

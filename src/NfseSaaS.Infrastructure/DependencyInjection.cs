@@ -379,7 +379,7 @@ public static class DependencyInjection
         {
             // EphemeralKeySet fora do Windows: a chave privada fica só em
             // memória, sem cópia persistida em disco pelo runtime.
-            var certificadoProtecao = new System.Security.Cryptography.X509Certificates.X509Certificate2(
+            var certificadoProtecao = System.Security.Cryptography.X509Certificates.X509CertificateLoader.LoadPkcs12FromFile(
                 protecao.CertificadoPfxPath, protecao.CertificadoSenha,
                 OperatingSystem.IsWindows()
                     ? System.Security.Cryptography.X509Certificates.X509KeyStorageFlags.DefaultKeySet

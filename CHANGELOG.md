@@ -5,6 +5,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Alterado (.NET 10)
+- **Plataforma migrada para o .NET 10 (LTS)**: o suporte do .NET 8 termina em
+  10/11/2026. EF Core, Identity e Npgsql 10, Serilog 10, Swashbuckle 10.
+  Certificados carregados pelo `X509CertificateLoader` (substitui o
+  construtor obsoleto do `X509Certificate2`). CI com SDK 10 e `dotnet-ef` 10.
+  Sem mudança de banco nem de tela.
+
 ### Alterado (catálogo de planos)
 - Os planos iniciais são criados **só com o catálogo vazio** (banco novo).
   Depois disso o catálogo é todo do operador: qualquer plano nunca assinado

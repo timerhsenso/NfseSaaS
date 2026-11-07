@@ -52,11 +52,11 @@ try
     // o rate limiter abaixo enxergaria sempre o IP do Nginx — ou seja,
     // TODO MUNDO compartilhando o mesmo balde de requisições. Se um dia
     // existir mais de um proxy na frente (CDN, LB), isso precisa ser
-    // restrito a KnownProxies/KnownNetworks específicos.
+    // restrito a KnownProxies/KnownIPNetworks específicos.
     builder.Services.Configure<ForwardedHeadersOptions>(options =>
     {
         options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-        options.KnownNetworks.Clear();
+        options.KnownIPNetworks.Clear();
         options.KnownProxies.Clear();
     });
 

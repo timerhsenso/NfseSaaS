@@ -123,7 +123,7 @@ usuário autenticado do tenant.
   mantém `'unsafe-inline'` porque o Bootstrap injeta `style` inline via JS
   em tempo de execução, sem alternativa limpa via nonce.
 - **Rate limiting por IP** (`Microsoft.AspNetCore.RateLimiting`, nativo do
-  .NET 8) nas rotas de autenticação (`AuthSensivel`, `Recuperacao`) e na
+  .NET) nas rotas de autenticação (`AuthSensivel`, `Recuperacao`) e na
   emissão de nota mensal em lote (`NotaMensal`), mais um limite global como
   rede de segurança. Depende de `UseForwardedHeaders()` para resolver o IP
   real do cliente por trás do Nginx (produção) — sem isso, todo o tráfego
@@ -146,7 +146,7 @@ duplicar nota ao reprocessar.
 
 ## Pré-requisitos
 
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (Visual Studio 2026 ou 2022 17.14+ com o SDK 10 instalado)
 - [PostgreSQL 17](https://www.postgresql.org/) (via Docker, recomendado) ou instalação local
 - Docker + Docker Compose (opcional, mas recomendado para o Postgres de desenvolvimento)
 - Certificado digital A1 (.pfx) por Empresa, para emissão real contra a SEFIN Nacional

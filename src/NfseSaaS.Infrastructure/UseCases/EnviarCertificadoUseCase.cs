@@ -51,7 +51,9 @@ public sealed class EnviarCertificadoUseCase : IEnviarCertificadoUseCase
         X509Certificate2 certificadoTeste;
         try
         {
-            certificadoTeste = new X509Certificate2(pfxBytes, senha, X509KeyStorageFlags.EphemeralKeySet);
+            // Mesmo carregador usado na emissão (CertificateFileStore): o que
+            // abre aqui, abre na hora de emitir.
+            certificadoTeste = X509CertificateLoader.LoadPkcs12(pfxBytes, senha, X509KeyStorageFlags.EphemeralKeySet);
         }
         catch (CryptographicException)
         {

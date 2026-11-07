@@ -53,7 +53,7 @@ Console.WriteLine("Validando o certificado antes de gravar...");
 
 try
 {
-    using var teste = new X509Certificate2(pfxBytes, senha, X509KeyStorageFlags.EphemeralKeySet);
+    using var teste = X509CertificateLoader.LoadPkcs12(pfxBytes, senha, X509KeyStorageFlags.EphemeralKeySet);
 
     Console.WriteLine($"  Subject   : {teste.Subject}");
     Console.WriteLine($"  Validade  : {teste.NotBefore:dd/MM/yyyy} até {teste.NotAfter:dd/MM/yyyy}");

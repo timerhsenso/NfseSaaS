@@ -37,10 +37,10 @@ jobs:
       - name: Baixar código
         uses: actions/checkout@v4
 
-      - name: Instalar .NET 8
+      - name: Instalar .NET 10
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Restaurar dependências
         run: dotnet restore
@@ -49,7 +49,7 @@ jobs:
         run: dotnet build --configuration Release --no-restore
 
       - name: Instalar dotnet-ef
-        run: dotnet tool install --global dotnet-ef --version 8.0.10
+        run: dotnet tool install --global dotnet-ef --version 10.0.14
 
       - name: Aplicar migrations no banco de testes
         run: |

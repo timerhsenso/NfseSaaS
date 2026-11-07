@@ -107,7 +107,10 @@ public sealed class CertificateFileStore
             // reconhecidas" (SEC_E_UNKNOWN_CREDENTIALS). Esta é exatamente
             // a combinação de flags já validada na POC (emissão real aceita
             // pela SEFIN, HTTP 201).
-            certificado = new X509Certificate2(
+            // X509CertificateLoader (.NET 9+) substitui o construtor obsoleto
+            // (SYSLIB0057); os limites padrão do PKCS#12 aceitam os .pfx A1
+            // exportados normalmente (Windows, OpenSSL, certificadoras).
+            certificado = X509CertificateLoader.LoadPkcs12(
                 pfxBytes,
                 senha,
                 X509KeyStorageFlags.UserKeySet | X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.Exportable);

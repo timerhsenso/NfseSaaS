@@ -32,6 +32,10 @@ public sealed class HomeController : Controller
     [AllowAnonymous]
     [PermitirSemAceiteTermos]
     [Route("Home/Error")]
+    // Sem verbo HTTP de propósito (o UseExceptionHandler reexecuta com o
+    // método original: GET, POST, PUT...). Fica fora do Swagger, que não
+    // aceita action sem verbo e quebrava o /swagger/v1/swagger.json.
+    [ApiExplorerSettings(IgnoreApi = true)]
     public IActionResult Error(string? cid)
     {
         return View(new ErrorViewModel(cid ?? HttpContext.TraceIdentifier));
