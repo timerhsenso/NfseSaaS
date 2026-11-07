@@ -245,6 +245,16 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<DateTimeOffset?>("FundadorReservadoEm")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateOnly?>("IsentaAte")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("IsentaPelaPlataforma")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("MotivoIsencao")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
                     b.Property<int?>("Plano")
                         .HasColumnType("integer");
 
@@ -262,6 +272,9 @@ namespace NfseSaaS.Infrastructure.Migrations
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("TesteDiasExtras")
+                        .HasColumnType("integer");
 
                     b.Property<DateTimeOffset?>("TesteIniciadoEm")
                         .HasColumnType("timestamp with time zone");

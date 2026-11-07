@@ -36,6 +36,9 @@ public class RegrasFundadorTests
         Assert.False(RegrasFundador.ReservaValida(reservada, false, false, StatusAssinatura.Teste, Agora.AddDays(-37).AddMinutes(-1), Agora));
         // Teste que não começou: o prazo nem começou a correr.
         Assert.True(RegrasFundador.ReservaValida(reservada, false, false, StatusAssinatura.Teste, null, Agora));
+        // Teste prorrogado pelo operador: a reserva acompanha.
+        Assert.True(RegrasFundador.ReservaValida(reservada, false, false, StatusAssinatura.Teste, Agora.AddDays(-50), Agora, diasExtrasTeste: 15));
+        Assert.Equal(new DateOnly(2027, 1, 31), RegrasFundador.ReservaValeAte(false, Agora, diasExtrasTeste: 15));
         // Reserva do beta: sem prazo.
         Assert.True(RegrasFundador.ReservaValida(reservada, true, false, StatusAssinatura.Teste, Agora.AddDays(-300), Agora));
     }

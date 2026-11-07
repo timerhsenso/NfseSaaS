@@ -27,6 +27,7 @@ public sealed class AssinaturaConfiguration : IEntityTypeConfiguration<Assinatur
         builder.Property(a => a.AsaasAssinaturaId).HasMaxLength(60);
         builder.Property(a => a.UrlFaturaPendente).HasMaxLength(300);
         builder.Property(a => a.ValorFaturaPendente).HasColumnType("numeric(10,2)");
+        builder.Property(a => a.MotivoIsencao).HasMaxLength(300);
 
         // O webhook acha a assinatura por aqui.
         builder.HasIndex(a => a.AsaasAssinaturaId)

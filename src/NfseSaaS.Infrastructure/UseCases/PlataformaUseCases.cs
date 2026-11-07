@@ -1,9 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NfseSaaS.Application.Abstractions;
+using NfseSaaS.Application.Common;
 using NfseSaaS.Application.Exceptions;
+using NfseSaaS.Application.UseCases.Cobranca;
 using NfseSaaS.Application.UseCases.Plataforma;
 using NfseSaaS.Domain.Enums;
+using NfseSaaS.Infrastructure.Cobranca;
 using NfseSaaS.Infrastructure.Persistence;
 
 namespace NfseSaaS.Infrastructure.UseCases;
@@ -16,10 +20,12 @@ namespace NfseSaaS.Infrastructure.UseCases;
 public sealed class ListarTenantsPlataformaUseCase : IListarTenantsPlataformaUseCase
 {
     private readonly AppDbContext _db;
+    private readonly CobrancaOptions _cobranca;
 
-    public ListarTenantsPlataformaUseCase(AppDbContext db)
+    public ListarTenantsPlataformaUseCase(AppDbContext db, IOptions<CobrancaOptions> cobranca)
     {
         _db = db;
+        _cobranca = cobranca.Value;
     }
 
     public async Task<IReadOnlyList<TenantPlataformaResponse>> ExecutarAsync(CancellationToken cancellationToken)
@@ -70,6 +76,8 @@ public sealed class ListarTenantsPlataformaUseCase : IListarTenantsPlataformaUse
         var assinaturas = await _db.Assinaturas.AsNoTracking()
             .ToDictionaryAsync(a => a.TenantId, cancellationToken);
         var nomesPlanos = await _db.Planos.AsNoTracking().ToDictionaryAsync(p => p.Codigo, p => p.Nome, cancellationToken);
+        var agora = DateTimeOffset.UtcNow;
+        var hoje = DataBrasilia.Hoje();
 
         return tenants.Select(t =>
         {
@@ -86,8 +94,30 @@ public sealed class ListarTenantsPlataformaUseCase : IListarTenantsPlataformaUse
                 a?.Status,
                 a?.Plano is { } plano ? nomesPlanos.GetValueOrDefault(plano, $"plano {plano}") : null,
                 a?.PrecoMensal,
-                a?.TesteIniciadoEm);
+                a?.TesteIniciadoEm,
+                Cobranca(t.Id, a, agora, hoje));
         }).ToList();
+    }
+
+    private CobrancaContaPlataforma Cobranca(Guid tenantId, NfseSaaS.Domain.Entities.Assinatura? a, DateTimeOffset agora, DateOnly hoje)
+    {
+        var naConfiguracao = _cobranca.ContasIsentas.Contains(tenantId);
+        if (a is null)
+            return new CobrancaContaPlataforma(null, 0, false, naConfiguracao, naConfiguracao, null, null, false, false, false);
+
+        return new CobrancaContaPlataforma(
+            a.TesteIniciadoEm is { } inicio
+                ? a.SemTesteGratis ? inicio : inicio.AddDays(RegrasCobranca.DiasDeTeste(a.TesteDiasExtras))
+                : null,
+            a.TesteDiasExtras,
+            a.SemTesteGratis,
+            RegrasCobranca.Isenta(naConfiguracao, a.IsentaPelaPlataforma, a.IsentaAte, hoje),
+            naConfiguracao,
+            a.IsentaPelaPlataforma ? a.IsentaAte : null,
+            a.IsentaPelaPlataforma ? a.MotivoIsencao : null,
+            a.Fundador && a.Status != StatusAssinatura.Cancelada,
+            CobrancaService.ReservaValida(a, agora),
+            a.AsaasAssinaturaId is not null && a.Status != StatusAssinatura.Cancelada);
     }
 }
 

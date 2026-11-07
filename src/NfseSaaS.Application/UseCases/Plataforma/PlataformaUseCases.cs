@@ -26,7 +26,25 @@ public sealed record TenantPlataformaResponse(
     NfseSaaS.Domain.Enums.StatusAssinatura? StatusAssinatura,
     string? Plano,
     decimal? PrecoMensal,
-    DateTimeOffset? TesteIniciadoEm);
+    DateTimeOffset? TesteIniciadoEm,
+    CobrancaContaPlataforma? Cobranca = null);
+
+/// <summary>Cobrança da conta vista pelo operador (L6: prorrogar, liberar teste, isentar).</summary>
+/// <param name="TesteTerminaEm">Fim do teste com os dias extras (nulo se não começou).</param>
+/// <param name="Isenta">Isenta agora, pela configuração da VPS ou pela tela.</param>
+/// <param name="IsentaNaConfiguracao">Isenta por Cobranca:ContasIsentas (não dá para mudar pela tela).</param>
+/// <param name="TemAssinaturaNoGateway">Assinatura viva no Asaas (não dá para isentar nem prorrogar).</param>
+public sealed record CobrancaContaPlataforma(
+    DateTimeOffset? TesteTerminaEm,
+    int TesteDiasExtras,
+    bool SemTesteGratis,
+    bool Isenta,
+    bool IsentaNaConfiguracao,
+    DateOnly? IsentaAte,
+    string? MotivoIsencao,
+    bool Fundador,
+    bool FundadorReservado,
+    bool TemAssinaturaNoGateway);
 
 /// <summary>Todas as contas, de todos os tenants — só o operador da plataforma chama.</summary>
 public interface IListarTenantsPlataformaUseCase

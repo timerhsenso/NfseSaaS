@@ -28,8 +28,8 @@ public static class RegrasFundador
     /// Teste iniciado a partir deste instante ainda segura a reserva
     /// (fim do teste + dias de reserva ≥ agora). Usado na contagem do banco.
     /// </summary>
-    public static DateTimeOffset InicioTesteMinimoParaReserva(DateTimeOffset agora) =>
-        agora.AddDays(-(Planos.TesteDias + Planos.DiasReservaFundadorAposTeste));
+    public static DateTimeOffset InicioTesteMinimoParaReserva(DateTimeOffset agora, int diasExtrasTeste = 0) =>
+        agora.AddDays(-(RegrasCobranca.DiasDeTeste(diasExtrasTeste) + Planos.DiasReservaFundadorAposTeste));
 
     /// <summary>A reserva ainda garante o preço de fundador agora?</summary>
     public static bool ReservaValida(
@@ -38,13 +38,14 @@ public static class RegrasFundador
         bool fundador,
         StatusAssinatura status,
         DateTimeOffset? testeIniciadoEm,
-        DateTimeOffset agora)
+        DateTimeOffset agora,
+        int diasExtrasTeste = 0)
     {
         if (reservadoEm is null || fundador || status == StatusAssinatura.Cancelada)
             return false;
         if (semPrazo || testeIniciadoEm is null)
             return true;
-        return testeIniciadoEm.Value >= InicioTesteMinimoParaReserva(agora);
+        return testeIniciadoEm.Value >= InicioTesteMinimoParaReserva(agora, diasExtrasTeste);
     }
 
     /// <summary>
@@ -52,10 +53,10 @@ public static class RegrasFundador
     /// prazo ainda: reserva do beta, ou teste que não começou (o prazo só
     /// passa a correr quando o teste começa).
     /// </summary>
-    public static DateOnly? ReservaValeAte(bool semPrazo, DateTimeOffset? testeIniciadoEm) =>
+    public static DateOnly? ReservaValeAte(bool semPrazo, DateTimeOffset? testeIniciadoEm, int diasExtrasTeste = 0) =>
         semPrazo || testeIniciadoEm is not { } inicio
             ? null
-            : DiaEmBrasilia(inicio.AddDays(Planos.TesteDias + Planos.DiasReservaFundadorAposTeste));
+            : DiaEmBrasilia(inicio.AddDays(RegrasCobranca.DiasDeTeste(diasExtrasTeste) + Planos.DiasReservaFundadorAposTeste));
 
     /// <summary>
     /// Pode guardar uma vaga agora? Conta que nunca assinou, sem reserva e

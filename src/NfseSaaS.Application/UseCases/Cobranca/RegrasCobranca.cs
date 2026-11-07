@@ -46,7 +46,8 @@ public static class RegrasCobranca
         DateOnly? acessoAteAposCancelar,
         DateTimeOffset agora,
         DateOnly hoje,
-        bool semTesteGratis = false)
+        bool semTesteGratis = false,
+        int diasExtrasTeste = 0)
     {
         switch (status)
         {
@@ -70,7 +71,7 @@ public static class RegrasCobranca
                 if (testeIniciadoEm is null)
                     return new SituacaoCobranca(true, null, null, null);
 
-                var termina = semTesteGratis ? testeIniciadoEm.Value : testeIniciadoEm.Value.AddDays(Planos.TesteDias);
+                var termina = semTesteGratis ? testeIniciadoEm.Value : testeIniciadoEm.Value.AddDays(DiasDeTeste(diasExtrasTeste));
                 if (agora < termina)
                 {
                     var dias = Math.Max(1, (int)Math.Ceiling((termina - agora).TotalDays));
@@ -93,7 +94,7 @@ public static class RegrasCobranca
                 return new SituacaoCobranca(false,
                     (semTesteGratis
                         ? MensagemSemTesteGratis
-                        : $"O teste grátis de {Planos.TesteDias} dias terminou. Assine um plano em Assinatura para continuar emitindo em produção.")
+                        : $"O teste grátis de {DiasDeTeste(diasExtrasTeste)} dias terminou. Assine um plano em Assinatura para continuar emitindo em produção.")
                     + ComplementoBloqueio,
                     null, termina);
             }
@@ -112,7 +113,8 @@ public static class RegrasCobranca
         DateOnly? acessoAteAposCancelar,
         DateTimeOffset agora,
         DateOnly hoje,
-        bool semTesteGratis = false)
+        bool semTesteGratis = false,
+        int diasExtrasTeste = 0)
     {
         if (status == StatusAssinatura.Cancelada)
             return (acessoAteAposCancelar is { } ate && ate >= hoje ? ate.AddDays(1) : hoje, false);
@@ -126,9 +128,9 @@ public static class RegrasCobranca
             return (hoje, testeIniciadoEm is null);
 
         if (testeIniciadoEm is null)
-            return (Maior(DiaEmBrasilia(agora.AddDays(Planos.TesteDias)), hoje), true);
+            return (Maior(DiaEmBrasilia(agora.AddDays(DiasDeTeste(diasExtrasTeste))), hoje), true);
 
-        var termina = testeIniciadoEm.Value.AddDays(Planos.TesteDias);
+        var termina = testeIniciadoEm.Value.AddDays(DiasDeTeste(diasExtrasTeste));
         return (agora < termina ? Maior(DiaEmBrasilia(termina), hoje) : hoje, false);
     }
 
@@ -145,6 +147,16 @@ public static class RegrasCobranca
             $"{fatura} vencida em {Data(vencimento)} ainda não foi paga. A emissão em produção para em {Data(limite.AddDays(1))} se ela não for paga.",
             testeTerminaEm);
     }
+
+    /// <summary>Dias de teste da conta: os do plano mais os dados pelo operador.</summary>
+    public static int DiasDeTeste(int diasExtras) => Planos.TesteDias + Math.Max(0, diasExtras);
+
+    /// <summary>
+    /// Conta isenta agora: pela configuração da VPS, ou pelo operador
+    /// (Plataforma › Contas) até a data dada (inclusive; sem data = sem prazo).
+    /// </summary>
+    public static bool Isenta(bool naConfiguracao, bool isentaPelaPlataforma, DateOnly? isentaAte, DateOnly hoje) =>
+        naConfiguracao || (isentaPelaPlataforma && (isentaAte is not { } ate || hoje <= ate));
 
     private static DateOnly Maior(DateOnly a, DateOnly b) => a > b ? a : b;
 

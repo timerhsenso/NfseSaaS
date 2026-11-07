@@ -88,6 +88,31 @@ public class RegrasCobrancaTests
     }
 
     [Fact]
+    public void Dias_extras_do_operador_estendem_o_teste_e_a_primeira_cobranca()
+    {
+        var inicio = Agora.AddDays(-35);
+        Assert.False(RegrasCobranca.Avaliar(StatusAssinatura.Teste, inicio, null, null, null, Agora, Hoje).PodeEmitirEmProducao);
+
+        var prorrogado = RegrasCobranca.Avaliar(StatusAssinatura.Teste, inicio, null, null, null, Agora, Hoje, diasExtrasTeste: 15);
+        Assert.True(prorrogado.PodeEmitirEmProducao);
+        Assert.Contains("faltam 10 dia(s)", prorrogado.Aviso);
+
+        var (venc, _) = RegrasCobranca.PrimeiroVencimento(StatusAssinatura.Teste, inicio, null, Agora, Hoje, diasExtrasTeste: 15);
+        Assert.Equal(Hoje.AddDays(10), venc);
+        Assert.Equal(45, RegrasCobranca.DiasDeTeste(15));
+    }
+
+    [Fact]
+    public void Isencao_vale_pela_configuracao_ou_pela_tela_ate_a_data_inclusive()
+    {
+        Assert.True(RegrasCobranca.Isenta(true, false, null, Hoje));
+        Assert.True(RegrasCobranca.Isenta(false, true, null, Hoje));          // sem prazo
+        Assert.True(RegrasCobranca.Isenta(false, true, Hoje, Hoje));          // último dia
+        Assert.False(RegrasCobranca.Isenta(false, true, Hoje.AddDays(-1), Hoje));
+        Assert.False(RegrasCobranca.Isenta(false, false, Hoje.AddDays(30), Hoje));
+    }
+
+    [Fact]
     public void Ativa_libera()
     {
         Assert.True(Avaliar(StatusAssinatura.Ativa, Agora.AddDays(-90)).PodeEmitirEmProducao);

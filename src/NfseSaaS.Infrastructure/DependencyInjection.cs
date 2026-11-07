@@ -317,6 +317,7 @@ public static class DependencyInjection
         services.AddScoped<NfseSaaS.Application.UseCases.Indicacao.IConvidarPorEmailUseCase, NfseSaaS.Infrastructure.UseCases.ConvidarPorEmailUseCase>();
         services.AddScoped<NfseSaaS.Application.UseCases.Aparencia.IAparenciaUseCase, NfseSaaS.Infrastructure.UseCases.AparenciaService>();
         services.AddScoped<IAlterarBloqueioTenantUseCase, AlterarBloqueioTenantUseCase>();
+        services.AddScoped<ICobrancaOperadorUseCase, NfseSaaS.Infrastructure.Cobranca.CobrancaOperadorService>();
         // Exclusão definitiva de conta pelo operador (código por e-mail).
         services.AddScoped<ExclusaoContaService>();
         services.AddScoped<ISolicitarExclusaoContaUseCase>(sp => sp.GetRequiredService<ExclusaoContaService>());

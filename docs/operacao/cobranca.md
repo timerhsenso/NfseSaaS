@@ -41,9 +41,30 @@ Termos de uso, item 8, citam o mesmo prazo).
   outra conta não devolve o teste.
 - **Contas de contador** não entram (cadastram CNPJs de clientes, que podem ter
   conta própria): nunca perdem o teste e não registram CNPJ.
-- Engano (ex.: CNPJ vendido ou conta antiga abandonada): por enquanto, apagar a
-  linha do CNPJ e zerar `SemTesteGratis` direto no banco; a tela do operador
-  para isso entra no L6.
+- Engano (ex.: CNPJ vendido ou conta antiga abandonada): **Plataforma › Contas ›
+  Cobrança › Liberar novo teste** (o CNPJ passa a constar como desta conta).
+
+## Ferramentas do operador (Plataforma › Contas)
+
+Menu **Cobrança** (ícone de cartão) em cada conta **sem assinatura viva no
+Asaas** (conta com fatura no Asaas se ajusta pelo painel do Asaas). Tudo pede
+motivo e vai para o Histórico da conta (`ProrrogarTeste`, `LiberarNovoTeste`,
+`IsentarConta`, `RemoverIsencao`), com o operador.
+
+- **Prorrogar teste:** soma dias ao teste (1 a 90 por vez, até 180 no total;
+  `assinaturas.TesteDiasExtras`). Estende também a reserva de fundador. Se o
+  teste já acabou, só aceita se o novo fim ficar no futuro.
+- **Liberar novo teste:** 30 dias a partir de hoje, zera os dias extras e tira
+  o "sem teste por CNPJ". Não vale para quem já foi assinante (cancelada).
+- **Isentar:** emite em produção sem teste e sem assinatura até a data
+  (inclusive) ou sem prazo (`IsentaPelaPlataforma`, `IsentaAte`, `MotivoIsencao`).
+  Sem avisos de cobrança enquanto isenta. Se a conta assinar, a isenção acaba e
+  a primeira fatura vence no dia seguinte ao fim da isenção. As contas de
+  `Cobranca__ContasIsentas` (VPS) continuam valendo e aparecem como "Isenta (VPS)".
+- **Números de venda** no topo: em teste agora (e quantos acabaram sem assinar),
+  assinantes e fundadores, MRR (soma do preço de quem está em dia ou em atraso),
+  conversão (assinantes ÷ contas que começaram o teste, sem as isentas) e vagas
+  de fundador sobrando/reservadas. Filtro por situação na lista.
 
 ## Campanha de fundador (reserva para quem entra)
 

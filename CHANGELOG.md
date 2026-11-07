@@ -5,6 +5,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (operador)
+- **Plataforma › Contas › Cobrança**: prorrogar teste (com motivo), liberar novo
+  teste (inclusive para CNPJ que já tinha usado) e isentar de cobrança até uma
+  data ou sem prazo, pela tela. Só para conta sem assinatura no Asaas; tudo no
+  Histórico da conta.
+- **Números de venda** no topo da tela (em teste, assinantes, MRR, conversão,
+  vagas de fundador) e **filtro por situação** na lista de contas.
+
 ### Adicionado (teste grátis)
 - **Um teste grátis por CNPJ**: a conta de empresa cujo CNPJ já usou o teste
   em outra conta (mesmo excluída) não ganha teste; emite em produção só com

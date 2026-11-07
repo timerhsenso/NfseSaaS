@@ -76,6 +76,8 @@ public sealed class AvisosCobrancaService : IEnviarAvisosCobrancaUseCase, IObter
             var assinatura = await _db.Assinaturas.AsNoTracking().FirstOrDefaultAsync(a => a.TenantId == tenantId, cancellationToken);
             if (assinatura is null)
                 return Nada("Conta sem assinatura.");
+            if (CobrancaService.IsentaPelaPlataforma(assinatura))
+                return Nada("Conta isenta pelo operador.");
 
             var estado = await EstadoAsync(assinatura, cancellationToken);
             var devidos = RegrasAvisoCobranca.Avaliar(estado, DateTimeOffset.UtcNow, DataBrasilia.Hoje());
@@ -130,7 +132,7 @@ public sealed class AvisosCobrancaService : IEnviarAvisosCobrancaUseCase, IObter
 
         // Só leitura: a assinatura nasce na tela Assinatura ou na emissão, não aqui.
         var assinatura = await _db.Assinaturas.AsNoTracking().FirstOrDefaultAsync(a => a.TenantId == tenantId, cancellationToken);
-        if (assinatura is null)
+        if (assinatura is null || CobrancaService.IsentaPelaPlataforma(assinatura))
             return null;
 
         var estado = await EstadoAsync(assinatura, cancellationToken);
@@ -157,7 +159,8 @@ public sealed class AvisosCobrancaService : IEnviarAvisosCobrancaUseCase, IObter
             await UsoAsync(a, cancellationToken),
             a.AcessoAteAposCancelar,
             CobrancaService.ReservaValida(a, DateTimeOffset.UtcNow),
-            a.SemTesteGratis);
+            a.SemTesteGratis,
+            a.TesteDiasExtras);
 
     /// <summary>Uso frente ao plano, só para quem assinou um plano (não cancelado).</summary>
     private async Task<UsoPlano?> UsoAsync(Assinatura a, CancellationToken cancellationToken)

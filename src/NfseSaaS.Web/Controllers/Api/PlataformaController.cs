@@ -29,6 +29,7 @@ public sealed class PlataformaController : ControllerBase
     private readonly ISolicitarExclusaoPlanoUseCase _solicitarExclusaoPlano;
     private readonly IConfirmarExclusaoPlanoUseCase _confirmarExclusaoPlano;
     private readonly ICurrentUser _currentUser;
+    private readonly ICobrancaOperadorUseCase _cobrancaOperador;
 
     public PlataformaController(
         IListarTenantsPlataformaUseCase listar,
@@ -42,8 +43,10 @@ public sealed class PlataformaController : ControllerBase
         IAdministrarPlanosUseCase planos,
         ISolicitarExclusaoPlanoUseCase solicitarExclusaoPlano,
         IConfirmarExclusaoPlanoUseCase confirmarExclusaoPlano,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        ICobrancaOperadorUseCase cobrancaOperador)
     {
+        _cobrancaOperador = cobrancaOperador;
         _listar = listar;
         _alterarBloqueio = alterarBloqueio;
         _consultarProtecaoChaves = consultarProtecaoChaves;
@@ -75,6 +78,24 @@ public sealed class PlataformaController : ControllerBase
         await _alterarBloqueio.ExecutarAsync(id, false, null, _currentUser.UserId, cancellationToken);
         return NoContent();
     }
+
+    // ---------- Cobrança da conta (prorrogar/liberar teste, isentar) ----------
+
+    [HttpPost("tenants/{id:guid}/teste/prorrogar")]
+    public async Task<IActionResult> ProrrogarTeste(Guid id, [FromBody] ProrrogarTesteRequest request, CancellationToken cancellationToken)
+        => Ok(await _cobrancaOperador.ProrrogarTesteAsync(id, request, _currentUser.UserId, cancellationToken));
+
+    [HttpPost("tenants/{id:guid}/teste/liberar")]
+    public async Task<IActionResult> LiberarTeste(Guid id, [FromBody] LiberarTesteRequest request, CancellationToken cancellationToken)
+        => Ok(await _cobrancaOperador.LiberarTesteAsync(id, request, _currentUser.UserId, cancellationToken));
+
+    [HttpPost("tenants/{id:guid}/isencao")]
+    public async Task<IActionResult> Isentar(Guid id, [FromBody] IsentarContaRequest request, CancellationToken cancellationToken)
+        => Ok(await _cobrancaOperador.IsentarAsync(id, request, _currentUser.UserId, cancellationToken));
+
+    [HttpDelete("tenants/{id:guid}/isencao")]
+    public async Task<IActionResult> RemoverIsencao(Guid id, CancellationToken cancellationToken)
+        => Ok(await _cobrancaOperador.RemoverIsencaoAsync(id, _currentUser.UserId, cancellationToken));
 
     /// <summary>Exclusão de conta, passo 1: confere as regras e envia o código ao e-mail do operador.</summary>
     [HttpPost("tenants/{id:guid}/exclusao/codigo")]

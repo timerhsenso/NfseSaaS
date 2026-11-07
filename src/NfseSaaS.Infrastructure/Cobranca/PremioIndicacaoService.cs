@@ -115,7 +115,9 @@ public sealed class PremioIndicacaoService : IAplicarPremiosIndicacaoUseCase, IL
 
         var temAssinaturaNoGateway = assinatura?.AsaasAssinaturaId is not null;
         var motivo = RegrasPremioIndicacao.MotivoEspera(
-            assinatura?.Status, temAssinaturaNoGateway, _options.ContasIsentas.Contains(premio.TenantId), contaAtiva);
+            assinatura?.Status, temAssinaturaNoGateway,
+            _options.ContasIsentas.Contains(premio.TenantId) || (assinatura is not null && CobrancaService.IsentaPelaPlataforma(assinatura)),
+            contaAtiva);
 
         if (motivo is not null)
         {

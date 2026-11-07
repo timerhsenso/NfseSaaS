@@ -6,6 +6,8 @@ let tenantParaSuspender = null;
 let modalExcluir;
 let tenantParaExcluir = null;
 let relogioExclusao = null;
+let modalCobranca;
+let acaoCobranca = null; // { tipo: 'prorrogar' | 'liberar' | 'isentar', id }
 
 // CPF (contador pessoa física) ou CNPJ do titular da conta.
 function formatarDocumentoPlataforma(documento) {
@@ -15,16 +17,77 @@ function formatarDocumentoPlataforma(documento) {
     return documento;
 }
 
+// DateOnly ("2027-01-31") sem passar por Date (evita mostrar o dia anterior).
+function diaCurto(iso) {
+    if (!iso) return '—';
+    const [ano, mes, dia] = iso.split('-');
+    return `${dia}/${mes}/${ano}`;
+}
+
+function reaisPlataforma(v) {
+    return `R$ ${Number(v).toFixed(2).replace('.', ',')}`;
+}
+
+// Categoria da conta para o filtro e os números de venda.
 // StatusAssinatura (Domain.Enums): 1 Teste, 2 Ativa, 3 Atrasada, 4 Cancelada.
-function situacaoCobrancaPlataforma(t) {
-    const preco = t.precoMensal != null ? ` · R$ ${Number(t.precoMensal).toFixed(2).replace('.', ',')}` : '';
+function categoriaConta(t) {
+    const c = t.cobranca || {};
+    if (!t.ativo) return 'suspensa';
+    if (c.isenta) return 'isenta';
     switch (t.statusAssinatura) {
-        case 2: return `<div class="small text-muted mt-1">Assinante ${escaparHtml(t.plano ?? '')}${preco}</div>`;
-        case 3: return `<div class="small text-danger mt-1">Fatura em atraso · ${escaparHtml(t.plano ?? '')}</div>`;
-        case 4: return '<div class="small text-muted mt-1">Assinatura cancelada</div>';
-        case 1: return `<div class="small text-muted mt-1">${t.testeIniciadoEm ? 'Em teste desde ' + dataCurta(t.testeIniciadoEm) : 'Teste não iniciado'}</div>`;
-        default: return '';
+        case 2: return 'assinante';
+        case 3: return 'atraso';
+        case 4: return 'cancelada';
+        default:
+            if (c.semTesteGratis && !c.temAssinaturaNoGateway) return 'sem-teste';
+            if (c.temAssinaturaNoGateway) return 'teste'; // assinou no teste, primeira fatura ainda não paga
+            if (!t.testeIniciadoEm) return 'nao-iniciado';
+            return c.testeTerminaEm && new Date(c.testeTerminaEm) <= new Date() ? 'teste-acabado' : 'teste';
     }
+}
+
+function situacaoCobrancaPlataforma(t) {
+    const c = t.cobranca || {};
+    const preco = t.precoMensal != null ? ` · ${reaisPlataforma(t.precoMensal)}` : '';
+    const selos = [];
+    if (c.isenta) selos.push(`<span class="badge text-bg-secondary">Isenta${c.isentaNaConfiguracao ? ' (VPS)' : c.isentaAte ? ' até ' + diaCurto(c.isentaAte) : ''}</span>`);
+    if (c.fundador) selos.push('<span class="badge text-bg-warning">Fundador</span>');
+    else if (c.fundadorReservado) selos.push('<span class="badge text-bg-light border">Fundador reservado</span>');
+    if (c.testeDiasExtras) selos.push(`<span class="badge text-bg-light border">+${c.testeDiasExtras} dia(s)</span>`);
+
+    let texto;
+    switch (categoriaConta(t)) {
+        case 'assinante': texto = `Assinante ${escaparHtml(t.plano ?? '')}${preco}`; break;
+        case 'atraso': texto = `<span class="text-danger">Fatura em atraso · ${escaparHtml(t.plano ?? '')}</span>`; break;
+        case 'cancelada': texto = 'Assinatura cancelada'; break;
+        case 'sem-teste': texto = '<span class="text-danger">Sem teste: CNPJ já usou em outra conta</span>'; break;
+        case 'teste-acabado': texto = `<span class="text-danger">Teste acabou em ${dataCurta(c.testeTerminaEm)}</span>`; break;
+        case 'nao-iniciado': texto = 'Teste não iniciado'; break;
+        case 'teste': texto = c.temAssinaturaNoGateway
+            ? `Assinou no teste · ${escaparHtml(t.plano ?? '')}`
+            : `Em teste até ${dataCurta(c.testeTerminaEm)}`; break;
+        default: texto = '';
+    }
+    return `<div class="small text-muted mt-1">${texto}</div>` + (selos.length ? `<div class="mt-1 d-flex flex-wrap gap-1">${selos.join('')}</div>` : '');
+}
+
+// Menu "Cobrança" da linha: só o que vale para a situação da conta.
+function menuCobranca(t, nome) {
+    const c = t.cobranca || {};
+    if (c.isentaNaConfiguracao || c.temAssinaturaNoGateway) return '';
+    const itens = [];
+    const podeTeste = t.statusAssinatura !== 4 && !c.isenta;
+    if (podeTeste && !c.semTesteGratis)
+        itens.push(`<li><button type="button" class="dropdown-item btn-cobranca" data-acao="prorrogar" data-id="${t.id}" data-nome="${nome}"><i class="bi bi-calendar-plus"></i> Prorrogar teste…</button></li>`);
+    if (podeTeste)
+        itens.push(`<li><button type="button" class="dropdown-item btn-cobranca" data-acao="liberar" data-id="${t.id}" data-nome="${nome}"><i class="bi bi-arrow-counterclockwise"></i> Liberar novo teste…</button></li>`);
+    itens.push(c.isenta
+        ? `<li><button type="button" class="dropdown-item btn-cobranca" data-acao="remover-isencao" data-id="${t.id}" data-nome="${nome}"><i class="bi bi-x-circle"></i> Remover isenção</button></li>`
+        : `<li><button type="button" class="dropdown-item btn-cobranca" data-acao="isentar" data-id="${t.id}" data-nome="${nome}"><i class="bi bi-gift"></i> Isentar de cobrança…</button></li>`);
+    return `<div class="dropdown">
+        <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-credit-card"></i></button>
+        <ul class="dropdown-menu dropdown-menu-end">${itens.join('')}</ul>
+    </div>`;
 }
 
 // StatusPremioIndicacao (Domain.Enums): 1 Pendente, 2 Aplicando, 3 Aplicado, 4 Erro.
@@ -77,7 +140,7 @@ document.addEventListener('DOMContentLoaded', function () {
             {
                 data: 'ativo',
                 render: (v, type, t) => {
-                    if (type !== 'display') return v ? 'Ativa' : 'Suspensa';
+                    if (type !== 'display') return (v ? 'Ativa ' : 'Suspensa ') + categoriaConta(t);
                     const cobranca = situacaoCobrancaPlataforma(t);
                     if (v) return '<span class="badge text-bg-success">Ativa</span>' + cobranca;
                     return `<span class="badge text-bg-danger">Suspensa</span>` +
@@ -95,11 +158,21 @@ document.addEventListener('DOMContentLoaded', function () {
                     const excluir = t.notasTotal === 0
                         ? ` <button type="button" class="btn btn-sm btn-outline-danger btn-excluir-tenant" data-id="${t.id}" data-nome="${nome}" title="Excluir definitivamente"><i class="bi bi-trash"></i></button>`
                         : '';
-                    return `<div class="d-flex gap-1">${principal}${excluir}</div>`;
+                    return `<div class="d-flex gap-1">${principal}${menuCobranca(t, nome)}${excluir}</div>`;
                 }
             }
         ],
     });
+
+    // Filtro por situação (só na tabela de contas).
+    DataTable.ext.search.push(function (settings, dados, indice) {
+        if (settings.nTable.id !== 'tabela-tenants') return true;
+        const filtro = document.getElementById('filtro-situacao').value;
+        if (!filtro) return true;
+        const t = tabelaTenants.row(indice).data();
+        return categoriaConta(t) === filtro;
+    });
+    document.getElementById('filtro-situacao').addEventListener('change', () => tabelaTenants.draw());
 
     tabelaPremios = new DataTable('#tabela-premios', {
         order: [[0, 'desc']],
@@ -137,6 +210,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     modalSuspender = new bootstrap.Modal(document.getElementById('modal-suspender-tenant'));
+    modalCobranca = new bootstrap.Modal(document.getElementById('modal-cobranca-tenant'));
+    document.getElementById('form-cobranca-tenant').addEventListener('submit', confirmarCobranca);
     modalExcluir = new bootstrap.Modal(document.getElementById('modal-excluir-tenant'));
     document.getElementById('form-excluir-tenant').addEventListener('submit', confirmarExclusaoTenant);
     document.getElementById('modal-excluir-tenant').addEventListener('hidden.bs.modal', pararRelogioExclusao);
@@ -149,6 +224,10 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('tabela-tenants').addEventListener('click', async function (e) {
         const botao = e.target.closest('button');
         if (!botao) return;
+        if (botao.classList.contains('btn-cobranca')) {
+            await abrirCobranca(botao.dataset.acao, botao.dataset.id, botao.dataset.nome);
+            return;
+        }
         if (botao.classList.contains('btn-suspender')) {
             tenantParaSuspender = botao.dataset.id;
             document.getElementById('nome-tenant-suspender').textContent = botao.dataset.nome;
@@ -251,6 +330,7 @@ async function carregarTenants() {
         document.getElementById('kpi-producao').textContent = tenants.reduce((s, t) => s + t.empresasEmProducao, 0);
         document.getElementById('kpi-producao-detalhe').textContent =
             `de ${tenants.reduce((s, t) => s + t.empresas, 0)} empresa(s) cadastradas`;
+        atualizarNumerosVenda(tenants);
     } catch (err) {
         mostrarErro(err.message);
     }
@@ -361,6 +441,134 @@ async function confirmarExclusaoTenant(e) {
             await carregarPremios();
         } catch (err) {
             mostrarErroFormulario('erro-excluir-tenant', err.message);
+        }
+    });
+}
+
+// ---------- Números de venda ----------
+
+async function atualizarNumerosVenda(tenants) {
+    const por = cat => tenants.filter(t => categoriaConta(t) === cat);
+    const emTeste = por('teste');
+    const acabados = por('teste-acabado');
+    const assinantes = por('assinante');
+    const atraso = por('atraso');
+    const pagantes = assinantes.concat(atraso);
+
+    document.getElementById('kpi-em-teste').textContent = emTeste.length;
+    document.getElementById('kpi-em-teste-detalhe').textContent =
+        `${acabados.length} acabaram sem assinar · ${por('nao-iniciado').length} sem nota em produção`;
+
+    document.getElementById('kpi-assinantes').textContent = pagantes.length;
+    document.getElementById('kpi-assinantes-detalhe').textContent =
+        `${atraso.length} em atraso · ${pagantes.filter(t => t.cobranca?.fundador).length} fundador(es)`;
+
+    document.getElementById('kpi-mrr').textContent =
+        reaisPlataforma(pagantes.reduce((soma, t) => soma + (t.precoMensal ?? 0), 0));
+
+    // Conversão: quem é assinante hoje (em dia ou em atraso) sobre quem já começou o teste (sem as isentas).
+    const comecaram = tenants.filter(t => t.testeIniciadoEm && !t.cobranca?.isenta);
+    const converteram = comecaram.filter(t => [2, 3].includes(t.statusAssinatura));
+    document.getElementById('kpi-conversao').textContent = comecaram.length
+        ? `${Math.round(100 * converteram.length / comecaram.length)}%`
+        : '—';
+    document.getElementById('kpi-conversao-detalhe').textContent =
+        `${converteram.length} de ${comecaram.length} que começaram o teste`;
+
+    try {
+        const vagas = await apiFetch('/api/plataforma/vagas-fundador');
+        // PublicoPlano (Domain.Cobranca): 1 Empresas, 2 Escritorios.
+        const grupo = p => vagas.find(v => v.publico === p);
+        const empresas = grupo(1), escritorios = grupo(2);
+        document.getElementById('kpi-vagas').textContent = (empresas?.restantes ?? 0) + (escritorios?.restantes ?? 0);
+        document.getElementById('kpi-vagas-detalhe').textContent =
+            `empresas ${empresas?.restantes ?? 0} · escritórios ${escritorios?.restantes ?? 0}` +
+            ((empresas?.reservas ?? 0) + (escritorios?.reservas ?? 0) ? ` · ${(empresas?.reservas ?? 0) + (escritorios?.reservas ?? 0)} reservada(s)` : '');
+    } catch {
+        document.getElementById('kpi-vagas').textContent = '—';
+    }
+}
+
+// ---------- Cobrança da conta (prorrogar, liberar teste, isentar) ----------
+
+const TEXTOS_COBRANCA = {
+    prorrogar: {
+        titulo: 'Prorrogar teste grátis',
+        explicacao: 'Soma dias ao teste desta conta (também estende a vaga de fundador reservada). Só para conta sem assinatura.',
+        botao: 'Prorrogar', dias: true, ate: false
+    },
+    liberar: {
+        titulo: 'Liberar novo teste',
+        explicacao: 'Começa um teste novo de 30 dias a partir de hoje, inclusive para conta sem teste porque o CNPJ já tinha usado em outra conta.',
+        botao: 'Liberar teste', dias: false, ate: false
+    },
+    isentar: {
+        titulo: 'Isentar de cobrança',
+        explicacao: 'A conta emite em produção sem teste e sem assinatura até a data (ou sem prazo). Se ela assinar, a isenção acaba e a primeira fatura vence no dia seguinte ao fim da isenção.',
+        botao: 'Isentar', dias: false, ate: true
+    }
+};
+
+async function abrirCobranca(acao, id, nome) {
+    if (acao === 'remover-isencao') {
+        if (!await confirmarAcao(`Remover a isenção de ${nome}? A conta volta às regras normais (teste ou assinatura).`,
+            { titulo: 'Remover isenção', textoBotao: 'Remover' })) return;
+        try {
+            const r = await apiFetch(`/api/plataforma/tenants/${id}/isencao`, { method: 'DELETE' });
+            mostrarToast(r.mensagem);
+            await carregarTenants();
+        } catch (err) {
+            mostrarErro(err.message);
+        }
+        return;
+    }
+
+    const textos = TEXTOS_COBRANCA[acao];
+    acaoCobranca = { tipo: acao, id };
+    document.getElementById('titulo-cobranca-tenant').textContent = textos.titulo;
+    document.getElementById('nome-tenant-cobranca').textContent = nome;
+    document.getElementById('explicacao-cobranca-tenant').textContent = textos.explicacao;
+    document.getElementById('grupo-dias-cobranca').classList.toggle('d-none', !textos.dias);
+    document.getElementById('grupo-ate-cobranca').classList.toggle('d-none', !textos.ate);
+    document.getElementById('btn-confirmar-cobranca').textContent = textos.botao;
+    document.getElementById('dias-cobranca').value = 15;
+    document.getElementById('ate-cobranca').value = '';
+    document.getElementById('motivo-cobranca').value = '';
+    ocultarErroFormulario('erro-cobranca-tenant');
+    modalCobranca.show();
+}
+
+async function confirmarCobranca(e) {
+    e.preventDefault();
+    ocultarErroFormulario('erro-cobranca-tenant');
+    const motivo = document.getElementById('motivo-cobranca').value.trim();
+    if (!motivo) {
+        mostrarErroFormulario('erro-cobranca-tenant', 'Informe o motivo.');
+        return;
+    }
+
+    const { tipo, id } = acaoCobranca;
+    const chamada = {
+        prorrogar: () => apiFetch(`/api/plataforma/tenants/${id}/teste/prorrogar`, {
+            method: 'POST', body: JSON.stringify({ dias: Number(document.getElementById('dias-cobranca').value), motivo })
+        }),
+        liberar: () => apiFetch(`/api/plataforma/tenants/${id}/teste/liberar`, {
+            method: 'POST', body: JSON.stringify({ motivo })
+        }),
+        isentar: () => apiFetch(`/api/plataforma/tenants/${id}/isencao`, {
+            method: 'POST', body: JSON.stringify({ ate: document.getElementById('ate-cobranca').value || null, motivo })
+        })
+    }[tipo];
+
+    const botao = document.getElementById('btn-confirmar-cobranca');
+    await executarComBotaoDesabilitado(botao, async () => {
+        try {
+            const r = await chamada();
+            modalCobranca.hide();
+            mostrarToast(r.mensagem);
+            await carregarTenants();
+        } catch (err) {
+            mostrarErroFormulario('erro-cobranca-tenant', err.message);
         }
     });
 }

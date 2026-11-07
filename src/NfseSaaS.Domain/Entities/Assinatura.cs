@@ -65,6 +65,20 @@ public sealed class Assinatura : BaseEntity
     /// </summary>
     public bool SemTesteGratis { get; set; }
 
+    /// <summary>Dias de teste dados pelo operador (Plataforma › Contas), somados aos 30.</summary>
+    public int TesteDiasExtras { get; set; }
+
+    /// <summary>
+    /// Isenta pelo operador (Plataforma › Contas), sem mexer na configuração
+    /// da VPS. Vale até IsentaAte (inclusive); sem data = sem prazo. Só para
+    /// conta sem assinatura ativa no Asaas (isenção não para faturas).
+    /// </summary>
+    public bool IsentaPelaPlataforma { get; set; }
+
+    public DateOnly? IsentaAte { get; set; }
+
+    public string? MotivoIsencao { get; set; }
+
     /// <summary>Vencimento da fatura em atraso (nulo quando em dia).</summary>
     public DateOnly? AtrasadaDesde { get; set; }
 

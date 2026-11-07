@@ -59,7 +59,8 @@ public sealed record EstadoAvisoCobranca(
     UsoPlano? Uso = null,
     DateOnly? AcessoAteAposCancelar = null,
     bool FundadorReservado = false,
-    bool SemTesteGratis = false);
+    bool SemTesteGratis = false,
+    int TesteDiasExtras = 0);
 
 /// <summary>
 /// Um aviso a mandar. <paramref name="Chave"/> vai para
@@ -163,7 +164,7 @@ public static class RegrasAvisoCobranca
         if (estado.Status == StatusAssinatura.Teste && estado.AsaasAssinaturaId is null && !estado.SemTesteGratis
             && situacao.PodeEmitirEmProducao && estado.TesteIniciadoEm is { } testeInicio)
         {
-            var termina = testeInicio.AddDays(Planos.TesteDias);
+            var termina = testeInicio.AddDays(RegrasCobranca.DiasDeTeste(estado.TesteDiasExtras));
             var dias = DiasRestantes(termina, agora);
             var faixa = FaixasDiasTeste.Where(f => dias <= f).Select(f => (int?)f).FirstOrDefault();
             if (faixa is { } f)
@@ -242,7 +243,7 @@ public static class RegrasAvisoCobranca
 
         if (estado.Status == StatusAssinatura.Teste && estado.AsaasAssinaturaId is null && !estado.SemTesteGratis && estado.TesteIniciadoEm is { } inicio)
         {
-            var termina = inicio.AddDays(Planos.TesteDias);
+            var termina = inicio.AddDays(RegrasCobranca.DiasDeTeste(estado.TesteDiasExtras));
             var dias = DiasRestantes(termina, agora);
             if (dias <= FaixasDiasTeste.Max())
                 return new FaixaCobranca(NivelFaixaCobranca.Info,
@@ -269,7 +270,7 @@ public static class RegrasAvisoCobranca
 
     private static SituacaoCobranca Situacao(EstadoAvisoCobranca estado, DateTimeOffset agora, DateOnly hoje) =>
         RegrasCobranca.Avaliar(estado.Status, estado.TesteIniciadoEm, estado.PrimeiraCobrancaEm,
-            estado.AtrasadaDesde, estado.AcessoAteAposCancelar, agora, hoje, estado.SemTesteGratis);
+            estado.AtrasadaDesde, estado.AcessoAteAposCancelar, agora, hoje, estado.SemTesteGratis, estado.TesteDiasExtras);
 
     /// <summary>Vencimento da fatura em atraso (Atrasada, ou fatura em aberto com vencimento passado), ou nulo.</summary>
     private static DateOnly? VencimentoEmAtraso(EstadoAvisoCobranca estado, DateOnly hoje)

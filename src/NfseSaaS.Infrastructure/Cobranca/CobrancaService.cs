@@ -62,6 +62,8 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
             return;
 
         var assinatura = await ObterOuCriarAsync(tenantId, cancellationToken);
+        if (IsentaPelaPlataforma(assinatura))
+            return;
 
         // Primeira nota em produção: começa a contar o teste grátis (se o
         // CNPJ ainda não usou o teste em outra conta).
@@ -90,14 +92,14 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
         await TentarReservarAsync(tenantId, cancellationToken);
 
         var assinatura = await ObterOuCriarAsync(tenantId, cancellationToken);
-        var isenta = _options.ContasIsentas.Contains(tenantId);
+        var isenta = _options.ContasIsentas.Contains(tenantId) || IsentaPelaPlataforma(assinatura);
         var cobrancaAtiva = _options.AtivaPara(tenantId);
         var agora = DateTimeOffset.UtcNow;
         var hoje = DataBrasilia.Hoje();
 
         var situacao = cobrancaAtiva && !isenta
             ? Avaliar(assinatura, agora, hoje)
-            : new SituacaoCobranca(true, null, null, assinatura.TesteIniciadoEm?.AddDays(Planos.TesteDias));
+            : new SituacaoCobranca(true, null, null, assinatura.TesteIniciadoEm?.AddDays(RegrasCobranca.DiasDeTeste(assinatura.TesteDiasExtras)));
 
         var notasMes = await ContarNotasDoMesAsync(_db, tenantId, cancellationToken);
         var empresas = await ContarEmpresasAtivasAsync(_db, tenantId, cancellationToken);
@@ -137,8 +139,7 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
         DateOnly? primeiraCobranca = temAssinaturaNoGateway
             ? assinatura.Status == StatusAssinatura.Teste ? assinatura.PrimeiraCobrancaEm : null
             : podeAssinar
-                ? RegrasCobranca.PrimeiroVencimento(assinatura.Status, assinatura.TesteIniciadoEm, assinatura.AcessoAteAposCancelar, agora, hoje,
-                    assinatura.SemTesteGratis).Vencimento
+                ? PrimeiroVencimento(assinatura, assinatura.SemTesteGratis, agora, hoje).Vencimento
                 : null;
 
         return new AssinaturaResponse(
@@ -153,7 +154,7 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
             vagas, ofertas,
             PrimeiraCobrancaEm: primeiraCobranca,
             FundadorReservado: reservaValida,
-            FundadorReservaAte: reservaValida ? RegrasFundador.ReservaValeAte(assinatura.FundadorReservaSemPrazo, assinatura.TesteIniciadoEm) : null,
+            FundadorReservaAte: reservaValida ? RegrasFundador.ReservaValeAte(assinatura.FundadorReservaSemPrazo, assinatura.TesteIniciadoEm, assinatura.TesteDiasExtras) : null,
             FundadorReservaSemPrazo: reservaValida && assinatura.FundadorReservaSemPrazo,
             CampanhaFundadorAte: await _catalogo.CampanhaFundadorAteAsync(grupoConta, cancellationToken),
             AcessoAteAposCancelar: assinatura.Status == StatusAssinatura.Cancelada ? assinatura.AcessoAteAposCancelar : null,
@@ -207,8 +208,7 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
 
             // Primeira fatura no fim do teste (ninguém perde dia de teste por assinar cedo).
             var statusAntes = assinatura.Status;
-            var (vencimento, iniciarTeste) = RegrasCobranca.PrimeiroVencimento(
-                assinatura.Status, assinatura.TesteIniciadoEm, assinatura.AcessoAteAposCancelar, agora, hoje, cnpjJaUsouTeste);
+            var (vencimento, iniciarTeste) = PrimeiroVencimento(assinatura, cnpjJaUsouTeste, agora, hoje);
             // Tolerância na primeira fatura: só para quem nunca pagou ou ainda tem dias pagos
             // depois de cancelar (cancelar e assinar de novo não abre outra tolerância).
             var primeiraComTolerancia = statusAntes == StatusAssinatura.Teste
@@ -232,6 +232,9 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
             assinatura.AcessoAteAposCancelar = null;
             assinatura.AtrasadaDesde = null;
             assinatura.PrimeiraCobrancaEm = primeiraComTolerancia ? vencimento : null;
+            // Isenção dada pelo operador acaba ao assinar (as faturas passam a valer).
+            assinatura.IsentaPelaPlataforma = false;
+            assinatura.IsentaAte = null;
             if (iniciarTeste)
                 RegistrarInicioDoTeste(assinatura, cnpjJaUsouTeste, cnpjsNovos, agora);
             // A reserva de fundador acaba aqui (usada ou não): cancelar depois perde o preço.
@@ -365,7 +368,7 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
         {
             if (assinatura.TesteIniciadoEm is not { } inicio)
                 return null;
-            var termina = inicio.AddDays(Planos.TesteDias);
+            var termina = inicio.AddDays(RegrasCobranca.DiasDeTeste(assinatura.TesteDiasExtras));
             return DateTimeOffset.UtcNow < termina ? DiaEmBrasilia(termina) : null;
         }
 
@@ -488,7 +491,24 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
 
     internal static SituacaoCobranca Avaliar(Assinatura assinatura, DateTimeOffset agora, DateOnly hoje) =>
         RegrasCobranca.Avaliar(assinatura.Status, assinatura.TesteIniciadoEm, assinatura.PrimeiraCobrancaEm,
-            assinatura.AtrasadaDesde, assinatura.AcessoAteAposCancelar, agora, hoje, assinatura.SemTesteGratis);
+            assinatura.AtrasadaDesde, assinatura.AcessoAteAposCancelar, agora, hoje, assinatura.SemTesteGratis, assinatura.TesteDiasExtras);
+
+    /// <summary>Isenta pelo operador (Plataforma › Contas) e ainda dentro do prazo.</summary>
+    internal static bool IsentaPelaPlataforma(Assinatura assinatura) =>
+        RegrasCobranca.Isenta(false, assinatura.IsentaPelaPlataforma, assinatura.IsentaAte, DataBrasilia.Hoje());
+
+    /// <summary>
+    /// Primeiro vencimento pela regra do teste; com isenção do operador ainda
+    /// valendo, nunca antes do dia seguinte ao fim da isenção.
+    /// </summary>
+    private static (DateOnly Vencimento, bool IniciarTeste) PrimeiroVencimento(Assinatura assinatura, bool semTesteGratis, DateTimeOffset agora, DateOnly hoje)
+    {
+        var (vencimento, iniciarTeste) = RegrasCobranca.PrimeiroVencimento(
+            assinatura.Status, assinatura.TesteIniciadoEm, assinatura.AcessoAteAposCancelar, agora, hoje, semTesteGratis, assinatura.TesteDiasExtras);
+        if (IsentaPelaPlataforma(assinatura) && assinatura.IsentaAte is { } ate && ate.AddDays(1) > vencimento)
+            vencimento = ate.AddDays(1);
+        return (vencimento, iniciarTeste);
+    }
 
     /// <summary>
     /// Um teste por CNPJ: algum CNPJ das empresas da conta já usou o teste em
@@ -533,7 +553,7 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
 
     internal static bool ReservaValida(Assinatura assinatura, DateTimeOffset agora) =>
         RegrasFundador.ReservaValida(assinatura.FundadorReservadoEm, assinatura.FundadorReservaSemPrazo,
-            assinatura.Fundador, assinatura.Status, assinatura.TesteIniciadoEm, agora);
+            assinatura.Fundador, assinatura.Status, assinatura.TesteIniciadoEm, agora, assinatura.TesteDiasExtras);
 
     private static void LimparReserva(Assinatura assinatura)
     {

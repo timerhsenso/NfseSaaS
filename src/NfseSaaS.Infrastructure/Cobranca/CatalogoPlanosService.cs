@@ -69,11 +69,13 @@ public sealed class CatalogoPlanosService : ICatalogoPlanos, IAdministrarPlanosU
     /// <summary>Reservas de fundador do grupo ainda válidas (mesma regra de RegrasFundador.ReservaValida).</summary>
     private Task<int> ReservasValidasAsync(PublicoPlano publico, CancellationToken cancellationToken)
     {
+        // Fim da reserva = início do teste + 30 + dias extras do operador + 7.
         var inicioMinimo = RegrasFundador.InicioTesteMinimoParaReserva(DateTimeOffset.UtcNow);
         return _db.Assinaturas.AsNoTracking().CountAsync(a =>
             a.FundadorReservadoEm != null && a.FundadorReservaGrupo == publico
             && !a.Fundador && a.Status != StatusAssinatura.Cancelada
-            && (a.FundadorReservaSemPrazo || a.TesteIniciadoEm == null || a.TesteIniciadoEm >= inicioMinimo),
+            && (a.FundadorReservaSemPrazo || a.TesteIniciadoEm == null
+                || a.TesteIniciadoEm >= inicioMinimo.AddDays(-a.TesteDiasExtras)),
             cancellationToken);
     }
 

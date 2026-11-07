@@ -25,10 +25,50 @@
     </div>
 </div>
 
+<div class="stats mt-3">
+    <div class="stat">
+        <div class="stat-top"><span class="stat-label">Em teste agora</span><div class="stat-icon"><i class="bi bi-hourglass-split"></i></div></div>
+        <strong id="kpi-em-teste">-</strong>
+        <small id="kpi-em-teste-detalhe">&nbsp;</small>
+    </div>
+    <div class="stat">
+        <div class="stat-top"><span class="stat-label">Assinantes</span><div class="stat-icon"><i class="bi bi-credit-card"></i></div></div>
+        <strong id="kpi-assinantes">-</strong>
+        <small id="kpi-assinantes-detalhe">&nbsp;</small>
+    </div>
+    <div class="stat">
+        <div class="stat-top"><span class="stat-label">Receita mensal (MRR)</span><div class="stat-icon"><i class="bi bi-cash-stack"></i></div></div>
+        <strong id="kpi-mrr">-</strong>
+        <small id="kpi-mrr-detalhe">Assinantes em dia e em atraso</small>
+    </div>
+    <div class="stat">
+        <div class="stat-top"><span class="stat-label">Conversão do teste</span><div class="stat-icon"><i class="bi bi-graph-up-arrow"></i></div></div>
+        <strong id="kpi-conversao">-</strong>
+        <small id="kpi-conversao-detalhe">&nbsp;</small>
+    </div>
+    <div class="stat">
+        <div class="stat-top"><span class="stat-label">Vagas de fundador</span><div class="stat-icon"><i class="bi bi-star"></i></div></div>
+        <strong id="kpi-vagas">-</strong>
+        <small id="kpi-vagas-detalhe">&nbsp;</small>
+    </div>
+</div>
+
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <span>Contas (clientes do micoempresa)</span>
         <div class="d-flex align-items-center gap-2">
+            <label class="visually-hidden" for="filtro-situacao">Filtrar contas</label>
+            <select class="form-select form-select-sm" id="filtro-situacao" style="width:auto">
+                <option value="">Todas as contas</option>
+                <option value="teste">Em teste</option>
+                <option value="teste-acabado">Teste acabado sem assinar</option>
+                <option value="sem-teste">Sem teste (CNPJ já usado)</option>
+                <option value="assinante">Assinantes em dia</option>
+                <option value="atraso">Em atraso</option>
+                <option value="cancelada">Assinatura cancelada</option>
+                <option value="isenta">Isentas</option>
+                <option value="suspensa">Suspensas</option>
+            </select>
             <a href="/hangfire" class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener"><i class="bi bi-cpu"></i> Jobs (Hangfire)</a>
             <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-atualizar-plataforma"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
         </div>
@@ -126,6 +166,41 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-danger">Suspender conta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-cobranca-tenant" tabindex="-1" aria-labelledby="titulo-cobranca-tenant">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="form-cobranca-tenant" autocomplete="off">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="titulo-cobranca-tenant">Cobrança da conta</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="erro-cobranca-tenant" class="alert alert-danger d-none"></div>
+                    <p class="mb-2">Conta: <strong id="nome-tenant-cobranca"></strong></p>
+                    <p class="small text-muted mb-3" id="explicacao-cobranca-tenant"></p>
+                    <div class="mb-3 d-none" id="grupo-dias-cobranca">
+                        <label class="form-label" for="dias-cobranca">Dias a mais</label>
+                        <input type="number" class="form-control" id="dias-cobranca" min="1" max="90" value="15" />
+                        <div class="form-text">De 1 a 90 por vez; até 180 somando todas as prorrogações.</div>
+                    </div>
+                    <div class="mb-3 d-none" id="grupo-ate-cobranca">
+                        <label class="form-label" for="ate-cobranca">Isenta até (inclusive)</label>
+                        <input type="date" class="form-control" id="ate-cobranca" />
+                        <div class="form-text">Em branco = sem prazo (ex.: sua própria conta, parceiros).</div>
+                    </div>
+                    <label class="form-label" for="motivo-cobranca">Motivo</label>
+                    <input type="text" class="form-control" id="motivo-cobranca" maxlength="300" required placeholder="ex.: contador parceiro, testando com clientes" />
+                    <div class="form-text">Fica registrado no histórico da conta.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btn-confirmar-cobranca">Confirmar</button>
                 </div>
             </form>
         </div>
