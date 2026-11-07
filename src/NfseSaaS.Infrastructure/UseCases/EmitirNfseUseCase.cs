@@ -1,3 +1,4 @@
+using NfseSaaS.Application.UseCases.Catalogos;
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -168,6 +169,12 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
 
         var servico = await _db.Servicos.FirstOrDefaultAsync(s => s.Id == request.ServicoId && s.EmpresaId == request.EmpresaId, cancellationToken)
             ?? throw new RecursoNaoEncontradoException($"Serviço {request.ServicoId} não encontrado nesta Empresa.");
+
+        // Serviço cadastrado antes do bloqueio com código de obra ou evento:
+        // a SEFIN rejeitaria (falta o grupo obra/atvEvento). Para antes de
+        // gastar o número da DPS, com a explicação.
+        if (CodigosTributacaoNaoSuportados.Motivo(servico.CodigoTributacaoNacional) is { } motivo)
+            throw new RegraNegocioException($"{motivo} Troque o código no cadastro do serviço \"{servico.Descricao}\" se ele não for de obra ou evento.");
 
         // Contrato é opcional (nota pode ser avulsa, fora de qualquer
         // Contrato) — mas se informado, precisa realmente pertencer a

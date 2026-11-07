@@ -40,7 +40,12 @@ public sealed class CatalogosController : ControllerBase
 
         return Ok(new
         {
-            results = resultado.Select(c => new { id = c.Codigo, text = $"{FormatarCodigo(c.Codigo)} — {c.Descricao}" })
+            // Códigos de obra/evento aparecem, mas desabilitados e com o
+            // motivo (CodigosTributacaoNaoSuportados): a pessoa entende por
+            // que não pode usar, em vez de achar que o código "sumiu".
+            results = resultado.Select(c => CodigosTributacaoNaoSuportados.Aviso(c.Codigo) is { } aviso
+                ? (object)new { id = c.Codigo, text = $"{FormatarCodigo(c.Codigo)} — {c.Descricao} ({aviso})", disabled = true }
+                : new { id = c.Codigo, text = $"{FormatarCodigo(c.Codigo)} — {c.Descricao}" })
         });
     }
 

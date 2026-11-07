@@ -7,7 +7,13 @@ let empresaAtualIdServicos;
 document.addEventListener('DOMContentLoaded', function () {
     const colunas = [
         { data: 'descricao' },
-        { data: 'codigoTributacaoNacional' },
+        {
+            data: 'codigoTributacaoNacional',
+            // Código de obra/evento cadastrado antes do bloqueio: não emite (ver AvisoCodigo).
+            render: (codigo, tipo, linha) => tipo !== 'display' || !linha.avisoCodigo
+                ? codigo
+                : `${escaparHtml(codigo)} <span class="badge text-bg-warning" title="${escaparHtml(linha.avisoCodigo)}">não emite</span>`
+        },
         { data: 'codigoNbs' },
         { data: 'valorPadrao', render: v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) },
         {
