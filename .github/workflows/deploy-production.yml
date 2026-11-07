@@ -45,17 +45,32 @@ jobs:
 
             PREVIOUS_COMMIT=$(git rev-parse HEAD)
 
-            PREVIOUS_IMAGE=$(docker inspect \
-              --format='{{.Image}}' \
-              nfsesaas-app)
-
+            # Nome da imagem do serviço "app" (o mesmo que o build gera).
+            # Se o container atual tiver sido criado a partir de um ID
+            # (sha256:...), usa o nome padrão do compose.
             APP_IMAGE_NAME=$(docker inspect \
               --format='{{.Config.Image}}' \
-              nfsesaas-app)
+              nfsesaas-app 2>/dev/null || true)
+            case "$APP_IMAGE_NAME" in
+              ""|sha256:*) APP_IMAGE_NAME="nfsesaas-app" ;;
+            esac
+
+            # Guarda a imagem em produção com um NOME próprio ANTES do build.
+            # Com o Docker 29 (armazenamento containerd), a imagem que perde
+            # o nome no build some da lista e o "docker tag <sha256>" do
+            # rollback antigo falhava com "No such image" (07/11/2026).
+            ROLLBACK_IMAGE="nfsesaas-app:anterior"
+            ROLLBACK_DISPONIVEL=0
+            if docker image inspect "$APP_IMAGE_NAME" >/dev/null 2>&1; then
+              docker tag "$APP_IMAGE_NAME" "$ROLLBACK_IMAGE"
+              ROLLBACK_DISPONIVEL=1
+            else
+              echo "AVISO: imagem atual sem nome; o rollback de imagem não estará disponível neste deploy."
+            fi
 
             echo "Commit atual : $PREVIOUS_COMMIT"
-            echo "Imagem atual : $PREVIOUS_IMAGE"
             echo "Nome imagem  : $APP_IMAGE_NAME"
+            echo "Rollback     : $ROLLBACK_IMAGE (disponível: $ROLLBACK_DISPONIVEL)"
 
 
             # --------------------------------------------------
@@ -75,12 +90,23 @@ jobs:
               echo "INICIANDO ROLLBACK AUTOMÁTICO"
               echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 
-              echo "Restaurando imagem anterior..."
+              if [ "$ROLLBACK_DISPONIVEL" -ne 1 ]; then
+                echo "Sem imagem anterior guardada: rollback de imagem impossível."
+                echo "O container em produção não foi trocado se a falha veio antes de SUBINDO NOVA VERSÃO."
+                docker ps
+                exit "$EXIT_CODE"
+              fi
 
-              docker tag "$PREVIOUS_IMAGE" "$APP_IMAGE_NAME"
+              echo "Restaurando imagem anterior ($ROLLBACK_IMAGE)..."
+
+              # Dentro do rollback nenhum erro pode interromper a tentativa
+              # de voltar a versão anterior.
+              set +e
+
+              docker tag "$ROLLBACK_IMAGE" "$APP_IMAGE_NAME"
 
               "${COMPOSE[@]}" \
-                up -d --force-recreate app
+                up -d --no-build --force-recreate app
 
               echo "Aguardando versão anterior..."
 
@@ -116,6 +142,7 @@ jobs:
                 echo "ROLLBACK CONCLUÍDO COM SUCESSO"
                 echo "Versão anterior restaurada."
                 echo "Commit anterior: $PREVIOUS_COMMIT"
+                echo "Migrations já aplicadas NÃO são desfeitas; backup do banco: ${BACKUP_FILE:-não criado}"
                 echo "======================================"
 
               else

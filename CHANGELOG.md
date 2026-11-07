@@ -5,6 +5,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Corrigido (deploy)
+- **Rollback do Deploy Production**: a imagem em produção ganha o nome
+  `nfsesaas-app:anterior` antes do build. Com o Docker 29 o rollback antigo
+  falhava ("No such image") porque a imagem sem nome some depois do build.
+  O rollback não para no primeiro erro e não recompila a imagem.
+
 ### Alterado (.NET 10)
 - **Plataforma migrada para o .NET 10 (LTS)**: o suporte do .NET 8 termina em
   10/11/2026. EF Core, Identity e Npgsql 10, Serilog 10, Swashbuckle 10.
