@@ -130,6 +130,7 @@ public static class DependencyInjection
                 options.Lockout.AllowedForNewUsers = true;
             })
             .AddEntityFrameworkStores<AppDbContext>()
+            .AddErrorDescriber<IdentityErrorDescriberPtBr>()
             .AddSignInManager<SignInManagerComTenant>()
             .AddDefaultTokenProviders()
             .AddClaimsPrincipalFactory<ApplicationUserClaimsPrincipalFactory>();
