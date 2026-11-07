@@ -44,7 +44,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     tabelaServicos = new DataTable('#tabela-servicos', {
         columns: colunas,
-        language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/pt-BR.json' }
     });
 
     configurarExportacao(tabelaServicos, 'Servicos');

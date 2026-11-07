@@ -99,7 +99,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         ],
-        language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/pt-BR.json' }
     });
 
     tabelaPremios = new DataTable('#tabela-premios', {
@@ -130,7 +129,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     : ''
             }
         ],
-        language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/pt-BR.json' }
     });
 
     document.getElementById('tabela-premios').addEventListener('click', async function (e) {

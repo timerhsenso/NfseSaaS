@@ -93,7 +93,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     tabelaContratos = new DataTable('#tabela-contratos', {
         columns: colunas,
-        language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/pt-BR.json' }
     });
 
     configurarExportacao(tabelaContratos, 'Contratos');

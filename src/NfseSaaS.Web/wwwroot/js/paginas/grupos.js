@@ -48,7 +48,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         ],
         order: [[0, 'asc']],
-        language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/pt-BR.json' }
     });
 
     modalGrupo = new bootstrap.Modal(document.getElementById('modal-grupo'));

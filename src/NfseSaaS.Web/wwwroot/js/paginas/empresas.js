@@ -66,7 +66,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     tabela = new DataTable('#tabela-empresas', {
         columns: colunas,
-        language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/pt-BR.json' }
     });
 
     configurarExportacao(tabela, 'Empresas');

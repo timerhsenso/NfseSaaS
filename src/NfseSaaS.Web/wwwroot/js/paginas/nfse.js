@@ -106,7 +106,6 @@ document.addEventListener('DOMContentLoaded', function () {
         // "Emissão" (0-based: checkbox, número, cliente, valor,
         // valorLíquido, status, emissão, ações).
         order: [[6, 'desc']],
-        language: { url: 'https://cdn.datatables.net/plug-ins/2.1.8/i18n/pt-BR.json' }
     });
 
     configurarExportacao(tabelaNfse, 'NotasFiscais');
