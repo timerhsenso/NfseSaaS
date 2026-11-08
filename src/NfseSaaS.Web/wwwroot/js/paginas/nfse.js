@@ -85,6 +85,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     const temPdf = n.status === STATUS_AUTORIZADA || n.status === STATUS_CANCELADA;
                     const botaoPdf = temPdf
                         ? `<a class="btn btn-sm btn-outline-secondary" href="/api/nfse/${n.id}/danfse-pdf" title="Baixar PDF (DANFSe)"><i class="bi bi-file-earmark-pdf"></i></a>`
+                        + ` <a class="btn btn-sm btn-outline-secondary" href="/api/nfse/${n.id}/xml" download title="Baixar XML da nota"><i class="bi bi-filetype-xml"></i></a>`
                         : '';
                     // podeReenviar já vem resolvido pelo backend (rejeição
                     // segura de reenviar + ainda não reenviada) — a tela
@@ -804,6 +805,11 @@ async function abrirDetalheNfse(id) {
         linkPdf.href = temPdfDisponivel ? `/api/nfse/${id}/danfse-pdf` : '#';
         linkPdf.classList.toggle('disabled', !temPdfDisponivel);
         linkPdf.setAttribute('aria-disabled', String(!temPdfDisponivel));
+
+        const linkXml = document.getElementById('link-baixar-xml');
+        linkXml.href = temPdfDisponivel ? `/api/nfse/${id}/xml` : '#';
+        linkXml.classList.toggle('disabled', !temPdfDisponivel);
+        linkXml.setAttribute('aria-disabled', String(!temPdfDisponivel));
 
         modalDetalheNfse.show();
     } catch (err) {

@@ -5,6 +5,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (notas)
+- **Baixar o XML da nota** autorizada ou cancelada: botão ao lado do PDF na
+  lista de notas e "Baixar XML" nos detalhes (`GET /api/nfse/{id}/xml`), com o
+  mesmo nome do PDF. Antes o XML só saía anexado no e-mail ao cliente.
+
 ### Adicionado (fiscal — Reforma Tributária, F1 parte 1)
 - **IBS/CBS na DPS** (grupo `IBSCBS`, leiaute NT 009): a nota leva a
   classificação do IBS/CBS — indicador da operação (cIndOp), destinatário =

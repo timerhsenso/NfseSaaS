@@ -52,6 +52,7 @@ public class IsolamentoEntreContasTests
                 $"/api/contratos/{dados.ContratoId}/historico-valores",
                 $"/api/nfse/{dados.NfseId}",
                 $"/api/nfse/{dados.NfseId}/eventos",
+                $"/api/nfse/{dados.NfseId}/xml",
                 $"/api/grupos/{a.GrupoId}"
             ];
             foreach (var url in leituras)
@@ -62,6 +63,13 @@ public class IsolamentoEntreContasTests
                 var outro = await b.Cliente.GetAsync(url);
                 Assert.True(outro.StatusCode == HttpStatusCode.NotFound, $"B não pode ver {url}: veio {(int)outro.StatusCode}.");
             }
+
+            // XML da nota: A baixa com o mesmo nome do PDF (.xml).
+            var xmlDeA = await a.Cliente.GetAsync($"/api/nfse/{dados.NfseId}/xml");
+            Assert.Equal("application/xml", xmlDeA.Content.Headers.ContentType?.MediaType);
+            Assert.EndsWith(".xml", xmlDeA.Content.Headers.ContentDisposition?.FileName?.Trim('"'));
+            Assert.StartsWith("ClienteA_", xmlDeA.Content.Headers.ContentDisposition?.FileName?.Trim('"'));
+            Assert.Contains("infNFSe", await xmlDeA.Content.ReadAsStringAsync());
 
             // PDF da nota de A (não pode nem chegar a gerar).
             var pdf = await b.Cliente.GetAsync($"/api/nfse/{dados.NfseId}/danfse-pdf");
@@ -264,7 +272,8 @@ public class IsolamentoEntreContasTests
             ChaveAcesso = "CHAVE" + Guid.NewGuid().ToString("N"), DataCompetencia = new DateOnly(2026, 11, 1),
             DataEmissao = DateTimeOffset.UtcNow, ValorServico = 100m, DescricaoServico = "Serviço A",
             CodigoTributacaoNacional = "010101", CodigoNbs = "115022000", TribIssqn = "1", TpRetIssqn = "1",
-            CstPisCofins = "00", TpRetPisCofins = "1", Status = NfseStatus.Autorizada, TipoAmbiente = TipoAmbiente.Homologacao
+            CstPisCofins = "00", TpRetPisCofins = "1", Status = NfseStatus.Autorizada, TipoAmbiente = TipoAmbiente.Homologacao,
+            XmlNfse = "<NFSe xmlns=\"http://www.sped.fazenda.gov.br/nfse\"><infNFSe Id=\"NFS123\"/></NFSe>"
         };
         db.NotasFiscais.Add(nota);
         await db.SaveChangesAsync();

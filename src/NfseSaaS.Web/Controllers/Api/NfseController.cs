@@ -19,6 +19,7 @@ public sealed class NfseController : ControllerBase
     private readonly IListarEventosDaNfseUseCase _listarEventosDaNfse;
     private readonly IObterSnapshotFiscalDaNfseUseCase _obterSnapshotFiscalDaNfse;
     private readonly IObterDanfsePdfUseCase _obterDanfsePdf;
+    private readonly IObterXmlNfseUseCase _obterXmlNfse;
     private readonly IGerarDanfsePdfLoteUseCase _gerarDanfsePdfLote;
     private readonly IEnviarNfsePorEmailUseCase _enviarNfsePorEmail;
 
@@ -30,6 +31,7 @@ public sealed class NfseController : ControllerBase
         IListarEventosDaNfseUseCase listarEventosDaNfse,
         IObterSnapshotFiscalDaNfseUseCase obterSnapshotFiscalDaNfse,
         IObterDanfsePdfUseCase obterDanfsePdf,
+        IObterXmlNfseUseCase obterXmlNfse,
         IGerarDanfsePdfLoteUseCase gerarDanfsePdfLote,
         IEnviarNfsePorEmailUseCase enviarNfsePorEmail)
     {
@@ -40,6 +42,7 @@ public sealed class NfseController : ControllerBase
         _listarEventosDaNfse = listarEventosDaNfse;
         _obterSnapshotFiscalDaNfse = obterSnapshotFiscalDaNfse;
         _obterDanfsePdf = obterDanfsePdf;
+        _obterXmlNfse = obterXmlNfse;
         _gerarDanfsePdfLote = gerarDanfsePdfLote;
         _enviarNfsePorEmail = enviarNfsePorEmail;
     }
@@ -102,6 +105,14 @@ public sealed class NfseController : ControllerBase
     {
         var danfse = await _obterDanfsePdf.ExecutarAsync(id, cancellationToken);
         return File(danfse.Bytes, danfse.ContentType, danfse.NomeArquivo);
+    }
+
+    /// <summary>XML da NFS-e autorizada (o arquivo fiscal que o contador importa), como foi guardado na autorização.</summary>
+    [HttpGet("{id:guid}/xml")]
+    public async Task<IActionResult> ObterXml(Guid id, CancellationToken cancellationToken)
+    {
+        var xml = await _obterXmlNfse.ExecutarAsync(id, cancellationToken);
+        return File(xml.Bytes, "application/xml", xml.NomeArquivo);
     }
 
     /// <summary>
