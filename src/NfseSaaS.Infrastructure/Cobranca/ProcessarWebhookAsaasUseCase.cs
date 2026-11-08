@@ -4,6 +4,7 @@ using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using NfseSaaS.Application.Common;
 using NfseSaaS.Application.UseCases.Cobranca;
 using NfseSaaS.Application.UseCases.Indicacao;
 using NfseSaaS.Domain.Entities;
@@ -29,6 +30,13 @@ namespace NfseSaaS.Infrastructure.Cobranca;
 /// - PAYMENT_CREATED / PAYMENT_UPDATED / PAYMENT_RESTORED: guarda o link da fatura em aberto.
 /// - PAYMENT_DELETED: esquece o link se era o da fatura removida (ex.: mês grátis).
 /// - SUBSCRIPTION_DELETED / SUBSCRIPTION_INACTIVATED: Cancelada.
+/// - PAYMENT_REFUNDED / PAYMENT_REFUND_IN_PROGRESS / PAYMENT_CHARGEBACK_REQUESTED /
+///   PAYMENT_CHARGEBACK_DISPUTE / PAYMENT_RECEIVED_IN_CASH_UNDONE: o pagamento foi
+///   desfeito: Atrasada desde hoje (a tolerância conta de quando soubemos).
+/// - PAYMENT_AWAITING_CHARGEBACK_REVERSAL (contestação ganha) /
+///   PAYMENT_DUNNING_RECEIVED (negativação paga): volta a Ativa.
+/// A conciliação diária (ConciliacaoCobrancaService) confere tudo isso com o
+/// estado real do Asaas e corrige o que um webhook perdido deixou para trás.
 /// Depois de aplicar, se a cobrança vale para a conta, agenda os avisos de
 /// cobrança dela (IAvisarCobrancaJob) por job, nunca dentro do webhook.
 /// </summary>
@@ -142,8 +150,12 @@ public sealed class ProcessarWebhookAsaasUseCase : IProcessarWebhookAsaasUseCase
             throw;
         }
 
-        _logger.LogInformation("Webhook Asaas {Tipo} ({EventoId}) da assinatura {AssinaturaId}: {Resultado}",
-            tipo, eventoId, assinaturaId, evento.Resultado);
+        if (evento.Resultado.StartsWith("pagamento desfeito", StringComparison.Ordinal))
+            _logger.LogWarning("Webhook Asaas {Tipo} ({EventoId}): pagamento {PagamentoId} da conta {TenantId} desfeito — conferir no painel do Asaas.",
+                tipo, eventoId, pagamentoId, assinaturaLocal?.TenantId);
+        else
+            _logger.LogInformation("Webhook Asaas {Tipo} ({EventoId}) da assinatura {AssinaturaId}: {Resultado}",
+                tipo, eventoId, assinaturaId, evento.Resultado);
 
         if (assinaturaLocal is not null)
             AgendarAvisosCobranca(assinaturaLocal.TenantId);
@@ -261,6 +273,30 @@ public sealed class ProcessarWebhookAsaasUseCase : IProcessarWebhookAsaasUseCase
                     return "fatura removida";
                 }
                 return "sem mudança";
+
+            case "PAYMENT_REFUNDED":
+            case "PAYMENT_REFUND_IN_PROGRESS":
+            case "PAYMENT_CHARGEBACK_REQUESTED":
+            case "PAYMENT_CHARGEBACK_DISPUTE":
+            case "PAYMENT_RECEIVED_IN_CASH_UNDONE":
+            {
+                if (assinatura.Status == StatusAssinatura.Cancelada)
+                    return "ignorado: assinatura cancelada";
+                var hoje = DataBrasilia.Hoje();
+                var desde = assinatura.Status == StatusAssinatura.Atrasada && assinatura.AtrasadaDesde is { } atual && atual < hoje ? atual : hoje;
+                assinatura.Status = StatusAssinatura.Atrasada;
+                assinatura.AtrasadaDesde = desde;
+                return "pagamento desfeito (estorno ou contestação): atrasada";
+            }
+
+            case "PAYMENT_AWAITING_CHARGEBACK_REVERSAL":
+            case "PAYMENT_DUNNING_RECEIVED":
+                if (assinatura.Status == StatusAssinatura.Cancelada)
+                    return "ignorado: assinatura cancelada";
+                assinatura.Status = StatusAssinatura.Ativa;
+                assinatura.AtrasadaDesde = null;
+                assinatura.UltimoPagamentoEm ??= DateTimeOffset.UtcNow;
+                return "pagamento restabelecido: assinatura ativa";
 
             case "SUBSCRIPTION_DELETED":
             case "SUBSCRIPTION_INACTIVATED":

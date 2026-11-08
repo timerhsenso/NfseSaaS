@@ -30,6 +30,7 @@ public sealed class PlataformaController : ControllerBase
     private readonly IConfirmarExclusaoPlanoUseCase _confirmarExclusaoPlano;
     private readonly ICurrentUser _currentUser;
     private readonly ICobrancaOperadorUseCase _cobrancaOperador;
+    private readonly IConciliarCobrancaUseCase _conciliarCobranca;
 
     public PlataformaController(
         IListarTenantsPlataformaUseCase listar,
@@ -44,9 +45,11 @@ public sealed class PlataformaController : ControllerBase
         ISolicitarExclusaoPlanoUseCase solicitarExclusaoPlano,
         IConfirmarExclusaoPlanoUseCase confirmarExclusaoPlano,
         ICurrentUser currentUser,
-        ICobrancaOperadorUseCase cobrancaOperador)
+        ICobrancaOperadorUseCase cobrancaOperador,
+        IConciliarCobrancaUseCase conciliarCobranca)
     {
         _cobrancaOperador = cobrancaOperador;
+        _conciliarCobranca = conciliarCobranca;
         _listar = listar;
         _alterarBloqueio = alterarBloqueio;
         _consultarProtecaoChaves = consultarProtecaoChaves;
@@ -80,6 +83,11 @@ public sealed class PlataformaController : ControllerBase
     }
 
     // ---------- Cobrança da conta (prorrogar/liberar teste, isentar) ----------
+
+    /// <summary>Confere a assinatura da conta com o Asaas agora (a mesma conciliação do job diário).</summary>
+    [HttpPost("tenants/{id:guid}/cobranca/conciliar")]
+    public async Task<IActionResult> ConciliarCobranca(Guid id, CancellationToken cancellationToken)
+        => Ok(await _conciliarCobranca.ConciliarAsync(id, _currentUser.UserId, cancellationToken));
 
     [HttpPost("tenants/{id:guid}/teste/prorrogar")]
     public async Task<IActionResult> ProrrogarTeste(Guid id, [FromBody] ProrrogarTesteRequest request, CancellationToken cancellationToken)

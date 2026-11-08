@@ -125,12 +125,56 @@ public sealed class AsaasClient : IGatewayCobranca
         }, cancellationToken);
     }
 
+    public async Task<AssinaturaGatewayConciliacao?> ObterParaConciliacaoAsync(string assinaturaId, CancellationToken cancellationToken)
+    {
+        var id = Uri.EscapeDataString(assinaturaId);
+        var (encontrada, assinatura) = await ObterOuNaoEncontradoAsync<AssinaturaAsaas>($"subscriptions/{id}", cancellationToken);
+        if (!encontrada || assinatura is null)
+            return null;
+
+        // Paginado: até 100 por página; para numa margem segura (anos de faturas).
+        var faturas = new List<FaturaConciliacao>();
+        for (var pagina = 0; pagina < MaximoPaginasConciliacao; pagina++)
+        {
+            var lista = await EnviarAsync<ListaCobrancas>(HttpMethod.Get,
+                $"subscriptions/{id}/payments?limit={TamanhoPagina}&offset={pagina * TamanhoPagina}", null, cancellationToken);
+            foreach (var c in lista.Data ?? [])
+            {
+                if (c.Deleted == true || string.IsNullOrWhiteSpace(c.Id) || string.IsNullOrWhiteSpace(c.Status))
+                    continue;
+                faturas.Add(new FaturaConciliacao(c.Id, c.Status, Data(c.DueDate),
+                    Data(c.PaymentDate) ?? Data(c.ConfirmedDate) ?? Data(c.ClientPaymentDate), c.InvoiceUrl, c.Value));
+            }
+            if (lista.HasMore != true)
+                break;
+        }
+
+        var encerrada = assinatura.Deleted == true || assinatura.Status is "INACTIVE" or "EXPIRED";
+        return new AssinaturaGatewayConciliacao(encerrada, faturas);
+    }
+
+    private const int TamanhoPagina = 100;
+    private const int MaximoPaginasConciliacao = 10;
+
+    /// <summary>GET que trata 404 como "não existe" em vez de erro.</summary>
+    private async Task<(bool Encontrado, T? Valor)> ObterOuNaoEncontradoAsync<T>(string caminho, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return (true, await EnviarAsync<T>(HttpMethod.Get, caminho, null, cancellationToken, naoEncontradoSeparado: true));
+        }
+        catch (RecursoNaoEncontradoNoGatewayException)
+        {
+            return (false, default);
+        }
+    }
+
     private static DateOnly? Data(string? texto) =>
         DateOnly.TryParseExact(texto, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var data)
             ? data
             : null;
 
-    private async Task<T> EnviarAsync<T>(HttpMethod metodo, string caminho, object? corpo, CancellationToken cancellationToken)
+    private async Task<T> EnviarAsync<T>(HttpMethod metodo, string caminho, object? corpo, CancellationToken cancellationToken, bool naoEncontradoSeparado = false)
     {
         if (!Configurado)
             throw new RegraNegocioException("A cobrança ainda não está configurada (chave do Asaas ausente). Fale com o suporte.");
@@ -143,6 +187,12 @@ public sealed class AsaasClient : IGatewayCobranca
 
         using var resposta = await _http.SendAsync(requisicao, cancellationToken);
         var texto = await resposta.Content.ReadAsStringAsync(cancellationToken);
+
+        if (naoEncontradoSeparado && resposta.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            _logger.LogWarning("Asaas GET {Caminho} respondeu 404.", caminho);
+            throw new RecursoNaoEncontradoNoGatewayException(caminho);
+        }
 
         if (!resposta.IsSuccessStatusCode)
         {
@@ -179,9 +229,15 @@ public sealed class AsaasClient : IGatewayCobranca
 
     private sealed record IdResposta(string Id);
 
-    private sealed record CobrancaAsaas(string? Id, string? Status, string? DueDate, string? InvoiceUrl);
+    private sealed record CobrancaAsaas(
+        string? Id, string? Status, string? DueDate, string? InvoiceUrl,
+        decimal? Value = null, string? PaymentDate = null, string? ConfirmedDate = null, string? ClientPaymentDate = null, bool? Deleted = null);
 
-    private sealed record ListaCobrancas(List<CobrancaAsaas>? Data);
+    private sealed record ListaCobrancas(List<CobrancaAsaas>? Data, bool? HasMore = null);
 
-    private sealed record AssinaturaAsaas(string? Id, string? NextDueDate, string? Status);
+    private sealed record AssinaturaAsaas(string? Id, string? NextDueDate, string? Status, bool? Deleted = null);
+
+    /// <summary>GET com 404 no Asaas (quem chama decide se é erro).</summary>
+    private sealed class RecursoNaoEncontradoNoGatewayException(string caminho)
+        : Exception($"O Asaas não encontrou {caminho}.");
 }

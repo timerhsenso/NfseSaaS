@@ -303,6 +303,8 @@ public static class DependencyInjection
         services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.ITrocarPlanoUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.CobrancaService>());
         services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IReservaFundador>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.CobrancaService>());
         services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IProcessarWebhookAsaasUseCase, NfseSaaS.Infrastructure.Cobranca.ProcessarWebhookAsaasUseCase>();
+        // Conciliação diária com o Asaas (corrige o que o webhook deixou passar).
+        services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IConciliarCobrancaUseCase, NfseSaaS.Infrastructure.Cobranca.ConciliacaoCobrancaService>();
         // Prêmio do "Indique e ganhe" (1 mês grátis), aplicado no Asaas por job.
         services.AddScoped<NfseSaaS.Infrastructure.Cobranca.PremioIndicacaoService>();
         services.AddScoped<NfseSaaS.Application.UseCases.Indicacao.IAplicarPremiosIndicacaoUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.PremioIndicacaoService>());
@@ -314,6 +316,7 @@ public static class DependencyInjection
         services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IEnviarAvisosCobrancaUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.AvisosCobrancaService>());
         services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IObterFaixaCobrancaUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.AvisosCobrancaService>());
         services.AddScoped<IAvisarCobrancaJob, AvisarCobrancaJob>();
+        services.AddScoped<IConciliarCobrancaJob, ConciliarCobrancaJob>();
         services.AddScoped<NfseSaaS.Application.UseCases.Indicacao.IConvidarPorEmailUseCase, NfseSaaS.Infrastructure.UseCases.ConvidarPorEmailUseCase>();
         services.AddScoped<NfseSaaS.Application.UseCases.Aparencia.IAparenciaUseCase, NfseSaaS.Infrastructure.UseCases.AparenciaService>();
         services.AddScoped<IAlterarBloqueioTenantUseCase, AlterarBloqueioTenantUseCase>();

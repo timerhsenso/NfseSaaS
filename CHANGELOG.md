@@ -5,6 +5,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (cobrança)
+- **Conciliação diária com o Asaas** (job `conciliar-cobranca`, 07:50 de
+  Brasília, antes dos avisos): para cada assinatura não cancelada, lê a
+  assinatura e todas as faturas no Asaas e corrige o sistema quando um webhook
+  se perdeu — pagamento não registrado (Ativa), fatura vencida (Atrasada desde
+  o vencimento), estorno/chargeback (Atrasada desde o dia em que soubemos),
+  assinatura encerrada no Asaas (Cancelada) e o link da fatura em aberto. O
+  pagamento mais recente resolve as pendências anteriores; conta cancelada
+  nunca é reativada; assinatura que o Asaas não conhece não muda. Toda
+  correção fica no Histórico da conta (`ConciliarCobranca`) e no log.
+- **Plataforma › Contas › Cobrança › Conferir com o Asaas agora**, para conta
+  que já assinou (a mesma conciliação, sob demanda).
+- **Webhook: estorno e chargeback.** PAYMENT_REFUNDED, PAYMENT_REFUND_IN_PROGRESS,
+  PAYMENT_CHARGEBACK_REQUESTED, PAYMENT_CHARGEBACK_DISPUTE e
+  PAYMENT_RECEIVED_IN_CASH_UNDONE deixam a assinatura Atrasada desde hoje (a
+  tolerância de 10 dias conta dali; a disputa não reinicia o prazo);
+  PAYMENT_AWAITING_CHARGEBACK_REVERSAL (contestação ganha) e
+  PAYMENT_DUNNING_RECEIVED voltam a Ativa.
+
 ### Corrigido (busca de notas na SEFIN)
 - **"Buscar notas da SEFIN" não dá mais erro interno** quando o ADN recusa a
   consulta: a tela mostra o motivo informado pelo ADN (ou avisa que ele não

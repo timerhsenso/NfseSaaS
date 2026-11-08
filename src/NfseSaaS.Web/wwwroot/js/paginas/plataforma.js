@@ -74,8 +74,17 @@ function situacaoCobrancaPlataforma(t) {
 // Menu "Cobrança" da linha: só o que vale para a situação da conta.
 function menuCobranca(t, nome) {
     const c = t.cobranca || {};
-    if (c.isentaNaConfiguracao || c.temAssinaturaNoGateway) return '';
+    if (c.isentaNaConfiguracao) return '';
     const itens = [];
+    // Já assinou: teste e isenção não se aplicam (faturas no Asaas); só
+    // conferir a situação com o Asaas agora, sem esperar a conciliação diária.
+    if (c.temAssinaturaNoGateway) {
+        itens.push(`<li><button type="button" class="dropdown-item btn-cobranca" data-acao="conciliar" data-id="${t.id}" data-nome="${nome}"><i class="bi bi-arrow-repeat"></i> Conferir com o Asaas agora</button></li>`);
+        return `<div class="dropdown">
+        <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-credit-card"></i></button>
+        <ul class="dropdown-menu dropdown-menu-end">${itens.join('')}</ul>
+    </div>`;
+    }
     const podeTeste = t.statusAssinatura !== 4 && !c.isenta;
     if (podeTeste && !c.semTesteGratis)
         itens.push(`<li><button type="button" class="dropdown-item btn-cobranca" data-acao="prorrogar" data-id="${t.id}" data-nome="${nome}"><i class="bi bi-calendar-plus"></i> Prorrogar teste…</button></li>`);
@@ -510,6 +519,18 @@ const TEXTOS_COBRANCA = {
 };
 
 async function abrirCobranca(acao, id, nome) {
+    if (acao === 'conciliar') {
+        try {
+            mostrarToast(`Conferindo ${nome} com o Asaas…`);
+            const r = await apiFetch(`/api/plataforma/tenants/${id}/cobranca/conciliar`, { method: 'POST' });
+            mostrarToast(r.mensagem);
+            if (r.mudou) await carregarTenants();
+        } catch (err) {
+            mostrarErro(err.message);
+        }
+        return;
+    }
+
     if (acao === 'remover-isencao') {
         if (!await confirmarAcao(`Remover a isenção de ${nome}? A conta volta às regras normais (teste ou assinatura).`,
             { titulo: 'Remover isenção', textoBotao: 'Remover' })) return;

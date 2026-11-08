@@ -60,6 +60,7 @@ public class PremioIndicacaoTests
         public Task<DateOnly?> ObterProximoVencimentoAsync(string assinaturaId, CancellationToken cancellationToken) =>
             Task.FromResult<DateOnly?>(ProximoVencimento.TryGetValue(assinaturaId, out var d) ? d : null);
 
+        public Task<AssinaturaGatewayConciliacao?> ObterParaConciliacaoAsync(string assinaturaId, CancellationToken cancellationToken) => throw new NotSupportedException();
         public Task AlterarProximoVencimentoAsync(string assinaturaId, DateOnly novoVencimento, CancellationToken cancellationToken)
         {
             ProximoVencimento[assinaturaId] = novoVencimento;

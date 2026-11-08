@@ -159,6 +159,13 @@ public interface IGatewayCobranca
 
     /// <summary>Muda o nextDueDate da assinatura (só as faturas futuras).</summary>
     Task AlterarProximoVencimentoAsync(string assinaturaId, DateOnly novoVencimento, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Estado real da assinatura e de todas as faturas dela, para a
+    /// conciliação diária (RegrasConciliacao). Nulo quando o gateway não
+    /// conhece a assinatura (outra chave/ambiente: não cancela nada por isso).
+    /// </summary>
+    Task<AssinaturaGatewayConciliacao?> ObterParaConciliacaoAsync(string assinaturaId, CancellationToken cancellationToken);
 }
 
 /// <summary>Uma fatura (cobrança) de assinatura no gateway.</summary>
@@ -189,4 +196,18 @@ public sealed record AvisosCobrancaResult(IReadOnlyList<TipoAvisoCobranca> Envia
 public interface IEnviarAvisosCobrancaUseCase
 {
     Task<AvisosCobrancaResult> ExecutarAsync(Guid tenantId, CancellationToken cancellationToken);
+}
+
+/// <summary>Resultado da conciliação de uma conta com o gateway.</summary>
+public sealed record ConciliacaoContaResponse(bool Mudou, string Mensagem, IReadOnlyList<string> Mudancas);
+
+/// <summary>
+/// Confere a assinatura de uma conta com o gateway e corrige o sistema
+/// (RegrasConciliacao). Usado pelo job diário e pelo operador
+/// (Plataforma › Contas › Cobrança › Conferir com o Asaas agora).
+/// </summary>
+public interface IConciliarCobrancaUseCase
+{
+    /// <param name="operadorId">Quem pediu pela tela; nulo quando é o job diário.</param>
+    Task<ConciliacaoContaResponse> ConciliarAsync(Guid tenantId, Guid? operadorId, CancellationToken cancellationToken);
 }
