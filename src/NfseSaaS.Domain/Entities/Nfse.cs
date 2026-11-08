@@ -75,6 +75,12 @@ public sealed class Nfse : BaseEntity, ITenantEntity
     /// <summary>Código NBS (cNBS) efetivamente usado nesta DPS — copiado de Servico na emissão.</summary>
     public string CodigoNbs { get; set; } = string.Empty;
 
+    /// <summary>IBS/CBS: indicador da operação (cIndOp) enviado nesta DPS; nulo quando o grupo IBSCBS não foi ou o CST não tem tributação.</summary>
+    public string? CIndOp { get; set; }
+
+    /// <summary>IBS/CBS: classificação tributária (cClassTrib) enviada nesta DPS; nulo quando o grupo IBSCBS não foi.</summary>
+    public string? CClassTrib { get; set; }
+
     /// <summary>tribISSQN efetivamente usado nesta DPS — copiado do regime tributário da Empresa na emissão.</summary>
     public string TribIssqn { get; set; } = string.Empty;
 

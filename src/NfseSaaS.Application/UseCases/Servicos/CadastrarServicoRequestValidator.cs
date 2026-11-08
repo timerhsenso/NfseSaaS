@@ -1,4 +1,5 @@
 using FluentValidation;
+using NfseSaaS.Application.Fiscal.IbsCbs;
 using NfseSaaS.Application.UseCases.Catalogos;
 
 namespace NfseSaaS.Application.UseCases.Servicos;
@@ -39,5 +40,15 @@ public sealed class CadastrarServicoRequestValidator : AbstractValidator<Cadastr
             .WithMessage("Código NBS não encontrado no catálogo oficial.");
 
         RuleFor(x => x.ValorPadrao).GreaterThanOrEqualTo(0);
+
+        // IBS/CBS (F1): opcionais (vazio = sugestão da tabela oficial do
+        // item). Preenchidos, precisam existir nas tabelas oficiais e ser
+        // emitíveis pelo sistema (RegrasIbsCbs).
+        RuleFor(x => x.CIndOp)
+            .Must(c => RegrasIbsCbs.ProblemaIndicador(c) is null)
+            .WithMessage(x => RegrasIbsCbs.ProblemaIndicador(x.CIndOp));
+        RuleFor(x => x.CClassTrib)
+            .Must((x, c) => RegrasIbsCbs.ProblemaClassificacao(c, x.CIndOp) is null)
+            .WithMessage(x => RegrasIbsCbs.ProblemaClassificacao(x.CClassTrib, x.CIndOp));
     }
 }

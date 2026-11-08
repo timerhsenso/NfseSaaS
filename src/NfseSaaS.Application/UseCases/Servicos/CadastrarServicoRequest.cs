@@ -6,4 +6,6 @@ public sealed record CadastrarServicoRequest(
     string Descricao,
     string CodigoTributacaoNacional,
     string CodigoNbs,
-    decimal ValorPadrao);
+    decimal ValorPadrao,
+    string? CIndOp = null,
+    string? CClassTrib = null);

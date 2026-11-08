@@ -11,7 +11,9 @@ public sealed record ServicoResponse(
     decimal ValorPadrao,
     bool Ativo,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? UpdatedAt)
+    DateTimeOffset? UpdatedAt,
+    string? CIndOp = null,
+    string? CClassTrib = null)
 {
     /// <summary>
     /// Código de obra/evento que ainda não emitimos (serviço cadastrado

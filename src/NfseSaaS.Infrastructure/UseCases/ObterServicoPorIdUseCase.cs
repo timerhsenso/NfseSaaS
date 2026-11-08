@@ -23,6 +23,6 @@ public sealed class ObterServicoPorIdUseCase : IObterServicoPorIdUseCase
 
         return new ServicoResponse(
             servico.Id, servico.EmpresaId, servico.Descricao, servico.CodigoTributacaoNacional, servico.CodigoNbs,
-            servico.ValorPadrao, servico.Ativo, servico.CreatedAt, servico.UpdatedAt);
+            servico.ValorPadrao, servico.Ativo, servico.CreatedAt, servico.UpdatedAt, servico.CIndOp, servico.CClassTrib);
     }
 }

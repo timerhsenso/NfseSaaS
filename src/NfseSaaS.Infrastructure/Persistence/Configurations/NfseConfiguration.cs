@@ -38,6 +38,12 @@ public sealed class NfseConfiguration : IEntityTypeConfiguration<Nfse>
             .HasMaxLength(10)
             .IsRequired();
 
+        builder.Property(n => n.CIndOp)
+            .HasMaxLength(6);
+
+        builder.Property(n => n.CClassTrib)
+            .HasMaxLength(6);
+
         builder.Property(n => n.TribIssqn)
             .HasMaxLength(1)
             .IsRequired();

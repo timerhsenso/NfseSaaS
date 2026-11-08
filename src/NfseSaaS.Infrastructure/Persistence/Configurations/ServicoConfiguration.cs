@@ -23,6 +23,13 @@ public sealed class ServicoConfiguration : IEntityTypeConfiguration<Servico>
         builder.Property(s => s.CodigoNbs)
             .HasMaxLength(10);
 
+        // IBS/CBS (F1): 6 dígitos cada; vazio = sugestão do Anexo VIII.
+        builder.Property(s => s.CIndOp)
+            .HasMaxLength(6);
+
+        builder.Property(s => s.CClassTrib)
+            .HasMaxLength(6);
+
         builder.Property(s => s.ValorPadrao)
             .HasColumnType("numeric(18,2)");
 

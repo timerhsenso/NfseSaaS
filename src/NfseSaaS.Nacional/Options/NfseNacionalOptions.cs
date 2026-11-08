@@ -41,5 +41,19 @@ public sealed class NfseNacionalOptions
     public string ObterBaseUrl(string tpAmb) => tpAmb == "1" ? BaseUrlProducao : BaseUrlHomologacao;
 
     /// <summary>Resolve o leiaute da DPS a partir do tpAmb — mesma regra de <see cref="ObterBaseUrl"/>.</summary>
+    /// <summary>
+    /// IBS/CBS para optantes do Simples Nacional (MEI e ME/EPP): a partir
+    /// desta competência o grupo IBSCBS vai em toda nota (NT 009: "a partir
+    /// de 2027"). Configurável para acompanhar o cronograma oficial sem
+    /// deploy: <c>NfseNacional__IbsCbsSimplesNacionalAPartirDe=2027-01-01</c>.
+    /// </summary>
+    public DateOnly IbsCbsSimplesNacionalAPartirDe { get; set; } = new(2027, 1, 1);
+
+    /// <summary>
+    /// Antes da data acima, optante do Simples já manda o grupo em
+    /// HOMOLOGAÇÃO (para testar com antecedência). Em produção, só depois.
+    /// </summary>
+    public bool IbsCbsSimplesNacionalEmHomologacao { get; set; } = true;
+
     public LeiauteDps ObterLeiauteDps(string tpAmb) => tpAmb == "1" ? LeiauteDpsProducao : LeiauteDpsHomologacao;
 }

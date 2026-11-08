@@ -42,7 +42,7 @@ public sealed class ListarServicosUseCase : IListarServicosUseCase
             .Take(pageSize)
             .Select(s => new ServicoResponse(
                 s.Id, s.EmpresaId, s.Descricao, s.CodigoTributacaoNacional, s.CodigoNbs, s.ValorPadrao,
-                s.Ativo, s.CreatedAt, s.UpdatedAt))
+                s.Ativo, s.CreatedAt, s.UpdatedAt, s.CIndOp, s.CClassTrib))
             .ToListAsync(cancellationToken);
 
         return new PagedResult<ServicoResponse>

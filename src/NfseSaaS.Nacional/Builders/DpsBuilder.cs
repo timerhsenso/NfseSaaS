@@ -44,6 +44,9 @@ public sealed class DpsBuilder : IDpsBuilder
     // (Decreto 8.264/2014) — único valor aceito pelo TSTipoIndTotTrib.
     private const string IndTotTribNaoInformar = "0";
 
+    // indDest = 0: o destinatário do serviço é o próprio tomador (TSRTCIndDest).
+    private const string IndDestTomador = "0";
+
     private readonly NfseNacionalOptions _options;
 
     public DpsBuilder(IOptions<NfseNacionalOptions> options)
@@ -218,6 +221,30 @@ public sealed class DpsBuilder : IDpsBuilder
             Add(doc, totTrib, "pTotTribSN", request.Tributacao.PercentualTotalTributosSimplesNacional);
         else
             Add(doc, totTrib, "indTotTrib", IndTotTribNaoInformar);
+
+        // IBSCBS: último filho do infDPS (depois de valores). O grupo só
+        // existe no leiaute NT 009; no NT 004 quebraria o schema de
+        // Produção. Ordem do TCRTCInfoIBSCBS: indFinal?, cIndOp?, ...,
+        // indDest, ..., valores. indFinal (uso ou consumo pessoal, art. 57)
+        // não vai: é opcional e o prestador não tem como saber.
+        if (leiaute == LeiauteDps.Nt009 && request.IbsCbs is { } ibsCbs)
+        {
+            var grupo = AddNode(doc, infDps, "IBSCBS");
+            // Com tributação a declarar, cIndOp é obrigatório (E0860); sem, proibido (E0859).
+            if (ibsCbs.ComTributacao)
+                Add(doc, grupo, "cIndOp", ibsCbs.CIndOp ?? throw new InvalidOperationException("cIndOp é obrigatório quando há tributação de IBS/CBS (E0860)."));
+            // 0: o destinatário é o próprio tomador. O grupo dest não é enviado (E0908).
+            Add(doc, grupo, "indDest", IndDestTomador);
+            var valoresIbsCbs = AddNode(doc, grupo, "valores");
+            var tribIbsCbs = AddNode(doc, valoresIbsCbs, "trib");
+            Add(doc, tribIbsCbs, "CST", ibsCbs.Cst);
+            Add(doc, tribIbsCbs, "cClassTrib", ibsCbs.CClassTrib);
+            // Com tributação, o subgrupo é obrigatório (E0960) mesmo vazio:
+            // crédito presumido, tributação regular e diferimento (filhos
+            // opcionais) ainda não são usados.
+            if (ibsCbs.ComTributacao)
+                AddNode(doc, tribIbsCbs, "gIBSCBS");
+        }
 
         return (XmlSerializationHelper.ToXmlString(doc), infDpsId);
     }

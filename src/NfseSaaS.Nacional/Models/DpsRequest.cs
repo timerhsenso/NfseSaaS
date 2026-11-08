@@ -55,6 +55,15 @@ public sealed record TributacaoDps(
 /// chamador (EmitirNfseUseCase, a partir de Empresa.TipoAmbiente), nunca
 /// este módulo nem o appsettings.
 /// </param>
+/// <summary>
+/// Grupo IBSCBS da DPS (Reforma Tributária, leiaute NT 009). Só a
+/// classificação: os valores a SEFIN calcula. Nulo = grupo não vai.
+/// </summary>
+/// <param name="CIndOp">Indicador da operação (Anexo VII); nulo quando o CST não tem tributação a declarar.</param>
+/// <param name="Cst">3 primeiros dígitos do cClassTrib.</param>
+/// <param name="ComTributacao">ind_gIBSCBS = 1: escreve o subgrupo gIBSCBS (E0960); 0: não escreve (E0961).</param>
+public sealed record IbsCbsDps(string? CIndOp, string Cst, string CClassTrib, bool ComTributacao);
+
 public sealed record DpsRequest(
     PrestadorDps Prestador,
     TomadorDps Tomador,
@@ -66,4 +75,5 @@ public sealed record DpsRequest(
     string CodigoTributacaoNacional,
     string CodigoNbs,
     string DescricaoServico,
-    string TpAmb);
+    string TpAmb,
+    IbsCbsDps? IbsCbs = null);

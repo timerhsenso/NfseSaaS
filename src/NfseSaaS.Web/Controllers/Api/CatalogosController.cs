@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NfseSaaS.Application.Fiscal.IbsCbs;
 using NfseSaaS.Application.UseCases.Catalogos;
 
 namespace NfseSaaS.Web.Controllers.Api;
@@ -59,6 +60,36 @@ public sealed class CatalogosController : ControllerBase
         return Ok(new
         {
             results = resultado.Select(c => new { id = c.Codigo, text = $"{FormatarCodigoNbs(c.Codigo)} — {c.Descricao}" })
+        });
+    }
+
+    /// <summary>
+    /// IBS/CBS (F1): opções da tabela oficial (Anexo VIII) para o item do
+    /// cTribNac, já com a sugestão que vale quando o Serviço deixa os campos
+    /// em branco (RegrasIbsCbs.Resolver). Indicadores que o sistema ainda
+    /// não consegue emitir vêm marcados (suportado = false).
+    /// </summary>
+    [HttpGet("ibscbs")]
+    public IActionResult OpcoesIbsCbs([FromQuery] string? codigoTributacaoNacional)
+    {
+        var opcoes = CatalogoIbsCbs.OpcoesDoServico(codigoTributacaoNacional);
+        var sugestao = string.IsNullOrWhiteSpace(codigoTributacaoNacional)
+            ? null
+            : RegrasIbsCbs.Resolver(codigoTributacaoNacional, null, null);
+
+        return Ok(new
+        {
+            versaoAnexoVII = CatalogoIbsCbs.VersaoAnexoVII,
+            versaoAnexoVIII = CatalogoIbsCbs.VersaoAnexoVIII,
+            item = opcoes?.Item,
+            descricaoItem = opcoes?.Descricao,
+            indicadores = (opcoes?.IndicadoresOperacao ?? []).Select(i => new { codigo = i.Codigo, rotulo = i.Rotulo, suportado = i.SuportadoPeloSistema }),
+            classificacoes = (opcoes?.Classificacoes ?? []).Select(c => new { codigo = c.Codigo, rotulo = c.Rotulo, cst = c.Cst, comTributacao = RegrasIbsCbs.TemTributacao(c.Cst) }),
+            // Todas as classificações conhecidas, para quem precisar de outra (o item pode admitir mais que a tabela inicial mostra).
+            todasClassificacoes = CatalogoIbsCbs.Classificacoes.OrderBy(c => c.Codigo)
+                .Select(c => new { codigo = c.Codigo, rotulo = c.Rotulo, cst = c.Cst, comTributacao = RegrasIbsCbs.TemTributacao(c.Cst) }),
+            sugestao = sugestao?.Classificacao is { } s ? new { cIndOp = s.CIndOp, cClassTrib = s.CClassTrib } : null,
+            problemaSugestao = sugestao?.Problema
         });
     }
 

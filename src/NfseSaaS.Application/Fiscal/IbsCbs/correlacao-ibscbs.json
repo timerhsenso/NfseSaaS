@@ -1,0 +1,4733 @@
+{
+ "versaoAnexoVII": "1.03.00",
+ "versaoAnexoVIII": "1.02.00",
+ "indOps": [
+  {
+   "codigo": "010101",
+   "tipo": "Bem Móvel Material",
+   "caracteristica": "Presencial, com retirada no estabelecimento do fornecedor",
+   "local": "Estabelecimento do Prestador/Fornecedor",
+   "nfse": true
+  },
+  {
+   "codigo": "010102",
+   "tipo": "Bem Móvel Material",
+   "caracteristica": "Presencial, com retirada fora do estabelecimento do fornecedor",
+   "local": "Local da Prestação",
+   "nfse": true
+  },
+  {
+   "codigo": "010103",
+   "tipo": "Bem Móvel Material",
+   "caracteristica": "Não presencial, com entrega ou disponibilização em endereço fornecido",
+   "local": "Endereço do Destinatário",
+   "nfse": true
+  },
+  {
+   "codigo": "010104",
+   "tipo": "Bem Móvel Material",
+   "caracteristica": "Licitação promovida pelo poder público de bem apreendido ou abandonado ou leilão judicial",
+   "local": "-",
+   "nfse": false
+  },
+  {
+   "codigo": "010105",
+   "tipo": "Bem Móvel Material",
+   "caracteristica": "Constatação de irregularidade pela falta de documentação fiscal ou pelo acobertamento por documentação inidôneo",
+   "local": "-",
+   "nfse": false
+  },
+  {
+   "codigo": "010106",
+   "tipo": "Bem Móvel Material",
+   "caracteristica": "Locação de bem móvel material em aquisições realizadas de forma centralizada por contribuinte sujeito ao regime regular do IBS e da CBS que possui mais de um estabelecimento e que não estejam sujeitas a vedação à apropriação de créditos",
+   "local": "Endereço do Tomador/Adquirente",
+   "nfse": true
+  },
+  {
+   "codigo": "010201",
+   "tipo": "Aquisição de veículo automotor terrestre, aquático ou aéreo",
+   "caracteristica": "Entrega ou disponibilização do bem",
+   "local": "-",
+   "nfse": false
+  },
+  {
+   "codigo": "010202",
+   "tipo": "Aquisição de veículo automotor em licitação promovida pelo poder público de bem apreendido ou abandonado ou leilão judicial",
+   "caracteristica": "Entrega ou disponibilização do bem",
+   "local": "-",
+   "nfse": false
+  },
+  {
+   "codigo": "020101",
+   "tipo": "Operação com bem imóvel, bem móvel imaterial, inclusive direito, relacionada a bem imóvel",
+   "caracteristica": "Realização de operações com bem imóvel, bem imaterial, inclusive direito, relacionado a bem imóvel",
+   "local": "Localidade do Imóvel",
+   "nfse": true
+  },
+  {
+   "codigo": "020102",
+   "tipo": "Operação com bem imóvel, bem móvel imaterial, inclusive direito, relacionada a Bem Imóvel de Características Especiais (BICE)",
+   "caracteristica": "Realização de operações com bem imóvel, bem imaterial, inclusive direito, relacionado a bem imóvel de Características Especiais (BICE)",
+   "local": "Localidade do Imóvel",
+   "nfse": true
+  },
+  {
+   "codigo": "020201",
+   "tipo": "Serviço prestado fisicamente sobre bem imóvel",
+   "caracteristica": "Execução de serviços diversos prestados fisicamente sobre bem imóvel",
+   "local": "Localidade do Imóvel",
+   "nfse": true
+  },
+  {
+   "codigo": "020202",
+   "tipo": "Serviço prestado fisicamente sobre bem imóvel",
+   "caracteristica": "Execução de serviços sobre Bens Imóveis de Características Especiais (BICE)",
+   "local": "Localidade do Imóvel",
+   "nfse": true
+  },
+  {
+   "codigo": "020301",
+   "tipo": "Serviço de administração e intermediação de bem imóvel",
+   "caracteristica": "Execução dos serviços de administração e intermediação de bens imóveis",
+   "local": "Localidade do Imóvel",
+   "nfse": true
+  },
+  {
+   "codigo": "020401",
+   "tipo": "Serviços de locação, sublocação, arrendamento, direito de passagem ou permissão de uso, compartilhado ou não, de ferrovia, rodovia, postes, cabos, dutos e condutos de qualquer natureza (quando caracterize operação tributável pelo ISSQN)",
+   "caracteristica": "Execução de serviços sobre Bens Imóveis de Características Especiais (BICE)",
+   "local": "Localidade do Imóvel",
+   "nfse": true
+  },
+  {
+   "codigo": "030101",
+   "tipo": "Serviço prestado fisicamente sobre a pessoa ou fruído presencialmente por pessoa física",
+   "caracteristica": "Execução de serviços diversos exclusivamente prestados fisicamente sobre a pessoa ou integralmente fruídos presencialmente por pessoa física",
+   "local": "Estabelecimento do Prestador/Fornecedor",
+   "nfse": true
+  },
+  {
+   "codigo": "030102",
+   "tipo": "Serviço prestado fisicamente sobre a pessoa ou fruído presencialmente por pessoa física",
+   "caracteristica": "Execução de serviços diversos exclusivamente prestados fisicamente sobre a pessoa ou integralmente fruídos presencialmente por pessoa física",
+   "local": "Local da Prestação",
+   "nfse": true
+  },
+  {
+   "codigo": "040101",
+   "tipo": "Serviço de planejamento, organização e administração de feiras, exposições, congressos, espetáculos, exibições e congêneres",
+   "caracteristica": "Execução de serviços de planejamento, organização e administração de feiras, exposições, congressos, espetáculos, exibições e congêneres",
+   "local": "Local do Evento",
+   "nfse": true
+  },
+  {
+   "codigo": "050101",
+   "tipo": "Serviço prestado fisicamente sobre bem móvel material",
+   "caracteristica": "Execução de serviços diversos prestados fisicamente sobre bem móvel material",
+   "local": "Estabelecimento do Prestador/Fornecedor",
+   "nfse": true
+  },
+  {
+   "codigo": "050102",
+   "tipo": "Serviço prestado fisicamente sobre bem móvel material",
+   "caracteristica": "Execução de serviços diversos prestados fisicamente sobre bem móvel material",
+   "local": "Local da Prestação",
+   "nfse": true
+  },
+  {
+   "codigo": "050201",
+   "tipo": "Serviços portuários",
+   "caracteristica": "Execução de serviços portuários",
+   "local": "Local da Prestação",
+   "nfse": true
+  },
+  {
+   "codigo": "060101",
+   "tipo": "Serviço de transporte de passageiros",
+   "caracteristica": "Execução de serviços de transporte de passageiros",
+   "local": "Local da Prestação (Início do Transporte)",
+   "nfse": true
+  },
+  {
+   "codigo": "070101",
+   "tipo": "Serviço de transporte de carga",
+   "caracteristica": "Execução de serviço de transporte de carga",
+   "local": "Local da Prestação",
+   "nfse": true
+  },
+  {
+   "codigo": "070102",
+   "tipo": "Serviço de transporte de carga",
+   "caracteristica": "Execução de serviço de transporte de carga",
+   "local": "Local da Prestação (Local da Retirada)",
+   "nfse": true
+  },
+  {
+   "codigo": "080101",
+   "tipo": "Serviço de exploração de via",
+   "caracteristica": "Execução de serviços de exploração de via",
+   "local": "Localização do Trecho (NFS-e Via)",
+   "nfse": false
+  },
+  {
+   "codigo": "090101",
+   "tipo": "Serviço de telefonia fixa e demais serviços de comunicação prestados por meio de cabos, fios, fibras e meios similares",
+   "caracteristica": "Execução de serviços de telefonia fixa e demais serviços de comunicação prestados por meio de cabos, fios, fibras e meios similares",
+   "local": "-",
+   "nfse": false
+  },
+  {
+   "codigo": "090102",
+   "tipo": "Serviço de telefonia fixa e demais serviços de comunicação prestados por meio de cabos, fios, fibras e meios similares",
+   "caracteristica": "Execução de serviços de telefonia fixa e demais serviços de comunicação prestados por meio de cabos, fios, fibras e meios similares",
+   "local": "-",
+   "nfse": false
+  },
+  {
+   "codigo": "100101",
+   "tipo": "Cessão de espaço para prestação de serviços publicitários, em operações onerosas",
+   "caracteristica": "Realização de operações de cessão de espaço para prestação de serviços publicitários",
+   "local": "Endereço do Tomador/Adquirente",
+   "nfse": true
+  },
+  {
+   "codigo": "100102",
+   "tipo": "Cessão de espaço para prestação de serviços publicitários, em operações onerosas",
+   "caracteristica": "Realização de operações de cessão de espaço para prestação de serviços publicitários",
+   "local": "Endereço do Destinatário",
+   "nfse": true
+  },
+  {
+   "codigo": "100201",
+   "tipo": "Cessão de espaço para prestação de serviços publicitários, em operações não onerosas",
+   "caracteristica": "Realização de operações de cessão de espaço para prestação de serviços publicitários",
+   "local": "Endereço do Destinatário",
+   "nfse": true
+  },
+  {
+   "codigo": "100301",
+   "tipo": "Demais serviços, em operações onerosas",
+   "caracteristica": "Execução dos demais serviços em operações não especificadas em outros indicadores ou, nos serviços de que trata o inc. III do art. 11, esses sejam, ainda que parcialmente, prestados à distância",
+   "local": "Endereço do Tomador/Adquirente",
+   "nfse": true
+  },
+  {
+   "codigo": "100302",
+   "tipo": "Demais serviços, em operações onerosas",
+   "caracteristica": "Execução dos demais serviços em operações não especificadas em outros indicadores ou, nos serviços de que trata o inc. III do art. 11, esses sejam, ainda que parcialmente, prestados à distância",
+   "local": "Endereço do Destinatário",
+   "nfse": true
+  },
+  {
+   "codigo": "100401",
+   "tipo": "Demais serviços, em operações não onerosas",
+   "caracteristica": "Execução dos demais serviços em operações não especificadas em outros indicadores ou, nos serviços de que tratam o inc. III, estes sejam, ainda que parcialmente, prestados à distância",
+   "local": "Endereço do Destinatário",
+   "nfse": true
+  },
+  {
+   "codigo": "100501",
+   "tipo": "Demais bens, em operações onerosas",
+   "caracteristica": "Realização de demais operações com bens não especificadas em outros indicadores",
+   "local": "Endereço do Tomador/Adquirente",
+   "nfse": true
+  },
+  {
+   "codigo": "100502",
+   "tipo": "Demais bens, em operações onerosas",
+   "caracteristica": "Realização de demais operações com bens não especificadas em outros indicadores",
+   "local": "Endereço do Destinatário",
+   "nfse": true
+  },
+  {
+   "codigo": "100601",
+   "tipo": "Demais bens, em operações não onerosas",
+   "caracteristica": "Realização de demais operações com bens não especificadas em outros indicadores",
+   "local": "Endereço do Destinatário",
+   "nfse": true
+  },
+  {
+   "codigo": "110101",
+   "tipo": "Operações com abastecimento de água, gás canalizado e energia elétrica",
+   "caracteristica": "Operações destinadas a consumo",
+   "local": "-",
+   "nfse": false
+  },
+  {
+   "codigo": "110201",
+   "tipo": "Operações com abastecimento de água, gás canalizado e energia elétrica",
+   "caracteristica": "Operações que não envolvam efetivo consumo: a) no fornecimento de serviços de transmissão de energia elétrica; e b) nas demais operações, inclusive nas hipóteses de geração, distribuição ou comercialização de energia elétrica.",
+   "local": "-",
+   "nfse": false
+  },
+  {
+   "codigo": "120101",
+   "tipo": "Nas aquisições de energia elétrica realizadas de forma multilateral",
+   "caracteristica": "Disponibilização de energia elétrica",
+   "local": "-",
+   "nfse": false
+  },
+  {
+   "codigo": "130101",
+   "tipo": "Operações de transporte dutoviário de gás natural",
+   "caracteristica": "Execução do transporte dutoviário de gás natural, na contratação de capacidade de entrada de gás natural do duto, nos termos da legislação aplicável",
+   "local": "-",
+   "nfse": false
+  },
+  {
+   "codigo": "130201",
+   "tipo": "Operações de transporte dutoviário de gás natural",
+   "caracteristica": "Execução do transporte dutoviário de gás natural, na contratação de capacidade de saída do gás natural do duto",
+   "local": "-",
+   "nfse": false
+  }
+ ],
+ "cClassTribs": [
+  {
+   "codigo": "000001",
+   "nome": "Situações tributadas integralmente pelo IBS e CBS."
+  },
+  {
+   "codigo": "010002",
+   "nome": "Operações do serviço financeiro"
+  },
+  {
+   "codigo": "011001",
+   "nome": "Planos de assistência funerária."
+  },
+  {
+   "codigo": "011003",
+   "nome": "Intermediação de planos de assistência à saúde"
+  },
+  {
+   "codigo": "011005",
+   "nome": "Planos de assistência à saúde de animais domésticos"
+  },
+  {
+   "codigo": "200016",
+   "nome": "Prestação de serviços de pesquisa e desenvolvimento por Instituição Científica, Tecnológica e de Inovação (ICT)"
+  },
+  {
+   "codigo": "200021",
+   "nome": "Serviços de transporte público coletivo de passageiros ferroviário e hidroviário"
+  },
+  {
+   "codigo": "200025",
+   "nome": "Fornecimento dos serviços de educação relacionados ao Programa Universidade para Todos (Prouni)"
+  },
+  {
+   "codigo": "200026",
+   "nome": "Locação de imóveis localizados nas zonas reabilitadas"
+  },
+  {
+   "codigo": "200027",
+   "nome": "Operações de locação, cessão onerosa e arrendamento de bens imóveis"
+  },
+  {
+   "codigo": "200028",
+   "nome": "Fornecimento dos serviços de educação (Anexo II)"
+  },
+  {
+   "codigo": "200029",
+   "nome": "Fornecimento dos serviços de saúde humana (Anexo III)"
+  },
+  {
+   "codigo": "200037",
+   "nome": "Fornecimento de serviços ambientais de conservação ou recuperação da vegetação nativa"
+  },
+  {
+   "codigo": "200038",
+   "nome": "Fornecimento dos insumos agropecuários e aquícolas (Anexo IX)"
+  },
+  {
+   "codigo": "200039",
+   "nome": "Fornecimento dos serviços e o licenciamento ou cessão dos direitos destinados às produções nacionais artísticas (Anexo X)"
+  },
+  {
+   "codigo": "200040",
+   "nome": "Fornecimento de serviços de comunicação institucional à administração pública"
+  },
+  {
+   "codigo": "200041",
+   "nome": "Fornecimento de serviço de educação desportiva (art. 141. I)"
+  },
+  {
+   "codigo": "200042",
+   "nome": "Fornecimento de serviço de educação desportiva (art. 141. II)"
+  },
+  {
+   "codigo": "200043",
+   "nome": "Fornecimento à administração pública dos serviços e dos bens relativos à soberania (Anexo XI)"
+  },
+  {
+   "codigo": "200044",
+   "nome": "Operações e prestações de serviços de segurança da informação e segurança cibernética desenvolvidos por sociedade que tenha sócio brasileiro (Anexo XI)"
+  },
+  {
+   "codigo": "200045",
+   "nome": "Operações relacionadas a projetos de reabilitação urbana de zonas históricas e de áreas críticas de recuperação e reconversão urbanística"
+  },
+  {
+   "codigo": "200046",
+   "nome": "Operações com bens imóveis"
+  },
+  {
+   "codigo": "200048",
+   "nome": "Hotelaria, Parques de Diversão e Parques Temáticos"
+  },
+  {
+   "codigo": "200051",
+   "nome": "Agências de Turismo"
+  },
+  {
+   "codigo": "200052",
+   "nome": "Prestação de serviços de profissões intelectuais"
+  },
+  {
+   "codigo": "221001",
+   "nome": "Locação, cessão onerosa ou arrendamento de bem imóvel com alíquota sobre a receita bruta, observado o art. 487 da Lei Complementar nº 214, de 2025."
+  },
+  {
+   "codigo": "400001",
+   "nome": "Fornecimento de serviços de transporte público coletivo de passageiros rodoviário e metroviário"
+  },
+  {
+   "codigo": "820001",
+   "nome": "Documento com informações de fornecimento de serviços de planos de assistência à saúde"
+  },
+  {
+   "codigo": "820002",
+   "nome": "Documento com informações de fornecimento de serviços de planos de assistência funerária"
+  },
+  {
+   "codigo": "820003",
+   "nome": "Documento com informações de fornecimento de serviços de planos de assistência à saúde de animais domésticos"
+  },
+  {
+   "codigo": "820006",
+   "nome": "Documento com informações de fornecimento de serviços de exploração de via"
+  },
+  {
+   "codigo": "820007",
+   "nome": "Documento com informações de fornecimento de serviços financeiros"
+  }
+ ],
+ "itens": [
+  {
+   "item": "0101",
+   "descricao": "Análise E Desenvolvimento De Sistemas.",
+   "nbs": [
+    "115021000",
+    "115022000",
+    "115024000",
+    "115025000",
+    "115029000",
+    "115030000",
+    "115040000",
+    "115050000",
+    "115071000",
+    "115072000",
+    "115079000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200043",
+    "200044"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0102",
+   "descricao": "Programação.",
+   "nbs": [
+    "115021000",
+    "115022000",
+    "115029000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200043",
+    "200044"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0103",
+   "descricao": "Processamento, Armazenamento Ou Hospedagem De Dados, Textos, Imagens, Vídeos, Páginas Eletrônicas, Aplicativos E Sistemas De Informação, Entre Outros Formatos, E Congêneres. (Redação Dada Pela Lei Complementar Nº 157, De 2016)",
+   "nbs": [
+    "115061000",
+    "115062100",
+    "115062200",
+    "115062300",
+    "115062900",
+    "115069000",
+    "115090000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "0104",
+   "descricao": "Elaboração De Programas De Computadores, Inclusive De Jogos Eletrônicos, Independentemente Da Arquitetura Construtiva Da Máquina Em Que O Programa Será Executado, Incluindo Tablets, Smartphones E Congêneres. (Redação Dada Pela Lei Complementar Nº 157, De 2016)",
+   "nbs": [
+    "115021000",
+    "115022000",
+    "115029000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200043",
+    "200044"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0105",
+   "descricao": "Licenciamento Ou Cessão De Direito De Uso De Programas De Computação.",
+   "nbs": [
+    "111032100",
+    "111032200",
+    "111032300",
+    "111032900",
+    "111062000",
+    "111072000",
+    "115062100"
+   ],
+   "indOps": [
+    "100501"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0106",
+   "descricao": "Assessoria E Consultoria Em Informática.",
+   "nbs": [
+    "115011000",
+    "115012000",
+    "115071000",
+    "115072000",
+    "115079000",
+    "115100000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200043",
+    "200044"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0107",
+   "descricao": "Suporte Técnico Em Informática, Inclusive Instalação, Configuração E Manutenção De Programas De Computação E Bancos De Dados.",
+   "nbs": [
+    "115013000",
+    "115080000",
+    "115021000",
+    "115022000"
+   ],
+   "indOps": [
+    "050101",
+    "050102",
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0108",
+   "descricao": "Planejamento, Confecção, Manutenção E Atualização De Páginas Eletrônicas.",
+   "nbs": [
+    "115023000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200040"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0109",
+   "descricao": "Disponibilização, Sem Cessão Definitiva, De Conteúdos De Áudio, Vídeo, Imagem E Texto Por Meio Da Internet, Respeitada A Imunidade De Livros, Jornais E Periódicos (Exceto A Distribuição De Conteúdos Pelas Prestadoras De Serviço De Acesso Condicionado, De Que Trata A Lei No 12.485, De 12 De Setembro De 2011, Sujeita Ao ICMS). (Incluído Pela Lei Complementar Nº 157, De 2016)",
+   "nbs": [
+    "117031000",
+    "117032100",
+    "117032200",
+    "117033100",
+    "117033200",
+    "117039100",
+    "117039200",
+    "117039900"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "0201",
+   "descricao": "Serviços De Pesquisas E Desenvolvimento De Qualquer Natureza.",
+   "nbs": [
+    "112011100",
+    "112011200",
+    "112011900",
+    "112012000",
+    "112013100",
+    "112013200",
+    "112013300",
+    "112013400",
+    "112013900",
+    "112014000",
+    "112015000",
+    "112019000",
+    "112021000",
+    "112022000",
+    "112023000",
+    "112024000",
+    "112029000",
+    "112030000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200016"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0302",
+   "descricao": "Cessão De Direito De Uso De Marcas E De Sinais De Propaganda.",
+   "nbs": [
+    "111033300",
+    "111042000",
+    "111063300",
+    "111073300",
+    "111082000"
+   ],
+   "indOps": [
+    "100501"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "0303",
+   "descricao": "Exploração De Salões De Festas, Centro De Convenções, Escritórios Virtuais, Stands, Quadras Esportivas, Estádios, Ginásios, Auditórios, Casas De Espetáculos, Parques De Diversões, Canchas E Congêneres, Para Realização De Eventos Ou Negócios De Qualquer Natureza.",
+   "nbs": [
+    "118053100",
+    "118066100",
+    "118066200",
+    "118066300",
+    "125080000"
+   ],
+   "indOps": [
+    "020101"
+   ],
+   "cClassTribs": [
+    "200027"
+   ],
+   "atividadesSn": [
+    "7",
+    "9"
+   ]
+  },
+  {
+   "item": "0304",
+   "descricao": "Locação, Sublocação, Arrendamento, Direito De Passagem Ou Permissão De Uso, Compartilhado Ou Não, De Ferrovia, Rodovia, Postes, Cabos, Dutos E Condutos De Qualquer Natureza.",
+   "nbs": [
+    "110011210"
+   ],
+   "indOps": [
+    "020401"
+   ],
+   "cClassTribs": [
+    "200027"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "0305",
+   "descricao": "Cessão De Andaimes, Palcos, Coberturas E Outras Estruturas De Uso Temporário.",
+   "nbs": [
+    "101057000",
+    "101055000"
+   ],
+   "indOps": [
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200039"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "0401",
+   "descricao": "Medicina E Biomedicina.",
+   "nbs": [
+    "123012200"
+   ],
+   "indOps": [
+    "030101",
+    "030102",
+    "100301"
+   ],
+   "cClassTribs": [
+    "200029"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0402",
+   "descricao": "Análises Clínicas, Patologia, Eletricidade Médica, Radioterapia, Quimioterapia, Ultra-Sonografia, Ressonância Magnética, Radiologia, Tomografia E Congêneres.",
+   "nbs": [
+    "123019300",
+    "123019400"
+   ],
+   "indOps": [
+    "030101",
+    "030102",
+    "100301"
+   ],
+   "cClassTribs": [],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0403",
+   "descricao": "Hospitais, Clínicas, Laboratórios, Sanatórios, Manicômios, Casas De Saúde, Prontos-Socorros, Ambulatórios E Congêneres.",
+   "nbs": [
+    "123011100",
+    "123011200",
+    "123011300",
+    "123011400",
+    "123011500",
+    "123011900",
+    "123012100",
+    "123019300"
+   ],
+   "indOps": [
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0404",
+   "descricao": "Instrumentação Cirúrgica.",
+   "nbs": [
+    "123011100"
+   ],
+   "indOps": [
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0405",
+   "descricao": "Acupuntura.",
+   "nbs": [
+    "123019900"
+   ],
+   "indOps": [
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0406",
+   "descricao": "Enfermagem, Inclusive Serviços Auxiliares.",
+   "nbs": [
+    "123019100",
+    "123019700"
+   ],
+   "indOps": [
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0407",
+   "descricao": "Serviços farmacêuticos",
+   "nbs": [
+    "123019900"
+   ],
+   "indOps": [
+    "030101",
+    "030102",
+    "100301"
+   ],
+   "cClassTribs": [],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0408",
+   "descricao": "Terapia Ocupacional, Fisioterapia E Fonoaudiologia.",
+   "nbs": [
+    "123019200",
+    "123019900"
+   ],
+   "indOps": [
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0409",
+   "descricao": "Terapias De Qualquer Espécie Destinadas Ao Tratamento Físico, Orgânico E Mental.",
+   "nbs": [
+    "123019900"
+   ],
+   "indOps": [
+    "030101",
+    "030102",
+    "100301"
+   ],
+   "cClassTribs": [],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0410",
+   "descricao": "Nutrição.",
+   "nbs": [
+    "123019900"
+   ],
+   "indOps": [
+    "030101",
+    "030102",
+    "100301"
+   ],
+   "cClassTribs": [],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0411",
+   "descricao": "Obstetrícia.",
+   "nbs": [
+    "123011200",
+    "123019700"
+   ],
+   "indOps": [
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0412",
+   "descricao": "Odontologia.",
+   "nbs": [
+    "123012300"
+   ],
+   "indOps": [
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0413",
+   "descricao": "Ortóptica.",
+   "nbs": [
+    "123019900"
+   ],
+   "indOps": [
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0414",
+   "descricao": "Próteses Sob Encomenda.",
+   "nbs": [
+    "123019900"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0415",
+   "descricao": "Psicanálise.",
+   "nbs": [
+    "123019900"
+   ],
+   "indOps": [
+    "030101",
+    "030102",
+    "100301"
+   ],
+   "cClassTribs": [],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0416",
+   "descricao": "Psicologia.",
+   "nbs": [
+    "123019800"
+   ],
+   "indOps": [
+    "030101",
+    "030102",
+    "100301"
+   ],
+   "cClassTribs": [],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0417",
+   "descricao": "Casas De Repouso E De Recuperação, Creches, Asilos E Congêneres.",
+   "nbs": [
+    "122011100",
+    "123021000",
+    "123022100",
+    "123022200",
+    "123022300",
+    "123030000"
+   ],
+   "indOps": [
+    "030101"
+   ],
+   "cClassTribs": [],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "0418",
+   "descricao": "Inseminação Artificial, Fertilização In Vitro E Congêneres.",
+   "nbs": [
+    "123012100"
+   ],
+   "indOps": [
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0419",
+   "descricao": "Bancos De Sangue, Leite, Pele, Olhos, Óvulos, Sêmen E Congêneres.",
+   "nbs": [
+    "123019500"
+   ],
+   "indOps": [
+    "050101"
+   ],
+   "cClassTribs": [],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0420",
+   "descricao": "Coleta De Sangue, Leite, Tecidos, Sêmen, Órgãos E Materiais Biológicos De Qualquer Espécie.",
+   "nbs": [
+    "123019500"
+   ],
+   "indOps": [
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0421",
+   "descricao": "Unidade De Atendimento, Assistência Ou Tratamento Móvel E Congêneres.",
+   "nbs": [
+    "123019600"
+   ],
+   "indOps": [
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0422",
+   "descricao": "Planos De Medicina De Grupo Ou Individual E Convênios Para Prestação De Assistência Médica, Hospitalar, Odontológica E Congêneres.",
+   "nbs": [
+    "109101000",
+    "109109000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "820001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "0423",
+   "descricao": "Outros Planos De Saúde Que Se Cumpram Através De Serviços De Terceiros Contratados, Credenciados, Cooperados Ou Apenas Pagos Pelo Operador Do Plano Mediante Indicação Do Beneficiário.",
+   "nbs": [
+    "109101000",
+    "109109000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "820001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "0501",
+   "descricao": "Medicina Veterinária E Zootecnia.",
+   "nbs": [
+    "114051200",
+    "114052200",
+    "114059000",
+    "114109000"
+   ],
+   "indOps": [
+    "050101",
+    "050102",
+    "100301"
+   ],
+   "cClassTribs": [
+    "200052",
+    "200038"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0502",
+   "descricao": "Hospitais, Clínicas, Ambulatórios, Prontos-Socorros E Congêneres, Na Área Veterinária.",
+   "nbs": [
+    "114051100",
+    "114051200",
+    "114052100",
+    "114052200"
+   ],
+   "indOps": [
+    "050101"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200038"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0503",
+   "descricao": "Laboratórios De Análise Na Área Veterinária.",
+   "nbs": [
+    "114059000"
+   ],
+   "indOps": [
+    "050101"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200038"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0504",
+   "descricao": "Inseminação Artificial, Fertilização In Vitro E Congêneres.",
+   "nbs": [
+    "114052200",
+    "114059000"
+   ],
+   "indOps": [
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "200038",
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0505",
+   "descricao": "Bancos De Sangue E De Órgãos E Congêneres.",
+   "nbs": [
+    "114054000"
+   ],
+   "indOps": [
+    "050101"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0506",
+   "descricao": "Coleta De Sangue, Leite, Tecidos, Sêmen, Órgãos E Materiais Biológicos De Qualquer Espécie.",
+   "nbs": [
+    "114054000"
+   ],
+   "indOps": [
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0507",
+   "descricao": "Unidade De Atendimento, Assistência Ou Tratamento Móvel E Congêneres.",
+   "nbs": [
+    "114051200",
+    "114052200"
+   ],
+   "indOps": [
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200038"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0508",
+   "descricao": "Guarda, Tratamento, Amestramento, Embelezamento, Alojamento E Congêneres.",
+   "nbs": [
+    "114056000"
+   ],
+   "indOps": [
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "0509",
+   "descricao": "Planos De Atendimento E Assistência Médico-Veterinária.",
+   "nbs": [
+    "114055000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "011005",
+    "820003"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "0601",
+   "descricao": "Barbearia, Cabeleireiros, Manicuros, Pedicuros E Congêneres.",
+   "nbs": [
+    "126021000",
+    "126022000"
+   ],
+   "indOps": [
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "0602",
+   "descricao": "Esteticistas, Tratamento De Pele, Depilação E Congêneres.",
+   "nbs": [
+    "126022000",
+    "126023000",
+    "126029000"
+   ],
+   "indOps": [
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "0603",
+   "descricao": "Banhos, Duchas, Sauna, Massagens E Congêneres.",
+   "nbs": [
+    "126023000"
+   ],
+   "indOps": [
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "0604",
+   "descricao": "Ginástica, Dança, Esportes, Natação, Artes Marciais E Demais Atividades Físicas.",
+   "nbs": [
+    "122051200",
+    "125059000",
+    "126023000"
+   ],
+   "indOps": [
+    "030101",
+    "030102",
+    "100301"
+   ],
+   "cClassTribs": [
+    "200041",
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0605",
+   "descricao": "Centros De Emagrecimento, Spa E Congêneres.",
+   "nbs": [
+    "126023000",
+    "126029000"
+   ],
+   "indOps": [
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "0606",
+   "descricao": "Aplicação De Tatuagens, Piercings E Congêneres.",
+   "nbs": [
+    "126029000"
+   ],
+   "indOps": [
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "0701",
+   "descricao": "Engenharia, Agronomia, Agrimensura, Arquitetura, Geologia, Urbanismo, Paisagismo E Congêneres.",
+   "nbs": [
+    "114021100",
+    "114021200",
+    "114021300",
+    "114021400",
+    "114022100",
+    "114022200",
+    "114023100",
+    "114023200",
+    "114029000",
+    "114031000",
+    "114032110",
+    "114032120",
+    "114032211",
+    "114032212",
+    "114032213",
+    "114032214",
+    "114032221",
+    "114032222",
+    "114032223",
+    "114032290",
+    "114032300",
+    "114032400",
+    "114032500",
+    "114032600",
+    "114032700",
+    "114032900",
+    "114033000",
+    "114039000",
+    "114041100",
+    "114041200",
+    "114041300",
+    "114041400",
+    "114041900",
+    "114109000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "200052",
+    "000001",
+    "200038"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0702",
+   "descricao": "Execução, Por Administração, Empreitada Ou Subempreitada, De Obras De Construção Civil, Hidráulica Ou Elétrica E De Outras Obras Semelhantes, Inclusive Sondagem, Perfuração De Poços, Escavação, Drenagem E Irrigação, Terraplanagem, Pavimentação, Concretagem E A Instalação E Montagem De Produtos, Peças E Equipamentos (Exceto O Fornecimento De Mercadorias Produzidas Pelo Prestador De Serviços Fora Do Local Da Prestação Dos Serviços, Que Fica Sujeito Ao ICMS).",
+   "nbs": [
+    "101011100",
+    "101011200",
+    "101012100",
+    "101012200",
+    "101012900",
+    "101013000",
+    "101021100",
+    "101021200",
+    "101021300",
+    "101022000",
+    "101023100",
+    "101023200",
+    "101023300",
+    "101023400",
+    "101023510",
+    "101023520",
+    "101023530",
+    "101024110",
+    "101024120",
+    "101024190",
+    "101024210",
+    "101024220",
+    "101025100",
+    "101025210",
+    "101025220",
+    "101025310",
+    "101025320",
+    "101026100",
+    "101026900",
+    "101027000",
+    "101028000",
+    "101029000",
+    "101032000",
+    "101033000",
+    "101034100",
+    "101034200",
+    "101040000",
+    "101051100",
+    "101051200",
+    "101052100",
+    "101052200",
+    "101053000",
+    "101054000",
+    "101055000",
+    "101056000",
+    "101059000",
+    "101061100",
+    "101061900",
+    "101062100",
+    "101062200",
+    "101066000",
+    "101073000",
+    "101074000",
+    "101063200",
+    "101064000",
+    "101079000"
+   ],
+   "indOps": [
+    "020201",
+    "020202"
+   ],
+   "cClassTribs": [
+    "200046",
+    "200045",
+    "200038"
+   ],
+   "atividadesSn": [
+    "13",
+    "12"
+   ]
+  },
+  {
+   "item": "0703",
+   "descricao": "Elaboração De Planos Diretores, Estudos De Viabilidade, Estudos Organizacionais E Outros, Relacionados Com Obras E Serviços De Engenharia; Elaboração De Anteprojetos, Projetos Básicos E Projetos Executivos Para Trabalhos De Engenharia.",
+   "nbs": [
+    "114021100",
+    "114031000",
+    "114022100",
+    "114022200"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200045",
+    "200052"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0704",
+   "descricao": "Demolição.",
+   "nbs": [
+    "101031000"
+   ],
+   "indOps": [
+    "020201",
+    "020202"
+   ],
+   "cClassTribs": [
+    "200046",
+    "200045"
+   ],
+   "atividadesSn": [
+    "13"
+   ]
+  },
+  {
+   "item": "0705",
+   "descricao": "Reparação, Conservação E Reforma De Edifícios, Estradas, Pontes, Portos E Congêneres (Exceto O Fornecimento De Mercadorias Produzidas Pelo Prestador Dos Serviços, Fora Do Local Da Prestação Dos Serviços, Que Fica Sujeito Ao ICMS).",
+   "nbs": [
+    "101011100",
+    "101011200",
+    "101012100",
+    "101012200",
+    "101012900",
+    "101013000",
+    "101021100",
+    "101021200",
+    "101021300",
+    "101022000",
+    "101023100",
+    "101023200",
+    "101023300",
+    "101023400",
+    "101023510",
+    "101023520",
+    "101023530",
+    "101024110",
+    "101024120",
+    "101024190",
+    "101024210",
+    "101024220",
+    "101025100",
+    "101025210",
+    "101025220",
+    "101025310",
+    "101025320",
+    "101026100",
+    "101026900",
+    "101027000",
+    "101028000",
+    "101029000",
+    "101073000",
+    "101079000"
+   ],
+   "indOps": [
+    "020201",
+    "020202"
+   ],
+   "cClassTribs": [
+    "200046",
+    "200045",
+    "200038"
+   ],
+   "atividadesSn": [
+    "13",
+    "12"
+   ]
+  },
+  {
+   "item": "0706",
+   "descricao": "Colocação E Instalação De Tapetes, Carpetes, Assoalhos, Cortinas, Revestimentos De Parede, Vidros, Divisórias, Placas De Gesso E Congêneres, Com Material Fornecido Pelo Tomador Do Serviço.",
+   "nbs": [
+    "101065000",
+    "101071000",
+    "101072000",
+    "101074000"
+   ],
+   "indOps": [
+    "020201"
+   ],
+   "cClassTribs": [
+    "200046",
+    "200045"
+   ],
+   "atividadesSn": [
+    "13"
+   ]
+  },
+  {
+   "item": "0707",
+   "descricao": "Recuperação, Raspagem, Polimento E Lustração De Pisos E Congêneres.",
+   "nbs": [
+    "101074000"
+   ],
+   "indOps": [
+    "020201"
+   ],
+   "cClassTribs": [
+    "200046",
+    "200045"
+   ],
+   "atividadesSn": [
+    "13"
+   ]
+  },
+  {
+   "item": "0708",
+   "descricao": "Calafetação.",
+   "nbs": [
+    "101079000"
+   ],
+   "indOps": [
+    "020201"
+   ],
+   "cClassTribs": [
+    "200046",
+    "200045"
+   ],
+   "atividadesSn": [
+    "13"
+   ]
+  },
+  {
+   "item": "0709",
+   "descricao": "Varrição, Coleta, Remoção, Incineração, Tratamento, Reciclagem, Separação E Destinação Final De Lixo, Rejeitos E Outros Resíduos Quaisquer.",
+   "nbs": [
+    "124061000",
+    "124022000",
+    "124031100",
+    "124031200",
+    "124031900",
+    "124032100",
+    "124032200",
+    "124033100",
+    "124033200",
+    "124041100",
+    "124041200",
+    "124041300",
+    "124041900",
+    "124042100",
+    "124042200",
+    "124043100",
+    "124043200",
+    "124043900",
+    "124043300"
+   ],
+   "indOps": [
+    "020202",
+    "020201",
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "14"
+   ]
+  },
+  {
+   "item": "0710",
+   "descricao": "Limpeza, Manutenção E Conservação De Vias E Logradouros Públicos, Imóveis, Chaminés, Piscinas, Parques, Jardins E Congêneres.",
+   "nbs": [
+    "118031000",
+    "118032200",
+    "118032900",
+    "124051400",
+    "124069000",
+    "124070000"
+   ],
+   "indOps": [
+    "020201",
+    "020202"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200045"
+   ],
+   "atividadesSn": [
+    "14"
+   ]
+  },
+  {
+   "item": "0711",
+   "descricao": "Decoração E Jardinagem, Inclusive Corte E Poda De Árvores.",
+   "nbs": [
+    "114091100",
+    "114091200",
+    "118067000"
+   ],
+   "indOps": [
+    "020201",
+    "020202"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "13"
+   ]
+  },
+  {
+   "item": "0712",
+   "descricao": "Controle E Tratamento De Efluentes De Qualquer Natureza E De Agentes Físicos, Químicos E Biológicos.",
+   "nbs": [
+    "124051100",
+    "124051200",
+    "124051300",
+    "124052000",
+    "124059000"
+   ],
+   "indOps": [
+    "100301",
+    "020202"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "14"
+   ]
+  },
+  {
+   "item": "0713",
+   "descricao": "Dedetização, Desinfecção, Desinsetização, Imunização, Higienização, Desratização, Pulverização E Congêneres.",
+   "nbs": [
+    "118032100",
+    "119011000"
+   ],
+   "indOps": [
+    "020201"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200038"
+   ],
+   "atividadesSn": [
+    "14"
+   ]
+  },
+  {
+   "item": "0716",
+   "descricao": "Florestamento, Reflorestamento, Semeadura, Adubação, Reparação De Solo, Plantio, Silagem, Colheita, Corte E Descascamento De Árvores, Silvicultura, Exploração Florestal E Dos Serviços Congêneres Indissociáveis Da Formação, Manutenção E Colheita De Florestas, Para Quaisquer Fins E Por Quaisquer Meios. (Redação Dada Pela Lei Complementar Nº 157, De 2016)",
+   "nbs": [
+    "111054100",
+    "119011000",
+    "119013000",
+    "106023100"
+   ],
+   "indOps": [
+    "020201",
+    "100301",
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200038",
+    "200037"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "0717",
+   "descricao": "Escoramento, Contenção De Encostas E Serviços Congêneres.",
+   "nbs": [
+    "101051100"
+   ],
+   "indOps": [
+    "020202"
+   ],
+   "cClassTribs": [
+    "200046",
+    "200045"
+   ],
+   "atividadesSn": [
+    "13"
+   ]
+  },
+  {
+   "item": "0718",
+   "descricao": "Limpeza E Dragagem De Rios, Portos, Canais, Baías, Lagos, Lagoas, Represas, Açudes E Congêneres.",
+   "nbs": [
+    "124069000"
+   ],
+   "indOps": [
+    "020202"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200045"
+   ],
+   "atividadesSn": [
+    "14"
+   ]
+  },
+  {
+   "item": "0719",
+   "descricao": "Acompanhamento E Fiscalização Da Execução De Obras De Engenharia, Arquitetura E Urbanismo.",
+   "nbs": [
+    "114021500",
+    "114032110",
+    "114032120",
+    "114033000"
+   ],
+   "indOps": [
+    "020201",
+    "020202"
+   ],
+   "cClassTribs": [
+    "200052",
+    "200045"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0720",
+   "descricao": "Aerofotogrametria (Inclusive Interpretação), Cartografia, Mapeamento, Levantamentos Topográficos, Batimétricos, Geográficos, Geodésicos, Geológicos, Geofísicos E Congêneres.",
+   "nbs": [
+    "114042100",
+    "114042200",
+    "114041900"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200045"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0721",
+   "descricao": "Pesquisa, Perfuração, Cimentação, Mergulho, Perfilagem, Concretação, Testemunhagem, Pescaria, Estimulação E Outros Serviços Relacionados Com A Exploração E Explotação De Petróleo, Gás Natural E De Outros Recursos Minerais.",
+   "nbs": [
+    "114041900",
+    "119021000",
+    "119029000"
+   ],
+   "indOps": [
+    "020202"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0722",
+   "descricao": "Nucleação E Bombardeamento De Nuvens E Congêneres.",
+   "nbs": [
+    "119011000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "0801",
+   "descricao": "Ensino Regular Pré-Escolar, Fundamental, Médio E Superior.",
+   "nbs": [
+    "122011100",
+    "122011200",
+    "122011900",
+    "122012000",
+    "122013000",
+    "122020000",
+    "122031000",
+    "122032000",
+    "122041000",
+    "122042000",
+    "122043000",
+    "122044000"
+   ],
+   "indOps": [
+    "030101",
+    "030102",
+    "100301"
+   ],
+   "cClassTribs": [
+    "200028",
+    "200025"
+   ],
+   "atividadesSn": [
+    "7",
+    "9"
+   ]
+  },
+  {
+   "item": "0802",
+   "descricao": "Instrução, Treinamento, Orientação Pedagógica E Educacional, Avaliação De Conhecimentos De Qualquer Natureza.",
+   "nbs": [
+    "122051100",
+    "122051300",
+    "122051900",
+    "122052000"
+   ],
+   "indOps": [
+    "030101",
+    "030102",
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200028"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "0901",
+   "descricao": "Hospedagem De Qualquer Natureza Em Hotéis, Apart-Service Condominiais, Flat, Apart-Hotéis, Hotéis Residência, Residence-Service, Suite Service, Hotelaria Marítima, Motéis, Pensões E Congêneres; Ocupação Por Temporada Com Fornecimento De Serviço (O Valor Da Alimentação E Gorjeta, Quando Incluído No Preço Da Diária, Fica Sujeito Ao Imposto Sobre Serviços).",
+   "nbs": [
+    "103031100",
+    "103031200",
+    "103031300",
+    "103031400",
+    "103032000",
+    "103039000",
+    "103041000",
+    "103042000",
+    "103049000"
+   ],
+   "indOps": [
+    "030101"
+   ],
+   "cClassTribs": [
+    "200048"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "0902",
+   "descricao": "Agenciamento, Organização, Promoção, Intermediação E Execução De Programas De Turismo, Passeios, Viagens, Excursões, Hospedagens E Congêneres.",
+   "nbs": [
+    "104011710",
+    "104011720",
+    "104011790",
+    "104012300",
+    "104014300",
+    "104021320",
+    "118054000",
+    "118051100",
+    "118051200",
+    "118051300",
+    "118051400",
+    "118051900",
+    "118052100",
+    "118052200",
+    "118052300",
+    "118052400",
+    "118053100",
+    "118053200",
+    "118053900",
+    "118056100",
+    "118056200"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "200051"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "0903",
+   "descricao": "Guias De Turismo.",
+   "nbs": [
+    "118055000"
+   ],
+   "indOps": [
+    "030101",
+    "030102",
+    "100301"
+   ],
+   "cClassTribs": [
+    "200051"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1001",
+   "descricao": "Agenciamento, Corretagem Ou Intermediação De Câmbio, De Seguros, De Cartões De Crédito, De Planos De Saúde E De Planos De Previdência Privada.",
+   "nbs": [
+    "109061100",
+    "109061200",
+    "109102000",
+    "109059000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "010002",
+    "820007",
+    "011003",
+    "820001",
+    "000001"
+   ],
+   "atividadesSn": [
+    "7",
+    "9"
+   ]
+  },
+  {
+   "item": "1002",
+   "descricao": "Agenciamento, Corretagem Ou Intermediação De Títulos Em Geral, Valores Mobiliários E Contratos Quaisquer.",
+   "nbs": [
+    "109051100",
+    "109051200"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "820007",
+    "000001"
+   ],
+   "atividadesSn": [
+    "IMP"
+   ]
+  },
+  {
+   "item": "1003",
+   "descricao": "Agenciamento, Corretagem Ou Intermediação De Direitos De Propriedade Industrial, Artística Ou Literária.",
+   "nbs": [
+    "125014000",
+    "109051100"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1004",
+   "descricao": "Agenciamento, Corretagem Ou Intermediação De Contratos De Arrendamento Mercantil (Leasing), De Franquia (Franchising) E De Faturização (Factoring).",
+   "nbs": [
+    "109059000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1005",
+   "descricao": "Agenciamento, Corretagem Ou Intermediação De Bens Móveis Ou Imóveis, Não Abrangidos Em Outros Itens Ou Subitens, Inclusive Aqueles Realizados No Âmbito De Bolsas De Mercadorias E Futuros, Por Quaisquer Meios.",
+   "nbs": [
+    "110012100",
+    "110012200",
+    "102010000",
+    "102050000",
+    "106070000",
+    "109051200"
+   ],
+   "indOps": [
+    "020301",
+    "100301"
+   ],
+   "cClassTribs": [
+    "200046",
+    "000001"
+   ],
+   "atividadesSn": [
+    "7",
+    "9"
+   ]
+  },
+  {
+   "item": "1006",
+   "descricao": "Agenciamento Marítimo.",
+   "nbs": [
+    "106070000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1007",
+   "descricao": "Agenciamento De Notícias.",
+   "nbs": [
+    "117041000",
+    "117042000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1008",
+   "descricao": "Agenciamento De Publicidade E Propaganda, Inclusive O Agenciamento De Veiculação Por Quaisquer Meios.",
+   "nbs": [
+    "114062000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1009",
+   "descricao": "Representação De Qualquer Natureza, Inclusive Comercial.",
+   "nbs": [
+    "102010000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1010",
+   "descricao": "Distribuição De Bens De Terceiros.",
+   "nbs": [
+    "102010000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1101",
+   "descricao": "Guarda E Estacionamento De Veículos Terrestres Automotores, De Aeronaves E De Embarcações.",
+   "nbs": [
+    "106043000",
+    "106059000",
+    "106061900"
+   ],
+   "indOps": [
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1102",
+   "descricao": "Vigilância, Segurança Ou Monitoramento De Bens E Pessoas.",
+   "nbs": [
+    "118025000",
+    "118022000",
+    "118023000",
+    "118029000"
+   ],
+   "indOps": [
+    "030101",
+    "030102",
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "14"
+   ]
+  },
+  {
+   "item": "1103",
+   "descricao": "Escolta, Inclusive De Veículos E Cargas.",
+   "nbs": [
+    "118025000"
+   ],
+   "indOps": [
+    "030101",
+    "030102",
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "14"
+   ]
+  },
+  {
+   "item": "1104",
+   "descricao": "Armazenamento, Depósito, Carga, Descarga, Arrumação E Guarda De Bens De Qualquer Espécie.",
+   "nbs": [
+    "106011000",
+    "106019000",
+    "106021000",
+    "106022100",
+    "106022200",
+    "106022300",
+    "106022900",
+    "106023100",
+    "106023200",
+    "106023300",
+    "106029000",
+    "106082000",
+    "106083000"
+   ],
+   "indOps": [
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1105",
+   "descricao": "Vigilância, Segurança Ou Monitoramento De Bens, Pessoas E Semoventes. (Redação Dada Pela Lei Complementar Nº 157, De 2016)",
+   "nbs": [
+    "118023000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "14"
+   ]
+  },
+  {
+   "item": "1201",
+   "descricao": "Espetáculos Teatrais.",
+   "nbs": [
+    "125022000"
+   ],
+   "indOps": [
+    "040101"
+   ],
+   "cClassTribs": [
+    "200039",
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1202",
+   "descricao": "Exibições Cinematográficas.",
+   "nbs": [
+    "125015000"
+   ],
+   "indOps": [
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [
+    "200039",
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1203",
+   "descricao": "Espetáculos Circenses.",
+   "nbs": [
+    "125022000"
+   ],
+   "indOps": [
+    "040101"
+   ],
+   "cClassTribs": [
+    "200039",
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1204",
+   "descricao": "Programas De Auditório.",
+   "nbs": [
+    "125029000"
+   ],
+   "indOps": [
+    "040101"
+   ],
+   "cClassTribs": [
+    "200039",
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1205",
+   "descricao": "Parques De Diversões, Centros De Lazer E Congêneres.",
+   "nbs": [
+    "125042100",
+    "125042200",
+    "125071000",
+    "125079000"
+   ],
+   "indOps": [
+    "030101"
+   ],
+   "cClassTribs": [
+    "200048"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1206",
+   "descricao": "Boates, taxi-dancing e congêneres.",
+   "nbs": [
+    "125080000"
+   ],
+   "indOps": [
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1207",
+   "descricao": "Shows, ballet, danças, desfiles, bailes, óperas, concertos, recitais, festivais e congêneres.",
+   "nbs": [
+    "125022000",
+    "125029000"
+   ],
+   "indOps": [
+    "040101"
+   ],
+   "cClassTribs": [
+    "200039",
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1208",
+   "descricao": "Feiras, exposições, congressos e congêneres.",
+   "nbs": [
+    "118066100",
+    "118066200",
+    "118066300"
+   ],
+   "indOps": [
+    "040101"
+   ],
+   "cClassTribs": [
+    "200039",
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1209",
+   "descricao": "Bilhares, boliches e diversões eletrônicas ou não.",
+   "nbs": [
+    "125059000",
+    "125080000"
+   ],
+   "indOps": [
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1210",
+   "descricao": "Corridas e competições de animais.",
+   "nbs": [
+    "125080000",
+    "125051000"
+   ],
+   "indOps": [
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1211",
+   "descricao": "Competições esportivas ou de destreza física ou intelectual, com ou sem a participação do espectador.",
+   "nbs": [
+    "125052000",
+    "125059000",
+    "125051000"
+   ],
+   "indOps": [
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [
+    "200042",
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1212",
+   "descricao": "Execução de música.",
+   "nbs": [
+    "125031000"
+   ],
+   "indOps": [
+    "030101",
+    "030102",
+    "100301"
+   ],
+   "cClassTribs": [
+    "200039",
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1213",
+   "descricao": "Produção, mediante ou sem encomenda prévia, de eventos, espetáculos, entrevistas, shows, ballet , danças, desfiles, bailes, teatros, óperas, concertos, recitais, festivais e congêneres, inclusive programas de televisão, matérias jornalísticas ou publicitárias.",
+   "nbs": [
+    "125012100",
+    "125012200",
+    "125021000",
+    "125022000",
+    "125023000",
+    "125051000"
+   ],
+   "indOps": [
+    "040101"
+   ],
+   "cClassTribs": [
+    "200039",
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1214",
+   "descricao": "Fornecimento de música para ambientes fechados ou não, mediante transmissão por qualquer processo.",
+   "nbs": [
+    "125029000"
+   ],
+   "indOps": [
+    "030101",
+    "030102",
+    "100301"
+   ],
+   "cClassTribs": [
+    "200039",
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1215",
+   "descricao": "Desfiles de blocos carnavalescos ou folclóricos, trios elétricos e congêneres.",
+   "nbs": [
+    "125029000",
+    "125022000"
+   ],
+   "indOps": [
+    "040101"
+   ],
+   "cClassTribs": [
+    "200039",
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1216",
+   "descricao": "Exibição de filmes, entrevistas, musicais, espetáculos, shows, concertos, desfiles, óperas, competições esportivas, de destreza intelectual ou congêneres.",
+   "nbs": [
+    "125015000",
+    "125029000",
+    "125051000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "200039",
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1217",
+   "descricao": "Recreação e animação, inclusive em festas e eventos de qualquer natureza.",
+   "nbs": [
+    "125080000"
+   ],
+   "indOps": [
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1302",
+   "descricao": "Fonografia ou gravação de sons, inclusive trucagem, dublagem, mixagem e congêneres.",
+   "nbs": [
+    "125011100",
+    "125011200",
+    "125013600",
+    "125013700",
+    "125013900"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "200039",
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1303",
+   "descricao": "Fotografia e cinematografia, inclusive revelação, ampliação, cópia, reprodução, trucagem e congêneres.",
+   "nbs": [
+    "114081100",
+    "114081200",
+    "114081300",
+    "114081400",
+    "114081500",
+    "114081900",
+    "114082000",
+    "121012300",
+    "125013100",
+    "125013200",
+    "125013300",
+    "125013400",
+    "125013500",
+    "125013600",
+    "125013900",
+    "125019000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200039"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1304",
+   "descricao": "Reprografia, microfilmagem e digitalização.",
+   "nbs": [
+    "118065100"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1305",
+   "descricao": "Composição Gráfica, Inclusive Confecção De Impressos Gráficos, Fotocomposição, Clicheria, Zincografia, Litografia E Fotolitografia, Exceto Se Destinados A Posterior Operação De Comercialização Ou Industrialização, Ainda Que Incorporados, De Qualquer Forma, A Outra Mercadoria Que Deva Ser Objeto De Posterior Circulação, Tais Como Bulas, Rótulos, Etiquetas, Caixas, Cartuchos, Embalagens E Manuais Técnicos E De Instrução, Quando Ficarão Sujeitos Ao ICMS.",
+   "nbs": [
+    "121011000",
+    "121012100",
+    "121012200"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1401",
+   "descricao": "Lubrificação, limpeza, lustração, revisão, carga e recarga, conserto, restauração, blindagem, manutenção e conservação de máquinas, veículos, aparelhos, equipamentos, motores, elevadores ou de qualquer objeto (exceto peças e partes empregadas, que ficam sujeitas ao ICMS).",
+   "nbs": [
+    "120011000",
+    "120012000",
+    "120013110",
+    "120013120",
+    "120013200",
+    "120013300",
+    "120013410",
+    "120013420",
+    "120013430",
+    "120013500",
+    "120013900",
+    "120014000",
+    "120015000",
+    "120016000",
+    "120017000",
+    "120018100",
+    "120018200",
+    "120018300",
+    "120018900",
+    "120021000",
+    "120022000",
+    "120023000",
+    "120024000",
+    "120029000",
+    "118032900"
+   ],
+   "indOps": [
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200044"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1402",
+   "descricao": "Assistência técnica.",
+   "nbs": [
+    "120011000",
+    "120012000",
+    "120013110",
+    "120013120",
+    "120013200",
+    "120013300",
+    "120013410",
+    "120013420",
+    "120013430",
+    "120013500",
+    "120013900",
+    "120014000",
+    "120015000",
+    "120016000",
+    "120017000",
+    "120018100",
+    "120018200",
+    "120018300",
+    "120018900",
+    "120021000",
+    "120022000",
+    "120023000",
+    "120024000",
+    "120029000"
+   ],
+   "indOps": [
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200044"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1403",
+   "descricao": "Recondicionamento de motores (exceto peças e partes empregadas, que ficam sujeitas ao ICMS).",
+   "nbs": [
+    "120013110",
+    "120018900"
+   ],
+   "indOps": [
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1404",
+   "descricao": "Recauchutagem ou regeneração de pneus.",
+   "nbs": [
+    "120029000"
+   ],
+   "indOps": [
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1405",
+   "descricao": "Restauração, Recondicionamento, Acondicionamento, Pintura, Beneficiamento, Lavagem, Secagem, Tingimento, Galvanoplastia, Anodização, Corte, Recorte, Plastificação, Costura, Acabamento, Polimento E Congêneres De Objetos Quaisquer. (Redação Dada Pela Lei Complementar Nº 157, De 2016)",
+   "nbs": [
+    "118040000",
+    "120029000"
+   ],
+   "indOps": [
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1406",
+   "descricao": "Instalação E Montagem De Aparelhos, Máquinas E Equipamentos, Inclusive Montagem Industrial, Prestados Ao Usuário Final, Exclusivamente Com Material Por Ele Fornecido.",
+   "nbs": [
+    "101061200",
+    "101061300",
+    "101061400",
+    "101063100",
+    "101063200",
+    "101064000",
+    "101069000",
+    "101076000",
+    "120031000",
+    "120032110",
+    "120032190",
+    "120032200",
+    "120032300",
+    "120032400",
+    "120032510",
+    "120032520",
+    "120032610",
+    "120032690",
+    "120032900",
+    "101061900",
+    "101066000"
+   ],
+   "indOps": [
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1407",
+   "descricao": "Colocação de molduras e congêneres.",
+   "nbs": [
+    "126060000"
+   ],
+   "indOps": [
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1408",
+   "descricao": "Encadernação, gravação e douração de livros, revistas e congêneres.",
+   "nbs": [
+    "121012200"
+   ],
+   "indOps": [
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1409",
+   "descricao": "Alfaiataria e costura, quando o material for fornecido pelo usuário final, exceto aviamento.",
+   "nbs": [
+    "126040000",
+    "120024000"
+   ],
+   "indOps": [
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1410",
+   "descricao": "Tinturaria e lavanderia.",
+   "nbs": [
+    "126011000",
+    "126012000",
+    "126013000",
+    "126014000",
+    "126019000"
+   ],
+   "indOps": [
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1411",
+   "descricao": "Tapeçaria e reforma de estofamentos em geral.",
+   "nbs": [
+    "120024000"
+   ],
+   "indOps": [
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1412",
+   "descricao": "Funilaria e lanternagem.",
+   "nbs": [
+    "120013110"
+   ],
+   "indOps": [
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1413",
+   "descricao": "Carpintaria e serralheria.",
+   "nbs": [
+    "101075000"
+   ],
+   "indOps": [
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1414",
+   "descricao": "Guincho Intramunicipal, Guindaste E Içamento. (Redação Dada Pela Lei Complementar Nº 157, De 2016)",
+   "nbs": [
+    "106044000",
+    "106019000"
+   ],
+   "indOps": [
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1501",
+   "descricao": "Administração De Fundos Quaisquer, De Consórcio, De Cartão De Crédito Ou Débito E Congêneres, De Carteira De Clientes, De Cheques Pré-Datados E Congêneres.",
+   "nbs": [
+    "109014000",
+    "109052100",
+    "109052200",
+    "109052300",
+    "109054000",
+    "109064000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "820007"
+   ],
+   "atividadesSn": [
+    "IMP"
+   ]
+  },
+  {
+   "item": "1502",
+   "descricao": "Abertura De Contas Em Geral, Inclusive Conta-Corrente, Conta De Investimentos E Aplicação E Caderneta De Poupança, No País E No Exterior, Bem Como A Manutenção Das Referidas Contas Ativas E Inativas.",
+   "nbs": [
+    "109012100",
+    "109012200",
+    "109012900"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "820007"
+   ],
+   "atividadesSn": [
+    "IMP"
+   ]
+  },
+  {
+   "item": "1503",
+   "descricao": "Locação E Manutenção De Cofres Particulares, De Terminais Eletrônicos, De Terminais De Atendimento E De Bens E Equipamentos Em Geral.",
+   "nbs": [
+    "111019000",
+    "120018900"
+   ],
+   "indOps": [
+    "010101",
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "IMP"
+   ]
+  },
+  {
+   "item": "1504",
+   "descricao": "Fornecimento Ou Emissão De Atestados Em Geral, Inclusive Atestado De Idoneidade, Atestado De Capacidade Financeira E Congêneres.",
+   "nbs": [
+    "113013000",
+    "118061000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "IMP"
+   ]
+  },
+  {
+   "item": "1505",
+   "descricao": "Cadastro, Elaboração De Ficha Cadastral, Renovação Cadastral E Congêneres, Inclusão Ou Exclusão No Cadastro De Emitentes De Cheques Sem Fundos",
+   "nbs": [
+    "118061000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001",
+    "820007"
+   ],
+   "atividadesSn": [
+    "9",
+    "IMP"
+   ]
+  },
+  {
+   "item": "1506",
+   "descricao": "Emissão, Reemissão E Fornecimento De Avisos, Comprovantes E Documentos Em Geral; Abono De Firmas; Coleta E Entrega De Documentos, Bens E Valores; Comunicação Com Outra Agência Ou Com A Administração Central; Licenciamento Eletrônico De Veículos; Transferência De Veículos; Agenciamento Fiduciário Ou Depositário; Devolução De Bens Em Custódia.",
+   "nbs": [
+    "113013000",
+    "107020000",
+    "109053000",
+    "109058000",
+    "109059000"
+   ],
+   "indOps": [
+    "100301",
+    "070101"
+   ],
+   "cClassTribs": [
+    "000001",
+    "820007"
+   ],
+   "atividadesSn": [
+    "9",
+    "IMP"
+   ]
+  },
+  {
+   "item": "1507",
+   "descricao": "Acesso, Movimentação, Atendimento E Consulta A Contas Em Geral, Por Qualquer Meio Ou Processo, Inclusive Por Telefone, Fac-Símile, Internet E Telex, Acesso A Terminais De Atendimento, Inclusive Vinte E Quatro Horas; Acesso A Outro Banco E A Rede Compartilhada; Fornecimento De Saldo, Extrato E Demais Informações Relativas A Contas Em Geral, Por Qualquer Meio Ou Processo.",
+   "nbs": [
+    "109019000",
+    "118063100"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "820007"
+   ],
+   "atividadesSn": [
+    "IMP"
+   ]
+  },
+  {
+   "item": "1508",
+   "descricao": "Emissão, Reemissão, Alteração, Cessão, Substituição, Cancelamento E Registro De Contrato De Crédito; Estudo, Análise E Avaliação De Operações De Crédito; Emissão, Concessão, Alteração Ou Contratação De Aval, Fiança, Anuência E Congêneres; Serviços Relativos A Abertura De Crédito, Para Quaisquer Fins.",
+   "nbs": [
+    "109013300",
+    "109013400",
+    "109013500",
+    "109013600",
+    "109013900",
+    "109055000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "820007"
+   ],
+   "atividadesSn": [
+    "IMP"
+   ]
+  },
+  {
+   "item": "1509",
+   "descricao": "Arrendamento Mercantil (Leasing) De Quaisquer Bens, Inclusive Cessão De Direitos E Obrigações, Substituição De Garantia, Alteração, Cancelamento E Registro De Contrato, E Demais Serviços Relacionados Ao Arrendamento Mercantil (Leasing).",
+   "nbs": [
+    "109015111",
+    "109015112",
+    "109015113",
+    "109015114",
+    "109015115",
+    "109015116",
+    "109015117",
+    "109015121",
+    "109015122",
+    "109015123",
+    "109015124",
+    "109015125",
+    "109015129",
+    "109015210",
+    "109015220",
+    "109015230",
+    "109015240",
+    "109015250",
+    "109015290",
+    "111011100",
+    "111011200",
+    "111011300",
+    "111011400",
+    "111011500",
+    "111011600",
+    "111011700",
+    "111012000",
+    "111013000",
+    "111014000",
+    "111015000",
+    "111016000",
+    "111019000",
+    "111021000",
+    "111022000",
+    "111023000",
+    "111024000",
+    "111025000",
+    "111026000",
+    "111029000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "820007"
+   ],
+   "atividadesSn": [
+    "IMP",
+    "7"
+   ]
+  },
+  {
+   "item": "1510",
+   "descricao": "Serviços Relacionados A Cobranças, Recebimentos Ou Pagamentos Em Geral, De Títulos Quaisquer, De Contas Ou Carnês, De Câmbio, De Tributos E Por Conta De Terceiros, Inclusive Os Efetuados Por Meio Eletrônico, Automático Ou Por Máquinas De Atendimento; Fornecimento De Posição De Cobrança, Recebimento Ou Pagamento; Emissão De Carnês, Fichas De Compensação, Impressos E Documentos Em Geral.",
+   "nbs": [
+    "118062000",
+    "109019000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001",
+    "820007"
+   ],
+   "atividadesSn": [
+    "9",
+    "IMP"
+   ]
+  },
+  {
+   "item": "1511",
+   "descricao": "Devolução De Títulos, Protesto De Títulos, Sustação De Protesto, Manutenção De Títulos, Reapresentação De Títulos, E Demais Serviços A Eles Relacionados.",
+   "nbs": [
+    "109019000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "820007"
+   ],
+   "atividadesSn": [
+    "IMP"
+   ]
+  },
+  {
+   "item": "1512",
+   "descricao": "Custódia Em Geral, Inclusive De Títulos E Valores Mobiliários.",
+   "nbs": [
+    "109053000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "820007"
+   ],
+   "atividadesSn": [
+    "IMP"
+   ]
+  },
+  {
+   "item": "1513",
+   "descricao": "Serviços Relacionados A Operações De Câmbio Em Geral, Edição, Alteração, Prorrogação, Cancelamento E Baixa De Contrato De Câmbio; Emissão De Registro De Exportação Ou De Crédito; Cobrança Ou Depósito No Exterior; Emissão, Fornecimento E Cancelamento De Cheques De Viagem; Fornecimento, Transferência, Cancelamento E Demais Serviços Relativos A Carta De Crédito De Importação, Exportação E Garantias Recebidas; Envio E Recebimento De Mensagens Em Geral Relacionadas A Operações De Câmbio.",
+   "nbs": [
+    "109056000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001",
+    "820007"
+   ],
+   "atividadesSn": [
+    "9",
+    "IMP"
+   ]
+  },
+  {
+   "item": "1514",
+   "descricao": "Fornecimento, Emissão, Reemissão, Renovação E Manutenção De Cartão Magnético, Cartão De Crédito, Cartão De Débito, Cartão Salário E Congêneres.",
+   "nbs": [
+    "109014000",
+    "109019000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "820007"
+   ],
+   "atividadesSn": [
+    "IMP"
+   ]
+  },
+  {
+   "item": "1515",
+   "descricao": "Compensação De Cheques E Títulos Quaisquer; Serviços Relacionados A Depósito, Inclusive Depósito Identificado, A Saque De Contas Quaisquer, Por Qualquer Meio Ou Processo, Inclusive Em Terminais Eletrônicos E De Atendimento.",
+   "nbs": [
+    "109012100",
+    "109012200",
+    "109012900",
+    "109051300"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "820007"
+   ],
+   "atividadesSn": [
+    "IMP"
+   ]
+  },
+  {
+   "item": "1516",
+   "descricao": "Emissão, Reemissão, Liquidação, Alteração, Cancelamento E Baixa De Ordens De Pagamento, Ordens De Crédito E Similares, Por Qualquer Meio Ou Processo; Serviços Relacionados À Transferência De Valores, Dados, Fundos, Pagamentos E Similares, Inclusive Entre Contas Em Geral.",
+   "nbs": [
+    "109019000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001",
+    "820007"
+   ],
+   "atividadesSn": [
+    "9",
+    "IMP"
+   ]
+  },
+  {
+   "item": "1517",
+   "descricao": "Emissão, Fornecimento, Devolução, Sustação, Cancelamento E Oposição De Cheques Quaisquer, Avulso Ou Por Talão.",
+   "nbs": [
+    "109019000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "820007"
+   ],
+   "atividadesSn": [
+    "IMP"
+   ]
+  },
+  {
+   "item": "1518",
+   "descricao": "Serviços Relacionados A Crédito Imobiliário, Avaliação E Vistoria De Imóvel Ou Obra, Análise Técnica E Jurídica, Emissão, Reemissão, Alteração, Transferência E Renegociação De Contrato, Emissão E Reemissão Do Termo De Quitação E Demais Serviços Relacionados A Crédito Imobiliário.",
+   "nbs": [
+    "109013100",
+    "109013200",
+    "110013000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "820007"
+   ],
+   "atividadesSn": [
+    "IMP"
+   ]
+  },
+  {
+   "item": "1601",
+   "descricao": "Serviços De Transporte Coletivo Municipal Rodoviário, Metroviário, Ferroviário E Aquaviário De Passageiros. (Redação Dada Pela Lei Complementar Nº 157, De 2016)",
+   "nbs": [
+    "104011119",
+    "104011610",
+    "104011620",
+    "104011690",
+    "104012110",
+    "104012190",
+    "104013000"
+   ],
+   "indOps": [
+    "060101"
+   ],
+   "cClassTribs": [
+    "400001",
+    "200021",
+    "000001"
+   ],
+   "atividadesSn": [
+    "10"
+   ]
+  },
+  {
+   "item": "1602",
+   "descricao": "Outros Serviços De Transporte De Natureza Municipal. (Incluído Pela Lei Complementar Nº 157, De 2016)",
+   "nbs": [
+    "104012190",
+    "104011111",
+    "104011210",
+    "104011220",
+    "104011290",
+    "104011300",
+    "104011400",
+    "104011510",
+    "104011520",
+    "104011900",
+    "104012120",
+    "104012200",
+    "104012900",
+    "104014100",
+    "104014200",
+    "104014900",
+    "104019000",
+    "104041000",
+    "104042000",
+    "104043000",
+    "104050000",
+    "105011110",
+    "105011120",
+    "105011130",
+    "105011210",
+    "105011220",
+    "105011230",
+    "105011310",
+    "105011320",
+    "105011410",
+    "105011420",
+    "105011430",
+    "105011440",
+    "105011451",
+    "105011452",
+    "105011459",
+    "105011500",
+    "105011900",
+    "105013100",
+    "105021110",
+    "105021120",
+    "105021130",
+    "105021210",
+    "105021220",
+    "105021230",
+    "105021310",
+    "105021320",
+    "105021410",
+    "105021420",
+    "105021430",
+    "105021440",
+    "105021451",
+    "105021452",
+    "105021459",
+    "105021490",
+    "105021900",
+    "105022110",
+    "105022120",
+    "105022130",
+    "105022210",
+    "105022220",
+    "105022230",
+    "105022310",
+    "105022320",
+    "105022410",
+    "105022420",
+    "105022430",
+    "105022440",
+    "105022451",
+    "105022452",
+    "105022459",
+    "105022900",
+    "105051000",
+    "105052000",
+    "105053000"
+   ],
+   "indOps": [
+    "060101",
+    "070101",
+    "130101",
+    "130201"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1701",
+   "descricao": "Assessoria Ou Consultoria De Qualquer Natureza, Não Contida Em Outros Itens Desta Lista; Análise, Exame, Pesquisa, Coleta, Compilação E Fornecimento De Dados E Informações De Qualquer Natureza, Inclusive Cadastro E Similares.",
+   "nbs": [
+    "106084000",
+    "110014000",
+    "110015000",
+    "110019000",
+    "113013000",
+    "113031000",
+    "113032000",
+    "114011100",
+    "114011300",
+    "114011400",
+    "114011500",
+    "114011600",
+    "114011700",
+    "114011800",
+    "114011900",
+    "114013900",
+    "114101000",
+    "114109000",
+    "114120000",
+    "114130000",
+    "114140000",
+    "114070000",
+    "118061000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1702",
+   "descricao": "Datilografia, Digitação, Estenografia, Expediente, Secretaria Em Geral, Resposta Audível, Redação, Edição, Interpretação, Revisão, Tradução, Apoio E Infra-Estrutura Administrativa E Congêneres.",
+   "nbs": [
+    "114110000",
+    "118063100",
+    "118063900",
+    "118064000",
+    "118065200",
+    "118065300",
+    "118065900"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9",
+    "7"
+   ]
+  },
+  {
+   "item": "1703",
+   "descricao": "Planejamento, Coordenação, Programação Ou Organização Técnica, Financeira Ou Administrativa.",
+   "nbs": [
+    "114012900",
+    "114013900"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1704",
+   "descricao": "Recrutamento, Agenciamento, Seleção E Colocação De Mão-De-Obra.",
+   "nbs": [
+    "118011100",
+    "118011200"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1705",
+   "descricao": "Fornecimento De Mão-De-Obra, Mesmo Em Caráter Temporário, Inclusive De Empregados Ou Trabalhadores, Avulsos Ou Temporários, Contratados Pelo Prestador De Serviço.",
+   "nbs": [
+    "118012100",
+    "118012200",
+    "118012900"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "IMP"
+   ]
+  },
+  {
+   "item": "1706",
+   "descricao": "Propaganda E Publicidade, Inclusive Promoção De Vendas, Planejamento De Campanhas Ou Sistemas De Publicidade, Elaboração De Desenhos, Textos E Demais Materiais Publicitários.",
+   "nbs": [
+    "114061100",
+    "114061200",
+    "114061900",
+    "114070000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1708",
+   "descricao": "Franquia (Franchising).",
+   "nbs": [
+    "111100000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1709",
+   "descricao": "Perícias, Laudos, Exames Técnicos E Análises Técnicas.",
+   "nbs": [
+    "114044100",
+    "114044200",
+    "114044300",
+    "114044400",
+    "114044900"
+   ],
+   "indOps": [
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200038"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1710",
+   "descricao": "Planejamento, Organização E Administração De Feiras, Exposições, Congressos E Congêneres.",
+   "nbs": [
+    "118066100",
+    "118066200",
+    "118066300"
+   ],
+   "indOps": [
+    "040101"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1711",
+   "descricao": "Organização De Festas E Recepções; Bufê (Exceto O Fornecimento De Alimentação E Bebidas, Que Fica Sujeito Ao ICMS).",
+   "nbs": [
+    "118066300",
+    "103011000",
+    "103013100",
+    "103013900"
+   ],
+   "indOps": [
+    "100301",
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1712",
+   "descricao": "Administração Em Geral, Inclusive De Bens E Negócios De Terceiros.",
+   "nbs": [
+    "110011100",
+    "110011290",
+    "114012100",
+    "114012200"
+   ],
+   "indOps": [
+    "020301",
+    "100301"
+   ],
+   "cClassTribs": [
+    "200046",
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1713",
+   "descricao": "Leilão E Congêneres.",
+   "nbs": [
+    "118069000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1714",
+   "descricao": "Advocacia.",
+   "nbs": [
+    "113011000",
+    "113012000",
+    "113019000",
+    "113031000",
+    "113032000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "200052"
+   ],
+   "atividadesSn": [
+    "14"
+   ]
+  },
+  {
+   "item": "1715",
+   "descricao": "Arbitragem De Qualquer Espécie, Inclusive Jurídica.",
+   "nbs": [
+    "113014000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1716",
+   "descricao": "Auditoria.",
+   "nbs": [
+    "113021100",
+    "113021900"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "200052",
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1717",
+   "descricao": "Análise De Organização E Métodos.",
+   "nbs": [
+    "118069000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1718",
+   "descricao": "Atuária E Cálculos Técnicos De Qualquer Natureza.",
+   "nbs": [
+    "109063000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1719",
+   "descricao": "Contabilidade, Inclusive Serviços Técnicos E Auxiliares.",
+   "nbs": [
+    "113022100",
+    "113022200",
+    "113022300"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "200052"
+   ],
+   "atividadesSn": [
+    "7",
+    "8"
+   ]
+  },
+  {
+   "item": "1720",
+   "descricao": "Consultoria E Assessoria Econômica Ou Financeira.",
+   "nbs": [
+    "109055000",
+    "109057000",
+    "109058000",
+    "114011200"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "200052"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1721",
+   "descricao": "Estatística.",
+   "nbs": [
+    "114150000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "200052"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1722",
+   "descricao": "Cobrança Em Geral.",
+   "nbs": [
+    "118062000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "1723",
+   "descricao": "Assessoria, Análise, Avaliação, Atendimento, Consulta, Cadastro, Seleção, Gerenciamento De Informações, Administração De Contas A Receber Ou A Pagar E Em Geral, Relacionados A Operações De Faturização (Factoring).",
+   "nbs": [
+    "109080000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "IMP"
+   ]
+  },
+  {
+   "item": "1724",
+   "descricao": "Apresentação De Palestras, Conferências, Seminários E Congêneres.",
+   "nbs": [
+    "122051400"
+   ],
+   "indOps": [
+    "030101",
+    "030102",
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1725",
+   "descricao": "Inserção De Textos, Desenhos E Outros Materiais De Propaganda E Publicidade, Em Qualquer Meio (Exceto Em Livros, Jornais, Periódicos E Nas Modalidades De Serviços De Radiodifusão Sonora E De Sons E Imagens De Recepção Livre E Gratuita).(Incluído Pela Lei Complementar Nº 157, De 2016)",
+   "nbs": [
+    "114063300",
+    "114063400",
+    "114063900"
+   ],
+   "indOps": [
+    "100101"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1801",
+   "descricao": "Serviços De Regulação De Sinistros Vinculados A Contratos De Seguros; Inspeção E Avaliação De Riscos Para Cobertura De Contratos De Seguros; Prevenção E Gerência De Riscos Seguráveis E Congêneres.",
+   "nbs": [
+    "109062000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "1901",
+   "descricao": "Serviços De Distribuição E Venda De Bilhetes E Demais Produtos De Loteria, Bingos, Cartões, Pules Ou Cupons De Apostas, Sorteios, Prêmios, Inclusive Os Decorrentes De Títulos De Capitalização E Congêneres.",
+   "nbs": [
+    "109051100"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "2001",
+   "descricao": "Serviços Portuários, Ferroportuários, Utilização De Porto, Movimentação De Passageiros, Reboque De Embarcações, Rebocador Escoteiro, Atracação, Desatracação, Serviços De Praticagem, Capatazia, Armazenagem De Qualquer Natureza, Serviços Acessórios, Movimentação De Mercadorias, Serviços De Apoio Marítimo, De Movimentação Ao Largo, Serviços De Armadores, Estiva, Conferência, Logística E Congêneres.",
+   "nbs": [
+    "104012120",
+    "106011000",
+    "106019000",
+    "106051000",
+    "106052000",
+    "106053000",
+    "106054000",
+    "106059000",
+    "106021000",
+    "106022100",
+    "106022200",
+    "106022300",
+    "106022900",
+    "106023100",
+    "106023200",
+    "106023300",
+    "106029000"
+   ],
+   "indOps": [
+    "050201"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "2002",
+   "descricao": "Serviços Aeroportuários, Utilização De Aeroporto, Movimentação De Passageiros, Armazenagem De Qualquer Natureza, Capatazia, Movimentação De Aeronaves, Serviços De Apoio Aeroportuários, Serviços Acessórios, Movimentação De Mercadorias, Logística E Congêneres.",
+   "nbs": [
+    "106019000",
+    "106029000",
+    "106061100",
+    "106061200",
+    "106061900",
+    "106062000"
+   ],
+   "indOps": [
+    "050101",
+    "100301",
+    "030101"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "2003",
+   "descricao": "Serviços De Terminais Rodoviários, Ferroviários, Metroviários, Movimentação De Passageiros, Mercadorias, Inclusive Suas Operações, Logística E Congêneres.",
+   "nbs": [
+    "106019000",
+    "106030000",
+    "106041000",
+    "106049000"
+   ],
+   "indOps": [
+    "050101",
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "2101",
+   "descricao": "Serviços De Registros Públicos, Cartorários E Notariais.",
+   "nbs": [
+    "113040000"
+   ],
+   "indOps": [
+    "100301",
+    "030101",
+    "030102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "IMP"
+   ]
+  },
+  {
+   "item": "2201",
+   "descricao": "Serviços De Exploração De Rodovia Mediante Cobrança De Preço Ou Pedágio Dos Usuários, Envolvendo Execução De Serviços De Conservação, Manutenção, Melhoramentos Para Adequação De Capacidade E Segurança De Trânsito, Operação, Monitoração, Assistência Aos Usuários E Outros Serviços Definidos Em Contratos, Atos De Concessão Ou De Permissão Ou Em Normas Oficiais.",
+   "nbs": [
+    "106042100",
+    "106042200"
+   ],
+   "indOps": [
+    "080101"
+   ],
+   "cClassTribs": [
+    "820006"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "2301",
+   "descricao": "Serviços De Programação E Comunicação Visual, Desenho Industrial E Congêneres.",
+   "nbs": [
+    "114092100",
+    "114092200",
+    "114092300",
+    "114092400",
+    "114092500",
+    "114092900",
+    "114093000",
+    "114099000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "2401",
+   "descricao": "Serviços De Chaveiros, Confecção De Carimbos, Placas, Sinalização Visual, Banners, Adesivos E Congêneres.",
+   "nbs": [
+    "126060000"
+   ],
+   "indOps": [
+    "050101",
+    "050102",
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "2501",
+   "descricao": "Funerais, Inclusive Fornecimento De Caixão, Urna Ou Esquifes; Aluguel De Capela; Transporte Do Corpo Cadavérico; Fornecimento De Flores, Coroas E Outros Paramentos; Desembaraço De Certidão De Óbito; Fornecimento De Véu, Essa E Outros Adornos; Embalsamento, Embelezamento, Conservação Ou Restauração De Cadáveres.",
+   "nbs": [
+    "114053000",
+    "126030000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200029"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "2502",
+   "descricao": "Translado Intramunicipal E Cremação De Corpos E Partes De Corpos Cadavéricos. (Redação Dada Pela Lei Complementar Nº 157, De 2016)",
+   "nbs": [
+    "114053000",
+    "126030000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200029"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "2503",
+   "descricao": "Planos Ou Convênio Funerários.",
+   "nbs": [
+    "126030000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "011001",
+    "820002"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "2504",
+   "descricao": "Manutenção E Conservação De Jazigos E Cemitérios.",
+   "nbs": [
+    "126030000"
+   ],
+   "indOps": [
+    "020201"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "2505",
+   "descricao": "Cessão De Uso De Espaços Em Cemitérios Para Sepultamento. (Incluído Pela Lei Complementar Nº 157, De 2016)",
+   "nbs": [
+    "126030000"
+   ],
+   "indOps": [
+    "020101"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "2601",
+   "descricao": "Serviços De Coleta, Remessa Ou Entrega De Correspondências, Documentos, Objetos, Bens Ou Valores, Inclusive Pelos Correios E Suas Agências Franqueadas; Courrier E Congêneres.",
+   "nbs": [
+    "105011500",
+    "106081000",
+    "107010000",
+    "107020000",
+    "107030000",
+    "118024000"
+   ],
+   "indOps": [
+    "070101"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "2701",
+   "descricao": "Serviços De Assistência Social.",
+   "nbs": [
+    "123041100",
+    "123041200",
+    "123041900",
+    "123042000",
+    "123049000"
+   ],
+   "indOps": [
+    "030101",
+    "030102",
+    "100301"
+   ],
+   "cClassTribs": [
+    "200052"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "2801",
+   "descricao": "Serviços De Avaliação De Bens E Serviços De Qualquer Natureza.",
+   "nbs": [
+    "114041400",
+    "110013000",
+    "109021000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "2901",
+   "descricao": "Serviços De Biblioteconomia.",
+   "nbs": [
+    "117051000",
+    "117052000",
+    "114150000"
+   ],
+   "indOps": [
+    "030101",
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200052"
+   ],
+   "atividadesSn": [
+    "7",
+    "9"
+   ]
+  },
+  {
+   "item": "3001",
+   "descricao": "Serviços De Biologia, Biotecnologia E Química.",
+   "nbs": [
+    "114150000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "200052",
+    "200038"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "3101",
+   "descricao": "Serviços Técnicos Em Edificações, Eletrônica, Eletrotécnica, Mecânica, Telecomunicações E Congêneres.",
+   "nbs": [
+    "114150000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "200052"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "3201",
+   "descricao": "Serviços De Desenhos Técnicos.",
+   "nbs": [
+    "114099000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "3301",
+   "descricao": "Serviços De Desembaraço Aduaneiro, Comissários, Despachantes E Congêneres.",
+   "nbs": [
+    "102040000",
+    "126060000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "3401",
+   "descricao": "Serviços De Investigações Particulares, Detetives E Congêneres.",
+   "nbs": [
+    "118021000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "3501",
+   "descricao": "Serviços De Reportagem, Assessoria De Imprensa, Jornalismo E Relações Públicas.",
+   "nbs": [
+    "114013100",
+    "114013200",
+    "117041000",
+    "117042000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200040",
+    "200052"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "3601",
+   "descricao": "Serviços De Meteorologia.",
+   "nbs": [
+    "114043000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "3701",
+   "descricao": "Serviços De Artistas, Atletas, Modelos E Manequins.",
+   "nbs": [
+    "118068100",
+    "118068200",
+    "118068300",
+    "125060000",
+    "125031000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001",
+    "200039"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "3801",
+   "descricao": "Serviços De Museologia",
+   "nbs": [
+    "125041100",
+    "125041200",
+    "114150000"
+   ],
+   "indOps": [
+    "030101",
+    "020201",
+    "100301"
+   ],
+   "cClassTribs": [
+    "200039",
+    "000001",
+    "200052"
+   ],
+   "atividadesSn": [
+    "7",
+    "9"
+   ]
+  },
+  {
+   "item": "3901",
+   "descricao": "Serviços De Ourivesaria E Lapidação (Quando O Material For Fornecido Pelo Tomador Do Serviço).",
+   "nbs": [
+    "120022000"
+   ],
+   "indOps": [
+    "050101",
+    "050102"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "7"
+   ]
+  },
+  {
+   "item": "4001",
+   "descricao": "Obras De Arte Sob Encomenda.",
+   "nbs": [
+    "111099000",
+    "125032000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "9"
+   ]
+  },
+  {
+   "item": "990101",
+   "descricao": "Outros serviços sem a incidência de ISSQN e ICMS.",
+   "nbs": [],
+   "indOps": [],
+   "cClassTribs": [],
+   "atividadesSn": []
+  },
+  {
+   "item": "990201",
+   "descricao": "Operação com Bens Imateriais não classificados em itens anteriores",
+   "nbs": [
+    "111031000",
+    "111033100",
+    "111033200",
+    "111033400",
+    "111033500",
+    "111033610",
+    "111033620",
+    "111033690",
+    "111033900",
+    "111034100",
+    "111034200",
+    "111034300",
+    "111035000",
+    "111039000",
+    "111041000",
+    "111043000",
+    "111049000",
+    "111051000",
+    "111052000",
+    "111053000",
+    "111054100",
+    "111054200",
+    "111055100",
+    "111055900",
+    "111056000",
+    "111057000",
+    "111059000",
+    "111061000",
+    "111063100",
+    "111063200",
+    "111063400",
+    "111063500",
+    "111063610",
+    "111063620",
+    "111063690",
+    "111063900",
+    "111064100",
+    "111064200",
+    "111064300",
+    "111065000",
+    "111069000",
+    "111071000",
+    "111073100",
+    "111073200",
+    "111073900",
+    "111074000",
+    "111075000",
+    "111079000",
+    "111081000",
+    "111083000",
+    "111089000",
+    "111091000",
+    "111092000",
+    "111093000",
+    "111099000"
+   ],
+   "indOps": [
+    "100301"
+   ],
+   "cClassTribs": [
+    "200039",
+    "000001",
+    "200038"
+   ],
+   "atividadesSn": [
+    "11"
+   ]
+  },
+  {
+   "item": "990301",
+   "descricao": "Locação de Bens Imóveis",
+   "nbs": [
+    "110021000",
+    "110022000"
+   ],
+   "indOps": [
+    "020101",
+    "030101",
+    "020102"
+   ],
+   "cClassTribs": [
+    "200027",
+    "200026",
+    "221001",
+    "200048"
+   ],
+   "atividadesSn": [
+    "IMP"
+   ]
+  },
+  {
+   "item": "990302",
+   "descricao": "Cessão Onerosa de Bens Imóveis",
+   "nbs": [
+    "110021000",
+    "110022000"
+   ],
+   "indOps": [
+    "020101",
+    "020102"
+   ],
+   "cClassTribs": [
+    "200027",
+    "221001"
+   ],
+   "atividadesSn": [
+    "11"
+   ]
+  },
+  {
+   "item": "990303",
+   "descricao": "Arrendamento de Bens Imóveis",
+   "nbs": [
+    "110021000",
+    "110022000"
+   ],
+   "indOps": [
+    "020101",
+    "020102"
+   ],
+   "cClassTribs": [
+    "200027",
+    "221001"
+   ],
+   "atividadesSn": [
+    "11"
+   ]
+  },
+  {
+   "item": "990304",
+   "descricao": "Servidão, Cessão de Uso ou de Espaço de Bens Imóveis (quando não caracterizem operações tributáveis pelo ISSQN)",
+   "nbs": [
+    "110021000",
+    "110022000"
+   ],
+   "indOps": [
+    "020101",
+    "020102"
+   ],
+   "cClassTribs": [
+    "200027"
+   ],
+   "atividadesSn": [
+    "11"
+   ]
+  },
+  {
+   "item": "990305",
+   "descricao": "Permissão de Uso ou Direito de Passagem de Bens Imóveis (quando não caracterizem operações tributáveis pelo ISSQN)",
+   "nbs": [
+    "110021000",
+    "110022000"
+   ],
+   "indOps": [
+    "020101",
+    "020102"
+   ],
+   "cClassTribs": [
+    "200027"
+   ],
+   "atividadesSn": [
+    "11"
+   ]
+  },
+  {
+   "item": "990401",
+   "descricao": "Locação de Bens Móveis",
+   "nbs": [
+    "111011100",
+    "111011200",
+    "111011300",
+    "111011400",
+    "111011500",
+    "111011600",
+    "111011700",
+    "111012000",
+    "111013000",
+    "111014000",
+    "111015000",
+    "111016000",
+    "111019000",
+    "111021000",
+    "111022000",
+    "111023000",
+    "111024000",
+    "111025000",
+    "111026000",
+    "111029000"
+   ],
+   "indOps": [
+    "010101",
+    "010102",
+    "010103",
+    "010106"
+   ],
+   "cClassTribs": [
+    "000001"
+   ],
+   "atividadesSn": [
+    "11"
+   ]
+  },
+  {
+   "item": "990501",
+   "descricao": "Operações condominiais",
+   "nbs": [
+    "110019000"
+   ],
+   "indOps": [
+    "020201"
+   ],
+   "cClassTribs": [
+    "200046"
+   ],
+   "atividadesSn": [
+    "IMP"
+   ]
+  }
+ ]
+}

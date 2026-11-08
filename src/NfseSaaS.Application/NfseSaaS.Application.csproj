@@ -20,6 +20,8 @@
   <!-- Catálogo oficial de rejeições da SEFIN (gerado por tools/rejeicoes-sefin/gerar_catalogo.py). -->
   <ItemGroup>
     <EmbeddedResource Include="Rejeicoes\rejeicoes-sefin.json" LogicalName="NfseSaaS.Application.Rejeicoes.rejeicoes-sefin.json" />
+    <!-- Anexos VII e VIII da Reforma Tributária na NFS-e (gerado por tools/ibscbs/gerar_correlacao.py). -->
+    <EmbeddedResource Include="Fiscal\IbsCbs\correlacao-ibscbs.json" LogicalName="NfseSaaS.Application.Fiscal.IbsCbs.correlacao-ibscbs.json" />
   </ItemGroup>
 
   <!-- Não deve conhecer EF Core, PostgreSQL ou detalhes de infraestrutura. -->

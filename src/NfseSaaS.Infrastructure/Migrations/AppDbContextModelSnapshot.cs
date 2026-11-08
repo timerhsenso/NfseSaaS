@@ -1271,6 +1271,14 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasPrecision(5, 2)
                         .HasColumnType("numeric(5,2)");
 
+                    b.Property<string>("CClassTrib")
+                        .HasMaxLength(6)
+                        .HasColumnType("character varying(6)");
+
+                    b.Property<string>("CIndOp")
+                        .HasMaxLength(6)
+                        .HasColumnType("character varying(6)");
+
                     b.Property<string>("ChaveAcesso")
                         .HasMaxLength(60)
                         .HasColumnType("character varying(60)");
@@ -1620,6 +1628,14 @@ namespace NfseSaaS.Infrastructure.Migrations
 
                     b.Property<bool>("Ativo")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("CClassTrib")
+                        .HasMaxLength(6)
+                        .HasColumnType("character varying(6)");
+
+                    b.Property<string>("CIndOp")
+                        .HasMaxLength(6)
+                        .HasColumnType("character varying(6)");
 
                     b.Property<string>("CodigoNbs")
                         .IsRequired()

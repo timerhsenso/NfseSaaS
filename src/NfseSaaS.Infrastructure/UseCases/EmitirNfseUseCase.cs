@@ -3,6 +3,8 @@ using System.Globalization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using NfseSaaS.Application.Fiscal.IbsCbs;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.Nfse;
@@ -12,6 +14,7 @@ using NfseSaaS.Infrastructure.Persistence;
 using NfseSaaS.Nacional.Exceptions;
 using NfseSaaS.Nacional.Helpers;
 using NfseSaaS.Nacional.Models;
+using NfseSaaS.Nacional.Options;
 using NfseSaaS.Nacional.Services;
 
 namespace NfseSaaS.Infrastructure.UseCases;
@@ -47,6 +50,7 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
     private readonly IEnviarNfsePorEmailUseCase _enviarNfsePorEmail;
     private readonly ILogger<EmitirNfseUseCase> _logger;
     private readonly NfseSaaS.Application.UseCases.Cobranca.IVerificadorCobranca _verificadorCobranca;
+    private readonly NfseNacionalOptions _nfseNacionalOptions;
 
     public EmitirNfseUseCase(
         AppDbContext db,
@@ -55,9 +59,11 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
         INfseEventoWriter nfseEventoWriter,
         IEnviarNfsePorEmailUseCase enviarNfsePorEmail,
         ILogger<EmitirNfseUseCase> logger,
-        NfseSaaS.Application.UseCases.Cobranca.IVerificadorCobranca verificadorCobranca)
+        NfseSaaS.Application.UseCases.Cobranca.IVerificadorCobranca verificadorCobranca,
+        IOptions<NfseNacionalOptions> nfseNacionalOptions)
     {
         _verificadorCobranca = verificadorCobranca;
+        _nfseNacionalOptions = nfseNacionalOptions.Value;
         _db = db;
         _nfseNacionalService = nfseNacionalService;
         _auditLogWriter = auditLogWriter;
@@ -206,6 +212,25 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
         if (aliquotaIss is { } aliquotaInformada && (aliquotaInformada <= 0 || aliquotaInformada > 5.00m))
             throw new RegraNegocioException("Alíquota de ISS deve estar entre 0,01% e 5,00%.");
 
+        // IBS/CBS (F1): o grupo só existe no leiaute NT 009 e vai conforme o
+        // regime e a competência (RegrasIbsCbs.DeveInformar). Sem
+        // classificação possível para o serviço, para aqui, antes de gastar
+        // o número da DPS.
+        var tpAmb = empresa.TipoAmbiente.ParaTpAmb();
+        ClassificacaoIbsCbs? ibsCbs = null;
+        if (_nfseNacionalOptions.ObterLeiauteDps(tpAmb) == LeiauteDps.Nt009
+            && RegrasIbsCbs.DeveInformar(
+                empresa.OpSimpNac,
+                request.DataCompetencia,
+                producao: empresa.TipoAmbiente == TipoAmbiente.Producao,
+                _nfseNacionalOptions.IbsCbsSimplesNacionalAPartirDe,
+                _nfseNacionalOptions.IbsCbsSimplesNacionalEmHomologacao))
+        {
+            var resolucao = RegrasIbsCbs.Resolver(servico.CodigoTributacaoNacional, servico.CIndOp, servico.CClassTrib);
+            ibsCbs = resolucao.Classificacao
+                ?? throw new RegraNegocioException($"{resolucao.Problema} Serviço: \"{servico.Descricao}\".");
+        }
+
         var numeroDps = await ProximoNumeroDpsAsync(request.EmpresaId, cancellationToken);
 
         // Grava como "Processando" ANTES de chamar a SEFIN — se a chamada
@@ -265,6 +290,8 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
             DescricaoServico = request.DescricaoServico,
             CodigoTributacaoNacional = servico.CodigoTributacaoNacional,
             CodigoNbs = servico.CodigoNbs,
+            CIndOp = ibsCbs?.CIndOp,
+            CClassTrib = ibsCbs?.CClassTrib,
             TribIssqn = empresa.TribIssqn,
             TpRetIssqn = issRetido ? "2" : "1",
             // Alíquota só vai pra DPS quando há retenção — sem retenção o
@@ -329,7 +356,8 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
             // sozinho). Lê de nfse.TipoAmbiente (já congelado acima), não
             // de empresa.TipoAmbiente de novo — mesma fonte que vai pro
             // banco, sem chance de os dois divergirem.
-            TpAmb: nfse.TipoAmbiente.ParaTpAmb());
+            TpAmb: nfse.TipoAmbiente.ParaTpAmb(),
+            IbsCbs: ibsCbs is null ? null : new IbsCbsDps(ibsCbs.CIndOp, ibsCbs.Cst, ibsCbs.CClassTrib, ibsCbs.ComTributacao));
 
         try
         {

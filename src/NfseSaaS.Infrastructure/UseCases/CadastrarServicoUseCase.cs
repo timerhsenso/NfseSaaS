@@ -30,6 +30,8 @@ public sealed class CadastrarServicoUseCase : ICadastrarServicoUseCase
             Descricao = request.Descricao,
             CodigoTributacaoNacional = request.CodigoTributacaoNacional,
             CodigoNbs = request.CodigoNbs,
+            CIndOp = Normalizar(request.CIndOp),
+            CClassTrib = Normalizar(request.CClassTrib),
             ValorPadrao = request.ValorPadrao
         };
 
@@ -41,4 +43,8 @@ public sealed class CadastrarServicoUseCase : ICadastrarServicoUseCase
 
         return servico.Id;
     }
+
+    /// <summary>Só dígitos; vazio vira nulo (= sugestão da tabela oficial).</summary>
+    internal static string? Normalizar(string? codigo) =>
+        string.IsNullOrWhiteSpace(codigo) ? null : new string(codigo.Where(char.IsDigit).ToArray());
 }

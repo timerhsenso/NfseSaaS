@@ -20,6 +20,18 @@ public sealed class Servico : BaseEntity, ITenantEntity
     /// <summary>Código NBS (Nomenclatura Brasileira de Serviços), campo cNBS da DPS.</summary>
     public string CodigoNbs { get; set; } = string.Empty;
 
+    /// <summary>
+    /// IBS/CBS (Reforma Tributária): indicador da operação (cIndOp, Anexo VII).
+    /// Vazio = vale a sugestão da tabela oficial para o item (RegrasIbsCbs).
+    /// </summary>
+    public string? CIndOp { get; set; }
+
+    /// <summary>
+    /// IBS/CBS: classificação tributária (cClassTrib, 6 dígitos; o CST são os
+    /// 3 primeiros). Vazio = vale a sugestão da tabela oficial para o item.
+    /// </summary>
+    public string? CClassTrib { get; set; }
+
     public decimal ValorPadrao { get; set; }
 
     public bool Ativo { get; set; } = true;

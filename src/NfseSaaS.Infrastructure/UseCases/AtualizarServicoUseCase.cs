@@ -27,6 +27,8 @@ public sealed class AtualizarServicoUseCase : IAtualizarServicoUseCase
         servico.Descricao = request.Descricao;
         servico.CodigoTributacaoNacional = request.CodigoTributacaoNacional;
         servico.CodigoNbs = request.CodigoNbs;
+        servico.CIndOp = CadastrarServicoUseCase.Normalizar(request.CIndOp);
+        servico.CClassTrib = CadastrarServicoUseCase.Normalizar(request.CClassTrib);
         servico.ValorPadrao = request.ValorPadrao;
 
         _auditLogWriter.Registrar("AtualizarServico", "Servico", servico.Id, new { servico.Descricao });

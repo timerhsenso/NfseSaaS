@@ -96,6 +96,11 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
+        // IBS/CBS: ao escolher o cTribNac, carrega as opções da tabela
+        // oficial do item (a sugestão vale quando o campo fica em branco).
+        $('#codigoTributacaoNacional').on('select2:select', e => carregarOpcoesIbsCbs(e.params.data.id, null, null));
+        document.getElementById('cClassTrib').addEventListener('change', ajustarIndicadorPelaClassificacao);
+
         document.getElementById('tabela-servicos').addEventListener('click', async function (e) {
             const botao = e.target.closest('button');
             if (!botao) return;
@@ -140,6 +145,86 @@ function limparFormularioServico() {
 
     document.getElementById('codigoNbs').innerHTML = '';
     $('#codigoNbs').val(null).trigger('change');
+
+    limparOpcoesIbsCbs();
+}
+
+// ---------- IBS/CBS (Reforma Tributária) ----------
+
+let classificacoesIbsCbs = new Map();
+
+function limparOpcoesIbsCbs() {
+    classificacoesIbsCbs = new Map();
+    document.getElementById('cClassTrib').innerHTML = '<option value="">—</option>';
+    document.getElementById('cIndOp').innerHTML = '<option value="">—</option>';
+    document.getElementById('cIndOp').disabled = false;
+    document.getElementById('ibscbs-ajuda').textContent = 'Escolha o código de tributação nacional acima para ver as opções da tabela oficial.';
+}
+
+async function carregarOpcoesIbsCbs(codigoTributacaoNacional, cIndOpAtual, cClassTribAtual) {
+    limparOpcoesIbsCbs();
+    if (!codigoTributacaoNacional) return;
+
+    let opcoes;
+    try {
+        opcoes = await apiFetch(`/api/catalogos/ibscbs?codigoTributacaoNacional=${encodeURIComponent(codigoTributacaoNacional)}`);
+    } catch (err) {
+        document.getElementById('ibscbs-ajuda').textContent = 'Não foi possível carregar as opções do IBS/CBS agora. Você pode salvar e ajustar depois.';
+        return;
+    }
+
+    const selClass = document.getElementById('cClassTrib');
+    const selInd = document.getElementById('cIndOp');
+    const sugestao = opcoes.sugestao;
+
+    const doItem = new Set(opcoes.classificacoes.map(c => c.codigo));
+    [...opcoes.classificacoes, ...opcoes.todasClassificacoes].forEach(c => classificacoesIbsCbs.set(c.codigo, c));
+
+    selClass.innerHTML = '';
+    selClass.appendChild(new Option(sugestao ? `Usar a sugestão da tabela oficial (${sugestao.cClassTrib})` : 'Sem sugestão na tabela oficial — escolha abaixo', ''));
+    const grupoItem = document.createElement('optgroup');
+    grupoItem.label = 'Previstas para este serviço';
+    opcoes.classificacoes.forEach(c => grupoItem.appendChild(new Option(c.rotulo, c.codigo)));
+    if (grupoItem.children.length) selClass.appendChild(grupoItem);
+    const grupoOutras = document.createElement('optgroup');
+    grupoOutras.label = 'Outras classificações de serviços';
+    opcoes.todasClassificacoes.filter(c => !doItem.has(c.codigo)).forEach(c => grupoOutras.appendChild(new Option(c.rotulo, c.codigo)));
+    if (grupoOutras.children.length) selClass.appendChild(grupoOutras);
+
+    selInd.innerHTML = '';
+    selInd.appendChild(new Option(sugestao?.cIndOp ? `Usar a sugestão da tabela oficial (${sugestao.cIndOp})` : 'Usar a sugestão da tabela oficial', ''));
+    opcoes.indicadores.forEach(i => {
+        const opcao = new Option(i.suportado ? i.rotulo : `${i.rotulo} — ainda não disponível no micoempresa`, i.codigo);
+        opcao.disabled = !i.suportado;
+        selInd.appendChild(opcao);
+    });
+
+    // Valor já salvo que não está na lista do item: mantém visível para não perder.
+    if (cClassTribAtual && ![...selClass.options].some(o => o.value === cClassTribAtual))
+        selClass.appendChild(new Option(cClassTribAtual, cClassTribAtual));
+    if (cIndOpAtual && ![...selInd.options].some(o => o.value === cIndOpAtual))
+        selInd.appendChild(new Option(cIndOpAtual, cIndOpAtual));
+    selClass.value = cClassTribAtual ?? '';
+    selInd.value = cIndOpAtual ?? '';
+
+    document.getElementById('ibscbs-ajuda').textContent = opcoes.problemaSugestao
+        ? opcoes.problemaSugestao
+        : `Tabela oficial: item ${formatarItemLc116(opcoes.item)} da LC 116 (Anexo VIII v${opcoes.versaoAnexoVIII}). A SEFIN calcula os valores do IBS e da CBS; aqui vai só a classificação.`;
+
+    ajustarIndicadorPelaClassificacao();
+}
+
+// CST 400, 410 e 820 não têm tributação a declarar: sem indicador da operação.
+function ajustarIndicadorPelaClassificacao() {
+    const codigo = document.getElementById('cClassTrib').value;
+    const selInd = document.getElementById('cIndOp');
+    const semTributacao = codigo && classificacoesIbsCbs.get(codigo)?.comTributacao === false;
+    if (semTributacao) selInd.value = '';
+    selInd.disabled = !!semTributacao;
+}
+
+function formatarItemLc116(item) {
+    return item && item.length === 4 ? `${item.slice(0, 2)}.${item.slice(2)}` : (item ?? '—');
 }
 
 function abrirModalNovoServico() {
@@ -161,6 +246,7 @@ async function abrirModalEditarServico(id) {
 
         await preencherCodigoTributacaoNacionalAtual(servico.codigoTributacaoNacional);
         await preencherCodigoNbsAtual(servico.codigoNbs);
+        await carregarOpcoesIbsCbs(servico.codigoTributacaoNacional, servico.cIndOp, servico.cClassTrib);
 
         modalServico.show();
     } catch (err) {
@@ -219,7 +305,9 @@ async function salvarServico(e) {
         descricao: document.getElementById('descricao').value,
         codigoTributacaoNacional: document.getElementById('codigoTributacaoNacional').value,
         codigoNbs: document.getElementById('codigoNbs').value,
-        valorPadrao: parseFloat(document.getElementById('valorPadrao').value)
+        valorPadrao: parseFloat(document.getElementById('valorPadrao').value),
+        cIndOp: document.getElementById('cIndOp').disabled ? null : (document.getElementById('cIndOp').value || null),
+        cClassTrib: document.getElementById('cClassTrib').value || null
     };
 
     try {

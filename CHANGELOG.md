@@ -5,6 +5,30 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (fiscal — Reforma Tributária, F1 parte 1)
+- **IBS/CBS na DPS** (grupo `IBSCBS`, leiaute NT 009): a nota leva a
+  classificação do IBS/CBS — indicador da operação (cIndOp), destinatário =
+  tomador (indDest 0), CST e classificação tributária (cClassTrib) e o grupo
+  de tributação quando há tributo a declarar. Os valores a SEFIN calcula.
+  Validado contra o XSD oficial de Produção Restrita (20/10/2026).
+- **Quando vai**: não optante do Simples, em toda nota de competência a partir
+  de 01/01/2026 (obrigatório desde 10/2026); optante do Simples (MEI e
+  ME/EPP), em produção a partir da competência 01/01/2027 (configurável:
+  `NfseNacional__IbsCbsSimplesNacionalAPartirDe`) e, antes disso, já em
+  homologação, para testar (`NfseNacional__IbsCbsSimplesNacionalEmHomologacao`).
+  Só no leiaute NT 009 (a produção passa a ele em 01/12/2026).
+- **Cadastro do Serviço com IBS/CBS**: classificação e indicador da operação,
+  com as opções da tabela oficial do item da LC 116 (Anexo VIII v1.02.00) e a
+  sugestão que vale quando o campo fica em branco. Indicadores que exigem
+  dados que o sistema ainda não envia (imóvel, evento, destinatário diferente
+  do tomador) aparecem desabilitados; serviço que só admite esses indicadores
+  é barrado na emissão com a explicação, antes de gastar o número da DPS.
+- **Tabelas oficiais embutidas** (Anexos VII v1.03.00 e VIII v1.02.00), geradas
+  por `tools/ibscbs/gerar_correlacao.py`; `GET /api/catalogos/ibscbs`.
+- A nota guarda a classificação enviada (`CIndOp`, `CClassTrib`).
+- Orientação de correção para as rejeições do IBS/CBS (E0859, E0860, E0901,
+  E0902, E0958–E0961).
+
 ### Alterado (jurídico)
 - **Termos de uso e Política de privacidade 1.1**, valendo a partir de
   24/11/2026 (aviso prévio de 15 dias, como o item de alterações promete):

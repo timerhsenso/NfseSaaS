@@ -254,6 +254,16 @@ public static class CatalogoRejeicoesSefin
             ["E0312"] = (AreaCorrecaoRejeicao.Servico, "A prefeitura onde o ISS é devido não aceita este código de tributação nacional. Confira o código do serviço em Serviços, de preferência com o contador."),
             ["E0316"] = (AreaCorrecaoRejeicao.Servico, "O código NBS do serviço não existe. Corrija o NBS em Serviços."),
 
+            // IBS/CBS (Reforma Tributária) — classificação no cadastro do Serviço
+            ["E0859"] = (AreaCorrecaoRejeicao.Servico, "Com essa classificação do IBS/CBS (isenção, imunidade ou documento específico) não se informa o indicador da operação. Deixe o indicador em branco em Serviços."),
+            ["E0860"] = (AreaCorrecaoRejeicao.Servico, "Falta o indicador da operação do IBS/CBS (cIndOp). Escolha um em Serviços (a sugestão da tabela oficial costuma servir)."),
+            ["E0901"] = (AreaCorrecaoRejeicao.Servico, "O indicador da operação do IBS/CBS não vale para serviços. Escolha outro em Serviços."),
+            ["E0902"] = (AreaCorrecaoRejeicao.Servico, "Para o código 99.03 o indicador da operação do IBS/CBS precisa ser de operação com imóvel (02xxxx), que o micoempresa ainda não emite. Use o Emissor Nacional (gov.br) para essa nota."),
+            ["E0958"] = (AreaCorrecaoRejeicao.Servico, "A classificação tributária do IBS/CBS (cClassTrib) não vale para serviços. Escolha outra em Serviços."),
+            ["E0959"] = (AreaCorrecaoRejeicao.Servico, "A classificação tributária do IBS/CBS não combina com o CST. Escolha a classificação de novo em Serviços."),
+            ["E0960"] = (AreaCorrecaoRejeicao.Servico, "A SEFIN pediu as informações de tributação do IBS/CBS para essa classificação. Confira a classificação do serviço em Serviços e avise o suporte se o erro continuar."),
+            ["E0961"] = (AreaCorrecaoRejeicao.Servico, "A SEFIN não aceita informações de tributação do IBS/CBS para essa classificação. Confira a classificação do serviço em Serviços e avise o suporte se o erro continuar."),
+
             // ISS / retenção / alíquota
             ["E0595"] = (AreaCorrecaoRejeicao.Tributacao, "A alíquota de ISS não pode passar de 5%. Corrija a alíquota em Empresas."),
             ["E0600"] = (AreaCorrecaoRejeicao.Tributacao, "MEI não informa alíquota de ISS. Deixe a alíquota em branco em Empresas."),
