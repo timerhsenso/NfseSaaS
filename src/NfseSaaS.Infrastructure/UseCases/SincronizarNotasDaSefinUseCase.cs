@@ -12,6 +12,7 @@ using NfseSaaS.Infrastructure.Danfse;
 using NfseSaaS.Infrastructure.Persistence;
 using NfseSaaS.Infrastructure.SincronizacaoSefin;
 using NfseSaaS.Nacional.Clients;
+using NfseSaaS.Nacional.Exceptions;
 using NfseSaaS.Nacional.Helpers;
 using NfseSaaS.Nacional.Models;
 
@@ -57,13 +58,38 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
         _logger = logger;
     }
 
+    /// <summary>
+    /// Consulta o ADN; recusa ou falha de comunicação viram mensagem para a
+    /// tela (422), com o detalhe cru só no log. Antes estouravam como erro
+    /// interno e o usuário via só "Ocorreu um erro". O cursor (NSU) não
+    /// anda: a próxima busca tenta do mesmo ponto.
+    /// </summary>
+    private async Task<DfeLoteResponse> ConsultarAdnAsync(Guid empresaId, string tpAmb, long ultimoNsu, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _adnClient.ConsultarPorNsuAsync(empresaId, tpAmb, ultimoNsu, cancellationToken);
+        }
+        catch (AdnConsultaRecusadaException ex)
+        {
+            _logger.LogWarning("ADN recusou a busca de notas da Empresa {EmpresaId} (NSU {Nsu}, HTTP {Status}): {Corpo}",
+                empresaId, ultimoNsu, ex.StatusHttp, ex.Corpo);
+            throw new RegraNegocioException(MensagensSincronizacao.Recusa(ex.Motivo));
+        }
+        catch (NfseApiException ex)
+        {
+            _logger.LogWarning(ex, "Falha de comunicação com o ADN na busca de notas da Empresa {EmpresaId} (NSU {Nsu})", empresaId, ultimoNsu);
+            throw new RegraNegocioException(MensagensSincronizacao.Indisponivel);
+        }
+    }
+
     public async Task<SincronizacaoSefinResponse> ExecutarAsync(Guid empresaId, CancellationToken cancellationToken)
     {
         var empresa = await _db.Empresas.FirstOrDefaultAsync(e => e.Id == empresaId, cancellationToken)
             ?? throw new RecursoNaoEncontradoException($"Empresa {empresaId} não encontrada.");
 
         var ultimoNsu = empresa.UltimoNsuDistribuicao ?? 0;
-        var lote = await _adnClient.ConsultarPorNsuAsync(empresaId, empresa.TipoAmbiente.ParaTpAmb(), ultimoNsu, cancellationToken);
+        var lote = await ConsultarAdnAsync(empresaId, empresa.TipoAmbiente.ParaTpAmb(), ultimoNsu, cancellationToken);
 
         int importadas = 0, jaExistentes = 0, ignoradasPorConflito = 0, clientesCriados = 0, atualizadasPorEvento = 0;
         int confirmadasAposFalha = 0, ignoradasOutroEmitente = 0;

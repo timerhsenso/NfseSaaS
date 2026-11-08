@@ -50,13 +50,14 @@ public sealed class AdnDistribuicaoClient : IAdnDistribuicaoClient
             using var response = await client.GetAsync(url, timeoutCts.Token);
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
 
-            if (!response.IsSuccessStatusCode)
-                throw new NfseApiException($"ADN retornou HTTP {(int)response.StatusCode} ao consultar NSU {ultimoNsuProcessado}: {body}");
+            // 404 NENHUM_DOCUMENTO_LOCALIZADO = fila vazia (lote vazio, não
+            // é erro); outra resposta fora de 2xx = recusa, com o motivo
+            // que o ADN informar (ver RespostaAdn).
+            var leitura = RespostaAdn.Interpretar((int)response.StatusCode, body);
+            if (leitura.Recusada)
+                throw new AdnConsultaRecusadaException((int)response.StatusCode, leitura.Motivo, body);
 
-            var resultado = System.Text.Json.JsonSerializer.Deserialize<DfeLoteResponse>(body,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-            return resultado ?? throw new NfseApiException("ADN retornou corpo vazio/inválido.");
+            return leitura.Lote ?? throw new NfseApiException("ADN retornou corpo vazio/inválido.");
         }
         catch (BrokenCircuitException ex)
         {

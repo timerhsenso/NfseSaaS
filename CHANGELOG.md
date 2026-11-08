@@ -5,6 +5,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Corrigido (busca de notas na SEFIN)
+- **"Buscar notas da SEFIN" não dá mais erro interno** quando o ADN recusa a
+  consulta: a tela mostra o motivo informado pelo ADN (ou avisa que ele não
+  informou) e diz que nada foi alterado; o detalhe cru fica no log como aviso.
+  Falha de comunicação vira "tente de novo em alguns minutos".
+- **Fila vazia do ADN (404 NENHUM_DOCUMENTO_LOCALIZADO) é "nenhuma nota nova"**,
+  não erro.
+
 ### Corrigido (emissão e produção)
 - **Sem empresa cadastrada, os botões que dependem dela ficam desligados**
   (Emitir nota, Nota Mensal, Buscar notas da SEFIN, Novo cliente, Novo
