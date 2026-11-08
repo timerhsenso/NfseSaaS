@@ -1,17 +1,34 @@
+@using NfseSaaS.Application.Common
+@using NfseSaaS.Application.UseCases.Indicacao
 @using NfseSaaS.Domain.Legal
 @{
     Layout = "_LegalLayout";
     ViewData["Title"] = "Política de privacidade";
     var servico = DocumentosLegais.NomeServico;
+    var jaVale = DocumentosLegais.VersaoAtualVigente(DataBrasilia.Hoje());
+    var desde = DocumentosLegais.VigentesDesde.ToString("dd/MM/yyyy");
 }
 
 <h1>Política de privacidade</h1>
-<p class="legal-versao">Versão @DocumentosLegais.VersaoPoliticaPrivacidade · vigente desde @DocumentosLegais.VigentesDesde.ToString("dd/MM/yyyy")</p>
+<p class="legal-versao">
+    Versão @DocumentosLegais.VersaoPoliticaPrivacidade · @(jaVale ? "vigente desde" : "vale a partir de") @desde
+    · <a href="/privacidade/@DocumentosLegais.VersaoAnteriorPoliticaPrivacidade">versão anterior (@DocumentosLegais.VersaoAnteriorPoliticaPrivacidade)</a>
+</p>
+
+<div class="legal-resumo">
+    <p class="mb-2"><strong>O que mudou na versão @DocumentosLegais.VersaoPoliticaPrivacidade:</strong></p>
+    <ul class="mb-0">
+        <li>o responsável (controlador) passa a ser a <strong>@DocumentosLegais.ResponsavelNome</strong> (CNPJ @DocumentosLegais.ResponsavelCnpj);</li>
+        <li>dados de quem é convidado pelo "Indique e ganhe" (itens 3, 4 e 7);</li>
+        <li>registro do CNPJ que usou o teste grátis, guardado mesmo depois da exclusão da conta, para evitar abuso (itens 3, 4 e 7);</li>
+        <li>a empresa de pagamentos (Asaas) e o que ela recebe (item 5).</li>
+    </ul>
+</div>
 
 <p class="legal-resumo">
     <strong>Em poucas palavras:</strong> usamos os seus dados só para fazer a plataforma funcionar, emitir as suas
-    notas e cumprir a lei. Não vendemos dados, não usamos cookies de propaganda e você pode pedir acesso, correção
-    ou exclusão a qualquer momento pelo e-mail
+    notas, cobrar os planos e cumprir a lei. Não vendemos dados, não usamos cookies de propaganda e você pode pedir
+    acesso, correção ou exclusão a qualquer momento pelo e-mail
     <a href="mailto:@DocumentosLegais.EmailPrivacidade">@DocumentosLegais.EmailPrivacidade</a>.
 </p>
 
@@ -23,16 +40,18 @@
 
 <h2>1. Quem é o responsável</h2>
 <p>
-    O responsável pela plataforma é <strong>@DocumentosLegais.ResponsavelNome</strong>, com sede em
-    @DocumentosLegais.Foro. O canal para qualquer assunto de privacidade e proteção de dados — inclusive os pedidos
-    do item 9 — é o e-mail <a href="mailto:@DocumentosLegais.EmailPrivacidade">@DocumentosLegais.EmailPrivacidade</a>.
+    O responsável pela plataforma é a <strong>@DocumentosLegais.ResponsavelNome</strong>, CNPJ
+    @DocumentosLegais.ResponsavelCnpj, com sede em @DocumentosLegais.Sede. O canal para qualquer assunto de
+    privacidade e proteção de dados — inclusive os pedidos do item 9 — é o e-mail
+    <a href="mailto:@DocumentosLegais.EmailPrivacidade">@DocumentosLegais.EmailPrivacidade</a>.
 </p>
 
 <h2>2. Nosso papel em cada tipo de dado</h2>
 <ul>
     <li>
-        <strong>Dados dos usuários da plataforma</strong> (quem cria a conta ou é convidado): o @servico é o
-        <strong>controlador</strong> — decide como e para que esses dados são usados, nos termos desta Política.
+        <strong>Dados dos usuários da plataforma</strong> (quem cria a conta ou é convidado) e <strong>de quem
+        recebe um convite do "Indique e ganhe"</strong>: o @servico é o <strong>controlador</strong> — decide como e
+        para que esses dados são usados, nos termos desta Política.
     </li>
     <li>
         <strong>Dados que o Cliente cadastra sobre os próprios clientes e tomadores</strong> (nome, CPF/CNPJ,
@@ -56,7 +75,9 @@
             <tr><td>Documentos fiscais</td><td>NFS-e emitidas, XML, PDF (DANFSe), eventos e mensagens da SEFIN.</td></tr>
             <tr><td>Registros de uso e segurança</td><td>endereço IP, data e hora de acesso, navegador, ações realizadas (histórico de auditoria), tentativas de login e e-mails enviados pela plataforma.</td></tr>
             <tr><td>Aceite destes documentos</td><td>versão aceita, data e hora, IP e navegador.</td></tr>
-            <tr><td>Pagamento (quando houver plano pago)</td><td>plano, situação da cobrança e dados de faturamento. Dados de cartão ficam só com a empresa de pagamentos.</td></tr>
+            <tr><td>Assinatura e pagamento</td><td>plano, preço, situação do teste grátis e da cobrança, faturas e avisos recebidos da empresa de pagamentos (pagamento, atraso, estorno, contestação). Dados de cartão ficam só com a empresa de pagamentos.</td></tr>
+            <tr><td>Registro do teste grátis</td><td>o CNPJ que usou o teste e a data de início, para aplicar a regra de um teste por CNPJ.</td></tr>
+            <tr><td>Indicação e convites</td><td>qual conta indicou qual, os prêmios gerados e o e-mail das pessoas convidadas pela tela "Indique e ganhe", com a data do convite.</td></tr>
         </tbody>
     </table>
 </div>
@@ -73,20 +94,26 @@
             <tr><td>Transmitir documentos fiscais ao Ambiente Nacional da NFS-e e guardar documentos fiscais</td><td>Cumprimento de obrigação legal (inciso II) e execução de contrato (inciso V)</td></tr>
             <tr><td>Guardar registros de acesso pelo prazo do Marco Civil da Internet</td><td>Cumprimento de obrigação legal (inciso II)</td></tr>
             <tr><td>Segurança, prevenção de fraude e de acesso indevido, auditoria, cópias de segurança, melhoria e suporte da plataforma</td><td>Legítimo interesse (inciso IX)</td></tr>
-            <tr><td>Cobrança e faturamento dos planos pagos</td><td>Execução de contrato (inciso V)</td></tr>
+            <tr><td>Cobrança dos planos, avisos de cobrança e emissão da nota fiscal de cada pagamento</td><td>Execução de contrato (inciso V) e cumprimento de obrigação legal (inciso II)</td></tr>
+            <tr><td>Aplicar a regra de um teste grátis por CNPJ, inclusive depois da exclusão de uma conta</td><td>Legítimo interesse (inciso IX), para prevenir abuso da oferta</td></tr>
+            <tr><td>Enviar o convite que o usuário pediu pelo "Indique e ganhe", evitar convites repetidos e conceder os prêmios</td><td>Legítimo interesse (inciso IX) do usuário que convida e do @servico</td></tr>
             <tr><td>Defesa em processos e registro do aceite destes documentos</td><td>Exercício regular de direitos (inciso VI)</td></tr>
         </tbody>
     </table>
 </div>
-<p>Não usamos dados para publicidade, não traçamos perfis de comportamento e não vendemos nem alugamos dados a ninguém.</p>
+<p>
+    Não usamos dados para publicidade, não traçamos perfis de comportamento e não vendemos nem alugamos dados a
+    ninguém. O e-mail de quem foi convidado só é usado para aquele convite (e para não mandar outro antes de
+    @RegrasConviteIndicacao.IntervaloMesmoEmailDias dias); não entra em lista de divulgação.
+</p>
 
 <h2>5. Com quem compartilhamos</h2>
 <p>Somente o necessário para o serviço funcionar:</p>
 <ul>
-    <li><strong>Ambiente Nacional da NFS-e (Receita Federal / SEFIN Nacional) e municípios:</strong> as notas e eventos que o Cliente manda emitir, cancelar ou consultar.</li>
+    <li><strong>Ambiente Nacional da NFS-e (Receita Federal / SEFIN Nacional) e municípios:</strong> as notas e eventos que o Cliente manda emitir, cancelar ou consultar, e a nota fiscal de cada mensalidade paga.</li>
+    <li><strong>Asaas (empresa de pagamentos):</strong> para gerar as faturas, recebe o nome ou razão social, o CPF ou CNPJ e o e-mail do Cliente, o plano e o valor. O pagamento em si (Pix, boleto ou cartão) é feito na página do Asaas, que tem política de privacidade própria.</li>
     <li><strong>Hostinger:</strong> hospedagem do servidor, do banco de dados e envio de e-mails da plataforma.</li>
     <li><strong>Microsoft (OneDrive):</strong> armazenamento das cópias de segurança, que saem do nosso servidor já criptografadas — a Microsoft não consegue ler o conteúdo.</li>
-    <li><strong>Empresa de pagamentos</strong> (quando houver plano pago): dados de cobrança do Cliente.</li>
     <li><strong>Serviços públicos de consulta</strong> (BrasilAPI, ViaCEP, IBGE, Banco Central): recebem apenas o CNPJ, CEP ou código consultado, sem outros dados pessoais.</li>
     <li><strong>Redes de distribuição de conteúdo</strong> (jsDelivr, Cloudflare, Google Fonts e similares): fornecem estilos, ícones e fontes das telas e, como qualquer site, recebem o IP e o navegador de quem acessa.</li>
     <li><strong>Autoridades:</strong> quando houver obrigação legal ou ordem judicial.</li>
@@ -109,6 +136,9 @@
         <tbody>
             <tr><td>Dados da conta e do serviço</td><td>Enquanto a conta estiver ativa.</td></tr>
             <tr><td>Notas fiscais, XML, eventos e dados necessários para comprová-los</td><td>5 (cinco) anos, contados na forma da legislação tributária, mesmo após o encerramento da conta.</td></tr>
+            <tr><td>Faturas, pagamentos e avisos da empresa de pagamentos</td><td>5 (cinco) anos, pela legislação fiscal e contábil.</td></tr>
+            <tr><td>Registro do teste grátis (CNPJ e data)</td><td>5 (cinco) anos desde o início do teste, mesmo após a exclusão da conta. Só o CNPJ e a data ficam guardados.</td></tr>
+            <tr><td>E-mail de quem recebeu convite e não criou conta</td><td>Até 12 (doze) meses depois do convite.</td></tr>
             <tr><td>Demais dados, após o encerramento da conta</td><td>Excluídos em até 90 (noventa) dias.</td></tr>
             <tr><td>Registros de acesso (IP, data e hora)</td><td>6 (seis) meses, conforme o art. 15 do Marco Civil da Internet.</td></tr>
             <tr><td>Registro do aceite destes documentos e dados necessários à defesa de direitos</td><td>Pelo prazo legal de prescrição aplicável.</td></tr>
@@ -121,7 +151,7 @@
 <ul>
     <li>Acesso somente por conexão segura (HTTPS) e senhas guardadas como código irreversível.</li>
     <li>Bloqueio temporário após tentativas de login erradas e limite de requisições contra ataques.</li>
-    <li>Separação entre contas: cada Cliente só enxerga os próprios dados.</li>
+    <li>Separação entre contas: cada Cliente só enxerga os próprios dados, conferida por testes automáticos a cada mudança do sistema.</li>
     <li>Certificados digitais guardados criptografados; a senha nunca é exibida.</li>
     <li>Perfis de permissão por usuário e histórico de auditoria das operações.</li>
     <li>Cópias de segurança diárias, criptografadas e testadas periodicamente.</li>
@@ -141,7 +171,7 @@
     <li>portabilidade dos dados;</li>
     <li>informação sobre com quem compartilhamos;</li>
     <li>revisão de decisões tomadas unicamente de forma automatizada, quando houver;</li>
-    <li>oposição a tratamento feito com base no legítimo interesse, quando cabível.</li>
+    <li>oposição a tratamento feito com base no legítimo interesse, quando cabível — por exemplo, quem recebeu um convite pode pedir que o seu e-mail seja apagado.</li>
 </ul>
 <p>
     Envie o pedido para <a href="mailto:@DocumentosLegais.EmailPrivacidade">@DocumentosLegais.EmailPrivacidade</a>,
@@ -154,16 +184,18 @@
 
 <h2>10. Cookies</h2>
 <p>
-    Usamos apenas cookies <strong>essenciais</strong>: o de sessão (mantém você conectado) e os de proteção contra
-    falsificação de requisições. Sem eles a plataforma não funciona, por isso não pedem consentimento. Preferências
-    como tema claro/escuro e menu recolhido ficam guardadas só no seu navegador. Não usamos cookies de análise,
-    rastreamento ou publicidade.
+    Usamos apenas cookies <strong>essenciais</strong>: o de sessão (mantém você conectado), os de proteção contra
+    falsificação de requisições e o da empresa selecionada no topo da tela. Sem eles a plataforma não funciona, por
+    isso não pedem consentimento. Preferências como tema claro/escuro e menu recolhido ficam guardadas só no seu
+    navegador. Não usamos cookies de análise, rastreamento ou publicidade.
 </p>
 
 <h2>11. Alterações desta Política</h2>
 <p>
-    Podemos atualizar esta Política. Mudanças relevantes são avisadas por e-mail e na plataforma, e a nova versão
-    precisa ser aceita para continuar usando o serviço. Cada versão tem número e data no topo desta página.
+    Podemos atualizar esta Política. Mudanças relevantes são avisadas por e-mail e na plataforma com pelo menos
+    15 (quinze) dias de antecedência, e a nova versão precisa ser aceita para continuar usando o serviço a partir da
+    data em que passa a valer. Cada versão tem número e data no topo desta página, e a anterior continua disponível
+    para consulta.
 </p>
 
 <h2>12. Contato</h2>

@@ -9,8 +9,15 @@ namespace NfseSaaS.Application.Abstractions;
 /// </summary>
 public interface IAceiteTermosService
 {
-    /// <summary>True se o usuário já aceitou as versões VIGENTES dos dois documentos. Resposta positiva fica em cache.</summary>
+    /// <summary>
+    /// True se o aceite do usuário libera o uso HOJE: a versão atual, ou a
+    /// anterior enquanto a atual ainda não começou a valer (aviso prévio, ver
+    /// DocumentosLegais). Resposta positiva fica em cache.
+    /// </summary>
     Task<bool> AceitouVersaoVigenteAsync(Guid usuarioId, CancellationToken cancellationToken);
+
+    /// <summary>True se o usuário já aceitou exatamente a versão ATUAL (mesmo antes de ela valer).</summary>
+    Task<bool> AceitouVersaoAtualAsync(Guid usuarioId, CancellationToken cancellationToken);
 
     /// <summary>
     /// Adiciona o registro do aceite das versões vigentes (com IP e

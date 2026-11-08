@@ -31,6 +31,16 @@ public sealed class LegalController : Controller
     [HttpGet("/privacidade")]
     public IActionResult Privacidade() => View();
 
+    /// <summary>Texto da versão anterior, como foi aceito (vale até a véspera da versão atual).</summary>
+    [AllowAnonymous]
+    [HttpGet("/termos/1.0")]
+    public IActionResult Termos10() => View("Termos_1_0");
+
+    /// <inheritdoc cref="Termos10"/>
+    [AllowAnonymous]
+    [HttpGet("/privacidade/1.0")]
+    public IActionResult Privacidade10() => View("Privacidade_1_0");
+
     [Authorize]
     [HttpGet("/Legal/Aceitar")]
     public async Task<IActionResult> Aceitar(string? returnUrl, CancellationToken cancellationToken)
@@ -40,7 +50,7 @@ public sealed class LegalController : Controller
         var destino = !string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) ? returnUrl : "/";
 
         if (_currentUser.UserId is { } usuarioId
-            && await _aceiteTermos.AceitouVersaoVigenteAsync(usuarioId, cancellationToken))
+            && await _aceiteTermos.AceitouVersaoAtualAsync(usuarioId, cancellationToken))
             return LocalRedirect(destino);
 
         ViewData["ReturnUrl"] = destino;

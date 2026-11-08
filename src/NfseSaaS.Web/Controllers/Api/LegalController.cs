@@ -44,7 +44,8 @@ public sealed class LegalController : ControllerBase
             versaoTermosDeUso = DocumentosLegais.VersaoTermosDeUso,
             versaoPoliticaPrivacidade = DocumentosLegais.VersaoPoliticaPrivacidade,
             vigentesDesde = DocumentosLegais.VigentesDesde,
-            aceito = await _aceiteTermos.AceitouVersaoVigenteAsync(usuarioId, cancellationToken)
+            aceito = await _aceiteTermos.AceitouVersaoVigenteAsync(usuarioId, cancellationToken),
+            aceitoVersaoAtual = await _aceiteTermos.AceitouVersaoAtualAsync(usuarioId, cancellationToken)
         });
     }
 
@@ -58,7 +59,8 @@ public sealed class LegalController : ControllerBase
         if (_currentUser.UserId is not { } usuarioId)
             return Unauthorized();
 
-        if (await _aceiteTermos.AceitouVersaoVigenteAsync(usuarioId, cancellationToken))
+        // Aceite antecipado: quem ainda está na versão anterior pode aceitar a atual antes de ela valer.
+        if (await _aceiteTermos.AceitouVersaoAtualAsync(usuarioId, cancellationToken))
             return NoContent();
 
         _aceiteTermos.Registrar(usuarioId, OrigemAceiteTermos.Atualizacao);

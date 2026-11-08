@@ -1,12 +1,31 @@
+@using NfseSaaS.Application.Common
+@using NfseSaaS.Application.UseCases.Indicacao
+@using NfseSaaS.Domain.Cobranca
 @using NfseSaaS.Domain.Legal
 @{
     Layout = "_LegalLayout";
     ViewData["Title"] = "Termos de uso";
     var servico = DocumentosLegais.NomeServico;
+    var jaVale = DocumentosLegais.VersaoAtualVigente(DataBrasilia.Hoje());
+    var desde = DocumentosLegais.VigentesDesde.ToString("dd/MM/yyyy");
 }
 
 <h1>Termos de uso</h1>
-<p class="legal-versao">Versão @DocumentosLegais.VersaoTermosDeUso · vigente desde @DocumentosLegais.VigentesDesde.ToString("dd/MM/yyyy")</p>
+<p class="legal-versao">
+    Versão @DocumentosLegais.VersaoTermosDeUso · @(jaVale ? "vigente desde" : "vale a partir de") @desde
+    · <a href="/termos/@DocumentosLegais.VersaoAnteriorTermosDeUso">versão anterior (@DocumentosLegais.VersaoAnteriorTermosDeUso)</a>
+</p>
+
+<div class="legal-resumo">
+    <p class="mb-2"><strong>O que mudou na versão @DocumentosLegais.VersaoTermosDeUso:</strong></p>
+    <ul class="mb-0">
+        <li>a plataforma passa a ser mantida pela <strong>@DocumentosLegais.ResponsavelNome</strong> (CNPJ @DocumentosLegais.ResponsavelCnpj);</li>
+        <li>regras do teste grátis (@Planos.TesteDias dias, um por CNPJ), do preço de fundador e da primeira cobrança (itens 8.1 a 8.3);</li>
+        <li>fatura em atraso não suspende a conta: depois de @Planos.ToleranciaAtrasoDias dias, só a emissão em produção para (itens 8.4 e 11);</li>
+        <li>cancelamento pela tela Assinatura, estorno e contestação de pagamento (itens 8.4 e 8.5);</li>
+        <li>"Indique e ganhe" e convites por e-mail (item 9).</li>
+    </ul>
+</div>
 
 <p class="legal-resumo">
     <strong>Em poucas palavras:</strong> o @servico é uma plataforma para emitir e organizar notas fiscais de serviço
@@ -17,9 +36,9 @@
 
 <h2>1. Quem somos e aceitação</h2>
 <p>
-    O @servico (<a href="https://@DocumentosLegais.Site">@DocumentosLegais.Site</a>) é mantido por
-    <strong>@DocumentosLegais.ResponsavelNome</strong>, com sede em @DocumentosLegais.Foro, aqui chamado de
-    "@servico", "nós" ou "plataforma".
+    O @servico (<a href="https://@DocumentosLegais.Site">@DocumentosLegais.Site</a>) é mantido pela
+    <strong>@DocumentosLegais.ResponsavelNome</strong>, inscrita no CNPJ sob o nº @DocumentosLegais.ResponsavelCnpj,
+    com sede em @DocumentosLegais.Sede, aqui chamada de "@servico", "nós" ou "plataforma".
 </p>
 <p>
     Ao criar uma conta, aceitar um convite ou continuar usando a plataforma depois de uma nova versão destes Termos,
@@ -30,10 +49,11 @@
 
 <h2>2. Definições</h2>
 <ul>
-    <li><strong>Cliente:</strong> a empresa (identificada pelo CNPJ) que contrata a plataforma e é titular da conta.</li>
+    <li><strong>Cliente:</strong> a empresa ou o escritório de contabilidade (identificado pelo CNPJ ou CPF) que contrata a plataforma e é titular da conta.</li>
     <li><strong>Conta:</strong> o espaço do Cliente na plataforma, com suas empresas, cadastros, contratos e notas, separado das demais contas.</li>
     <li><strong>Usuário:</strong> a pessoa que acessa a Conta com e-mail e senha — o primeiro usuário (administrador) e os convidados por ele.</li>
     <li><strong>NFS-e:</strong> nota fiscal de serviço eletrônica emitida no Ambiente Nacional da NFS-e (Sistema Nacional NFS-e / SEFIN Nacional).</li>
+    <li><strong>Produção e homologação:</strong> produção é o ambiente em que a nota tem valor fiscal; homologação é o ambiente de testes da SEFIN, sem valor fiscal.</li>
     <li><strong>Certificado digital:</strong> o certificado ICP-Brasil do Cliente (tipo A1, arquivo .pfx), usado para assinar e transmitir as notas.</li>
 </ul>
 
@@ -44,9 +64,8 @@
     econômicos; e convidar outros usuários com permissões por perfil.
 </p>
 <p>
-    Durante a fase de testes com clientes convidados (beta), funcionalidades podem mudar, ser incluídas ou
-    retiradas, sempre com aviso quando afetarem o uso que você já faz. A plataforma não presta serviços de
-    contabilidade, nem consultoria fiscal ou jurídica.
+    Funcionalidades podem mudar, ser incluídas ou retiradas, sempre com aviso quando afetarem o uso que você já
+    faz. A plataforma não presta serviços de contabilidade, nem consultoria fiscal ou jurídica.
 </p>
 
 <h2>4. Conta, usuários e senhas</h2>
@@ -61,8 +80,9 @@
 <p>
     Ao enviar o certificado digital, o Cliente autoriza a plataforma a usá-lo <strong>exclusivamente</strong> para
     assinar e transmitir ao Ambiente Nacional da NFS-e os documentos que ele mandar emitir, cancelar ou consultar —
-    inclusive pelas automações que ele mesmo configurar (como a nota mensal). O arquivo é guardado criptografado,
-    a senha nunca é exibida e o certificado não é usado para nenhuma outra finalidade.
+    inclusive pelas automações que ele mesmo configurar (como a nota mensal) — e para testar a conexão com a SEFIN
+    quando ele pedir ou quando a empresa passar para produção. O arquivo é guardado criptografado, a senha nunca é
+    exibida e o certificado não é usado para nenhuma outra finalidade.
 </p>
 <p>
     O Cliente é responsável pela validade do certificado, por renová-lo antes do vencimento e por removê-lo da
@@ -87,50 +107,94 @@
     Trabalhamos para manter a plataforma disponível e segura, com cópias de segurança diárias, mas não garantimos
     funcionamento ininterrupto ou livre de erros. Podem ocorrer paradas para manutenção (avisadas com antecedência
     sempre que possível) e falhas fora do nosso controle — em especial indisponibilidade ou mudanças do Ambiente
-    Nacional da NFS-e, de provedores de hospedagem e internet, e de serviços públicos de consulta (CNPJ, CEP,
-    índices econômicos).
+    Nacional da NFS-e, da empresa de pagamentos, de provedores de hospedagem e internet, e de serviços públicos de
+    consulta (CNPJ, CEP, índices econômicos).
 </p>
 
-<h2>8. Planos, preços e pagamento</h2>
+<h2>8. Planos, teste grátis, preços e pagamento</h2>
+
+<h3>8.1 Teste grátis</h3>
 <ul>
-    <li>Durante o beta, o uso pode ser gratuito ou ter condições especiais, conforme comunicado ao Cliente.</li>
-    <li>Encerrado o beta, o uso passa a ser pago, conforme o plano escolhido. Preço, limites e forma de cobrança são informados <strong>antes</strong> da contratação, e nada é cobrado sem que o Cliente tenha escolhido um plano.</li>
-    <li>A cobrança é recorrente (mensal ou anual, conforme o plano), feita por empresa de pagamentos parceira. Não guardamos dados de cartão.</li>
-    <li>Em caso de atraso, o Cliente é avisado por e-mail; persistindo o atraso por mais de 10 (dez) dias após o aviso, a Conta pode ser suspensa até a regularização, sem perda dos dados durante o prazo de retenção da Política de privacidade.</li>
-    <li>Os preços podem ser reajustados uma vez por ano, ou alterados por mudança de plano, com aviso de pelo menos 30 (trinta) dias.</li>
-    <li>O Cliente pode cancelar a qualquer momento; o cancelamento vale para o próximo período e não gera multa. Valores do período em curso não são devolvidos, salvo quando a lei determinar.</li>
+    <li>Toda conta nova tem <strong>@Planos.TesteDias dias de teste grátis</strong>, sem cartão e sem limite de notas. O prazo começa na primeira nota emitida em produção (ou na assinatura, se ela vier antes). Notas em homologação são sempre livres e não contam.</li>
+    <li><strong>Um teste por CNPJ:</strong> se o CNPJ de uma empresa da conta já usou o teste em outra conta, a conta nova não tem teste e precisa assinar um plano para emitir em produção. Se achar que é engano, fale com o suporte. Essa regra não vale para contas de escritórios de contabilidade, que cadastram empresas dos seus clientes.</li>
+    <li>Terminado o teste sem assinatura, só a emissão em produção para (inclusive a nota mensal automática). Consultas, downloads, cadastros e homologação continuam liberados.</li>
 </ul>
 
-<h2>9. Uso permitido</h2>
+<h3>8.2 Planos e primeira cobrança</h3>
+<ul>
+    <li>Preço, limites e forma de cobrança de cada plano estão na página <a href="/precos">Preços</a> e na tela Assinatura, e são mostrados <strong>antes</strong> da contratação. Nada é cobrado sem que o Cliente tenha escolhido um plano.</li>
+    <li>O Cliente pode assinar quando quiser: assinando durante o teste, a <strong>primeira fatura vence no último dia do teste</strong>, sem perder nenhum dia de teste. Depois, a cobrança é mensal, no mesmo dia.</li>
+    <li>O pagamento é feito por Pix, boleto ou cartão, na página da fatura, pela empresa de pagamentos parceira (Asaas). Não guardamos dados de cartão.</li>
+    <li>Cada plano tem um número de notas por mês. Passando do limite, avisamos e indicamos o plano adequado; a emissão não é interrompida por isso.</li>
+    <li>Para cada pagamento confirmado, emitimos a nota fiscal de serviço correspondente para o Cliente.</li>
+</ul>
+
+<h3>8.3 Preço de fundador (campanha de lançamento)</h3>
+<ul>
+    <li>Durante a campanha de lançamento, quem cria a conta e confirma o e-mail enquanto houver vaga (e até a data-fim da campanha, mostradas na página <a href="/precos">Preços</a>) <strong>garante o preço de fundador</strong>. As vagas são contadas separadamente para empresas e para escritórios de contabilidade.</li>
+    <li>A vaga fica reservada até @Planos.DiasReservaFundadorAposTeste dias depois do fim do teste grátis. Se o Cliente não assinar nesse prazo, a vaga volta para a campanha. Contas criadas durante o período de testes com clientes convidados (beta) têm a vaga reservada sem prazo.</li>
+    <li>O preço de fundador vale <strong>enquanto a assinatura continuar ativa</strong>, inclusive na troca para outro plano (vale o preço de fundador do novo plano), e não sofre o reajuste anual dos preços de tabela. Atraso no pagamento não tira o preço de fundador.</li>
+    <li><strong>Cancelando a assinatura, o preço de fundador se perde.</strong> Voltando depois, a assinatura é feita pelo preço de tabela do dia.</li>
+</ul>
+
+<h3>8.4 Atraso, estorno e contestação</h3>
+<ul>
+    <li>Fatura não paga até o vencimento: avisamos por e-mail e na plataforma, e a emissão em produção continua por mais <strong>@Planos.ToleranciaAtrasoDias dias</strong> depois do vencimento.</li>
+    <li>Passado esse prazo sem pagamento, <strong>só a emissão em produção fica bloqueada</strong> (inclusive a nota mensal automática) até o pagamento ser confirmado; a liberação é automática. O acesso, as consultas, os downloads, os cadastros e a homologação continuam funcionando, e a Conta não é suspensa por atraso.</li>
+    <li>Pagamento estornado ou contestado junto ao banco ou à operadora do cartão (chargeback) conta como fatura não paga a partir do dia em que soubermos, com o mesmo prazo de @Planos.ToleranciaAtrasoDias dias. Se a contestação for resolvida a favor do pagamento, tudo volta ao normal.</li>
+</ul>
+
+<h3>8.5 Reajuste e cancelamento</h3>
+<ul>
+    <li>Os preços de tabela podem ser reajustados uma vez por ano, ou alterados por mudança de plano, com aviso de pelo menos 30 (trinta) dias. O preço de fundador fica de fora (item 8.3).</li>
+    <li>O Cliente pode <strong>cancelar a qualquer momento pela tela Assinatura</strong>, sem multa. A emissão em produção continua até o último dia já pago (ou até o fim do teste) e as faturas seguintes não são geradas. A Conta e os dados continuam disponíveis para consulta e download.</li>
+    <li>Valores de período já pago não são devolvidos, salvo quando a lei determinar.</li>
+</ul>
+
+<h2>9. Indique e ganhe e convites por e-mail</h2>
+<ul>
+    <li>Cada Conta tem um link de indicação. Quando uma conta nova criada por esse link <strong>paga a primeira fatura</strong>, as duas ganham <strong>1 (um) mês grátis</strong>: a próxima fatura de cada uma é dispensada. Se a conta que ganhou ainda não assinou, está com fatura em atraso, cancelada ou suspensa, o prêmio fica guardado até a situação se resolver.</li>
+    <li>Não vale indicar a própria conta, outra conta do mesmo Cliente ou contas criadas só para ganhar o prêmio. Nesses casos, ou em qualquer fraude, o prêmio é cancelado.</li>
+    <li>Pela tela "Indique e ganhe", o usuário pode mandar convites por e-mail para pessoas que conhece: até @RegrasConviteIndicacao.LimitePorDia por dia, e o mesmo endereço não recebe outro convite (de nenhuma conta) por @RegrasConviteIndicacao.IntervaloMesmoEmailDias dias. O convite sai em nome do usuário, com resposta para o e-mail dele.</li>
+    <li>Ao mandar convites, o usuário declara que tem relação com as pessoas convidadas e que elas não se oporiam a receber a mensagem. É proibido usar os convites para enviar mensagens em massa ou não solicitadas (spam).</li>
+</ul>
+
+<h2>10. Uso permitido</h2>
 <p>É proibido usar a plataforma para:</p>
 <ul>
     <li>emitir documentos fiscais falsos, simulados ou em nome de terceiros sem autorização, ou praticar qualquer fraude;</li>
     <li>acessar, ou tentar acessar, contas e dados de outros clientes;</li>
     <li>testar vulnerabilidades, sobrecarregar, copiar ou fazer engenharia reversa da plataforma, ou automatizar acessos fora dos meios que oferecemos;</li>
-    <li>cadastrar dados pessoais de terceiros sem base legal para isso.</li>
+    <li>cadastrar dados pessoais de terceiros sem base legal para isso;</li>
+    <li>criar contas em série para repetir o teste grátis, o preço de fundador ou o prêmio de indicação.</li>
 </ul>
 
-<h2>10. Suspensão e encerramento</h2>
+<h2>11. Suspensão e encerramento</h2>
 <p>
-    O Cliente pode encerrar a Conta a qualquer momento pelo canal de contato. Podemos suspender ou encerrar a Conta
-    em caso de violação destes Termos, de uso que coloque em risco a plataforma ou outros clientes, de ordem de
-    autoridade, ou de inadimplência (item 8). Fora de situações urgentes ou ilegais, avisaremos antes, por e-mail.
+    O Cliente pode cancelar a assinatura pela tela Assinatura (item 8.5) e pedir a exclusão da Conta pelo e-mail
+    <a href="mailto:@DocumentosLegais.EmailPrivacidade">@DocumentosLegais.EmailPrivacidade</a>.
 </p>
 <p>
-    Durante a suspensão, ninguém da Conta acessa a plataforma e nenhuma nota é emitida, inclusive pelas automações.
+    Podemos <strong>suspender</strong> ou encerrar a Conta em caso de violação destes Termos (inclusive do item 10),
+    de uso que coloque em risco a plataforma ou outros clientes, ou de ordem de autoridade. Fora de situações
+    urgentes ou ilegais, avisaremos antes, por e-mail. Durante a suspensão, ninguém da Conta acessa a plataforma e
+    nenhuma nota é emitida, inclusive pelas automações. <strong>Atraso de pagamento não suspende a Conta</strong>: ele
+    bloqueia só a emissão em produção, nos termos do item 8.4.
+</p>
+<p>
     Após o encerramento, os dados são mantidos e depois excluídos nos prazos da
     <a href="/privacidade">Política de privacidade</a> (os dados fiscais, por 5 anos). Antes de encerrar, baixe os XML
     e PDF das suas notas.
 </p>
 
-<h2>11. Propriedade intelectual</h2>
+<h2>12. Propriedade intelectual</h2>
 <p>
-    A plataforma, sua marca, código e aparência pertencem ao @servico. O Cliente recebe uma licença de uso pessoal,
+    A plataforma, sua marca, código e aparência pertencem ao @servico. O Cliente recebe uma licença de uso,
     não exclusiva e intransferível, enquanto a Conta estiver ativa. Os dados que o Cliente cadastra continuam sendo
     do Cliente.
 </p>
 
-<h2>12. Dados pessoais</h2>
+<h2>13. Dados pessoais</h2>
 <p>
     O tratamento de dados pessoais segue a Lei Geral de Proteção de Dados (Lei nº 13.709/2018) e está descrito na
     <a href="/privacidade">Política de privacidade</a>. Para os dados dos usuários da Conta, o @servico é o
@@ -139,12 +203,13 @@
     executar o serviço, conforme as instruções do Cliente e estes Termos.
 </p>
 
-<h2>13. Limitação de responsabilidade</h2>
+<h2>14. Limitação de responsabilidade</h2>
 <p>O @servico não responde por:</p>
 <ul>
     <li>multas, tributos, juros ou prejuízos decorrentes de informações fiscais cadastradas ou confirmadas pelo Cliente, ou de automações que ele ativou;</li>
     <li>indisponibilidade, demora, rejeição ou mudança de regras do Ambiente Nacional da NFS-e ou de outros serviços públicos;</li>
     <li>uso indevido de senhas ou do certificado digital por falha de guarda do Cliente ou de seus usuários;</li>
+    <li>notas não emitidas em produção enquanto a emissão estiver bloqueada por fim do teste ou por atraso (item 8);</li>
     <li>lucros cessantes e danos indiretos.</li>
 </ul>
 <p>
@@ -153,27 +218,28 @@
     decorrente de dolo.
 </p>
 
-<h2>14. Alterações destes Termos</h2>
+<h2>15. Alterações destes Termos</h2>
 <p>
     Podemos atualizar estes Termos. Mudanças relevantes são avisadas por e-mail e na plataforma com pelo menos
     15 (quinze) dias de antecedência, salvo quando a mudança for exigida por lei ou por questão de segurança. Cada
-    versão tem número e data; a nova versão precisa ser aceita para continuar usando a plataforma. Se não
-    concordar, o Cliente pode encerrar a Conta sem multa.
+    versão tem número e data; a nova versão precisa ser aceita para continuar usando a plataforma a partir da data
+    em que passa a valer, e a versão anterior continua disponível para consulta. Se não concordar, o Cliente pode
+    cancelar a assinatura e encerrar a Conta sem multa.
 </p>
 
-<h2>15. Comunicações</h2>
+<h2>16. Comunicações</h2>
 <p>
     Os avisos são enviados para o e-mail dos usuários cadastrados na Conta e/ou exibidos na plataforma. Mantenha
     os e-mails atualizados.
 </p>
 
-<h2>16. Lei aplicável e foro</h2>
+<h2>17. Lei aplicável e foro</h2>
 <p>
     Estes Termos seguem as leis do Brasil. Fica eleito o foro da comarca de @DocumentosLegais.Foro para resolver
     qualquer questão relacionada a eles, ressalvados os casos em que a lei garanta outro foro.
 </p>
 
-<h2>17. Contato</h2>
+<h2>18. Contato</h2>
 <p>
     Dúvidas, pedidos e avisos: <a href="mailto:@DocumentosLegais.EmailPrivacidade">@DocumentosLegais.EmailPrivacidade</a>.
 </p>

@@ -87,6 +87,7 @@ public static class DependencyInjection
         services.AddScoped<ICurrentUser, CurrentUser>();
         services.AddScoped<IAuditLogWriter, AuditLogWriter>();
         services.AddScoped<IAceiteTermosService, NfseSaaS.Infrastructure.Legal.AceiteTermosService>();
+        services.AddScoped<NfseSaaS.Infrastructure.Legal.AvisoNovosTermosService>();
         services.AddScoped<IGrupoProvisionamentoService, GrupoProvisionamentoService>();
         services.AddScoped<INfseEventoWriter, NfseEventoWriter>();
 
@@ -317,6 +318,7 @@ public static class DependencyInjection
         services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IObterFaixaCobrancaUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.AvisosCobrancaService>());
         services.AddScoped<IAvisarCobrancaJob, AvisarCobrancaJob>();
         services.AddScoped<IConciliarCobrancaJob, ConciliarCobrancaJob>();
+        services.AddScoped<IAvisarNovosTermosJob, AvisarNovosTermosJob>();
         services.AddScoped<NfseSaaS.Application.UseCases.Indicacao.IConvidarPorEmailUseCase, NfseSaaS.Infrastructure.UseCases.ConvidarPorEmailUseCase>();
         services.AddScoped<NfseSaaS.Application.UseCases.Aparencia.IAparenciaUseCase, NfseSaaS.Infrastructure.UseCases.AparenciaService>();
         services.AddScoped<IAlterarBloqueioTenantUseCase, AlterarBloqueioTenantUseCase>();

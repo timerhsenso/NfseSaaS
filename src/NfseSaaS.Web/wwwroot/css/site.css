@@ -1867,6 +1867,13 @@ html[data-theme="dark"] .resumo-alerta {
     margin: 32px 0 10px;
 }
 
+.legal-doc h3 {
+    font-size: calc(15px * var(--escala-fonte));
+    font-weight: 700;
+    color: var(--text);
+    margin: 18px 0 8px;
+}
+
 .legal-versao {
     color: var(--subtle);
     font-size: calc(13px * var(--escala-fonte));

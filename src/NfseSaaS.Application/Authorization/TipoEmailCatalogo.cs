@@ -28,4 +28,7 @@ public static class TipoEmailCatalogo
 
     /// <summary>Convite enviado pela tela "Indique e ganhe" (Reply-To = quem indicou).</summary>
     public const string ConviteIndicacao = "ConviteIndicacao";
+
+    /// <summary>Aviso prévio (15 dias) de nova versão dos Termos de uso e da Política de privacidade.</summary>
+    public const string NovosTermos = "NovosTermos";
 }

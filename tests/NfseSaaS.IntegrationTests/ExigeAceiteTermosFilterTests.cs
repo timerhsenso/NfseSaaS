@@ -134,6 +134,8 @@ public class ExigeAceiteTermosFilterTests
             return Task.FromResult(_aceitou);
         }
 
+        public Task<bool> AceitouVersaoAtualAsync(Guid usuarioId, CancellationToken cancellationToken) => Task.FromResult(_aceitou);
+
         public void Registrar(Guid usuarioId, string origem) => throw new NotSupportedException();
 
         public void MarcarComoAceito(Guid usuarioId) => throw new NotSupportedException();

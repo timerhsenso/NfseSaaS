@@ -5,6 +5,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Alterado (jurídico)
+- **Termos de uso e Política de privacidade 1.1**, valendo a partir de
+  24/11/2026 (aviso prévio de 15 dias, como o item de alterações promete):
+  responsável passa a ser a LFMS - Consultoria e Desenvolvimento de Sistemas
+  Ltda (CNPJ 04.747.304/0001-78, Lauro de Freitas/BA); teste grátis de 30 dias
+  e um por CNPJ; preço de fundador (reserva, perda ao cancelar, troca de plano,
+  fora do reajuste); primeira cobrança no fim do teste; atraso não suspende a
+  conta, só bloqueia a emissão em produção depois de 10 dias; estorno e
+  chargeback; cancelamento pela tela; "Indique e ganhe" e convites por e-mail;
+  na Política, Asaas, registro do teste por CNPJ e e-mail dos convidados, com
+  prazos de guarda. Os números do texto vêm das constantes do código.
+- **Versão 1.0 continua publicada** em /termos/1.0 e /privacidade/1.0.
+- **Transição sem bloquear ninguém**: até 23/11 o aceite da 1.0 continua
+  liberando o uso; quem ainda não aceitou a 1.1 vê um aviso no topo das telas
+  com "Ler e aceitar agora"; a partir de 24/11 a tela de aceite passa a ser
+  obrigatória. Cadastro novo já aceita a 1.1.
+- **Aviso prévio por e-mail** (job `avisar-novos-termos`, 09:10, só antes da
+  data): um e-mail por usuário com e-mail confirmado que ainda não aceitou.
+- Razão social, CNPJ e cidade da LFMS no rodapé do site e das páginas legais.
+
 ### Testes (segurança)
 - **Isolamento entre contas pela API de verdade** (L9): duas contas criadas
   pelo cadastro, já logadas e com CSRF; a conta B, com os ids da conta A, não

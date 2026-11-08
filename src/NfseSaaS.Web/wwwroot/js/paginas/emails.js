@@ -81,6 +81,7 @@ function rotuloTipo(tipo) {
         case 'AlertaOperador': return 'Alerta do sistema';
         case 'AvisoCobranca': return 'Aviso de cobrança';
         case 'ConviteIndicacao': return 'Convite de indicação';
+        case 'NovosTermos': return 'Aviso de novos termos';
         default: return tipo;
     }
 }

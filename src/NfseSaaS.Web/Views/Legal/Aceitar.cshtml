@@ -1,13 +1,22 @@
+@using NfseSaaS.Application.Common
 @using NfseSaaS.Domain.Legal
 @{
     Layout = "_AuthLayout";
     ViewData["Title"] = "Termos de uso e privacidade";
+    var jaVale = DocumentosLegais.VersaoAtualVigente(DataBrasilia.Hoje());
+    var data = DocumentosLegais.VigentesDesde.ToString("dd/MM/yyyy");
 }
 
-<h5 class="card-title mb-2">Antes de continuar</h5>
+<h5 class="card-title mb-2">@(jaVale ? "Antes de continuar" : "Novos Termos de uso e Política de privacidade")</h5>
 <p class="text-muted small mb-3">
-    Para usar o micoempresa, leia e aceite os documentos abaixo, vigentes desde
-    @DocumentosLegais.VigentesDesde.ToString("dd/MM/yyyy").
+    @if (jaVale)
+    {
+        @:Para usar o micoempresa, leia e aceite os documentos abaixo, vigentes desde @data.
+    }
+    else
+    {
+        @:Os documentos abaixo passam a valer em @data. Leia o que mudou (no topo de cada um) e aceite quando quiser até lá; a partir dessa data, o aceite é necessário para continuar usando o micoempresa.
+    }
 </p>
 
 <ul class="lista-documentos-legais">

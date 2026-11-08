@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using NfseSaaS.Application.Abstractions;
+using NfseSaaS.Application.Common;
 using NfseSaaS.Domain.Entities;
 using NfseSaaS.Domain.Legal;
 using NfseSaaS.Infrastructure.Persistence;
@@ -43,6 +44,33 @@ public sealed class AceiteTermosService : IAceiteTermosService
     }
 
     public async Task<bool> AceitouVersaoVigenteAsync(Guid usuarioId, CancellationToken cancellationToken)
+    {
+        if (await AceitouVersaoAtualAsync(usuarioId, cancellationToken))
+            return true;
+
+        // Aviso prévio: até a nova versão valer, o aceite da anterior libera o uso.
+        if (!DocumentosLegais.AceiteAnteriorAindaVale(DataBrasilia.Hoje()))
+            return false;
+
+        var chave = ChaveCacheAnterior(usuarioId);
+        if (_cache.TryGetValue(chave, out _))
+            return true;
+
+        var aceitouAnterior = await _db.AceitesTermos.AsNoTracking().AnyAsync(a =>
+            a.UsuarioId == usuarioId
+            && a.VersaoTermosDeUso == DocumentosLegais.VersaoAnteriorTermosDeUso
+            && a.VersaoPoliticaPrivacidade == DocumentosLegais.VersaoAnteriorPoliticaPrivacidade,
+            cancellationToken);
+
+        // Cache curto: no dia em que a versão nova passa a valer, a
+        // checagem acima (AceiteAnteriorAindaVale) já corta antes daqui.
+        if (aceitouAnterior)
+            _cache.Set(chave, true, DuracaoCache);
+
+        return aceitouAnterior;
+    }
+
+    public async Task<bool> AceitouVersaoAtualAsync(Guid usuarioId, CancellationToken cancellationToken)
     {
         if (_cache.TryGetValue(ChaveCache(usuarioId), out _))
             return true;
@@ -90,6 +118,9 @@ public sealed class AceiteTermosService : IAceiteTermosService
 
     public void MarcarComoAceito(Guid usuarioId) =>
         _cache.Set(ChaveCache(usuarioId), true, DuracaoCache);
+
+    private static string ChaveCacheAnterior(Guid usuarioId) =>
+        $"aceite-termos-anterior:{usuarioId:N}:{DocumentosLegais.VersaoAnteriorTermosDeUso}:{DocumentosLegais.VersaoAnteriorPoliticaPrivacidade}";
 
     private static string ChaveCache(Guid usuarioId) =>
         $"aceite-termos:{usuarioId:N}:{DocumentosLegais.VersaoTermosDeUso}:{DocumentosLegais.VersaoPoliticaPrivacidade}";

@@ -1,0 +1,173 @@
+@using NfseSaaS.Domain.Legal
+@{
+    Layout = "_LegalLayout";
+    ViewData["Title"] = "Política de privacidade (versão 1.0)";
+    var servico = DocumentosLegais.NomeServico;
+}
+
+<h1>Política de privacidade</h1>
+<p class="legal-versao">Versão 1.0 · vigente de 04/11/2026 até @DocumentosLegais.VigentesDesde.AddDays(-1).ToString("dd/MM/yyyy")</p>
+<p class="alert alert-secondary small">Esta é a versão anterior, guardada como foi aceita. A versão atual está em <a href="/privacidade">Política de privacidade</a>.</p>
+
+<p class="legal-resumo">
+    <strong>Em poucas palavras:</strong> usamos os seus dados só para fazer a plataforma funcionar, emitir as suas
+    notas e cumprir a lei. Não vendemos dados, não usamos cookies de propaganda e você pode pedir acesso, correção
+    ou exclusão a qualquer momento pelo e-mail
+    <a href="mailto:@DocumentosLegais.EmailPrivacidade">@DocumentosLegais.EmailPrivacidade</a>.
+</p>
+
+<p>
+    Esta Política explica como o @servico (<a href="https://@DocumentosLegais.Site">@DocumentosLegais.Site</a>)
+    trata dados pessoais, de acordo com a Lei Geral de Proteção de Dados Pessoais (LGPD, Lei nº 13.709/2018) e o
+    Marco Civil da Internet (Lei nº 12.965/2014). Ela complementa os <a href="/termos/1.0">Termos de uso</a>.
+</p>
+
+<h2>1. Quem é o responsável</h2>
+<p>
+    O responsável pela plataforma é <strong>Carlos Eduardo Caetano Santos</strong>, com sede em
+    Salvador/BA. O canal para qualquer assunto de privacidade e proteção de dados — inclusive os pedidos
+    do item 9 — é o e-mail <a href="mailto:@DocumentosLegais.EmailPrivacidade">@DocumentosLegais.EmailPrivacidade</a>.
+</p>
+
+<h2>2. Nosso papel em cada tipo de dado</h2>
+<ul>
+    <li>
+        <strong>Dados dos usuários da plataforma</strong> (quem cria a conta ou é convidado): o @servico é o
+        <strong>controlador</strong> — decide como e para que esses dados são usados, nos termos desta Política.
+    </li>
+    <li>
+        <strong>Dados que o Cliente cadastra sobre os próprios clientes e tomadores</strong> (nome, CPF/CNPJ,
+        endereço, contatos, contratos, notas): o <strong>Cliente é o controlador</strong> e o @servico é o
+        <strong>operador</strong>. Tratamos esses dados apenas para prestar o serviço contratado, conforme as
+        instruções do Cliente. Pedidos dos titulares desses dados são encaminhados ao Cliente, a quem cabe respondê-los.
+    </li>
+</ul>
+
+<h2>3. Quais dados tratamos</h2>
+<div class="table-responsive">
+    <table class="table legal-tabela">
+        <thead>
+            <tr><th>Categoria</th><th>Exemplos</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>Cadastro de acesso</td><td>e-mail, senha (guardada só como código irreversível, nunca em texto), perfil de permissão, data do convite.</td></tr>
+            <tr><td>Dados da empresa cliente</td><td>razão social, CNPJ, inscrição municipal, endereço, telefone e e-mail da empresa.</td></tr>
+            <tr><td>Certificado digital</td><td>arquivo do certificado A1 e sua senha, guardados criptografados; validade e titular exibidos na tela.</td></tr>
+            <tr><td>Dados de tomadores e contratos</td><td>nome, CPF/CNPJ, endereço, e-mail e telefone dos tomadores; contratos, valores, índices e documentos anexados.</td></tr>
+            <tr><td>Documentos fiscais</td><td>NFS-e emitidas, XML, PDF (DANFSe), eventos e mensagens da SEFIN.</td></tr>
+            <tr><td>Registros de uso e segurança</td><td>endereço IP, data e hora de acesso, navegador, ações realizadas (histórico de auditoria), tentativas de login e e-mails enviados pela plataforma.</td></tr>
+            <tr><td>Aceite destes documentos</td><td>versão aceita, data e hora, IP e navegador.</td></tr>
+            <tr><td>Pagamento (quando houver plano pago)</td><td>plano, situação da cobrança e dados de faturamento. Dados de cartão ficam só com a empresa de pagamentos.</td></tr>
+        </tbody>
+    </table>
+</div>
+<p>Não tratamos dados pessoais sensíveis (saúde, religião, biometria etc.), e a plataforma não é destinada a menores de 18 anos.</p>
+
+<h2>4. Para que usamos e com qual base legal</h2>
+<div class="table-responsive">
+    <table class="table legal-tabela">
+        <thead>
+            <tr><th>Finalidade</th><th>Base legal (LGPD, art. 7º)</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>Criar e manter a conta, autenticar usuários, prestar o serviço contratado (emitir, consultar e guardar notas, automações, e-mails da plataforma)</td><td>Execução de contrato (inciso V)</td></tr>
+            <tr><td>Transmitir documentos fiscais ao Ambiente Nacional da NFS-e e guardar documentos fiscais</td><td>Cumprimento de obrigação legal (inciso II) e execução de contrato (inciso V)</td></tr>
+            <tr><td>Guardar registros de acesso pelo prazo do Marco Civil da Internet</td><td>Cumprimento de obrigação legal (inciso II)</td></tr>
+            <tr><td>Segurança, prevenção de fraude e de acesso indevido, auditoria, cópias de segurança, melhoria e suporte da plataforma</td><td>Legítimo interesse (inciso IX)</td></tr>
+            <tr><td>Cobrança e faturamento dos planos pagos</td><td>Execução de contrato (inciso V)</td></tr>
+            <tr><td>Defesa em processos e registro do aceite destes documentos</td><td>Exercício regular de direitos (inciso VI)</td></tr>
+        </tbody>
+    </table>
+</div>
+<p>Não usamos dados para publicidade, não traçamos perfis de comportamento e não vendemos nem alugamos dados a ninguém.</p>
+
+<h2>5. Com quem compartilhamos</h2>
+<p>Somente o necessário para o serviço funcionar:</p>
+<ul>
+    <li><strong>Ambiente Nacional da NFS-e (Receita Federal / SEFIN Nacional) e municípios:</strong> as notas e eventos que o Cliente manda emitir, cancelar ou consultar.</li>
+    <li><strong>Hostinger:</strong> hospedagem do servidor, do banco de dados e envio de e-mails da plataforma.</li>
+    <li><strong>Microsoft (OneDrive):</strong> armazenamento das cópias de segurança, que saem do nosso servidor já criptografadas — a Microsoft não consegue ler o conteúdo.</li>
+    <li><strong>Empresa de pagamentos</strong> (quando houver plano pago): dados de cobrança do Cliente.</li>
+    <li><strong>Serviços públicos de consulta</strong> (BrasilAPI, ViaCEP, IBGE, Banco Central): recebem apenas o CNPJ, CEP ou código consultado, sem outros dados pessoais.</li>
+    <li><strong>Redes de distribuição de conteúdo</strong> (jsDelivr, Cloudflare, Google Fonts e similares): fornecem estilos, ícones e fontes das telas e, como qualquer site, recebem o IP e o navegador de quem acessa.</li>
+    <li><strong>Autoridades:</strong> quando houver obrigação legal ou ordem judicial.</li>
+</ul>
+
+<h2>6. Transferência internacional</h2>
+<p>
+    Alguns desses provedores (hospedagem, armazenamento das cópias de segurança e distribuição de conteúdo) podem
+    manter dados em servidores fora do Brasil. Nesses casos, a transferência ocorre nas hipóteses do art. 33 da LGPD,
+    com provedores que adotam garantias contratuais e técnicas de proteção, e as cópias de segurança são sempre
+    criptografadas antes de sair do nosso servidor.
+</p>
+
+<h2>7. Por quanto tempo guardamos</h2>
+<div class="table-responsive">
+    <table class="table legal-tabela">
+        <thead>
+            <tr><th>Dado</th><th>Prazo</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>Dados da conta e do serviço</td><td>Enquanto a conta estiver ativa.</td></tr>
+            <tr><td>Notas fiscais, XML, eventos e dados necessários para comprová-los</td><td>5 (cinco) anos, contados na forma da legislação tributária, mesmo após o encerramento da conta.</td></tr>
+            <tr><td>Demais dados, após o encerramento da conta</td><td>Excluídos em até 90 (noventa) dias.</td></tr>
+            <tr><td>Registros de acesso (IP, data e hora)</td><td>6 (seis) meses, conforme o art. 15 do Marco Civil da Internet.</td></tr>
+            <tr><td>Registro do aceite destes documentos e dados necessários à defesa de direitos</td><td>Pelo prazo legal de prescrição aplicável.</td></tr>
+            <tr><td>Cópias de segurança</td><td>Sobrescritas automaticamente em até 35 (trinta e cinco) dias.</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<h2>8. Como protegemos</h2>
+<ul>
+    <li>Acesso somente por conexão segura (HTTPS) e senhas guardadas como código irreversível.</li>
+    <li>Bloqueio temporário após tentativas de login erradas e limite de requisições contra ataques.</li>
+    <li>Separação entre contas: cada Cliente só enxerga os próprios dados.</li>
+    <li>Certificados digitais guardados criptografados; a senha nunca é exibida.</li>
+    <li>Perfis de permissão por usuário e histórico de auditoria das operações.</li>
+    <li>Cópias de segurança diárias, criptografadas e testadas periodicamente.</li>
+</ul>
+<p>
+    Se acontecer um incidente de segurança que possa trazer risco ou dano relevante aos titulares, comunicaremos a
+    Autoridade Nacional de Proteção de Dados (ANPD) e os afetados, nos termos do art. 48 da LGPD e da regulamentação
+    da ANPD.
+</p>
+
+<h2>9. Seus direitos</h2>
+<p>Pelo art. 18 da LGPD, você pode pedir, a qualquer momento e sem custo:</p>
+<ul>
+    <li>confirmação de que tratamos seus dados e acesso a eles;</li>
+    <li>correção de dados incompletos, inexatos ou desatualizados;</li>
+    <li>anonimização, bloqueio ou eliminação de dados desnecessários, excessivos ou tratados em desacordo com a lei;</li>
+    <li>portabilidade dos dados;</li>
+    <li>informação sobre com quem compartilhamos;</li>
+    <li>revisão de decisões tomadas unicamente de forma automatizada, quando houver;</li>
+    <li>oposição a tratamento feito com base no legítimo interesse, quando cabível.</li>
+</ul>
+<p>
+    Envie o pedido para <a href="mailto:@DocumentosLegais.EmailPrivacidade">@DocumentosLegais.EmailPrivacidade</a>,
+    a partir do e-mail cadastrado na plataforma (podemos pedir confirmação de identidade). Respondemos em até
+    15 (quinze) dias. Alguns dados não podem ser excluídos enquanto durar uma obrigação legal de guarda (item 7).
+    Se o pedido for sobre dados que um Cliente cadastrou (você é tomador de serviço de um Cliente), vamos
+    encaminhá-lo ao Cliente, que é o controlador. Você também pode reclamar à ANPD
+    (<a href="https://www.gov.br/anpd" rel="noopener">gov.br/anpd</a>).
+</p>
+
+<h2>10. Cookies</h2>
+<p>
+    Usamos apenas cookies <strong>essenciais</strong>: o de sessão (mantém você conectado) e os de proteção contra
+    falsificação de requisições. Sem eles a plataforma não funciona, por isso não pedem consentimento. Preferências
+    como tema claro/escuro e menu recolhido ficam guardadas só no seu navegador. Não usamos cookies de análise,
+    rastreamento ou publicidade.
+</p>
+
+<h2>11. Alterações desta Política</h2>
+<p>
+    Podemos atualizar esta Política. Mudanças relevantes são avisadas por e-mail e na plataforma, e a nova versão
+    precisa ser aceita para continuar usando o serviço. Cada versão tem número e data no topo desta página.
+</p>
+
+<h2>12. Contato</h2>
+<p>
+    Privacidade e proteção de dados: <a href="mailto:@DocumentosLegais.EmailPrivacidade">@DocumentosLegais.EmailPrivacidade</a>.
+</p>

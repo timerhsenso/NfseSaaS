@@ -1,6 +1,8 @@
 @inject NfseSaaS.Application.UseCases.Empresas.IObterEmpresaPorIdUseCase ObterEmpresaPorIdUseCase
 @inject Microsoft.Extensions.Options.IOptions<NfseSaaS.Application.Common.SuporteOptions> SuporteOpcoes
 @inject NfseSaaS.Application.UseCases.Aparencia.IAparenciaUseCase AparenciaUseCase
+@inject NfseSaaS.Application.Abstractions.IAceiteTermosService AceiteTermos
+@inject NfseSaaS.Application.Abstractions.ICurrentUser UsuarioAtual
 @{
     var papelAdministrador = User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Usuarios)
         || User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Grupos)
@@ -13,6 +15,12 @@
     // nunca salvou fica sem data-modo/classe de menu: tema-inicial.js usa o
     // que o navegador tinha guardado e aparencia.js grava isso no banco.
     var aparencia = await AparenciaUseCase.AtualAsync(Context.RequestAborted);
+
+    // Aviso prévio dos Termos/Política novos: até a data em que passam a valer,
+    // quem ainda não aceitou a versão atual vê o convite para ler e aceitar.
+    var avisoNovosTermos = !NfseSaaS.Domain.Legal.DocumentosLegais.VersaoAtualVigente(NfseSaaS.Application.Common.DataBrasilia.Hoje())
+        && UsuarioAtual.UserId is { } usuarioIdTermos
+        && !await AceiteTermos.AceitouVersaoAtualAsync(usuarioIdTermos, Context.RequestAborted);
     var preferencias = aparencia.Preferencias;
     string Ativo(string caminho) => caminhoAtual.Equals(caminho, StringComparison.OrdinalIgnoreCase) ? "active" : "";
     var nomeUsuario = User.Identity?.Name ?? "Usuário";
@@ -221,6 +229,17 @@
                 <div class="page-head">
                     <h1>@ViewData["Title"]</h1>
                 </div>
+                @if (avisoNovosTermos)
+                {
+                    <div class="alert alert-info d-flex align-items-start gap-2" role="status" id="aviso-novos-termos">
+                        <i class="bi bi-file-earmark-text mt-1" aria-hidden="true"></i>
+                        <div>
+                            <strong>Termos de uso e Política de privacidade novos a partir de @NfseSaaS.Domain.Legal.DocumentosLegais.VigentesDesde.ToString("dd/MM/yyyy").</strong>
+                            @NfseSaaS.Domain.Legal.DocumentosLegais.ResumoMudancas
+                            <a href="/Legal/Aceitar?returnUrl=@Uri.EscapeDataString(Context.Request.Path + Context.Request.QueryString)">Ler e aceitar agora</a>
+                        </div>
+                    </div>
+                }
                 @RenderBody()
             </section>
         </main>
