@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Testes (segurança)
+- **Isolamento entre contas pela API de verdade** (L9): duas contas criadas
+  pelo cadastro, já logadas e com CSRF; a conta B, com os ids da conta A, não
+  lê, não lista, não altera, não apaga e não usa empresa, cliente, serviço,
+  contrato, nota (inclusive PDF e lote), grupo, usuários e auditoria de A
+  (sempre 404, com o controle positivo de A vendo o mesmo id), nem entra nas
+  telas do operador. O banco é conferido no fim.
+- **Trava no modelo**: toda entidade com TenantId precisa ter o filtro de
+  conta (ITenantEntity) ou estar na lista de exceções com o motivo
+  (Assinatura, EventoCobranca, PremioIndicacao, TesteGratisCnpj, usuário do
+  Identity). Entidade nova sem filtro quebra o teste.
+
 ### Adicionado (cobrança)
 - **Conciliação diária com o Asaas** (job `conciliar-cobranca`, 07:50 de
   Brasília, antes dos avisos): para cada assinatura não cancelada, lê a
