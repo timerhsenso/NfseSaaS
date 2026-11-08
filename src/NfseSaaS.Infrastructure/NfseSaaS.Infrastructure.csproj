@@ -23,6 +23,11 @@
 	  <ProjectReference Include="..\NfseSaaS.Nacional\NfseSaaS.Nacional.csproj" />
   </ItemGroup>
 
+  <!-- DANFSe (DanfseXmlDados é internal) testado direto em NfseSaaS.Tests. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="NfseSaaS.Tests" />
+  </ItemGroup>
+
   <!--
     Tabela oficial de Código de Tributação Nacional (cTribNac) — embarcada
     no assembly (não lida de disco em runtime), pra funcionar igual em

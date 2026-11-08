@@ -259,11 +259,11 @@ internal sealed class DanfseDocument : IDocument
     /// <summary>
     /// Confirmado contra um PDF oficial real (comparação direta, não só a
     /// nota técnica): o bloco IBS/CBS SEMPRE aparece, com "-" nos campos
-    /// ausentes — eu tinha decidido omitir esse bloco inteiro antes de
-    /// ver um exemplo real, e estava errado. Este projeto ainda não
-    /// coleta o grupo IBSCBS na DPS (Reforma Tributária), então tudo sai
-    /// "-" (ou "R$ 0,00" nos 2 campos de total, confirmado no PDF real)
-    /// até que a emissão passe a preencher esse grupo.
+    /// ausentes. Desde o F1 a DPS declara a classificação do IBS/CBS e a
+    /// SEFIN devolve os valores calculados na NFS-e; o bloco mostra esses
+    /// valores (ver DanfseXmlDados). Sem o grupo no XML (leiaute NT 004 ou
+    /// Simples Nacional antes de 2027), sai "-" (ou "R$ 0,00" nos campos
+    /// de soma, confirmado no PDF real).
     /// </summary>
     private void BlocoIbsCbs(IContainer container)
     {

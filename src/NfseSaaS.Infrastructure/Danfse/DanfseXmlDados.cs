@@ -207,32 +207,102 @@ internal sealed class DanfseXmlDados
 
     public string? ChaveNfseSubstituida() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:subst/n:chSubstda");
 
-    // ---- Tributação IBS/CBS — confirmado no PDF real: bloco sempre
-    // aparece, com "-" nos campos ausentes (não é suprimido como eu
-    // tinha decidido antes de ver o PDF real). Este projeto ainda não
-    // coleta o grupo IBSCBS na DPS (Reforma Tributária) — por isso tudo
-    // aqui sai "-" por ora; ver nota completa em DanfseDocument.BlocoFederal. ----
+    // ---- Tributação IBS/CBS (Reforma Tributária, F1) ----
+    // O bloco SEMPRE aparece (confirmado no PDF oficial), com "-" nos
+    // campos ausentes. Desde o F1 a DPS leva a CLASSIFICAÇÃO (cIndOp, CST,
+    // cClassTrib, em infDPS/IBSCBS) e a SEFIN devolve na NFS-e os valores
+    // que ela calculou (infNFSe/IBSCBS: local de incidência, base,
+    // alíquotas e totais). Os campos abaixo leem esses dois grupos; sem o
+    // grupo (nota do leiaute NT 004 ou Simples antes de 2027) tudo sai como
+    // antes. Valor zero com o grupo presente sai "0,00" (a SEFIN calculou
+    // zero, não é "ausente").
 
-    public string IbsCbsCstEClasseTrib() => "-";
-    public string IbsCbsIndicadorOperacao() => "-";
+    private const string IbsCbsNfse = "//n:NFSe/n:infNFSe/n:IBSCBS";
+    private const string IbsCbsDps = "//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:IBSCBS";
 
-    /// <summary>Confirmado no PDF real: este campo específico mostra "R$ 0,00", não "-", mesmo sem o grupo IBSCBS no XML (provavelmente por ser resultado de uma soma, que dá zero em vez de "ausente").</summary>
-    public string IbsCbsExclusoesReducoesBc() => $"R$ {FormatarMoedaComZero(null)}";
-    public string IbsCbsBaseCalculo() => "-";
-    public string IbsCbsReducaoAliquota() => "-";
-    public string IbsCbsAliquotaUfMun() => "-";
-    public string IbsCbsAliquotaEfetivaMunicipal() => "-";
-    public string IbsCbsValorApuradoMunicipal() => "-";
-    public string IbsCbsAliquotaEfetivaEstadual() => "-";
-    public string IbsCbsValorApuradoEstadual() => "-";
-    public string IbsCbsValorTotalApuradoIbs() => FormatarMoeda(Texto("//n:NFSe/n:infNFSe/n:IBSCBS/n:totCIBS/n:gIBS/n:vIBSTot"));
-    public string IbsCbsAliquota() => "-";
-    public string IbsCbsAliquotaEfetiva() => "-";
-    public string IbsCbsValorTotalApuradoCbs() => FormatarMoeda(Texto("//n:NFSe/n:infNFSe/n:IBSCBS/n:totCIBS/n:gCBS/n:vCBS"));
+    /// <summary>A SEFIN devolveu o grupo IBSCBS calculado nesta NFS-e?</summary>
+    public bool TemIbsCbs() => Existe(IbsCbsNfse);
 
-    /// <summary>Confirmado no PDF real: "Total do IBS/CBS" e "Valor Líquido + IBS/CBS" mostram "R$ 0,00" (não "-") quando o grupo IBSCBS não existe.</summary>
-    public string TotalIbsCbs() => FormatarMoedaComZero(null);
-    public string ValorLiquidoMaisIbsCbs() => FormatarMoedaComZero(Texto("//n:NFSe/n:infNFSe/n:IBSCBS/n:totCIBS/n:vTotNF"));
+    /// <summary>"000 / 000001" (CST e cClassTrib declarados na DPS).</summary>
+    public string IbsCbsCstEClasseTrib()
+    {
+        var cst = Texto($"{IbsCbsDps}/n:valores/n:trib/n:CST");
+        var cClassTrib = Texto($"{IbsCbsDps}/n:valores/n:trib/n:cClassTrib");
+        if (string.IsNullOrWhiteSpace(cst) && string.IsNullOrWhiteSpace(cClassTrib))
+            return "-";
+        return $"{ValorOuTraco(cst)} / {ValorOuTraco(cClassTrib)}";
+    }
+
+    /// <summary>"100301 / 2927408 / Salvador / BA". O cIndOp vem da DPS (CST sem tributação não tem); o local de incidência, da NFS-e. A UF sai dos 2 primeiros dígitos do código IBGE.</summary>
+    public string IbsCbsIndicadorOperacao()
+    {
+        var cIndOp = Texto($"{IbsCbsDps}/n:cIndOp");
+        var codigoIbge = Texto($"{IbsCbsNfse}/n:cLocalidadeIncid");
+        var municipio = Texto($"{IbsCbsNfse}/n:xLocalidadeIncid");
+        if (new[] { cIndOp, codigoIbge, municipio }.All(string.IsNullOrWhiteSpace))
+            return "-";
+        var uf = string.IsNullOrWhiteSpace(codigoIbge) ? "-" : CodigosNfse.UfPorCodigoIbge(codigoIbge);
+        return CodigosNfse.Truncar($"{ValorOuTraco(cIndOp)} / {ValorOuTraco(codigoIbge)} / {ValorOuTraco(municipio)} / {uf}", 60);
+    }
+
+    /// <summary>Soma dos ajustes da base (vCalcAjusteBCIBSCBS + vCalcAjusteBCLocImoveis). Confirmado no PDF real: sai "R$ 0,00", não "-", mesmo sem o grupo.</summary>
+    public string IbsCbsExclusoesReducoesBc() =>
+        $"R$ {FormatarMoedaComZero((Numero($"{IbsCbsNfse}/n:valores/n:vCalcAjusteBCIBSCBS") + Numero($"{IbsCbsNfse}/n:valores/n:vCalcAjusteBCLocImoveis")).ToString(CultureInfo.InvariantCulture))}";
+
+    public string IbsCbsBaseCalculo() => MoedaSeExiste($"{IbsCbsNfse}/n:valores/n:vBC");
+
+    /// <summary>"IBS / CBS": redução da alíquota do IBS (UF; se não houver, a do município) e da CBS. Sem redução nenhuma, "-".</summary>
+    public string IbsCbsReducaoAliquota()
+    {
+        var ibs = Texto($"{IbsCbsNfse}/n:valores/n:uf/n:pRedAliqUF") ?? Texto($"{IbsCbsNfse}/n:valores/n:mun/n:pRedAliqMun");
+        var cbs = Texto($"{IbsCbsNfse}/n:valores/n:fed/n:pRedAliqCBS");
+        if (string.IsNullOrWhiteSpace(ibs) && string.IsNullOrWhiteSpace(cbs))
+            return "-";
+        return $"{PercentualComZero(ibs)} / {PercentualComZero(cbs)}";
+    }
+
+    /// <summary>"0,10% / 0,00%" (pIBSUF / pIBSMun).</summary>
+    public string IbsCbsAliquotaUfMun()
+    {
+        var uf = Texto($"{IbsCbsNfse}/n:valores/n:uf/n:pIBSUF");
+        var mun = Texto($"{IbsCbsNfse}/n:valores/n:mun/n:pIBSMun");
+        if (string.IsNullOrWhiteSpace(uf) && string.IsNullOrWhiteSpace(mun))
+            return "-";
+        return $"{PercentualComZero(uf)} / {PercentualComZero(mun)}";
+    }
+
+    public string IbsCbsAliquotaEfetivaMunicipal() => PercentualSeExiste($"{IbsCbsNfse}/n:valores/n:mun/n:pAliqEfetMun");
+    public string IbsCbsValorApuradoMunicipal() => MoedaSeExiste($"{IbsCbsNfse}/n:totCIBS/n:gIBS/n:gIBSMunTot/n:vIBSMun");
+    public string IbsCbsAliquotaEfetivaEstadual() => PercentualSeExiste($"{IbsCbsNfse}/n:valores/n:uf/n:pAliqEfetUF");
+    public string IbsCbsValorApuradoEstadual() => MoedaSeExiste($"{IbsCbsNfse}/n:totCIBS/n:gIBS/n:gIBSUFTot/n:vIBSUF");
+    public string IbsCbsValorTotalApuradoIbs() => MoedaSeExiste($"{IbsCbsNfse}/n:totCIBS/n:gIBS/n:vIBSTot");
+    public string IbsCbsAliquota() => PercentualSeExiste($"{IbsCbsNfse}/n:valores/n:fed/n:pCBS");
+    public string IbsCbsAliquotaEfetiva() => PercentualSeExiste($"{IbsCbsNfse}/n:valores/n:fed/n:pAliqEfetCBS");
+    public string IbsCbsValorTotalApuradoCbs() => MoedaSeExiste($"{IbsCbsNfse}/n:totCIBS/n:gCBS/n:vCBS");
+
+    /// <summary>vIBSTot + vCBS. Confirmado no PDF real: "0,00" (não "-") quando o grupo não existe. O bloco de totais põe o "R$".</summary>
+    public string TotalIbsCbs() =>
+        FormatarMoedaComZero((Numero($"{IbsCbsNfse}/n:totCIBS/n:gIBS/n:vIBSTot") + Numero($"{IbsCbsNfse}/n:totCIBS/n:gCBS/n:vCBS")).ToString(CultureInfo.InvariantCulture));
+
+    /// <summary>vTotNF, o total que a SEFIN calculou. Sem o grupo, "0,00" (confirmado no PDF real).</summary>
+    public string ValorLiquidoMaisIbsCbs() => FormatarMoedaComZero(Texto($"{IbsCbsNfse}/n:totCIBS/n:vTotNF"));
+
+    private decimal Numero(string caminho) =>
+        decimal.TryParse(Texto(caminho), NumberStyles.Number, CultureInfo.InvariantCulture, out var numero) ? numero : 0m;
+
+    /// <summary>"R$ 0,00" quando o nó existe (mesmo zero); "-" quando não existe.</summary>
+    private string MoedaSeExiste(string caminho) =>
+        Texto(caminho) is { } valor && !string.IsNullOrWhiteSpace(valor) ? $"R$ {FormatarMoedaComZero(valor)}" : "-";
+
+    /// <summary>"0,00%" quando o nó existe (mesmo zero); "-" quando não existe.</summary>
+    private string PercentualSeExiste(string caminho) => PercentualComZero(Texto(caminho));
+
+    private static string PercentualComZero(string? valor) =>
+        decimal.TryParse(valor, NumberStyles.Number, CultureInfo.InvariantCulture, out var numero)
+            ? numero.ToString("N2", new CultureInfo("pt-BR")) + "%"
+            : "-";
+
+    private static string ValorOuTraco(string? valor) => string.IsNullOrWhiteSpace(valor) ? "-" : valor;
 
     // ---- Helpers de formatação ----
 

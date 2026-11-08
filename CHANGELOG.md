@@ -10,6 +10,15 @@ versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH)
   lista de notas e "Baixar XML" nos detalhes (`GET /api/nfse/{id}/xml`), com o
   mesmo nome do PDF. Antes o XML só saía anexado no e-mail ao cliente.
 
+### Adicionado (fiscal — Reforma Tributária, F1 parte 2)
+- **DANFSe com o IBS/CBS calculado**: o bloco "TRIBUTAÇÃO IBS / CBS" do PDF,
+  que saía com traços, mostra o que a SEFIN devolveu na NFS-e — CST e
+  classificação, indicador da operação com o município e a UF de incidência,
+  base de cálculo, ajustes e reduções, alíquotas (IBS UF/Mun e CBS), alíquotas
+  efetivas, valores apurados e, nos totais, o IBS/CBS e o valor líquido + IBS/CBS.
+  Valor zero calculado pela SEFIN sai como zero; nota sem o grupo (leiaute
+  NT 004) continua como antes.
+
 ### Adicionado (fiscal — Reforma Tributária, F1 parte 1)
 - **IBS/CBS na DPS** (grupo `IBSCBS`, leiaute NT 009): a nota leva a
   classificação do IBS/CBS — indicador da operação (cIndOp), destinatário =

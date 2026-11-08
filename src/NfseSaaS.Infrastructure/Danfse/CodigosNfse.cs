@@ -104,10 +104,10 @@ internal static class CodigosNfse
     }
 
     /// <summary>
-    /// finNFSe não existe no XML pra NFS-e emitidas fora do escopo da
-    /// Reforma Tributária (grupo IBSCBS ainda não coletado por este
-    /// projeto) — confirmado no XML real: quando ausente, o PDF oficial
-    /// mostra "-", não um texto padrão "NFS-e regular" inventado.
+    /// finNFSe só existe no XML das NFS-e do leiaute NT 009 (Reforma
+    /// Tributária) — confirmado no XML real: quando ausente (leiaute NT
+    /// 004), o PDF oficial mostra "-", não um texto padrão "NFS-e regular"
+    /// inventado.
     /// </summary>
     public static string DescricaoFinNfse(string? codigo) => codigo switch
     {
