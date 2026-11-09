@@ -6,7 +6,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NfseSaaS.Application.Common;
 using NfseSaaS.Application.UseCases.Cobranca;
-using NfseSaaS.Application.UseCases.Indicacao;
 using NfseSaaS.Domain.Entities;
 using NfseSaaS.Domain.Enums;
 using NfseSaaS.Infrastructure.Jobs;
@@ -127,13 +126,12 @@ public sealed class ProcessarWebhookAsaasUseCase : IProcessarWebhookAsaasUseCase
 
             if (tipo is "PAYMENT_CONFIRMED" or "PAYMENT_RECEIVED")
             {
-                var registrou = primeiroPagamento && await RegistrarPremiosIndicacaoAsync(assinaturaLocal.TenantId, pagamentoId, cancellationToken);
+                var registrou = primeiroPagamento && await RegistroPremiosIndicacao.RegistrarAsync(_db, assinaturaLocal.TenantId, pagamentoId, cancellationToken);
                 if (registrou)
                     evento.Resultado += "; prêmio de indicação registrado";
 
                 // Quem INDICOU também pode ter prêmio guardado esperando este pagamento.
-                dispararPremios = registrou || await _db.PremiosIndicacao.AsNoTracking().AnyAsync(
-                    p => p.TenantId == assinaturaLocal.TenantId && p.Status == StatusPremioIndicacao.Pendente, cancellationToken);
+                dispararPremios = registrou || await RegistroPremiosIndicacao.TemPendentesAsync(_db, assinaturaLocal.TenantId, cancellationToken);
             }
         }
 
@@ -194,38 +192,6 @@ public sealed class ProcessarWebhookAsaasUseCase : IProcessarWebhookAsaasUseCase
         {
             _logger.LogWarning(ex, "Não foi possível agendar os avisos de cobrança da conta {TenantId}; ficam para o job diário.", tenantId);
         }
-    }
-
-    /// <summary>
-    /// Primeiro pagamento de uma conta indicada: um prêmio para ela e um para
-    /// quem indicou. O índice único (IndicadoTenantId, Papel) segura a
-    /// repetição; a consulta antes evita depender do erro de gravação.
-    /// </summary>
-    private async Task<bool> RegistrarPremiosIndicacaoAsync(Guid tenantId, string? pagamentoId, CancellationToken cancellationToken)
-    {
-        var indicadoPor = await _db.Tenants.AsNoTracking()
-            .Where(t => t.Id == tenantId)
-            .Select(t => t.IndicadoPorTenantId)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (!RegrasPremioIndicacao.GeraPremio(primeiroPagamento: true, tenantId, indicadoPor))
-            return false;
-
-        if (await _db.PremiosIndicacao.AsNoTracking().AnyAsync(p => p.IndicadoTenantId == tenantId, cancellationToken))
-            return false;
-
-        var origem = Limitar(pagamentoId, 60);
-        _db.PremiosIndicacao.Add(new PremioIndicacao
-        {
-            TenantId = tenantId, IndicadoTenantId = tenantId, Papel = PapelPremioIndicacao.ContaIndicada,
-            AsaasPagamentoOrigemId = origem, Detalhe = "Aguardando aplicação."
-        });
-        _db.PremiosIndicacao.Add(new PremioIndicacao
-        {
-            TenantId = indicadoPor!.Value, IndicadoTenantId = tenantId, Papel = PapelPremioIndicacao.QuemIndicou,
-            AsaasPagamentoOrigemId = origem, Detalhe = "Aguardando aplicação."
-        });
-        return true;
     }
 
     private static string Aplicar(Assinatura assinatura, string tipo, DateOnly? vencimento, decimal? valor, string? faturaUrl, string? statusPagamento)

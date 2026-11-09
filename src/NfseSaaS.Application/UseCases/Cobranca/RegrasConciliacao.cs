@@ -22,12 +22,17 @@ public sealed record EstadoLocalConciliacao(
 
 /// <summary>Como a assinatura deve ficar, e o que mudou (vazio = já estava certa).</summary>
 /// <param name="PrimeiroPagamentoEm">Preenchido quando o sistema não sabia de pagamento nenhum e o gateway mostra um.</param>
+/// <param name="PrimeiroPagamentoId">
+/// A fatura paga desse primeiro pagamento (junto com <paramref name="PrimeiroPagamentoEm"/>):
+/// é a origem do prêmio de indicação que o webhook perdido deixaria de registrar.
+/// </param>
 public sealed record ResultadoConciliacao(
     StatusAssinatura Status,
     DateOnly? AtrasadaDesde,
     DateOnly? PrimeiroPagamentoEm,
     FaturaConciliacao? FaturaPendente,
-    IReadOnlyList<string> Mudancas)
+    IReadOnlyList<string> Mudancas,
+    string? PrimeiroPagamentoId = null)
 {
     public bool Mudou => Mudancas.Count > 0;
 }
@@ -46,6 +51,8 @@ public sealed record ResultadoConciliacao(
 ///   sistema soube (a tolerância de 10 dias conta dali);
 /// - quem nunca pagou nada continua em Teste: o fim do teste e a primeira
 ///   fatura decidem (RegrasCobranca);
+/// - o primeiro pagamento que o sistema não conhecia sai com a fatura de
+///   origem (PrimeiroPagamentoId), para registrar o prêmio de indicação;
 /// - o link da fatura em aberto é sempre o da mais antiga não paga.
 /// </summary>
 public static class RegrasConciliacao
@@ -130,9 +137,13 @@ public static class RegrasConciliacao
         }
 
         DateOnly? primeiroPagamento = null;
+        string? primeiroPagamentoId = null;
         if (local.UltimoPagamentoEm is null && pagas.Count > 0)
         {
-            primeiroPagamento = pagas.Select(f => f.PagaEm ?? f.Vencimento).Where(d => d is not null).Max() ?? hoje;
+            // A paga mais recente (sem data vai para o fim): dia e id vêm da mesma fatura.
+            var paga = pagas.OrderByDescending(f => f.PagaEm ?? f.Vencimento).First();
+            primeiroPagamento = paga.PagaEm ?? paga.Vencimento ?? hoje;
+            primeiroPagamentoId = string.IsNullOrWhiteSpace(paga.Id) ? null : paga.Id;
             mudancas.Add($"pagamento de {Data(primeiroPagamento.Value)} registrado");
         }
 
@@ -147,7 +158,7 @@ public static class RegrasConciliacao
                  && (fatura.Url != local.UrlFaturaPendente || fatura.Vencimento != local.VencimentoFaturaPendente || fatura.Valor != local.ValorFaturaPendente))
             mudancas.Add($"fatura em aberto atualizada (vence em {Data(fatura.Vencimento!.Value)})");
 
-        return new ResultadoConciliacao(status, atrasadaDesde, primeiroPagamento, fatura, mudancas);
+        return new ResultadoConciliacao(status, atrasadaDesde, primeiroPagamento, fatura, mudancas, primeiroPagamentoId);
     }
 
     private static FaturaConciliacao? FaturaAtual(EstadoLocalConciliacao local) =>

@@ -17,6 +17,11 @@ namespace NfseSaaS.Infrastructure.Cobranca;
 /// assinatura e das faturas, decide com <see cref="RegrasConciliacao"/> e
 /// grava só o que mudou, com Histórico na conta ("ConciliarCobranca").
 /// Conta sem assinatura no Asaas, ou que o Asaas não conhece, não muda.
+///
+/// Prêmio de indicação: quando a conciliação descobre o PRIMEIRO pagamento
+/// (o webhook se perdeu), registra os prêmios do "Indique e ganhe" na mesma
+/// gravação, como o webhook faria. Depois de virar Ativa (prêmio novo ou
+/// guardado de quem indicou), dispara a aplicação por job.
 /// </summary>
 public sealed class ConciliacaoCobrancaService : IConciliarCobrancaUseCase
 {
@@ -83,6 +88,12 @@ public sealed class ConciliacaoCobrancaService : IConciliarCobrancaUseCase
             // Meio-dia de Brasília, em UTC (o Npgsql só grava timestamptz com offset 0).
             assinatura.UltimoPagamentoEm = new DateTimeOffset(pagoEm.ToDateTime(new TimeOnly(15, 0)), TimeSpan.Zero);
 
+        var mudancas = resultado.Mudancas.ToList();
+        var premioRegistrado = resultado.PrimeiroPagamentoEm is not null
+            && await RegistroPremiosIndicacao.RegistrarAsync(_db, tenantId, resultado.PrimeiroPagamentoId, cancellationToken);
+        if (premioRegistrado)
+            mudancas.Add("prêmio de indicação registrado");
+
         if (resultado.FaturaPendente is { } fatura)
         {
             assinatura.UrlFaturaPendente = fatura.Url;
@@ -101,7 +112,7 @@ public sealed class ConciliacaoCobrancaService : IConciliarCobrancaUseCase
             {
                 antes,
                 depois = new { Status = assinatura.Status.ToString(), assinatura.AtrasadaDesde, assinatura.UltimoPagamentoEm, assinatura.UrlFaturaPendente, assinatura.VencimentoFaturaPendente },
-                resultado.Mudancas,
+                Mudancas = mudancas,
                 OperadorId = operadorId
             });
             await _db.SaveChangesAsync(cancellationToken);
@@ -111,10 +122,14 @@ public sealed class ConciliacaoCobrancaService : IConciliarCobrancaUseCase
             _db.TenantIdOverrideDeSistema = null;
         }
 
-        _logger.LogWarning("Conciliação com o Asaas corrigiu a conta {TenantId}: {Mudancas}", tenantId, string.Join("; ", resultado.Mudancas));
+        _logger.LogWarning("Conciliação com o Asaas corrigiu a conta {TenantId}: {Mudancas}", tenantId, string.Join("; ", mudancas));
         AgendarAvisos(tenantId);
 
-        return new ConciliacaoContaResponse(true, "Corrigido pelo Asaas: " + string.Join("; ", resultado.Mudancas) + ".", resultado.Mudancas);
+        if (premioRegistrado
+            || (assinatura.Status == StatusAssinatura.Ativa && await RegistroPremiosIndicacao.TemPendentesAsync(_db, tenantId, CancellationToken.None)))
+            AgendarPremios(tenantId);
+
+        return new ConciliacaoContaResponse(true, "Corrigido pelo Asaas: " + string.Join("; ", mudancas) + ".", mudancas);
     }
 
     /// <summary>Mesmo critério do webhook: avisos de cobrança logo após a mudança, por job.</summary>
@@ -129,6 +144,19 @@ public sealed class ConciliacaoCobrancaService : IConciliarCobrancaUseCase
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Não foi possível agendar os avisos de cobrança da conta {TenantId}; ficam para o job diário.", tenantId);
+        }
+    }
+
+    /// <summary>Mesmo critério do webhook: aplicação no Asaas por job; se falhar, a varredura diária cobre.</summary>
+    private void AgendarPremios(Guid tenantId)
+    {
+        try
+        {
+            _jobs.Enqueue<IAplicarPremiosIndicacaoJob>(job => job.ExecutarAsync());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Não foi possível agendar a aplicação dos prêmios de indicação da conta {TenantId}; fica para a varredura diária.", tenantId);
         }
     }
 

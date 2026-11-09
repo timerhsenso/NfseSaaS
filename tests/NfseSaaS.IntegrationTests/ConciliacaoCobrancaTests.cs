@@ -70,6 +70,7 @@ public class ConciliacaoCobrancaTests
 
     private static async Task LimparAsync(AppDbContext db, Guid tenantId)
     {
+        await db.PremiosIndicacao.Where(p => p.TenantId == tenantId || p.IndicadoTenantId == tenantId).ExecuteDeleteAsync();
         await db.EventosCobranca.Where(e => e.TenantId == tenantId).ExecuteDeleteAsync();
         await db.AuditLogs.IgnoreQueryFilters().Where(x => x.TenantId == tenantId).ExecuteDeleteAsync();
         await db.Assinaturas.Where(a => a.TenantId == tenantId).ExecuteDeleteAsync();
@@ -109,6 +110,85 @@ public class ConciliacaoCobrancaTests
             var deNovo = await Servico(sp, gateway).ConciliarAsync(conta.Id, operadorId: null, CancellationToken.None);
             Assert.False(deNovo.Mudou);
             Assert.Equal(1, await db.AuditLogs.IgnoreQueryFilters().CountAsync(l => l.TenantId == conta.Id && l.Operacao == ConciliacaoCobrancaService.OperacaoHistorico));
+        }
+        finally
+        {
+            await LimparAsync(db, conta.Id);
+        }
+    }
+
+    [Fact]
+    public async Task Primeiro_pagamento_perdido_de_conta_indicada_registra_os_premios_uma_vez_so()
+    {
+        using var escopo = _factory.Services.CreateScope();
+        var sp = escopo.ServiceProvider;
+        var db = sp.GetRequiredService<AppDbContext>();
+        var s = Guid.NewGuid().ToString("N");
+        var indicador = new Tenant { Documento = s[2..16], RazaoSocial = "Indicador " + s };
+        db.Tenants.Add(indicador);
+        await db.SaveChangesAsync();
+        var (conta, assinatura) = await CriarContaAsync(db, StatusAssinatura.Teste);
+        conta.IndicadoPorTenantId = indicador.Id;
+        await db.SaveChangesAsync();
+        try
+        {
+            var gateway = new GatewayFalso
+            {
+                Estado = new AssinaturaGatewayConciliacao(false,
+                [
+                    new FaturaConciliacao("pay_origem", "RECEIVED", new DateOnly(2026, 11, 10), new DateOnly(2026, 11, 9), "https://asaas/i/1", 19m),
+                    new FaturaConciliacao("pay_prox", "PENDING", new DateOnly(2026, 12, 10), null, "https://asaas/i/2", 19m)
+                ])
+            };
+
+            var r = await Servico(sp, gateway).ConciliarAsync(conta.Id, operadorId: null, CancellationToken.None);
+            Assert.True(r.Mudou);
+            Assert.Contains("prêmio de indicação registrado", r.Mudancas);
+            Assert.Contains("prêmio de indicação registrado", r.Mensagem);
+
+            var premios = await db.PremiosIndicacao.AsNoTracking().Where(p => p.IndicadoTenantId == conta.Id).ToListAsync();
+            Assert.Equal(2, premios.Count);
+            Assert.All(premios, p => Assert.Equal(StatusPremioIndicacao.Pendente, p.Status));
+            Assert.All(premios, p => Assert.Equal("pay_origem", p.AsaasPagamentoOrigemId));
+            Assert.Contains(premios, p => p.Papel == PapelPremioIndicacao.ContaIndicada && p.TenantId == conta.Id);
+            Assert.Contains(premios, p => p.Papel == PapelPremioIndicacao.QuemIndicou && p.TenantId == indicador.Id);
+
+            // Gravado junto com a correção: o pagamento ficou registrado.
+            await db.Entry(assinatura).ReloadAsync();
+            Assert.Equal(StatusAssinatura.Ativa, assinatura.Status);
+            Assert.NotNull(assinatura.UltimoPagamentoEm);
+
+            // Conciliar de novo (ou o webhook atrasado chegar): nada de prêmio em dobro.
+            var deNovo = await Servico(sp, gateway).ConciliarAsync(conta.Id, operadorId: null, CancellationToken.None);
+            Assert.False(deNovo.Mudou);
+            Assert.Equal(2, await db.PremiosIndicacao.CountAsync(p => p.IndicadoTenantId == conta.Id));
+        }
+        finally
+        {
+            await LimparAsync(db, conta.Id);
+            await db.Tenants.Where(t => t.Id == indicador.Id).ExecuteDeleteAsync();
+        }
+    }
+
+    [Fact]
+    public async Task Primeiro_pagamento_perdido_de_conta_sem_indicacao_nao_gera_premio()
+    {
+        using var escopo = _factory.Services.CreateScope();
+        var sp = escopo.ServiceProvider;
+        var db = sp.GetRequiredService<AppDbContext>();
+        var (conta, _) = await CriarContaAsync(db, StatusAssinatura.Teste);
+        try
+        {
+            var gateway = new GatewayFalso
+            {
+                Estado = new AssinaturaGatewayConciliacao(false,
+                    [new FaturaConciliacao("pay_1", "RECEIVED", new DateOnly(2026, 11, 10), new DateOnly(2026, 11, 9), null, 19m)])
+            };
+
+            var r = await Servico(sp, gateway).ConciliarAsync(conta.Id, operadorId: null, CancellationToken.None);
+            Assert.True(r.Mudou);
+            Assert.DoesNotContain("prêmio de indicação registrado", r.Mudancas);
+            Assert.False(await db.PremiosIndicacao.AnyAsync(p => p.IndicadoTenantId == conta.Id));
         }
         finally
         {

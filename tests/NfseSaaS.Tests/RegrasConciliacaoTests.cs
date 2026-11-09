@@ -35,8 +35,33 @@ public class RegrasConciliacaoTests
         Assert.Equal(StatusAssinatura.Ativa, r.Status);
         Assert.Null(r.AtrasadaDesde);
         Assert.Equal(new DateOnly(2026, 11, 9), r.PrimeiroPagamentoEm);
+        Assert.Equal("pay_11_RECEIVED", r.PrimeiroPagamentoId);
         Assert.Equal("https://asaas/i/12", r.FaturaPendente!.Url);
         Assert.Contains("pagamento confirmado no Asaas: Ativa", r.Mudancas);
+    }
+
+    [Fact]
+    public void Primeiro_pagamento_sai_com_a_fatura_de_origem_e_so_quando_o_sistema_nao_sabia()
+    {
+        // Várias pagas que o sistema não conhecia: dia e id da mais recente, juntos.
+        var r = RegrasConciliacao.Avaliar(
+            Local(StatusAssinatura.Teste),
+            Gateway(Fatura("RECEIVED", 10, pagaEm: new DateOnly(2026, 10, 8)), Fatura("CONFIRMED", 11, pagaEm: new DateOnly(2026, 11, 9))),
+            Hoje);
+        Assert.Equal(new DateOnly(2026, 11, 9), r.PrimeiroPagamentoEm);
+        Assert.Equal("pay_11_CONFIRMED", r.PrimeiroPagamentoId);
+
+        // O sistema já sabia de um pagamento: nada de "primeiro" (o webhook registrou o prêmio).
+        var conhecido = RegrasConciliacao.Avaliar(
+            Local(StatusAssinatura.Atrasada, new DateOnly(2026, 12, 10), new DateTimeOffset(2026, 11, 9, 15, 0, 0, TimeSpan.Zero)),
+            Gateway(Fatura("RECEIVED", 11, pagaEm: new DateOnly(2026, 11, 9)), Fatura("RECEIVED", 12, pagaEm: new DateOnly(2026, 12, 12))),
+            Hoje);
+        Assert.Null(conhecido.PrimeiroPagamentoEm);
+        Assert.Null(conhecido.PrimeiroPagamentoId);
+
+        // Pagamento desfeito não é pagamento: sem origem de prêmio.
+        var estornado = RegrasConciliacao.Avaliar(Local(StatusAssinatura.Teste), Gateway(Fatura("REFUNDED", 11)), Hoje);
+        Assert.Null(estornado.PrimeiroPagamentoId);
     }
 
     [Fact]
