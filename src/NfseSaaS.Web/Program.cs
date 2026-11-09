@@ -260,6 +260,7 @@ try
     await NfseSaaS.Infrastructure.Persistence.Seeders.ExportacaoDadosJobSincronizador.SincronizarAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.ExpurgoContasJobSincronizador.SincronizarAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.EncerramentoAutomaticoJobSincronizador.SincronizarAsync(app.Services);
+    await NfseSaaS.Infrastructure.Persistence.Seeders.NotasMensalidadeJobSincronizador.SincronizarAsync(app.Services);
 
     app.UseForwardedHeaders();
     app.UseMiddleware<SecurityHeadersMiddleware>();

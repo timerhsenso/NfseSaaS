@@ -44,17 +44,20 @@ public sealed class ProcessarWebhookAsaasUseCase : IProcessarWebhookAsaasUseCase
     private readonly AppDbContext _db;
     private readonly IBackgroundJobClient _jobs;
     private readonly CobrancaOptions _cobranca;
+    private readonly NotaMensalidadeOptions _notaMensalidade;
     private readonly ILogger<ProcessarWebhookAsaasUseCase> _logger;
 
     public ProcessarWebhookAsaasUseCase(
         AppDbContext db,
         IBackgroundJobClient jobs,
         IOptions<CobrancaOptions> cobranca,
+        IOptions<NotaMensalidadeOptions> notaMensalidade,
         ILogger<ProcessarWebhookAsaasUseCase> logger)
     {
         _db = db;
         _jobs = jobs;
         _cobranca = cobranca.Value;
+        _notaMensalidade = notaMensalidade.Value;
         _logger = logger;
     }
 
@@ -157,6 +160,19 @@ public sealed class ProcessarWebhookAsaasUseCase : IProcessarWebhookAsaasUseCase
 
         if (assinaturaLocal is not null)
             AgendarAvisosCobranca(assinaturaLocal.TenantId);
+
+        if (assinaturaLocal is not null && tipo is ("PAYMENT_CONFIRMED" or "PAYMENT_RECEIVED") && _notaMensalidade.Ligado)
+        {
+            try
+            {
+                _jobs.Enqueue<IEmitirNotasMensalidadeJob>(job => job.ExecutarAsync());
+            }
+            catch (Exception ex)
+            {
+                // O evento já está gravado; a passada diária emite a nota.
+                _logger.LogWarning(ex, "Não foi possível agendar a NFS-e da mensalidade; fica para a passada diária.");
+            }
+        }
 
         if (dispararPremios)
         {

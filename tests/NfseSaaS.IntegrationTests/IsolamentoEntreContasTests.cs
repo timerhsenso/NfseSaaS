@@ -337,6 +337,7 @@ public class FiltroDeContaNoModeloTests
         ["EventoCobranca"] = "webhook do Asaas, antes de saber a conta",
         ["PremioIndicacao"] = "envolve duas contas (quem indicou e a indicada)",
         ["TesteGratisCnpj"] = "registro entre contas (um teste por CNPJ)",
+        ["NotaMensalidade"] = "nota da conta emissora para a conta que pagou (TenantId = a pagadora); só o job da mensalidade usa",
         ["ApplicationUser"] = "Identity/login antes de existir conta resolvida; consultas sempre por TenantId ou GrupoId"
     };
 

@@ -151,6 +151,68 @@ motivo e vai para o Histórico da conta (`ProrrogarTeste`, `LiberarNovoTeste`,
 - **Desfazer** (raro): a fatura removida pode ser restaurada no painel do Asaas
   (cobrança removida › restaurar).
 
+## NFS-e da mensalidade (emitida pela LFMS)
+
+Cada mensalidade paga no Asaas vira uma NFS-e emitida **pela própria
+plataforma** (a empresa LFMS, cadastrada dentro da conta do operador), com a
+conta que pagou como tomadora. **Desligado** enquanto as duas chaves abaixo
+estiverem vazias.
+
+Como funciona:
+
+- O webhook grava o pagamento (PAYMENT_CONFIRMED / PAYMENT_RECEIVED) e agenda o
+  job `emitir-notas-mensalidade`, que também roda todo dia às 08:10 como
+  repescagem. Um pagamento = uma nota (os dois eventos do mesmo pagamento não
+  duplicam; a chave de idempotência é `mensalidade:<id do pagamento>`).
+- Ficam de fora: a própria conta emissora, as contas isentas, as contas com a
+  cobrança desligada e pagamentos de valor zero. Ao ligar, só entram os
+  pagamentos dos últimos 35 dias (ou a partir de `EmitirAPartirDe`).
+- **Tomador**: o cliente da LFMS com o mesmo CPF/CNPJ da conta. Se não existe, é
+  criado com o endereço da empresa da própria conta (mesmo CNPJ), o e-mail do
+  administrador e "enviar a nota por e-mail" ligado. Sem endereço (ex.: conta
+  de contador sem empresa com o CNPJ dela), a nota fica com erro: cadastre o
+  cliente na tela **Clientes** da LFMS e a próxima passada emite.
+- **Item da LC 116 configurável**: a nota usa o Serviço indicado em
+  `NotaMensalidade__ServicoId`. O item (sugestão: **01.05**, licenciamento de
+  programas — código nacional 010501), o NBS e o IBS/CBS (sugestão cIndOp
+  **100501** / cClassTrib **000001**) ficam no cadastro desse Serviço: trocar o
+  item é editar o Serviço (ou apontar para outro), sem mexer no código.
+  Confirmar o item e o NBS com o contador.
+- Falha (SEFIN fora, rejeição, cadastro incompleto): alerta por e-mail ao
+  operador e nova tentativa na próxima passada, até 8 vezes. Rejeição que
+  permite reenvio é reenviada sozinha.
+- Pagamento desfeito (estorno/chargeback) **antes** da nota: não emite.
+  **Depois** da nota: alerta ao operador uma vez — cancele a nota na tela de
+  Notas da LFMS.
+
+### Ligar (VPS)
+
+1. Na conta do operador, em **Empresas**, a LFMS com certificado e o ambiente
+   desejado (comece em **Homologação**).
+2. Em **Serviços** da LFMS, cadastre "Licença de uso do sistema" com o item
+   01.05 (ou o que o contador indicar).
+3. Na VPS, pegue os dois Ids (troque o CNPJ pelo da LFMS, só números):
+
+   ```
+   docker exec nfsesaas-postgres psql -U nfse -d nfse_saas -c "select e.\"Id\" as empresa, s.\"Id\" as servico, s.\"Descricao\", s.\"CodigoTributacaoNacional\" from empresas e join servicos s on s.\"EmpresaId\" = e.\"Id\" where e.\"Cnpj\" = '00000000000000';"
+   ```
+
+4. No `docker-compose.segredos.yml` (ou no compose), em `environment:` do app:
+
+   ```
+   NotaMensalidade__EmpresaId: "<Id da empresa LFMS>"
+   NotaMensalidade__ServicoId: "<Id do serviço>"
+   NotaMensalidade__EmitirAPartirDe: "2026-12-01"   # opcional
+   ```
+
+5. Reinicie o app. Para desligar, apague as linhas e reinicie.
+
+Teste em homologação: com a LFMS em Homologação e uma conta piloto
+(`Cobranca:ContasPiloto`), confirme uma fatura no sandbox do Asaas; a nota
+aparece em Notas fiscais da LFMS em poucos segundos. Antes de passar a LFMS
+para Produção, use `EmitirAPartirDe` com a data da virada, para nada do teste
+se repetir.
+
 ## Configuração
 
 | Chave | Onde | Valor |
@@ -161,6 +223,8 @@ motivo e vai para o Histórico da conta (`ProrrogarTeste`, `LiberarNovoTeste`,
 | `Cobranca:Ativa` | compose | `false` no beta; `true` quando os planos valerem |
 | `Cobranca:ContasIsentas:0` | compose | Id da conta do operador (Plataforma › Contas) |
 | `Cobranca:ContasPiloto:0` | compose | Id de uma conta de teste: a cobrança vale só para ela, mesmo com `Ativa=false` |
+| `NotaMensalidade:EmpresaId` / `NotaMensalidade:ServicoId` | compose | empresa e serviço da LFMS que emitem a NFS-e da mensalidade (vazio = desligado) |
+| `NotaMensalidade:EmitirAPartirDe` | compose | opcional, `AAAA-MM-DD`: pagamentos antes disso não geram nota |
 
 No PC (fora do Git):
 

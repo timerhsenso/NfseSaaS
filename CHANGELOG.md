@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (NFS-e da mensalidade, N1 — DESLIGADO)
+- Cada mensalidade paga no Asaas vira uma NFS-e emitida pela LFMS (empresa da
+  conta do operador) para a conta que pagou: o webhook agenda o job
+  `emitir-notas-mensalidade`, que também roda todo dia às 08:10. Um pagamento,
+  uma nota (chave `mensalidade:<pagamento>`); tomador criado sozinho com o
+  endereço da empresa da conta; até 8 tentativas com alerta ao operador;
+  estorno antes da nota não emite, depois avisa para cancelar.
+- O item da LC 116, o NBS e o IBS/CBS vêm do Serviço indicado na configuração
+  (sugestão 01.05 / cIndOp 100501 / cClassTrib 000001): trocar é editar o Serviço.
+- Liga com `NotaMensalidade__EmpresaId` e `NotaMensalidade__ServicoId` na VPS
+  (opcional `NotaMensalidade__EmitirAPartirDe`). Tabela nova `notas_mensalidade`
+  (migration). Detalhes em `docs/operacao/cobranca.md`.
+
 ### Adicionado (encerramento automático, D2 parte 2 — DESLIGADO)
 - Job diário `encerrar-contas-canceladas` (05:00): com
   `Encerramento:AutomaticoAposCancelarDias` preenchido (mínimo 30; vazio =

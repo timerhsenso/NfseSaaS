@@ -342,6 +342,10 @@ public static class DependencyInjection
         services.Configure<NfseSaaS.Infrastructure.DadosConta.EncerramentoOptions>(configuration.GetSection(NfseSaaS.Infrastructure.DadosConta.EncerramentoOptions.SectionName));
         services.AddScoped<NfseSaaS.Application.UseCases.DadosConta.IEncerrarContasCanceladasUseCase, NfseSaaS.Infrastructure.DadosConta.EncerramentoAutomaticoService>();
         services.AddScoped<IEncerrarContasCanceladasJob, EncerrarContasCanceladasJob>();
+        // NFS-e da mensalidade (N1): DESLIGADA sem NotaMensalidade:EmpresaId e NotaMensalidade:ServicoId.
+        services.Configure<NfseSaaS.Infrastructure.Cobranca.NotaMensalidadeOptions>(configuration.GetSection(NfseSaaS.Infrastructure.Cobranca.NotaMensalidadeOptions.SectionName));
+        services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.INotasMensalidadeUseCase, NfseSaaS.Infrastructure.Cobranca.NotasMensalidadeService>();
+        services.AddScoped<IEmitirNotasMensalidadeJob, EmitirNotasMensalidadeJob>();
         services.AddScoped<NfseSaaS.Application.UseCases.Aparencia.IAparenciaUseCase, NfseSaaS.Infrastructure.UseCases.AparenciaService>();
         services.AddScoped<IAlterarBloqueioTenantUseCase, AlterarBloqueioTenantUseCase>();
         services.AddScoped<ICobrancaOperadorUseCase, NfseSaaS.Infrastructure.Cobranca.CobrancaOperadorService>();

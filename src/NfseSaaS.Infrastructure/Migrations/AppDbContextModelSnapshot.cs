@@ -1519,6 +1519,63 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.ToTable("nfse_eventos", (string)null);
                 });
 
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.NotaMensalidade", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AsaasPagamentoId")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("DataPagamento")
+                        .HasColumnType("date");
+
+                    b.Property<DateTimeOffset?>("EmitidaEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("EstornoAvisadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("NfseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Tentativas")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UltimoErro")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("Valor")
+                        .HasColumnType("numeric(10,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AsaasPagamentoId")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("Status", "CreatedAt");
+
+                    b.ToTable("notas_mensalidade", (string)null);
+                });
+
             modelBuilder.Entity("NfseSaaS.Domain.Entities.Plano", b =>
                 {
                     b.Property<Guid>("Id")
