@@ -5,6 +5,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado
+- **XML do mês** (tela de Notas fiscais): um ZIP com o XML oficial de todas as
+  notas autorizadas e canceladas da empresa no mês de competência, para o
+  contador. Na hora, sem PDF e sem limite de vezes (até 5.000 notas por arquivo).
+
+### Alterado (exportação dos dados)
+- Uma exportação completa a cada 7 dias por conta: enquanto a última estiver
+  pronta, a tela oferece baixar essa em vez de montar outra. Se falhou ou o
+  arquivo sumiu, pode pedir de novo na hora. Continua o limite de 3 pedidos por dia.
+- O operador libera uma nova antes do prazo em Plataforma › Contas
+  (menu da conta › "Liberar nova exportação dos dados").
+- Teto de espaço para as exportações prontas de todas as contas
+  (`ExportacaoDados:LimiteTotalMb`, padrão 2048 MB): passou, o pedido é recusado
+  com "tente de novo amanhã" e vai um alerta para o log.
+
 ### Adicionado (LGPD — encerramento da conta, D2 parte 1)
 - **Encerrar a conta** pela tela "Meus dados" (administrador, com código de 6
   números por e-mail) ou pelo operador (Plataforma › Contas › Encerrar, com

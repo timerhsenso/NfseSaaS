@@ -15,10 +15,32 @@ public class ExportacaoDadosTests
     [Fact]
     public void So_administrador_um_pedido_por_vez_e_ate_3_por_dia()
     {
-        Assert.Equal(RegrasExportacaoDados.MotivoSoAdministrador, RegrasExportacaoDados.MotivoParaNaoPedir(false, false, 0));
-        Assert.Equal(RegrasExportacaoDados.MotivoEmAndamento, RegrasExportacaoDados.MotivoParaNaoPedir(true, true, 0));
-        Assert.Equal(RegrasExportacaoDados.MotivoLimiteDiario, RegrasExportacaoDados.MotivoParaNaoPedir(true, false, 3));
-        Assert.Null(RegrasExportacaoDados.MotivoParaNaoPedir(true, false, 2));
+        Assert.Equal(RegrasExportacaoDados.MotivoSoAdministrador, RegrasExportacaoDados.MotivoParaNaoPedir(false, false, null, 0));
+        Assert.Equal(RegrasExportacaoDados.MotivoEmAndamento, RegrasExportacaoDados.MotivoParaNaoPedir(true, true, null, 0));
+        Assert.Equal(RegrasExportacaoDados.MotivoLimiteDiario, RegrasExportacaoDados.MotivoParaNaoPedir(true, false, null, 3));
+        Assert.Equal(RegrasExportacaoDados.MotivoServidorCheio, RegrasExportacaoDados.MotivoParaNaoPedir(true, false, null, 0, discoCheio: true));
+        Assert.Null(RegrasExportacaoDados.MotivoParaNaoPedir(true, false, null, 2));
+    }
+
+    [Fact]
+    public void Com_uma_pronta_valendo_baixa_essa_em_vez_de_montar_outra()
+    {
+        var ate = new DateTimeOffset(2026, 11, 16, 15, 0, 0, TimeSpan.Zero);
+        var motivo = RegrasExportacaoDados.MotivoParaNaoPedir(true, false, ate, 0);
+        Assert.Equal(RegrasExportacaoDados.MotivoJaTemPronta(ate), motivo);
+        Assert.Contains("até 16/11/2026", motivo);
+        Assert.Contains("XML do mês", motivo);
+        // A pronta pesa mais que o limite diário e o disco (a mensagem útil é "baixe essa").
+        Assert.Equal(motivo, RegrasExportacaoDados.MotivoParaNaoPedir(true, false, ate, 5, discoCheio: true));
+    }
+
+    [Fact]
+    public void Nome_do_zip_do_xml_do_mes()
+    {
+        Assert.Equal("XML-NFSe-04747304000178-2026-10.zip",
+            NfseSaaS.Application.UseCases.Nfse.RegrasXmlMes.NomeArquivo("04.747.304/0001-78", new DateOnly(2026, 10, 1), TipoAmbiente.Producao));
+        Assert.Equal("XML-NFSe-04747304000178-2026-10-homologacao.zip",
+            NfseSaaS.Application.UseCases.Nfse.RegrasXmlMes.NomeArquivo("04747304000178", new DateOnly(2026, 10, 1), TipoAmbiente.Homologacao));
     }
 
     [Fact]

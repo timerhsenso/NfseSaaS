@@ -77,12 +77,18 @@ function situacaoCobrancaPlataforma(t) {
 // Menu "Cobrança" da linha: só o que vale para a situação da conta.
 function menuCobranca(t, nome) {
     const c = t.cobranca || {};
-    if (c.isentaNaConfiguracao) return '';
+    // Liberar nova exportação dos dados (Meus dados): vale para qualquer conta.
+    const exportacao = `<li><hr class="dropdown-divider"></li><li><button type="button" class="dropdown-item btn-cobranca" data-acao="liberar-exportacao" data-id="${t.id}" data-nome="${nome}"><i class="bi bi-file-earmark-zip"></i> Liberar nova exportação dos dados</button></li>`;
+    if (c.isentaNaConfiguracao) return `<div class="dropdown">
+        <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-three-dots"></i></button>
+        <ul class="dropdown-menu dropdown-menu-end">${exportacao.replace('<li><hr class="dropdown-divider"></li>', '')}</ul>
+    </div>`;
     const itens = [];
     // Já assinou: teste e isenção não se aplicam (faturas no Asaas); só
     // conferir a situação com o Asaas agora, sem esperar a conciliação diária.
     if (c.temAssinaturaNoGateway) {
         itens.push(`<li><button type="button" class="dropdown-item btn-cobranca" data-acao="conciliar" data-id="${t.id}" data-nome="${nome}"><i class="bi bi-arrow-repeat"></i> Conferir com o Asaas agora</button></li>`);
+        itens.push(exportacao);
         return `<div class="dropdown">
         <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-credit-card"></i></button>
         <ul class="dropdown-menu dropdown-menu-end">${itens.join('')}</ul>
@@ -96,6 +102,7 @@ function menuCobranca(t, nome) {
     itens.push(c.isenta
         ? `<li><button type="button" class="dropdown-item btn-cobranca" data-acao="remover-isencao" data-id="${t.id}" data-nome="${nome}"><i class="bi bi-x-circle"></i> Remover isenção</button></li>`
         : `<li><button type="button" class="dropdown-item btn-cobranca" data-acao="isentar" data-id="${t.id}" data-nome="${nome}"><i class="bi bi-gift"></i> Isentar de cobrança…</button></li>`);
+    itens.push(exportacao);
     return `<div class="dropdown">
         <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-credit-card"></i></button>
         <ul class="dropdown-menu dropdown-menu-end">${itens.join('')}</ul>
@@ -571,6 +578,18 @@ async function abrirCobranca(acao, id, nome) {
             const r = await apiFetch(`/api/plataforma/tenants/${id}/cobranca/conciliar`, { method: 'POST' });
             mostrarToast(r.mensagem);
             if (r.mudou) await carregarTenants();
+        } catch (err) {
+            mostrarErro(err.message);
+        }
+        return;
+    }
+
+    if (acao === 'liberar-exportacao') {
+        if (!await confirmarAcao(`Liberar uma nova exportação dos dados para ${nome}? A exportação pronta atual deixa de valer (o arquivo é apagado) e a conta pode pedir outra agora.`,
+            { titulo: 'Liberar nova exportação', textoBotao: 'Liberar' })) return;
+        try {
+            await apiFetch(`/api/plataforma/tenants/${id}/exportacao/liberar`, { method: 'POST' });
+            mostrarToast('Pronto: a conta já pode pedir uma nova exportação em Meus dados.');
         } catch (err) {
             mostrarErro(err.message);
         }

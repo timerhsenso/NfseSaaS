@@ -97,6 +97,18 @@ public sealed class PlataformaController : ControllerBase
         return Ok(await encerrar.EncerrarPelaPlataformaAsync(id, request.Motivo, operadorId, cancellationToken));
     }
 
+    /// <summary>Expira a exportação dos dados pronta da conta para ela poder pedir outra antes dos 7 dias.</summary>
+    [HttpPost("tenants/{id:guid}/exportacao/liberar")]
+    public async Task<IActionResult> LiberarExportacao(
+        Guid id,
+        [FromServices] NfseSaaS.Application.UseCases.DadosConta.IExportacaoDadosUseCase exportacao,
+        CancellationToken cancellationToken)
+    {
+        var operadorId = _currentUser.UserId ?? throw new InvalidOperationException("Operador não identificado.");
+        await exportacao.LiberarNovaPelaPlataformaAsync(id, operadorId, cancellationToken);
+        return NoContent();
+    }
+
     // ---------- Cobrança da conta (prorrogar/liberar teste, isentar) ----------
 
     /// <summary>Confere a assinatura da conta com o Asaas agora (a mesma conciliação do job diário).</summary>

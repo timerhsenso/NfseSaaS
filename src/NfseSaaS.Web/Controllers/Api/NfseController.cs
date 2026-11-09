@@ -128,6 +128,23 @@ public sealed class NfseController : ControllerBase
         return Ok(resultado);
     }
 
+    /// <summary>
+    /// XML do mês: ZIP com o XML de todas as notas autorizadas e canceladas da
+    /// empresa no mês de competência (para o contador). Sem ambiente = o atual da empresa.
+    /// </summary>
+    [HttpGet("xml-mes")]
+    public async Task<IActionResult> BaixarXmlMes(
+        [FromQuery] Guid empresaId,
+        [FromQuery] DateOnly competencia,
+        [FromQuery] NfseSaaS.Domain.Enums.TipoAmbiente? ambiente,
+        [FromServices] IBaixarXmlMesUseCase baixarXmlMes,
+        CancellationToken cancellationToken)
+    {
+        var resultado = await baixarXmlMes.ExecutarAsync(empresaId, competencia, ambiente, cancellationToken);
+        Response.Headers.Append("X-Quantidade-Notas", resultado.Quantidade.ToString());
+        return File(resultado.ZipBytes, "application/zip", resultado.NomeArquivoZip);
+    }
+
     /// <summary>Ids que não tinham DANFSe disponível voltam no header X-Nfse-Ids-Ignorados (CSV) — não aborta o lote inteiro por causa de 1 nota sem PDF.</summary>
     [HttpPost("danfse-pdf/lote")]
     public async Task<IActionResult> ObterDanfsePdfLote([FromBody] GerarDanfsePdfLoteRequest request, CancellationToken cancellationToken)

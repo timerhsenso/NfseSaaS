@@ -324,6 +324,8 @@ public static class DependencyInjection
         // Retenção dos convites (B7): apaga convites e e-mails de convite após 12 meses.
         services.AddScoped<NfseSaaS.Application.UseCases.Indicacao.ILimparConvitesIndicacaoUseCase, NfseSaaS.Infrastructure.UseCases.LimparConvitesIndicacaoService>();
         services.AddScoped<ILimparConvitesIndicacaoJob, LimparConvitesIndicacaoJob>();
+        // XML do mês (tela de notas): leve, sem limite de vezes.
+        services.AddScoped<NfseSaaS.Application.UseCases.Nfse.IBaixarXmlMesUseCase, NfseSaaS.Infrastructure.UseCases.BaixarXmlMesUseCase>();
         // Exportação dos dados da conta (D1): tela "Meus dados" + job que monta o ZIP e limpeza diária.
         services.Configure<NfseSaaS.Infrastructure.DadosConta.ExportacaoDadosOptions>(configuration.GetSection(NfseSaaS.Infrastructure.DadosConta.ExportacaoDadosOptions.SectionName));
         services.AddScoped<NfseSaaS.Infrastructure.DadosConta.MontadorExportacaoDados>();

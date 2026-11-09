@@ -11,6 +11,9 @@ public sealed class ExportacaoDadosOptions
 
     public string BasePath { get; set; } = string.Empty;
 
+    /// <summary>Teto do espaço das exportações prontas, somando todas as contas (MB). 0 = sem teto.</summary>
+    public int LimiteTotalMb { get; set; } = 2048;
+
     public string PastaBase() =>
         string.IsNullOrWhiteSpace(BasePath)
             ? Path.Combine(Path.GetTempPath(), "nfsesaas-exportacoes")

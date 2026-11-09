@@ -141,6 +141,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.getElementById('btn-baixar-selecionadas').addEventListener('click', baixarDanfsePdfLote);
+    document.getElementById('btn-xml-mes').addEventListener('click', abrirXmlMes);
+    document.getElementById('form-xml-mes').addEventListener('submit', baixarXmlMes);
 
     modalDetalheNfse = new bootstrap.Modal(document.getElementById('modal-detalhe-nfse'));
 
@@ -1214,4 +1216,59 @@ function htmlDetalheNfse(nfse, snapshot) {
             <h6>Erro</h6>
             ${htmlErroNfse(nfse)}
         </section>` : ''}`;
+}
+
+// ---------- XML do mês (para o contador) ----------
+
+function abrirXmlMes() {
+    if (!empresaAtualIdNfse) return;
+    ocultarErroFormulario('erro-xml-mes');
+    // Padrão: o mês anterior (o que o contador pede no começo do mês).
+    const hoje = new Date();
+    const anterior = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+    const campo = document.getElementById('xml-mes-competencia');
+    if (!campo.value)
+        campo.value = `${anterior.getFullYear()}-${String(anterior.getMonth() + 1).padStart(2, '0')}`;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-xml-mes')).show();
+}
+
+async function baixarXmlMes(e) {
+    e.preventDefault();
+    ocultarErroFormulario('erro-xml-mes');
+    const mes = document.getElementById('xml-mes-competencia').value; // yyyy-MM
+    if (!mes) {
+        mostrarErroFormulario('erro-xml-mes', 'Escolha o mês.');
+        return;
+    }
+
+    const botao = document.getElementById('btn-baixar-xml-mes');
+    await executarComBotaoDesabilitado(botao, async function () {
+        try {
+            // application/zip não é JSON: fetch direto (mesmo padrão do lote de PDFs).
+            const resposta = await fetch(`/api/nfse/xml-mes?empresaId=${encodeURIComponent(empresaAtualIdNfse)}&competencia=${mes}-01`, {
+                credentials: 'same-origin'
+            });
+            if (!resposta.ok) {
+                const corpo = await resposta.json().catch(() => null);
+                throw new Error(extrairMensagemDeErro(corpo) ?? `Erro ${resposta.status} ao gerar o arquivo.`);
+            }
+
+            const quantidade = resposta.headers.get('X-Quantidade-Notas');
+            const nome = (resposta.headers.get('Content-Disposition') || '').match(/filename="?([^";]+)"?/)?.[1] || `XML-NFSe-${mes}.zip`;
+            const blob = await resposta.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = nome;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+
+            bootstrap.Modal.getInstance(document.getElementById('modal-xml-mes'))?.hide();
+            mostrarToast(`Arquivo com ${quantidade ?? 'os'} XML(s) baixado.`);
+        } catch (err) {
+            mostrarErroFormulario('erro-xml-mes', err.message);
+        }
+    });
 }

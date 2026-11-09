@@ -82,12 +82,14 @@ public sealed class ExportacaoDadosService : IExportacaoDadosUseCase, IGerarExpo
             .Take(QuantidadeNaTela)
             .ToListAsync(cancellationToken);
 
+        var agora = DateTimeOffset.UtcNow;
         var motivo = RegrasExportacaoDados.MotivoParaNaoPedir(
             administrador,
             exportacoes.Any(EmAndamento),
-            await PedidosHojeAsync(cancellationToken));
+            exportacoes.Where(e => RegrasExportacaoDados.PodeBaixar(e.Status, e.ExpiraEm, agora)).Max(e => e.ExpiraEm),
+            await PedidosHojeAsync(cancellationToken),
+            await DiscoCheioAsync(cancellationToken));
 
-        var agora = DateTimeOffset.UtcNow;
         return new ExportacoesDadosResponse(
             administrador,
             motivo,
@@ -101,9 +103,18 @@ public sealed class ExportacaoDadosService : IExportacaoDadosUseCase, IGerarExpo
         var administrador = await EhAdministradorAsync(tenantId, usuarioId, cancellationToken);
         var emAndamento = await _db.ExportacoesDados.AsNoTracking()
             .AnyAsync(e => e.Status == StatusExportacaoDados.Pendente || e.Status == StatusExportacaoDados.Gerando, cancellationToken);
+        var agoraPedido = DateTimeOffset.UtcNow;
+        var prontaAte = await _db.ExportacoesDados.AsNoTracking()
+            .Where(e => e.Status == StatusExportacaoDados.Pronta && e.ExpiraEm > agoraPedido)
+            .MaxAsync(e => e.ExpiraEm, cancellationToken);
+        var discoCheio = await DiscoCheioAsync(cancellationToken);
 
-        if (RegrasExportacaoDados.MotivoParaNaoPedir(administrador, emAndamento, await PedidosHojeAsync(cancellationToken)) is { } motivo)
+        if (RegrasExportacaoDados.MotivoParaNaoPedir(administrador, emAndamento, prontaAte, await PedidosHojeAsync(cancellationToken), discoCheio) is { } motivo)
+        {
+            if (discoCheio && motivo == RegrasExportacaoDados.MotivoServidorCheio)
+                _logger.LogError("Exportações dos dados: teto de {Limite} MB atingido; pedido da conta {TenantId} recusado.", _options.LimiteTotalMb, tenantId);
             throw new RegraNegocioException(motivo);
+        }
 
         var exportacao = new ExportacaoDados { TenantId = tenantId, SolicitadoPorUsuarioId = usuarioId };
         _db.ExportacoesDados.Add(exportacao);
@@ -160,6 +171,31 @@ public sealed class ExportacaoDadosService : IExportacaoDadosUseCase, IGerarExpo
 
         var documento = await _db.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.Documento).FirstOrDefaultAsync(cancellationToken) ?? "";
         return new ArquivoExportacaoDados(caminho, RegrasExportacaoDados.NomeArquivo(documento, exportacao.ConcluidaEm ?? exportacao.CreatedAt));
+    }
+
+    // ---------- Operador ----------
+
+    public async Task LiberarNovaPelaPlataformaAsync(Guid tenantId, Guid operadorId, CancellationToken cancellationToken)
+    {
+        var agora = DateTimeOffset.UtcNow;
+        var prontas = await _db.ExportacoesDados.IgnoreQueryFilters()
+            .Where(e => e.TenantId == tenantId && e.Status == StatusExportacaoDados.Pronta && e.ExpiraEm > agora)
+            .ToListAsync(cancellationToken);
+        if (prontas.Count == 0)
+            throw new RegraNegocioException(RegrasExportacaoDados.MotivoNadaALiberar);
+
+        foreach (var e in prontas)
+        {
+            e.Status = StatusExportacaoDados.Expirada;
+            e.UpdatedAt = agora;
+        }
+        // Histórico da conta do OPERADOR (como as outras ações da plataforma).
+        _auditLogWriter.Registrar("LiberarExportacaoDados", "Tenant", tenantId, new { OperadorId = operadorId, Exportacoes = prontas.Count });
+        await _db.SaveChangesAsync(cancellationToken);
+
+        foreach (var e in prontas)
+            TentarApagar(_options.CaminhoArquivo(tenantId, e.Id));
+        _logger.LogInformation("Operador {OperadorId} liberou nova exportação dos dados para a conta {TenantId}.", operadorId, tenantId);
     }
 
     // ---------- Job ----------
@@ -309,6 +345,17 @@ public sealed class ExportacaoDadosService : IExportacaoDadosUseCase, IGerarExpo
             // O arquivo está pronto e aparece na tela: o e-mail é só um aviso.
             _logger.LogWarning(ex, "Não foi possível avisar por e-mail a exportação {ExportacaoId}.", exportacao.Id);
         }
+    }
+
+    /// <summary>Exportações prontas (todas as contas) já ocupam o teto configurado?</summary>
+    private async Task<bool> DiscoCheioAsync(CancellationToken cancellationToken)
+    {
+        if (_options.LimiteTotalMb <= 0)
+            return false;
+        var bytes = await _db.ExportacoesDados.IgnoreQueryFilters().AsNoTracking()
+            .Where(e => e.Status == StatusExportacaoDados.Pronta)
+            .SumAsync(e => e.TamanhoBytes ?? 0, cancellationToken);
+        return bytes >= (long)_options.LimiteTotalMb * 1024 * 1024;
     }
 
     private async Task<int> PedidosHojeAsync(CancellationToken cancellationToken)

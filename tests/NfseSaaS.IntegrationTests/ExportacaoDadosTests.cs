@@ -163,7 +163,9 @@ public class ExportacaoDadosTests
             Assert.Equal(StatusExportacaoDados.Pronta, pronta.Status);
             Assert.True(pronta.PodeBaixar);
             Assert.Equal(2, pronta.QuantidadeNotas);
-            Assert.Null(lista.Motivo);
+            // Pronta valendo: não monta outra (baixa essa).
+            Assert.Equal(RegrasExportacaoDados.MotivoJaTemPronta(pronta.ExpiraEm!.Value), lista.Motivo);
+            await Assert.ThrowsAsync<RegraNegocioException>(() => servicoAdmin.SolicitarAsync(CancellationToken.None));
 
             // Aviso por e-mail para quem pediu.
             Assert.True(await db.EmailLogs.AnyAsync(e => e.Tipo == TipoEmailCatalogo.ExportacaoDados && e.Destinatario == admin.Email));
@@ -217,15 +219,42 @@ public class ExportacaoDadosTests
 
             Assert.True(await db.AuditLogs.AnyAsync(l => l.Operacao == "BaixarExportacaoDados"));
 
+            // XML do mês (tela de notas): só a autorizada de out/2026, sem limite de vezes.
+            var xmlMes = sp.GetRequiredService<NfseSaaS.Application.UseCases.Nfse.IBaixarXmlMesUseCase>();
+            for (var vez = 0; vez < 2; vez++)
+            {
+                var mes = await xmlMes.ExecutarAsync(empresa.Id, new DateOnly(2026, 10, 20), null, CancellationToken.None);
+                Assert.Equal(1, mes.Quantidade);
+                Assert.Equal(NfseSaaS.Application.UseCases.Nfse.RegrasXmlMes.NomeArquivo(s[..14], new DateOnly(2026, 10, 1), TipoAmbiente.Producao), mes.NomeArquivoZip);
+                using var zipMes = new ZipArchive(new MemoryStream(mes.ZipBytes));
+                Assert.Equal("PADARIA_7_05-10-2026.xml", Assert.Single(zipMes.Entries).FullName);
+            }
+            await Assert.ThrowsAsync<RegraNegocioException>(() => xmlMes.ExecutarAsync(empresa.Id, new DateOnly(2026, 11, 1), null, CancellationToken.None)); // só rejeitada
+            await Assert.ThrowsAsync<RegraNegocioException>(() => xmlMes.ExecutarAsync(empresa.Id, new DateOnly(2026, 10, 1), TipoAmbiente.Homologacao, CancellationToken.None));
+
+            // Operador libera: a pronta expira, o arquivo some e a conta pode pedir outra.
+            var caminhoAntes = arquivo.Caminho;
+            await servicoAdmin.LiberarNovaPelaPlataformaAsync(conta.Id, Guid.NewGuid(), CancellationToken.None);
+            Assert.False(File.Exists(caminhoAntes));
+            db.ChangeTracker.Clear();
+            Assert.Null((await servicoAdmin.ListarAsync(CancellationToken.None)).Motivo);
+            await Assert.ThrowsAsync<RegraNegocioException>(() => servicoAdmin.LiberarNovaPelaPlataformaAsync(conta.Id, Guid.NewGuid(), CancellationToken.None));
+
+            // Pede de novo (2º pedido do dia) e monta, para seguir com a limpeza abaixo.
+            var segundo = await servicoAdmin.SolicitarAsync(CancellationToken.None);
+            await servicoAdmin.GerarAsync(segundo.Id, CancellationToken.None);
+            arquivo = await servicoAdmin.BaixarAsync(segundo.Id, CancellationToken.None);
+
             // Limpeza depois dos 7 dias: expira e apaga o arquivo.
             var limpeza = await servicoAdmin.LimparAsync(DateTimeOffset.UtcNow.AddDays(8), CancellationToken.None);
             Assert.True(limpeza.Expiradas >= 1);
             Assert.False(File.Exists(arquivo.Caminho));
             db.ChangeTracker.Clear();
-            var expirada = Assert.Single((await servicoAdmin.ListarAsync(CancellationToken.None)).Exportacoes);
-            Assert.Equal(StatusExportacaoDados.Expirada, expirada.Status);
-            Assert.False(expirada.PodeBaixar);
-            await Assert.ThrowsAsync<RegraNegocioException>(() => servicoAdmin.BaixarAsync(pedido.Id, CancellationToken.None));
+            var depois = (await servicoAdmin.ListarAsync(CancellationToken.None)).Exportacoes;
+            Assert.Equal(2, depois.Count);
+            Assert.All(depois, e => Assert.Equal(StatusExportacaoDados.Expirada, e.Status));
+            Assert.All(depois, e => Assert.False(e.PodeBaixar));
+            await Assert.ThrowsAsync<RegraNegocioException>(() => servicoAdmin.BaixarAsync(segundo.Id, CancellationToken.None));
         }
         finally
         {
