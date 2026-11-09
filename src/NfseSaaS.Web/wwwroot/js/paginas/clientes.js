@@ -53,6 +53,9 @@ document.addEventListener('DOMContentLoaded', function () {
             numero: 'numero', botao: 'btn-buscar-cep-cliente'
         });
         document.getElementById('enviarNfsePorEmail').addEventListener('change', atualizarEnvioEmailCliente);
+        document.getElementById('retemIss').addEventListener('change', atualizarObrigatoriedadeEndereco);
+        ['cpfCnpj', ...CAMPOS_ENDERECO_CLIENTE, 'complemento'].forEach(id =>
+            document.getElementById(id).addEventListener('input', atualizarObrigatoriedadeEndereco));
 
         document.getElementById('tabela-clientes').addEventListener('click', async function (e) {
             const botao = e.target.closest('button');
@@ -95,6 +98,7 @@ function limparFormularioCliente() {
     document.getElementById('clienteId').value = '';
     document.getElementById('erro-cliente').classList.add('d-none');
     atualizarEnvioEmailCliente();
+    atualizarObrigatoriedadeEndereco();
 }
 
 /**
@@ -106,6 +110,21 @@ function atualizarEnvioEmailCliente() {
     const ligado = document.getElementById('enviarNfsePorEmail').checked;
     document.getElementById('email').required = ligado;
     document.getElementById('bloco-copias-cliente').classList.toggle('d-none', !ligado);
+}
+
+const CAMPOS_ENDERECO_CLIENTE = ['cep', 'codigoMunicipio', 'logradouro', 'numero', 'bairro', 'uf'];
+
+/**
+ * Endereço do cliente (C3): obrigatório para CNPJ, para quem retém o ISS
+ * e quando algum campo já foi preenchido (tudo ou nada). Pessoa física
+ * sem retenção pode ficar sem endereço. O asterisco vem do CSS de [required].
+ */
+function atualizarObrigatoriedadeEndereco() {
+    const documento = document.getElementById('cpfCnpj').value.replace(/[^0-9a-zA-Z]/g, '');
+    const algumPreenchido = [...CAMPOS_ENDERECO_CLIENTE, 'complemento']
+        .some(id => document.getElementById(id).value.trim() !== '');
+    const obrigatorio = documento.length !== 11 || document.getElementById('retemIss').checked || algumPreenchido;
+    CAMPOS_ENDERECO_CLIENTE.forEach(id => { document.getElementById(id).required = obrigatorio; });
 }
 
 /** "a@x.com, b@y.com; c@z.com" → ['a@x.com', 'b@y.com', 'c@z.com'] (sem vazios e sem repetidos). */
@@ -150,6 +169,7 @@ async function abrirModalEditarCliente(id) {
         document.getElementById('emailsCopia').value = (cliente.emailsCopia || []).join(', ');
         document.getElementById(cliente.copiaOculta ? 'copiaCco' : 'copiaCc').checked = true;
         atualizarEnvioEmailCliente();
+        atualizarObrigatoriedadeEndereco();
 
         const nomeExibicao = cliente.apelido || cliente.nome;
         document.getElementById('titulo-modal-cliente').textContent = nomeExibicao;

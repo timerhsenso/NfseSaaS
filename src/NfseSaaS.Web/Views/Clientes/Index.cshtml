@@ -127,12 +127,13 @@
                             <div class="form-secao-titulo">
                                 <h3>Endereço</h3>
                                 <p>Digite o CEP ou clique na lupa: rua, bairro, UF e município vêm sozinhos.</p>
+                                <p class="small text-muted mb-0" id="dica-endereco-cliente">Obrigatório para CNPJ e para quem retém o ISS. Pessoa física (CPF) sem retenção pode ficar sem endereço.</p>
                             </div>
                             <div class="row">
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label" for="cep">CEP</label>
                                     <div class="input-group">
-                                        <input type="text" class="form-control" id="cep" maxlength="9" required inputmode="numeric" placeholder="00000-000" />
+                                        <input type="text" class="form-control" id="cep" maxlength="9" inputmode="numeric" placeholder="00000-000" />
                                         <button type="button" class="btn btn-outline-primary" id="btn-buscar-cep-cliente" title="Buscar o endereço pelo CEP" aria-label="Buscar o endereço pelo CEP">
                                             <i class="bi bi-search"></i>
                                         </button>
@@ -141,16 +142,16 @@
                                 </div>
                                 <div class="col-md-8 mb-3">
                                     <label class="form-label" for="codigoMunicipio">Município (código IBGE)</label>
-                                    <input type="text" class="form-control" id="codigoMunicipio" maxlength="7" required inputmode="numeric" />
+                                    <input type="text" class="form-control" id="codigoMunicipio" maxlength="7" inputmode="numeric" />
                                     <div class="form-text" id="nome-municipio-cliente">Preenchido pelo CEP.</div>
                                 </div>
                                 <div class="col-md-9 mb-3">
                                     <label class="form-label" for="logradouro">Logradouro</label>
-                                    <input type="text" class="form-control" id="logradouro" maxlength="200" required />
+                                    <input type="text" class="form-control" id="logradouro" maxlength="200" />
                                 </div>
                                 <div class="col-md-3 mb-3">
                                     <label class="form-label" for="numero">Número</label>
-                                    <input type="text" class="form-control" id="numero" maxlength="20" required />
+                                    <input type="text" class="form-control" id="numero" maxlength="20" />
                                 </div>
                                 <div class="col-md-5 mb-3">
                                     <label class="form-label" for="complemento">Complemento</label>
@@ -158,11 +159,11 @@
                                 </div>
                                 <div class="col-md-5 mb-3">
                                     <label class="form-label" for="bairro">Bairro</label>
-                                    <input type="text" class="form-control" id="bairro" maxlength="100" required />
+                                    <input type="text" class="form-control" id="bairro" maxlength="100" />
                                 </div>
                                 <div class="col-md-2 mb-3">
                                     <label class="form-label" for="uf">UF</label>
-                                    <input type="text" class="form-control" id="uf" maxlength="2" required placeholder="BA" />
+                                    <input type="text" class="form-control" id="uf" maxlength="2" placeholder="BA" />
                                 </div>
                             </div>
                         </section>

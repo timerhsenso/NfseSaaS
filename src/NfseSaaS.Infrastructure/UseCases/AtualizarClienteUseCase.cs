@@ -24,6 +24,12 @@ public sealed class AtualizarClienteUseCase : IAtualizarClienteUseCase
         if (cliente is null)
             throw new RecursoNaoEncontradoException($"Cliente {id} não encontrado.");
 
+        // Endereço (C3): obrigatório para CNPJ e para quem retém o ISS. O
+        // documento não vem na edição (não é editável), então a regra fica aqui.
+        if (EnderecoCliente.MotivoObrigatorio(cliente.CpfCnpj, request.RetemIss) is { } motivo
+            && EnderecoCliente.Vazio(request.CodigoMunicipio, request.Cep, request.Logradouro, request.Numero, request.Bairro, request.Uf, request.Complemento))
+            throw new RegraNegocioException(motivo);
+
         var apelido = request.Apelido.Trim();
         await ApelidoCliente.GarantirUnicoAsync(_db, cliente.EmpresaId, apelido, clienteIdIgnorado: cliente.Id, cancellationToken);
 
@@ -31,13 +37,13 @@ public sealed class AtualizarClienteUseCase : IAtualizarClienteUseCase
         cliente.Apelido = apelido;
         cliente.Email = request.Email;
         cliente.Telefone = request.Telefone;
-        cliente.CodigoMunicipio = request.CodigoMunicipio;
-        cliente.Cep = request.Cep;
-        cliente.Logradouro = request.Logradouro;
-        cliente.Numero = request.Numero;
-        cliente.Complemento = request.Complemento;
-        cliente.Bairro = request.Bairro;
-        cliente.Uf = request.Uf;
+        cliente.CodigoMunicipio = EnderecoCliente.Normalizar(request.CodigoMunicipio);
+        cliente.Cep = EnderecoCliente.Normalizar(request.Cep);
+        cliente.Logradouro = EnderecoCliente.Normalizar(request.Logradouro);
+        cliente.Numero = EnderecoCliente.Normalizar(request.Numero);
+        cliente.Complemento = string.IsNullOrWhiteSpace(request.Complemento) ? null : request.Complemento.Trim();
+        cliente.Bairro = EnderecoCliente.Normalizar(request.Bairro);
+        cliente.Uf = EnderecoCliente.Normalizar(request.Uf).ToUpperInvariant();
         cliente.RetemIss = request.RetemIss;
         cliente.EnviarNfsePorEmail = request.EnviarNfsePorEmail;
         cliente.EmailsCopia = EmailsCopiaCliente.Juntar(request.EmailsCopia);

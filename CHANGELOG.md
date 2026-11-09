@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Alterado (endereço do tomador, C3)
+- Cliente pessoa física (CPF) sem retenção de ISS pode ficar **sem endereço**:
+  a DPS vai sem o grupo `end`. Para CNPJ e para quem retém o ISS o endereço
+  continua obrigatório (exigência da SEFIN, E0235/E0237), e também na nota
+  com IBS/CBS (E0239) — a emissão para antes de gastar o número da DPS e diz
+  onde completar. Endereço pela metade não é aceito (tudo ou nada).
+- A DPS passa a levar o **complemento** (`xCpl`), o **telefone** (`fone`, só
+  dígitos, 6 a 20) e o **e-mail** (`email`, até 80 caracteres) do cliente;
+  fora do formato, o campo é omitido em vez de rejeitar a nota.
+- Tela Clientes: os campos do endereço só ficam obrigatórios para CNPJ, para
+  quem retém o ISS ou quando algum deles foi preenchido. Sem migration.
+
 ### Adicionado (NFS-e da mensalidade, N1 — DESLIGADO)
 - Cada mensalidade paga no Asaas vira uma NFS-e emitida pela LFMS (empresa da
   conta do operador) para a conta que pagou: o webhook agenda o job

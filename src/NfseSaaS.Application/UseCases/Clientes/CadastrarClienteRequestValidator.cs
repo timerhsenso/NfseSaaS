@@ -26,24 +26,15 @@ public sealed class CadastrarClienteRequestValidator : AbstractValidator<Cadastr
         RuleFor(x => x.Telefone).MaximumLength(20);
         Include(new EnvioEmailClienteValidator());
 
-        RuleFor(x => x.CodigoMunicipio)
-            .NotEmpty()
-            .Matches(@"^\d{7}$").WithMessage("CodigoMunicipio deve ser o código IBGE com 7 dígitos.");
+        // Endereço (C3): em branco é aceito; preenchido, completo e no formato.
+        EnderecoCliente.AplicarRegras(this, x => x.CodigoMunicipio, x => x.Cep, x => x.Logradouro, x => x.Numero,
+            x => x.Complemento, x => x.Bairro, x => x.Uf);
 
-        // Coluna 'cep' no banco é HasMaxLength(8) — só dígitos, sem hífen.
-        // Se algum dia quiser aceitar "00000-000" na entrada, normalize
-        // (remova o hífen) ANTES de persistir, não aqui na validação.
-        RuleFor(x => x.Cep)
-            .NotEmpty()
-            .Matches(@"^\d{8}$").WithMessage("Cep deve ter exatamente 8 dígitos, sem hífen (ex.: 40010000).");
-
-        RuleFor(x => x.Logradouro).NotEmpty().MaximumLength(200);
-        RuleFor(x => x.Numero).NotEmpty().MaximumLength(20);
-        RuleFor(x => x.Complemento).MaximumLength(100);
-        RuleFor(x => x.Bairro).NotEmpty().MaximumLength(100);
-
-        RuleFor(x => x.Uf)
-            .NotEmpty()
-            .Matches(@"^[A-Z]{2}$").WithMessage("Uf deve ter exatamente 2 letras maiúsculas (ex.: 'BA').");
+        // Obrigatório para CNPJ e para quem retém o ISS (SEFIN E0235/E0237).
+        RuleFor(x => x)
+            .Must(x => EnderecoCliente.MotivoObrigatorio(x.CpfCnpj, x.RetemIss) is null
+                       || !EnderecoCliente.Vazio(x.CodigoMunicipio, x.Cep, x.Logradouro, x.Numero, x.Bairro, x.Uf, x.Complemento))
+            .WithName("Endereco")
+            .WithMessage(x => EnderecoCliente.MotivoObrigatorio(x.CpfCnpj, x.RetemIss)!);
     }
 }

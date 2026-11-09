@@ -16,7 +16,12 @@ public sealed record PrestadorDps(
     string RegApTribSN,
     string RegEspTrib);
 
-/// <summary>Identificação e endereço do tomador (Cliente) do serviço.</summary>
+/// <summary>
+/// Identificação e endereço do tomador (Cliente) do serviço. O endereço é
+/// opcional (C3): todos os campos em branco = a DPS vai sem o grupo end
+/// (só aceito pela SEFIN para pessoa física, sem retenção e sem IBS/CBS).
+/// Complemento, telefone e e-mail vão quando preenchidos.
+/// </summary>
 public sealed record TomadorDps(
     string CnpjOuCpf,
     string Nome,
@@ -24,7 +29,15 @@ public sealed record TomadorDps(
     string Cep,
     string Logradouro,
     string Numero,
-    string Bairro);
+    string Bairro,
+    string? Complemento = null,
+    string? Telefone = null,
+    string? Email = null)
+{
+    /// <summary>Nenhum campo do endereço preenchido: a DPS vai sem o grupo end.</summary>
+    public bool SemEndereco =>
+        new[] { CodigoMunicipio, Cep, Logradouro, Numero, Bairro, Complemento }.All(string.IsNullOrWhiteSpace);
+}
 
 /// <summary>
 /// Campos de tributação da DPS. Valores diretamente parametrizados a

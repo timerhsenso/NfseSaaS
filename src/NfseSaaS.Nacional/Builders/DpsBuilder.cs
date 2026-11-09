@@ -158,13 +158,30 @@ public sealed class DpsBuilder : IDpsBuilder
         Add(doc, toma, documentoTomador.Length == 11 ? "CPF" : "CNPJ", documentoTomador);
         Add(doc, toma, "xNome", request.Tomador.Nome);
 
-        var end = AddNode(doc, toma, "end");
-        var endNac = AddNode(doc, end, "endNac");
-        Add(doc, endNac, "cMun", request.Tomador.CodigoMunicipio);
-        Add(doc, endNac, "CEP", request.Tomador.Cep);
-        Add(doc, end, "xLgr", request.Tomador.Logradouro);
-        Add(doc, end, "nro", request.Tomador.Numero);
-        Add(doc, end, "xBairro", request.Tomador.Bairro);
+        // Endereço opcional (C3): sem endereço, o grupo end não vai (o
+        // validador já barrou CNPJ sem endereço). Ordem do TCInfoPessoa:
+        // xNome, end?, fone?, email?; do TCEndereco: endNac, xLgr, nro, xCpl?, xBairro.
+        if (!request.Tomador.SemEndereco)
+        {
+            var end = AddNode(doc, toma, "end");
+            var endNac = AddNode(doc, end, "endNac");
+            Add(doc, endNac, "cMun", request.Tomador.CodigoMunicipio);
+            Add(doc, endNac, "CEP", request.Tomador.Cep);
+            Add(doc, end, "xLgr", request.Tomador.Logradouro);
+            Add(doc, end, "nro", request.Tomador.Numero);
+            AddOpcional(doc, end, "xCpl", Limitar(request.Tomador.Complemento, 156));
+            Add(doc, end, "xBairro", request.Tomador.Bairro);
+        }
+
+        // fone: TSTelefone [0-9]{6,20} — só dígitos; fora disso não vai
+        // (um telefone mal digitado no cadastro não pode rejeitar a nota).
+        var foneTomador = new string((request.Tomador.Telefone ?? string.Empty).Where(char.IsDigit).ToArray());
+        if (foneTomador.Length is >= 6 and <= 20)
+            Add(doc, toma, "fone", foneTomador);
+        // email: TSEmail até 80 caracteres; maior não vai.
+        var emailTomador = request.Tomador.Email?.Trim();
+        if (!string.IsNullOrEmpty(emailTomador) && emailTomador.Length <= 80)
+            Add(doc, toma, "email", emailTomador);
 
         var serv = AddNode(doc, infDps, "serv");
         var locPrest = AddNode(doc, serv, "locPrest");
@@ -258,6 +275,12 @@ public sealed class DpsBuilder : IDpsBuilder
         new(documento.Where(char.IsLetterOrDigit).Select(char.ToUpperInvariant).ToArray());
 
     /// <summary>Elemento opcional (minOccurs=0): valor vazio = elemento ausente, nunca elemento vazio.</summary>
+    private static string? Limitar(string? valor, int maximo)
+    {
+        var texto = valor?.Trim();
+        return string.IsNullOrEmpty(texto) || texto.Length <= maximo ? texto : texto[..maximo].TrimEnd();
+    }
+
     private static void AddOpcional(XmlDocument doc, XmlElement parent, string nome, string? valor)
     {
         if (!string.IsNullOrWhiteSpace(valor))

@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using NfseSaaS.Application.Fiscal.IbsCbs;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Exceptions;
+using NfseSaaS.Application.UseCases.Clientes;
 using NfseSaaS.Application.UseCases.Nfse;
 using NfseSaaS.Domain.Enums;
 using NfseSaaS.Domain.Snapshots;
@@ -231,6 +232,13 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
                 ?? throw new RegraNegocioException($"{resolucao.Problema} Serviço: \"{servico.Descricao}\".");
         }
 
+        // Endereço do tomador (C3): opcional só para pessoa física sem
+        // retenção e sem IBS/CBS (SEFIN E0235/E0237/E0239). Para antes de
+        // gastar o número da DPS, dizendo onde corrigir.
+        if (EnderecoCliente.Vazio(cliente.CodigoMunicipio, cliente.Cep, cliente.Logradouro, cliente.Numero, cliente.Bairro, cliente.Uf, cliente.Complemento)
+            && EnderecoCliente.MotivoObrigatorio(cliente.CpfCnpj, issRetido, ibsCbs is not null) is { } motivoEndereco)
+            throw new RegraNegocioException($"{motivoEndereco} Complete o endereço do cliente \"{cliente.Apelido}\" na tela Clientes.");
+
         var numeroDps = await ProximoNumeroDpsAsync(request.EmpresaId, cancellationToken);
 
         // Grava como "Processando" ANTES de chamar a SEFIN — se a chamada
@@ -332,7 +340,10 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
                 Cep: cliente.Cep,
                 Logradouro: cliente.Logradouro,
                 Numero: cliente.Numero,
-                Bairro: cliente.Bairro),
+                Bairro: cliente.Bairro,
+                Complemento: cliente.Complemento,
+                Telefone: cliente.Telefone,
+                Email: cliente.Email),
             // Os valores da DPS de fato enviada vêm do snapshot recém-gravado
             // na Nfse (nfse.CodigoTributacaoNacional etc.), não mais lidos
             // de novo de servico/empresa — mesma fonte que fica no banco.

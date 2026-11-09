@@ -69,6 +69,15 @@ public sealed class DpsValidator : IDpsValidator
         if (string.IsNullOrWhiteSpace(tomador.Nome))
             erros.Add("Nome do tomador é obrigatório.");
 
+        // Endereço opcional (C3), mas a SEFIN exige para CNPJ (E0235).
+        // Pela metade não vale: ou todos os campos da DPS, ou nenhum.
+        if (tomador.SemEndereco)
+        {
+            if (NormalizarDocumentoTomador(tomador.CnpjOuCpf).Length != 11)
+                erros.Add("Endereço do tomador é obrigatório para CNPJ (E0235).");
+            return;
+        }
+
         if (!ApenasDigitos.IsMatch(tomador.CodigoMunicipio) || tomador.CodigoMunicipio.Length != 7)
             erros.Add($"CodigoMunicipio do tomador deve ter 7 dígitos numéricos (IBGE): '{tomador.CodigoMunicipio}'.");
 
@@ -78,9 +87,15 @@ public sealed class DpsValidator : IDpsValidator
         if (string.IsNullOrWhiteSpace(tomador.Logradouro))
             erros.Add("Logradouro do tomador é obrigatório.");
 
+        if (string.IsNullOrWhiteSpace(tomador.Numero))
+            erros.Add("Número do endereço do tomador é obrigatório (use S/N se não houver).");
+
         if (string.IsNullOrWhiteSpace(tomador.Bairro))
             erros.Add("Bairro do tomador é obrigatório.");
     }
+
+    private static string NormalizarDocumentoTomador(string? documento) =>
+        new string((documento ?? string.Empty).Where(char.IsLetterOrDigit).ToArray());
 
     private static void ValidarTributacao(PrestadorDps prestador, TributacaoDps tributacao, List<string> erros)
     {
