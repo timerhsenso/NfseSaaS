@@ -95,7 +95,10 @@ public sealed class ListarTenantsPlataformaUseCase : IListarTenantsPlataformaUse
                 a?.Plano is { } plano ? nomesPlanos.GetValueOrDefault(plano, $"plano {plano}") : null,
                 a?.PrecoMensal,
                 a?.TesteIniciadoEm,
-                Cobranca(t.Id, a, agora, hoje));
+                Cobranca(t.Id, a, agora, hoje),
+                t.EncerradaEm,
+                t.ExpurgoPrevistoEm,
+                t.DadosExpurgadosEm);
         }).ToList();
     }
 
@@ -155,6 +158,17 @@ public sealed class AlterarBloqueioTenantUseCase : IAlterarBloqueioTenantUseCase
         if (tenant.Ativo == !suspender)
             throw new RegraNegocioException(suspender ? "Esta conta já está suspensa." : "Esta conta já está ativa.");
 
+        // Conta encerrada (D2): "Reativar" reabre, enquanto os dados não foram apagados.
+        var reabrindo = !suspender && tenant.EncerradaEm is not null;
+        if (reabrindo && tenant.DadosExpurgadosEm is not null)
+            throw new RegraNegocioException(NfseSaaS.Application.UseCases.DadosConta.RegrasEncerramentoConta.MotivoJaExpurgada);
+        if (reabrindo)
+        {
+            tenant.EncerradaEm = null;
+            tenant.EncerramentoOrigem = null;
+            tenant.ExpurgoPrevistoEm = null;
+        }
+
         tenant.Ativo = !suspender;
         tenant.BloqueadoEm = suspender ? DateTimeOffset.UtcNow : null;
         tenant.MotivoBloqueio = suspender ? motivo?.Trim() : null;
@@ -163,7 +177,7 @@ public sealed class AlterarBloqueioTenantUseCase : IAlterarBloqueioTenantUseCase
         _db.TenantIdOverrideDeSistema = tenantId;
         try
         {
-            _auditLogWriter.Registrar(suspender ? "ContaSuspensaPelaPlataforma" : "ContaReativadaPelaPlataforma", "Tenant", tenantId,
+            _auditLogWriter.Registrar(suspender ? "ContaSuspensaPelaPlataforma" : reabrindo ? "ContaReabertaPelaPlataforma" : "ContaReativadaPelaPlataforma", "Tenant", tenantId,
                 new { Motivo = tenant.MotivoBloqueio, OperadorId = operadorId });
             await _db.SaveChangesAsync(cancellationToken);
         }

@@ -83,6 +83,7 @@ function rotuloTipo(tipo) {
         case 'ConviteIndicacao': return 'Convite de indicação';
         case 'NovosTermos': return 'Aviso de novos termos';
         case 'ExportacaoDados': return 'Exportação dos dados';
+        case 'EncerramentoConta': return 'Encerramento da conta';
         default: return tipo;
     }
 }

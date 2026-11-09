@@ -5,6 +5,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (LGPD — encerramento da conta, D2 parte 1)
+- **Encerrar a conta** pela tela "Meus dados" (administrador, com código de 6
+  números por e-mail) ou pelo operador (Plataforma › Contas › Encerrar, com
+  motivo): cancela a assinatura no Asaas, fecha o acesso na hora (sessões
+  derrubadas), avisa os administradores por e-mail e marca a data do expurgo
+  (90 dias). O login de conta encerrada explica até quando dá para reabrir.
+  O operador reabre com "Reabrir" enquanto os dados não foram apagados.
+- Job diário `expurgar-contas-encerradas` (05:10): conta sem nenhuma nota é
+  excluída inteira; conta com notas fica só com os documentos fiscais (notas,
+  eventos, empresas, tomadores das notas sem e-mail/telefone), a cobrança e os
+  aceites dos termos — usuários, grupos, contratos, serviços, demais clientes,
+  convites, e-mails, histórico, certificados e documentos são apagados.
+- Tenant ganha `EncerradaEm`, `EncerramentoOrigem`, `ExpurgoPrevistoEm` e
+  `DadosExpurgadosEm` (migration `EncerramentoConta`). Cancelar a assinatura
+  continua sem encerrar a conta (Termos 1.1, item 8.5).
+
 ### Adicionado (LGPD — exportação dos dados, D1)
 - **Tela "Meus dados"** (menu do usuário): o administrador da conta pede a
   exportação de tudo o que a conta tem e baixa um ZIP com o XML oficial e o

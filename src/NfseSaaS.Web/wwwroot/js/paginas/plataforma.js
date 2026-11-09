@@ -2,6 +2,8 @@
 let tabelaTenants;
 let tabelaPremios;
 let modalSuspender;
+let modalEncerrar;
+let tenantParaEncerrar = null;
 let tenantParaSuspender = null;
 let modalExcluir;
 let tenantParaExcluir = null;
@@ -32,6 +34,7 @@ function reaisPlataforma(v) {
 // StatusAssinatura (Domain.Enums): 1 Teste, 2 Ativa, 3 Atrasada, 4 Cancelada.
 function categoriaConta(t) {
     const c = t.cobranca || {};
+    if (t.encerradaEm) return 'encerrada';
     if (!t.ativo) return 'suspensa';
     if (c.isenta) return 'isenta';
     switch (t.statusAssinatura) {
@@ -149,8 +152,16 @@ document.addEventListener('DOMContentLoaded', function () {
             {
                 data: 'ativo',
                 render: (v, type, t) => {
-                    if (type !== 'display') return (v ? 'Ativa ' : 'Suspensa ') + categoriaConta(t);
+                    if (type !== 'display') return (t.encerradaEm ? 'Encerrada ' : v ? 'Ativa ' : 'Suspensa ') + categoriaConta(t);
                     const cobranca = situacaoCobrancaPlataforma(t);
+                    if (t.encerradaEm) {
+                        const quando = t.dadosExpurgadosEm
+                            ? `dados apagados em ${dataCurta(t.dadosExpurgadosEm)}`
+                            : `apaga os dados em ${diaCurto(t.expurgoPrevistoEm)}`;
+                        return '<span class="badge text-bg-dark">Encerrada</span>' +
+                            `<div class="small text-muted mt-1">${dataCurta(t.encerradaEm)} · ${quando}</div>` +
+                            (t.motivoBloqueio ? `<div class="small text-muted">${escaparHtml(t.motivoBloqueio)}</div>` : '');
+                    }
                     if (v) return '<span class="badge text-bg-success">Ativa</span>' + cobranca;
                     return `<span class="badge text-bg-danger">Suspensa</span>` +
                         `<div class="small text-muted mt-1">${dataCurta(t.bloqueadoEm)}${t.motivoBloqueio ? ' · ' + escaparHtml(t.motivoBloqueio) : ''}</div>` + cobranca;
@@ -160,14 +171,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 data: null, orderable: false,
                 render: (d, type, t) => {
                     const nome = escaparHtml(t.nomeFantasia || t.razaoSocial);
+                    // Encerrada com dados já apagados: não há mais o que fazer pela tela.
+                    if (t.dadosExpurgadosEm) return '';
                     const principal = t.ativo
                         ? `<button type="button" class="btn btn-sm btn-outline-danger btn-suspender" data-id="${t.id}" data-nome="${nome}"><i class="bi bi-pause-circle"></i> Suspender</button>`
-                        : `<button type="button" class="btn btn-sm btn-outline-success btn-reativar" data-id="${t.id}" data-nome="${nome}"><i class="bi bi-play-circle"></i> Reativar</button>`;
+                        : `<button type="button" class="btn btn-sm btn-outline-success btn-reativar" data-id="${t.id}" data-nome="${nome}" data-encerrada="${t.encerradaEm ? '1' : ''}"><i class="bi bi-play-circle"></i> ${t.encerradaEm ? 'Reabrir' : 'Reativar'}</button>`;
+                    const encerrar = !t.encerradaEm
+                        ? ` <button type="button" class="btn btn-sm btn-outline-dark btn-encerrar-tenant" data-id="${t.id}" data-nome="${nome}" title="Encerrar a conta (apaga os dados em 90 dias)"><i class="bi bi-door-closed"></i></button>`
+                        : '';
                     // Só aparece para conta que nunca teve nota (a regra completa é conferida no servidor).
                     const excluir = t.notasTotal === 0
                         ? ` <button type="button" class="btn btn-sm btn-outline-danger btn-excluir-tenant" data-id="${t.id}" data-nome="${nome}" title="Excluir definitivamente"><i class="bi bi-trash"></i></button>`
                         : '';
-                    return `<div class="d-flex gap-1">${principal}${menuCobranca(t, nome)}${excluir}</div>`;
+                    return `<div class="d-flex gap-1">${principal}${t.encerradaEm ? '' : menuCobranca(t, nome)}${encerrar}${excluir}</div>`;
                 }
             }
         ],
@@ -229,6 +245,8 @@ document.addEventListener('DOMContentLoaded', function () {
         carregarPremios();
     });
     document.getElementById('form-suspender-tenant').addEventListener('submit', suspenderTenant);
+    modalEncerrar = new bootstrap.Modal(document.getElementById('modal-encerrar-tenant'));
+    document.getElementById('form-encerrar-tenant').addEventListener('submit', encerrarTenant);
 
     document.getElementById('tabela-tenants').addEventListener('click', async function (e) {
         const botao = e.target.closest('button');
@@ -243,10 +261,16 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('motivo-suspensao').value = '';
             ocultarErroFormulario('erro-suspender-tenant');
             modalSuspender.show();
+        } else if (botao.classList.contains('btn-encerrar-tenant')) {
+            tenantParaEncerrar = botao.dataset.id;
+            document.getElementById('nome-tenant-encerrar').textContent = botao.dataset.nome;
+            document.getElementById('motivo-encerramento').value = '';
+            ocultarErroFormulario('erro-encerrar-tenant');
+            modalEncerrar.show();
         } else if (botao.classList.contains('btn-excluir-tenant')) {
             await executarComBotaoDesabilitado(botao, () => pedirCodigoExclusao(botao.dataset.id, botao.dataset.nome));
         } else if (botao.classList.contains('btn-reativar')) {
-            await executarComBotaoDesabilitado(botao, () => reativarTenant(botao.dataset.id, botao.dataset.nome));
+            await executarComBotaoDesabilitado(botao, () => reativarTenant(botao.dataset.id, botao.dataset.nome, botao.dataset.encerrada === '1'));
         }
     });
 
@@ -366,13 +390,35 @@ async function suspenderTenant(e) {
     }
 }
 
-async function reativarTenant(id, nome) {
-    if (!await confirmarAcao(`Reativar a conta ${nome}? Os usuários voltam a entrar e a emitir notas.`,
-        { titulo: 'Reativar conta', textoBotao: 'Reativar' })) return;
+async function encerrarTenant(e) {
+    e.preventDefault();
+    ocultarErroFormulario('erro-encerrar-tenant');
+    const motivo = document.getElementById('motivo-encerramento').value.trim();
+    if (!motivo) {
+        mostrarErroFormulario('erro-encerrar-tenant', 'Informe o motivo do encerramento.');
+        return;
+    }
+    try {
+        const r = await apiFetch(`/api/plataforma/tenants/${tenantParaEncerrar}/encerrar`, {
+            method: 'POST', body: JSON.stringify({ motivo })
+        });
+        modalEncerrar.hide();
+        mostrarToast(`Conta encerrada. Os dados serão apagados em ${diaCurto(r.expurgoPrevistoEm)}.`);
+        await carregarTenants();
+    } catch (err) {
+        mostrarErroFormulario('erro-encerrar-tenant', err.message);
+    }
+}
+
+async function reativarTenant(id, nome, encerrada) {
+    const texto = encerrada
+        ? `Reabrir a conta ${nome}? O encerramento é desfeito (os dados não serão mais apagados) e os usuários voltam a entrar. A assinatura continua cancelada: a conta precisa assinar de novo.`
+        : `Reativar a conta ${nome}? Os usuários voltam a entrar e a emitir notas.`;
+    if (!await confirmarAcao(texto, { titulo: encerrada ? 'Reabrir conta' : 'Reativar conta', textoBotao: encerrada ? 'Reabrir' : 'Reativar' })) return;
 
     try {
         await apiFetch(`/api/plataforma/tenants/${id}/reativar`, { method: 'POST' });
-        mostrarToast('Conta reativada.');
+        mostrarToast(encerrada ? 'Conta reaberta.' : 'Conta reativada.');
         await carregarTenants();
     } catch (err) {
         mostrarErro(err.message);

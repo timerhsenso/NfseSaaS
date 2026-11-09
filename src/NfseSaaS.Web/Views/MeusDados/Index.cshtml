@@ -28,6 +28,25 @@
                 </button>
             </div>
         </div>
+
+        <div class="card mt-3 border-danger-subtle d-none" id="card-encerrar">
+            <div class="card-header text-danger"><i class="bi bi-door-closed" aria-hidden="true"></i> Encerrar a conta</div>
+            <div class="card-body">
+                <p class="mb-2">Ao encerrar a conta:</p>
+                <ul class="mb-3">
+                    <li>ninguém da conta entra mais, a partir da hora em que você confirmar;</li>
+                    <li id="item-assinatura">a assinatura é cancelada e nenhuma fatura nova é gerada;</li>
+                    <li><span id="dias-expurgo">90</span> dias depois, os dados são <strong>apagados</strong>. As notas fiscais emitidas ficam guardadas pelo prazo exigido por lei (5 anos), sem acesso pela plataforma.</li>
+                </ul>
+                <p class="small text-muted">
+                    <strong>Antes, exporte os seus dados</strong> (botão acima) e guarde o arquivo: depois de encerrar, só pelo e-mail do suporte.
+                    Quer só parar de pagar? Basta cancelar a assinatura na tela Assinatura: a conta continua aberta para consulta.
+                </p>
+                <button type="button" class="btn btn-outline-danger" id="btn-encerrar">
+                    <i class="bi bi-door-closed" aria-hidden="true"></i> Encerrar a conta
+                </button>
+            </div>
+        </div>
     </div>
     <div class="col-lg-5">
         <div class="card">
@@ -43,6 +62,39 @@
                 </ul>
             </div>
         </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-encerrar" tabindex="-1" aria-labelledby="titulo-modal-encerrar" aria-hidden="true">
+    <div class="modal-dialog">
+        <form class="modal-content" id="form-encerrar" novalidate>
+            <div class="modal-header">
+                <h5 class="modal-title text-danger" id="titulo-modal-encerrar">Encerrar a conta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger d-none" id="erro-encerrar" role="alert"></div>
+                <div id="passo-pedir-codigo">
+                    <p>Para confirmar, enviamos um código de 6 números para o seu e-mail.</p>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="ciente-encerrar">
+                        <label class="form-check-label" for="ciente-encerrar">
+                            Entendi que o acesso fecha na hora e que os dados serão apagados depois do prazo.
+                        </label>
+                    </div>
+                </div>
+                <div id="passo-codigo" class="d-none">
+                    <p>Digite o código enviado para <strong id="email-codigo-encerrar"></strong> (vale <span id="minutos-codigo-encerrar">10</span> minutos).</p>
+                    <label class="form-label" for="codigo-encerrar">Código</label>
+                    <input type="text" class="form-control form-control-lg text-center" id="codigo-encerrar" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="\d{6}">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Voltar</button>
+                <button type="button" class="btn btn-outline-danger" id="btn-pedir-codigo-encerrar">Enviar o código</button>
+                <button type="submit" class="btn btn-danger d-none" id="btn-confirmar-encerrar">Encerrar a conta</button>
+            </div>
+        </form>
     </div>
 </div>
 

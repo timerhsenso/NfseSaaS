@@ -91,4 +91,78 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('btn-atualizar').addEventListener('click', carregar);
     carregar();
+
+    // ---------- Encerrar a conta (só administrador) ----------
+    const card = document.getElementById('card-encerrar');
+    const modalEncerrar = new bootstrap.Modal(document.getElementById('modal-encerrar'));
+    const btnPedir = document.getElementById('btn-pedir-codigo-encerrar');
+    const btnConfirmar = document.getElementById('btn-confirmar-encerrar');
+    const campoCodigo = document.getElementById('codigo-encerrar');
+
+    function passo(codigo) {
+        document.getElementById('passo-pedir-codigo').classList.toggle('d-none', codigo);
+        document.getElementById('passo-codigo').classList.toggle('d-none', !codigo);
+        btnPedir.classList.toggle('d-none', codigo);
+        btnConfirmar.classList.toggle('d-none', !codigo);
+    }
+
+    (async function () {
+        try {
+            const situacao = await apiFetch('/api/dados-conta/encerramento');
+            if (!situacao.podeEncerrar) return; // não é administrador (ou é a conta da plataforma)
+            document.getElementById('dias-expurgo').textContent = situacao.diasAteExpurgo;
+            if (!situacao.temAssinaturaAtiva)
+                document.getElementById('item-assinatura').textContent = 'nenhuma fatura é gerada (a conta não tem assinatura ativa);';
+            card.classList.remove('d-none');
+        } catch {
+            // O card simplesmente não aparece.
+        }
+    })();
+
+    document.getElementById('btn-encerrar').addEventListener('click', function () {
+        passo(false);
+        document.getElementById('ciente-encerrar').checked = false;
+        campoCodigo.value = '';
+        ocultarErroFormulario('erro-encerrar');
+        modalEncerrar.show();
+    });
+
+    btnPedir.addEventListener('click', async function () {
+        ocultarErroFormulario('erro-encerrar');
+        if (!document.getElementById('ciente-encerrar').checked) {
+            mostrarErroFormulario('erro-encerrar', 'Marque que você entendeu o que acontece ao encerrar.');
+            return;
+        }
+        await executarComBotaoDesabilitado(btnPedir, async function () {
+            try {
+                const r = await apiFetch('/api/dados-conta/encerramento/codigo', { method: 'POST' });
+                document.getElementById('email-codigo-encerrar').textContent = r.emailMascarado;
+                document.getElementById('minutos-codigo-encerrar').textContent = r.minutosValidade;
+                passo(true);
+                campoCodigo.focus();
+            } catch (err) {
+                mostrarErroFormulario('erro-encerrar', err.message);
+            }
+        });
+    });
+
+    document.getElementById('form-encerrar').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        ocultarErroFormulario('erro-encerrar');
+        const codigo = campoCodigo.value.trim();
+        if (!/^\d{6}$/.test(codigo)) {
+            mostrarErroFormulario('erro-encerrar', 'O código tem 6 números.');
+            return;
+        }
+        await executarComBotaoDesabilitado(btnConfirmar, async function () {
+            try {
+                await apiFetch('/api/dados-conta/encerramento/confirmar', { method: 'POST', body: JSON.stringify({ codigo }) });
+                // A sessão já foi invalidada no servidor; sai e volta para o login.
+                try { await apiFetch('/api/auth/logout', { method: 'POST' }); } catch { /* sessão já caiu */ }
+                window.location.href = '/Account/Login';
+            } catch (err) {
+                mostrarErroFormulario('erro-encerrar', err.message);
+            }
+        });
+    });
 });

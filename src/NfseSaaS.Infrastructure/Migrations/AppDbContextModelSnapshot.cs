@@ -1777,10 +1777,22 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset?>("DadosExpurgadosEm")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Documento")
                         .IsRequired()
                         .HasMaxLength(14)
                         .HasColumnType("character varying(14)");
+
+                    b.Property<DateTimeOffset?>("EncerradaEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("EncerramentoOrigem")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly?>("ExpurgoPrevistoEm")
+                        .HasColumnType("date");
 
                     b.Property<Guid?>("IndicadoPorTenantId")
                         .HasColumnType("uuid");

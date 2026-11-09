@@ -68,6 +68,7 @@
                 <option value="cancelada">Assinatura cancelada</option>
                 <option value="isenta">Isentas</option>
                 <option value="suspensa">Suspensas</option>
+                <option value="encerrada">Encerradas</option>
             </select>
             <a href="/hangfire" class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener"><i class="bi bi-cpu"></i> Jobs (Hangfire)</a>
             <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-atualizar-plataforma"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
@@ -166,6 +167,36 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-danger">Suspender conta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-encerrar-tenant" tabindex="-1" aria-labelledby="titulo-encerrar-tenant">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="form-encerrar-tenant">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="titulo-encerrar-tenant">Encerrar conta</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="erro-encerrar-tenant" class="alert alert-danger d-none"></div>
+                    <p class="mb-3">Encerrar <strong id="nome-tenant-encerrar"></strong>:</p>
+                    <ul class="small text-muted mb-3">
+                        <li>a assinatura no Asaas é cancelada (se houver) e ninguém da conta entra mais;</li>
+                        <li>os administradores recebem um e-mail com a data em que os dados serão apagados;</li>
+                        <li>em 90 dias o job apaga os dados: sem notas, a conta inteira; com notas, tudo menos os documentos fiscais;</li>
+                        <li>até lá, "Reabrir" desfaz o encerramento.</li>
+                    </ul>
+                    <label class="form-label" for="motivo-encerramento">Motivo</label>
+                    <input type="text" class="form-control" id="motivo-encerramento" maxlength="250" required placeholder="ex.: pedido do cliente por e-mail em 10/11" />
+                    <div class="form-text">Fica no histórico da conta.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-dark">Encerrar conta</button>
                 </div>
             </form>
         </div>

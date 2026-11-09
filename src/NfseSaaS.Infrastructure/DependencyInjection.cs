@@ -331,6 +331,11 @@ public static class DependencyInjection
         services.AddScoped<NfseSaaS.Application.UseCases.DadosConta.IExportacaoDadosUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.DadosConta.ExportacaoDadosService>());
         services.AddScoped<NfseSaaS.Application.UseCases.DadosConta.IGerarExportacaoDadosUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.DadosConta.ExportacaoDadosService>());
         services.AddScoped<IExportacaoDadosJob, ExportacaoDadosJob>();
+        // Encerramento da conta (D2): pelo administrador ou pelo operador; expurgo diário após 90 dias.
+        services.AddScoped<NfseSaaS.Infrastructure.DadosConta.EncerramentoContaService>();
+        services.AddScoped<NfseSaaS.Application.UseCases.DadosConta.IEncerrarContaUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.DadosConta.EncerramentoContaService>());
+        services.AddScoped<NfseSaaS.Application.UseCases.DadosConta.IExpurgarContasEncerradasUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.DadosConta.EncerramentoContaService>());
+        services.AddScoped<IExpurgarContasEncerradasJob, ExpurgarContasEncerradasJob>();
         services.AddScoped<NfseSaaS.Application.UseCases.Aparencia.IAparenciaUseCase, NfseSaaS.Infrastructure.UseCases.AparenciaService>();
         services.AddScoped<IAlterarBloqueioTenantUseCase, AlterarBloqueioTenantUseCase>();
         services.AddScoped<ICobrancaOperadorUseCase, NfseSaaS.Infrastructure.Cobranca.CobrancaOperadorService>();

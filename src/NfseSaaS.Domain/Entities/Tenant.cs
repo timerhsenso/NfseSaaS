@@ -59,4 +59,23 @@ public sealed class Tenant : BaseEntity
     /// válida para todos os usuários. Código do AparenciaCatalogo; nulo = padrão.
     /// </summary>
     public string? PaletaCores { get; set; }
+
+    /// <summary>
+    /// Encerramento da conta (D2): a pedido do cliente, pela plataforma ou
+    /// automático. Encerrada também fica com Ativo=false (ninguém entra), mas,
+    /// diferente da suspensão, tem data para os dados serem apagados.
+    /// </summary>
+    public DateTimeOffset? EncerradaEm { get; set; }
+
+    public OrigemEncerramento? EncerramentoOrigem { get; set; }
+
+    /// <summary>
+    /// Dia (Brasília) a partir do qual o job apaga os dados: sem notas, a
+    /// conta inteira; com notas, tudo menos os documentos fiscais, que ficam
+    /// pelo prazo legal. Até lá o operador pode reabrir a conta.
+    /// </summary>
+    public DateOnly? ExpurgoPrevistoEm { get; set; }
+
+    /// <summary>Quando os dados não fiscais foram apagados (a conta não pode mais ser reaberta).</summary>
+    public DateTimeOffset? DadosExpurgadosEm { get; set; }
 }

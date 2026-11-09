@@ -36,6 +36,9 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.Property(t => t.PaletaCores)
             .HasMaxLength(30);
 
+        // Encerramento (D2): enum como inteiro, sem valor padrão no banco.
+        builder.Property(t => t.EncerramentoOrigem);
+
         builder.HasIndex(t => t.Documento)
             .IsUnique();
 

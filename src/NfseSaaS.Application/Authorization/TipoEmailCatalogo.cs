@@ -34,4 +34,7 @@ public static class TipoEmailCatalogo
 
     /// <summary>Exportação dos dados da conta pronta para baixar (tela "Meus dados").</summary>
     public const string ExportacaoDados = "ExportacaoDados";
+
+    /// <summary>Aviso aos administradores de que a conta foi encerrada (e quando os dados serão apagados).</summary>
+    public const string EncerramentoConta = "EncerramentoConta";
 }

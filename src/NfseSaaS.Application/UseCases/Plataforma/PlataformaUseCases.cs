@@ -27,7 +27,10 @@ public sealed record TenantPlataformaResponse(
     string? Plano,
     decimal? PrecoMensal,
     DateTimeOffset? TesteIniciadoEm,
-    CobrancaContaPlataforma? Cobranca = null);
+    CobrancaContaPlataforma? Cobranca = null,
+    DateTimeOffset? EncerradaEm = null,
+    DateOnly? ExpurgoPrevistoEm = null,
+    DateTimeOffset? DadosExpurgadosEm = null);
 
 /// <summary>Cobrança da conta vista pelo operador (L6: prorrogar, liberar teste, isentar).</summary>
 /// <param name="TesteTerminaEm">Fim do teste com os dias extras (nulo se não começou).</param>

@@ -359,7 +359,22 @@ public sealed class AuthController : ControllerBase
         // NotAllowed = senha certa, mas a conta (Tenant) está suspensa pelo
         // operador da plataforma — ver SignInManagerComTenant.
         if (resultado.IsNotAllowed)
+        {
+            // Encerrada (D2) é diferente de suspensa: diz quando os dados serão apagados.
+            var encerramento = usuario is null ? null : await _db.Tenants.AsNoTracking()
+                .Where(t => t.Id == usuario.TenantId && t.EncerradaEm != null)
+                .Select(t => new { t.EncerradaEm, t.ExpurgoPrevistoEm, t.DadosExpurgadosEm })
+                .FirstOrDefaultAsync(cancellationToken);
+            if (encerramento?.EncerradaEm is { } encerradaEm)
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    erro = NfseSaaS.Application.UseCases.DadosConta.RegrasEncerramentoConta.MensagemLogin(
+                        encerradaEm, encerramento.ExpurgoPrevistoEm, encerramento.DadosExpurgadosEm is not null,
+                        NfseSaaS.Domain.Legal.DocumentosLegais.EmailPrivacidade)
+                });
+
             return StatusCode(StatusCodes.Status403Forbidden, new { erro = "Esta conta está suspensa. Fale com o suporte da micoempresa para reativar." });
+        }
 
         return resultado.Succeeded ? Ok() : Unauthorized();
     }

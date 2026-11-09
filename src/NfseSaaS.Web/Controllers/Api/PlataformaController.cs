@@ -82,6 +82,21 @@ public sealed class PlataformaController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Encerra a conta (D2): cancela a assinatura, fecha o acesso e agenda o
+    /// expurgo para daqui a 90 dias. "Reativar" reabre enquanto não apagou.
+    /// </summary>
+    [HttpPost("tenants/{id:guid}/encerrar")]
+    public async Task<IActionResult> Encerrar(
+        Guid id,
+        [FromBody] NfseSaaS.Application.UseCases.DadosConta.EncerrarContaPlataformaRequest request,
+        [FromServices] NfseSaaS.Application.UseCases.DadosConta.IEncerrarContaUseCase encerrar,
+        CancellationToken cancellationToken)
+    {
+        var operadorId = _currentUser.UserId ?? throw new InvalidOperationException("Operador não identificado.");
+        return Ok(await encerrar.EncerrarPelaPlataformaAsync(id, request.Motivo, operadorId, cancellationToken));
+    }
+
     // ---------- Cobrança da conta (prorrogar/liberar teste, isentar) ----------
 
     /// <summary>Confere a assinatura da conta com o Asaas agora (a mesma conciliação do job diário).</summary>

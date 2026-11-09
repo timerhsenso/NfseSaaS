@@ -153,6 +153,16 @@ public sealed class ExclusaoContaService : ISolicitarExclusaoContaUseCase, IConf
         _cache.Remove(chave);
 
         await ValidarPodeExcluirAsync(tenantId, cancellationToken);
+        await ExcluirDefinitivamenteAsync(tenantId, operadorId, cancellationToken);
+    }
+
+    /// <summary>
+    /// Apaga a conta inteira (banco, certificados, documentos, jobs). Quem
+    /// chama já conferiu as regras: o operador (código) ou o expurgo das
+    /// contas encerradas sem notas (operadorId nulo: sem Histórico, só log).
+    /// </summary>
+    internal async Task ExcluirDefinitivamenteAsync(Guid tenantId, Guid? operadorId, CancellationToken cancellationToken)
+    {
         var contagem = await ContarAsync(tenantId, cancellationToken);
 
         var empresas = await _db.Empresas.IgnoreQueryFilters().AsNoTracking()
@@ -171,8 +181,8 @@ public sealed class ExclusaoContaService : ISolicitarExclusaoContaUseCase, IConf
         }
         Tentar(() => _documentos.ExcluirPastaConta(tenantId), "pasta de documentos", tenantId);
 
-        _logger.LogWarning("Conta {TenantId} excluída pelo operador {OperadorId}: {Empresas} empresa(s), {Usuarios} usuário(s).",
-            tenantId, operadorId, contagem.Empresas, contagem.Usuarios);
+        _logger.LogWarning("Conta {TenantId} excluída {Por}: {Empresas} empresa(s), {Usuarios} usuário(s).",
+            tenantId, operadorId is null ? "pelo expurgo das contas encerradas" : $"pelo operador {operadorId}", contagem.Empresas, contagem.Usuarios);
     }
 
     // ---------- Regras ----------
@@ -216,7 +226,7 @@ public sealed class ExclusaoContaService : ISolicitarExclusaoContaUseCase, IConf
     /// Nota fiscal não entra: a regra garante que não existe nenhuma, e se
     /// uma aparecer no meio do caminho a FK de Empresa barra e nada é apagado.
     /// </summary>
-    private async Task ApagarNoBancoAsync(Guid tenantId, List<Guid> empresas, Guid operadorId, Contagem contagem, CancellationToken cancellationToken)
+    private async Task ApagarNoBancoAsync(Guid tenantId, List<Guid> empresas, Guid? operadorId, Contagem contagem, CancellationToken cancellationToken)
     {
         var estrategia = _db.Database.CreateExecutionStrategy();
         await estrategia.ExecuteAsync(async () =>
@@ -257,16 +267,20 @@ public sealed class ExclusaoContaService : ISolicitarExclusaoContaUseCase, IConf
             await _db.Tenants.Where(x => x.Id == tenantId).ExecuteDeleteAsync(cancellationToken);
 
             // Registro no Histórico da conta do OPERADOR, sem dado da conta apagada.
-            _auditLogWriter.Registrar("ContaExcluidaPelaPlataforma", "Tenant", tenantId, new
+            // No expurgo automático não há operador (nem conta atual): fica só o log.
+            if (operadorId is not null)
             {
-                OperadorId = operadorId,
-                contagem.Empresas,
-                contagem.Clientes,
-                contagem.Contratos,
-                contagem.Servicos,
-                contagem.Usuarios
-            });
-            await _db.SaveChangesAsync(cancellationToken);
+                _auditLogWriter.Registrar("ContaExcluidaPelaPlataforma", "Tenant", tenantId, new
+                {
+                    OperadorId = operadorId,
+                    contagem.Empresas,
+                    contagem.Clientes,
+                    contagem.Contratos,
+                    contagem.Servicos,
+                    contagem.Usuarios
+                });
+                await _db.SaveChangesAsync(cancellationToken);
+            }
 
             await transacao.CommitAsync(cancellationToken);
         });
