@@ -5,6 +5,32 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (LGPD — exportação dos dados, D1)
+- **Tela "Meus dados"** (menu do usuário): o administrador da conta pede a
+  exportação de tudo o que a conta tem e baixa um ZIP com o XML oficial e o
+  PDF de cada nota autorizada ou cancelada (por empresa, ambiente e mês), os
+  cadastros e o histórico em CSV (Excel) e JSON (empresas, clientes, serviços,
+  contratos com serviços/histórico de valores/documentos, usuários, notas e
+  eventos), os documentos dos contratos e um LEIAME. Certificados e senhas
+  ficam de fora.
+- Montado em segundo plano (job do Hangfire, um por vez no servidor), com
+  aviso por e-mail quando fica pronto; download só logado, por 7 dias; até 3
+  pedidos por dia e um em andamento por vez. Limpeza diária
+  `limpar-exportacoes-dados` (04:30) apaga o que expirou. Pedido, montagem e
+  download ficam no Histórico da conta. Tabela nova `exportacoes_dados`
+  (migration `ExportacaoDados`).
+
+### Adicionado (LGPD — retenção dos convites, B7)
+- Job diário `limpar-convites-indicacao` (04:20) apaga os convites do
+  "Indique e ganhe" e os e-mails de convite com mais de 12 meses, como diz a
+  Política de privacidade 1.1 (item 7).
+
+### Corrigido (cobrança)
+- **Prêmio de indicação pela conciliação**: quando o webhook do primeiro
+  pagamento de uma conta indicada se perde, a conciliação diária com o Asaas
+  agora registra os prêmios (os dois lados) e dispara a aplicação, como o
+  webhook faria.
+
 ### Adicionado (notas)
 - **Baixar o XML da nota** autorizada ou cancelada: botão ao lado do PDF na
   lista de notas e "Baixar XML" nos detalhes (`GET /api/nfse/{id}/xml`), com o

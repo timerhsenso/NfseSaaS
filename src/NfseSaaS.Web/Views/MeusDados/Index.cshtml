@@ -1,0 +1,51 @@
+@{
+    ViewData["Title"] = "Meus dados";
+}
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-download" aria-hidden="true"></i> Exportar os dados da conta</div>
+            <div class="card-body">
+                <p>
+                    Baixe uma cópia de tudo o que a sua conta tem no micoempresa, num arquivo ZIP:
+                </p>
+                <ul>
+                    <li><strong>Notas fiscais:</strong> o XML oficial e o PDF de cada nota autorizada ou cancelada, separados por empresa e mês;</li>
+                    <li><strong>Cadastros:</strong> empresas, clientes, serviços, contratos (com o histórico de valores), usuários e as notas em planilha (CSV, abre no Excel) e em JSON;</li>
+                    <li><strong>Documentos</strong> anexados aos contratos.</li>
+                </ul>
+                <p class="small text-muted">
+                    Certificados digitais e senhas não saem da plataforma, por segurança. O arquivo é montado em segundo plano
+                    (pode levar alguns minutos se a conta tiver muitas notas) e avisamos por e-mail quando estiver pronto.
+                    Ele fica disponível por <span id="dias-validade">7</span> dias.
+                </p>
+
+                <div class="alert alert-warning d-none" id="aviso-exportacao" role="status"></div>
+
+                <button type="button" class="btn btn-primary" id="btn-exportar" disabled>
+                    <i class="bi bi-file-earmark-zip" aria-hidden="true"></i> Exportar meus dados
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Exportações</span>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-atualizar" title="Atualizar">
+                    <i class="bi bi-arrow-clockwise" aria-hidden="true"></i><span class="visually-hidden">Atualizar</span>
+                </button>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0" id="lista-exportacoes">
+                    <li class="text-muted">Carregando…</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/paginas/meus-dados.js" asp-append-version="true"></script>
+}

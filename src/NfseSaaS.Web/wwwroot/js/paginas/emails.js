@@ -82,6 +82,7 @@ function rotuloTipo(tipo) {
         case 'AvisoCobranca': return 'Aviso de cobrança';
         case 'ConviteIndicacao': return 'Convite de indicação';
         case 'NovosTermos': return 'Aviso de novos termos';
+        case 'ExportacaoDados': return 'Exportação dos dados';
         default: return tipo;
     }
 }

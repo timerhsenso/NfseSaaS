@@ -324,6 +324,13 @@ public static class DependencyInjection
         // Retenção dos convites (B7): apaga convites e e-mails de convite após 12 meses.
         services.AddScoped<NfseSaaS.Application.UseCases.Indicacao.ILimparConvitesIndicacaoUseCase, NfseSaaS.Infrastructure.UseCases.LimparConvitesIndicacaoService>();
         services.AddScoped<ILimparConvitesIndicacaoJob, LimparConvitesIndicacaoJob>();
+        // Exportação dos dados da conta (D1): tela "Meus dados" + job que monta o ZIP e limpeza diária.
+        services.Configure<NfseSaaS.Infrastructure.DadosConta.ExportacaoDadosOptions>(configuration.GetSection(NfseSaaS.Infrastructure.DadosConta.ExportacaoDadosOptions.SectionName));
+        services.AddScoped<NfseSaaS.Infrastructure.DadosConta.MontadorExportacaoDados>();
+        services.AddScoped<NfseSaaS.Infrastructure.DadosConta.ExportacaoDadosService>();
+        services.AddScoped<NfseSaaS.Application.UseCases.DadosConta.IExportacaoDadosUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.DadosConta.ExportacaoDadosService>());
+        services.AddScoped<NfseSaaS.Application.UseCases.DadosConta.IGerarExportacaoDadosUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.DadosConta.ExportacaoDadosService>());
+        services.AddScoped<IExportacaoDadosJob, ExportacaoDadosJob>();
         services.AddScoped<NfseSaaS.Application.UseCases.Aparencia.IAparenciaUseCase, NfseSaaS.Infrastructure.UseCases.AparenciaService>();
         services.AddScoped<IAlterarBloqueioTenantUseCase, AlterarBloqueioTenantUseCase>();
         services.AddScoped<ICobrancaOperadorUseCase, NfseSaaS.Infrastructure.Cobranca.CobrancaOperadorService>();

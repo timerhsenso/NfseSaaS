@@ -1063,6 +1063,55 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.ToTable("eventos_cobranca", (string)null);
                 });
 
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.ExportacaoDados", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("BaixadaEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("ConcluidaEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Erro")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTimeOffset?>("ExpiraEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("QuantidadeNotas")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SolicitadoPorUsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<long?>("TamanhoBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status", "ExpiraEm");
+
+                    b.HasIndex("TenantId", "CreatedAt");
+
+                    b.ToTable("exportacoes_dados", (string)null);
+                });
+
             modelBuilder.Entity("NfseSaaS.Domain.Entities.Grupo", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2013,6 +2062,15 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.HasOne("NfseSaaS.Domain.Entities.Servico", null)
                         .WithMany()
                         .HasForeignKey("ServicoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.ExportacaoDados", b =>
+                {
+                    b.HasOne("NfseSaaS.Domain.Entities.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

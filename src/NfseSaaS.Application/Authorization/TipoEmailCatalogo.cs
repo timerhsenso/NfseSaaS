@@ -31,4 +31,7 @@ public static class TipoEmailCatalogo
 
     /// <summary>Aviso prévio (15 dias) de nova versão dos Termos de uso e da Política de privacidade.</summary>
     public const string NovosTermos = "NovosTermos";
+
+    /// <summary>Exportação dos dados da conta pronta para baixar (tela "Meus dados").</summary>
+    public const string ExportacaoDados = "ExportacaoDados";
 }
