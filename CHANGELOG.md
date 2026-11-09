@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (encerramento automático, D2 parte 2 — DESLIGADO)
+- Job diário `encerrar-contas-canceladas` (05:00): com
+  `Encerramento:AutomaticoAposCancelarDias` preenchido (mínimo 30; vazio =
+  desligado, o padrão), conta com a assinatura cancelada recebe aviso por
+  e-mail 15 dias antes e 3 dias antes (com os links para exportar os dados e
+  assinar de novo) e, na data, é encerrada como no encerramento a pedido
+  (origem "Automático"; expurgo 90 dias depois). Nunca encerra sem aviso nem
+  sem destinatário; fora: isentas, operadores, suspensas e contas com a
+  cobrança desligada. Só ligar com Termos novos (os 1.1 prometem a conta
+  disponível depois de cancelar). Detalhes em `docs/operacao/contas.md`.
+
 ### Adicionado
 - **XML do mês** (tela de Notas fiscais): um ZIP com o XML oficial de todas as
   notas autorizadas e canceladas da empresa no mês de competência, para o

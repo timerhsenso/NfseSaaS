@@ -338,6 +338,10 @@ public static class DependencyInjection
         services.AddScoped<NfseSaaS.Application.UseCases.DadosConta.IEncerrarContaUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.DadosConta.EncerramentoContaService>());
         services.AddScoped<NfseSaaS.Application.UseCases.DadosConta.IExpurgarContasEncerradasUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.DadosConta.EncerramentoContaService>());
         services.AddScoped<IExpurgarContasEncerradasJob, ExpurgarContasEncerradasJob>();
+        // Encerramento automático das contas canceladas (D2 parte 2): DESLIGADO sem Encerramento:AutomaticoAposCancelarDias.
+        services.Configure<NfseSaaS.Infrastructure.DadosConta.EncerramentoOptions>(configuration.GetSection(NfseSaaS.Infrastructure.DadosConta.EncerramentoOptions.SectionName));
+        services.AddScoped<NfseSaaS.Application.UseCases.DadosConta.IEncerrarContasCanceladasUseCase, NfseSaaS.Infrastructure.DadosConta.EncerramentoAutomaticoService>();
+        services.AddScoped<IEncerrarContasCanceladasJob, EncerrarContasCanceladasJob>();
         services.AddScoped<NfseSaaS.Application.UseCases.Aparencia.IAparenciaUseCase, NfseSaaS.Infrastructure.UseCases.AparenciaService>();
         services.AddScoped<IAlterarBloqueioTenantUseCase, AlterarBloqueioTenantUseCase>();
         services.AddScoped<ICobrancaOperadorUseCase, NfseSaaS.Infrastructure.Cobranca.CobrancaOperadorService>();

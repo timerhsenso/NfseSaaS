@@ -109,3 +109,90 @@ public interface IExpurgarContasEncerradasUseCase
 {
     Task<ResultadoExpurgoContas> ExecutarAsync(DateOnly hoje, CancellationToken cancellationToken);
 }
+
+/// <summary>O que o encerramento automático faz hoje com uma conta cancelada.</summary>
+public enum EtapaEncerramentoAutomatico
+{
+    Nada = 0,
+    /// <summary>Primeiro aviso: "a conta será encerrada em DD/MM" (≥ 15 dias antes).</summary>
+    AvisoAntecipado = 1,
+    /// <summary>Último aviso, 3 dias antes.</summary>
+    AvisoFinal = 2,
+    Encerrar = 3
+}
+
+/// <summary>
+/// Encerramento automático de conta com assinatura cancelada (D2, parte 2).
+/// DESLIGADO por padrão (Encerramento:AutomaticoAposCancelarDias vazio): os
+/// Termos 1.1 (8.5) prometem que, depois de cancelar, a conta continua
+/// disponível. Só ligar com Termos novos em vigor.
+/// - data prevista = último dia com acesso (ou o dia do cancelamento) + N dias;
+/// - nunca encerra sem aviso: o primeiro aviso promete uma data pelo menos
+///   <see cref="DiasAvisoAntecipado"/> dias à frente, e essa data fica gravada
+///   na chave do e-mail (EmailLog.ChaveDeduplicacao), sem migration;
+/// - aviso final <see cref="DiasAvisoFinal"/> dias antes; na data prometida, encerra
+///   (e daí seguem os 90 dias até o expurgo, como no encerramento a pedido).
+/// Assinou de novo → a assinatura deixa de estar Cancelada e nada acontece;
+/// cancelou outra vez → novo ciclo (a chave leva o instante do cancelamento).
+/// </summary>
+public static class RegrasEncerramentoAutomatico
+{
+    public const int DiasAvisoAntecipado = 15;
+    public const int DiasAvisoFinal = 3;
+
+    /// <summary>Menor prazo aceito na configuração (um valor menor é elevado a este).</summary>
+    public const int DiasMinimos = 30;
+
+    private const string Prefixo = "encerramento-auto";
+
+    public static DateOnly DataPrevista(DateTimeOffset canceladaEm, DateOnly? acessoAteAposCancelar, int dias)
+    {
+        var diaCancelamento = DateOnly.FromDateTime(canceladaEm.ToOffset(TimeSpan.FromHours(-3)).DateTime);
+        var base_ = acessoAteAposCancelar is { } ate && ate > diaCancelamento ? ate : diaCancelamento;
+        return base_.AddDays(Math.Max(dias, DiasMinimos));
+    }
+
+    /// <summary>Data a prometer no primeiro aviso: a prevista, mas nunca antes de 15 dias a partir de hoje.</summary>
+    public static DateOnly DataPrometida(DateOnly prevista, DateOnly hoje) =>
+        prevista > hoje.AddDays(DiasAvisoAntecipado) ? prevista : hoje.AddDays(DiasAvisoAntecipado);
+
+    /// <param name="prometida">Data do primeiro aviso já enviado (nulo = nenhum aviso ainda).</param>
+    public static EtapaEncerramentoAutomatico Etapa(DateOnly hoje, DateOnly prevista, DateOnly? prometida, bool avisoFinalEnviado)
+    {
+        if (prometida is not { } data)
+            return hoje >= prevista.AddDays(-DiasAvisoAntecipado) ? EtapaEncerramentoAutomatico.AvisoAntecipado : EtapaEncerramentoAutomatico.Nada;
+        if (hoje >= data)
+            return EtapaEncerramentoAutomatico.Encerrar;
+        if (!avisoFinalEnviado && hoje >= data.AddDays(-DiasAvisoFinal))
+            return EtapaEncerramentoAutomatico.AvisoFinal;
+        return EtapaEncerramentoAutomatico.Nada;
+    }
+
+    /// <summary>Início comum das chaves dos avisos deste ciclo de cancelamento.</summary>
+    public static string ChavePrefixo(Guid tenantId, DateTimeOffset canceladaEm) =>
+        $"{Prefixo}:{tenantId:N}:{canceladaEm.UtcTicks}:";
+
+    public static string ChaveAviso(string prefixo, DateOnly prometida, EtapaEncerramentoAutomatico etapa) =>
+        $"{prefixo}{prometida:yyyyMMdd}:{(etapa == EtapaEncerramentoAutomatico.AvisoFinal ? "final" : "antecipado")}";
+
+    /// <summary>Data prometida gravada numa chave de aviso (nulo se a chave não for desse formato).</summary>
+    public static DateOnly? DataNaChave(string chave)
+    {
+        var partes = chave.Split(':');
+        return partes.Length == 5 && partes[0] == Prefixo
+               && DateOnly.TryParseExact(partes[3], "yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var d)
+            ? d
+            : null;
+    }
+
+    public static bool EhAvisoFinal(string chave) => chave.EndsWith(":final", StringComparison.Ordinal);
+}
+
+/// <param name="Desligado">A configuração está vazia: nada foi olhado.</param>
+public sealed record ResultadoEncerramentoAutomatico(bool Desligado, int Avisadas, int Encerradas, int SemDestinatario, int ComErro);
+
+/// <summary>Job diário do encerramento automático (D2, parte 2).</summary>
+public interface IEncerrarContasCanceladasUseCase
+{
+    Task<ResultadoEncerramentoAutomatico> ExecutarAsync(DateOnly hoje, CancellationToken cancellationToken);
+}

@@ -37,4 +37,7 @@ public static class TipoEmailCatalogo
 
     /// <summary>Aviso aos administradores de que a conta foi encerrada (e quando os dados serão apagados).</summary>
     public const string EncerramentoConta = "EncerramentoConta";
+
+    /// <summary>Aviso de que a conta (assinatura cancelada) será encerrada automaticamente numa data.</summary>
+    public const string AvisoEncerramentoConta = "AvisoEncerramentoConta";
 }
