@@ -35,6 +35,18 @@ public class RegrasConviteIndicacaoTests
     }
 
     [Fact]
+    public void Convite_fica_guardado_por_12_meses_depois_do_envio()
+    {
+        var agora = new DateTimeOffset(2027, 11, 20, 7, 20, 0, TimeSpan.Zero);
+        var limite = RegrasConviteIndicacao.LimiteRetencao(agora);
+
+        Assert.Equal(12, RegrasConviteIndicacao.RetencaoMeses);
+        Assert.Equal(new DateTimeOffset(2026, 11, 20, 7, 20, 0, TimeSpan.Zero), limite);
+        // Prazo de guarda bem acima da janela anti-spam (que precisa dos convites recentes).
+        Assert.True(limite < agora.AddDays(-RegrasConviteIndicacao.IntervaloMesmoEmailDias));
+    }
+
+    [Fact]
     public void Link_do_convite_leva_a_origem()
     {
         Assert.Equal("https://app/?ref=K7M2QX9A&origem=convite-email", RegrasConviteIndicacao.Link("https://app/?ref=K7M2QX9A"));

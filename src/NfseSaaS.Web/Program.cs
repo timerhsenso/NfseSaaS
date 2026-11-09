@@ -256,6 +256,7 @@ try
     await NfseSaaS.Infrastructure.Persistence.Seeders.AvisosCobrancaJobSincronizador.SincronizarAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.ConciliacaoCobrancaJobSincronizador.SincronizarAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.AvisoNovosTermosJobSincronizador.SincronizarAsync(app.Services);
+    await NfseSaaS.Infrastructure.Persistence.Seeders.ConvitesIndicacaoJobSincronizador.SincronizarAsync(app.Services);
 
     app.UseForwardedHeaders();
     app.UseMiddleware<SecurityHeadersMiddleware>();

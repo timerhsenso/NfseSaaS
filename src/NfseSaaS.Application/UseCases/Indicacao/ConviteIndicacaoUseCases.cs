@@ -18,6 +18,13 @@ public static partial class RegrasConviteIndicacao
     public const int IntervaloMesmoEmailDias = 30;
     public const int TamanhoMaximoEmail = 254;
 
+    /// <summary>
+    /// Por quanto tempo o e-mail convidado fica guardado (Política de
+    /// Privacidade 1.1, item 7: até 12 meses depois do convite). Vale para
+    /// o registro do convite e para o e-mail enviado (EmailLog).
+    /// </summary>
+    public const int RetencaoMeses = 12;
+
     /// <summary>Origem gravada no cadastro de quem chegou pelo convite (?origem=).</summary>
     public const string Origem = "convite-email";
 
@@ -56,6 +63,12 @@ public static partial class RegrasConviteIndicacao
     public static bool EmailValido(string email) =>
         email.Length <= TamanhoMaximoEmail && RegexEmail().IsMatch(email);
 
+    /// <summary>
+    /// Convites (e seus e-mails enviados) criados ANTES deste instante já
+    /// passaram do prazo de guarda e são apagados.
+    /// </summary>
+    public static DateTimeOffset LimiteRetencao(DateTimeOffset agora) => agora.AddMonths(-RetencaoMeses);
+
     /// <summary>Link do convite: o link de indicação da conta com a origem do convite.</summary>
     public static string Link(string linkIndicacao) =>
         linkIndicacao + (linkIndicacao.Contains('?') ? "&" : "?") + "origem=" + Origem;
@@ -83,4 +96,17 @@ public interface IConvidarPorEmailUseCase
 {
     /// <param name="linkIndicacao">Link de indicação da conta (…/?ref=CODIGO).</param>
     Task<ConvidarPorEmailResponse> ExecutarAsync(ConvidarPorEmailRequest request, string linkIndicacao, CancellationToken cancellationToken);
+}
+
+/// <summary>Resultado de uma passada da limpeza dos convites (para o log).</summary>
+public sealed record ResultadoLimpezaConvites(int Convites, int EmailsEnviados);
+
+/// <summary>
+/// Apaga os convites do "Indique e ganhe" com mais de
+/// <see cref="RegrasConviteIndicacao.RetencaoMeses"/> meses, e os e-mails
+/// de convite registrados no mesmo prazo (job diário).
+/// </summary>
+public interface ILimparConvitesIndicacaoUseCase
+{
+    Task<ResultadoLimpezaConvites> ExecutarAsync(DateTimeOffset agora, CancellationToken cancellationToken);
 }

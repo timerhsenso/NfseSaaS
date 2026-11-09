@@ -321,6 +321,9 @@ public static class DependencyInjection
         services.AddScoped<IConciliarCobrancaJob, ConciliarCobrancaJob>();
         services.AddScoped<IAvisarNovosTermosJob, AvisarNovosTermosJob>();
         services.AddScoped<NfseSaaS.Application.UseCases.Indicacao.IConvidarPorEmailUseCase, NfseSaaS.Infrastructure.UseCases.ConvidarPorEmailUseCase>();
+        // Retenção dos convites (B7): apaga convites e e-mails de convite após 12 meses.
+        services.AddScoped<NfseSaaS.Application.UseCases.Indicacao.ILimparConvitesIndicacaoUseCase, NfseSaaS.Infrastructure.UseCases.LimparConvitesIndicacaoService>();
+        services.AddScoped<ILimparConvitesIndicacaoJob, LimparConvitesIndicacaoJob>();
         services.AddScoped<NfseSaaS.Application.UseCases.Aparencia.IAparenciaUseCase, NfseSaaS.Infrastructure.UseCases.AparenciaService>();
         services.AddScoped<IAlterarBloqueioTenantUseCase, AlterarBloqueioTenantUseCase>();
         services.AddScoped<ICobrancaOperadorUseCase, NfseSaaS.Infrastructure.Cobranca.CobrancaOperadorService>();
