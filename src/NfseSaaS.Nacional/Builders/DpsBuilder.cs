@@ -127,6 +127,16 @@ public sealed class DpsBuilder : IDpsBuilder
 
         Add(doc, infDps, "cLocEmi", request.Prestador.CodigoMunicipio);
 
+        // Substituição (C7): entre cLocEmi e prest, como manda o XSD.
+        if (request.Substituicao is { } subst)
+        {
+            var grupo = AddNode(doc, infDps, "subst");
+            Add(doc, grupo, "chSubstda", subst.ChaveSubstituida);
+            Add(doc, grupo, "cMotivo", subst.CodigoMotivo);
+            if (!string.IsNullOrWhiteSpace(subst.DescricaoMotivo))
+                Add(doc, grupo, "xMotivo", subst.DescricaoMotivo.Trim());
+        }
+
         var prest = AddNode(doc, infDps, "prest");
         Add(doc, prest, "CNPJ", request.Prestador.Cnpj);
 

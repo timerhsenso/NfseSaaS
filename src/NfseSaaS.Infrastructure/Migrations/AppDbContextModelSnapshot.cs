@@ -1414,6 +1414,10 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<DateTimeOffset?>("DataEmissao")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("DescricaoMotivoSubstituicao")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
                     b.Property<string>("DescricaoServico")
                         .IsRequired()
                         .HasMaxLength(2000)
@@ -1429,6 +1433,10 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<string>("MensagemErro")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("MotivoSubstituicao")
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)");
 
                     b.Property<int>("NumeroDps")
                         .HasColumnType("integer");
@@ -1460,6 +1468,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<Guid?>("SubstituiNfseId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
@@ -1516,6 +1527,10 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasFilter("\"ReenvioDeNfseId\" IS NOT NULL");
 
                     b.HasIndex("ServicoId");
+
+                    b.HasIndex("SubstituiNfseId")
+                        .IsUnique()
+                        .HasFilter("\"SubstituiNfseId\" IS NOT NULL AND \"Status\" IN ('Processando', 'Autorizada')");
 
                     b.HasIndex("TenantId", "EmpresaId", "IdempotencyKey")
                         .IsUnique()
@@ -2314,6 +2329,11 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("ServicoId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("NfseSaaS.Domain.Entities.Nfse", null)
+                        .WithMany()
+                        .HasForeignKey("SubstituiNfseId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("NfseSaaS.Domain.Entities.NfseEvento", b =>

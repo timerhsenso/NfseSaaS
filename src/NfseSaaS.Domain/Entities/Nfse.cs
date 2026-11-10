@@ -96,6 +96,19 @@ public sealed class Nfse : BaseEntity, ITenantEntity
     /// </summary>
     public string? CodigoMunicipioPrestacao { get; set; }
 
+    /// <summary>
+    /// C7: NFS-e Autorizada que esta nota substitui (grupo subst da DPS,
+    /// chSubstda). Autorizada a substituta, a SEFIN cancela a original com o
+    /// evento 105102 e ela vira <see cref="Enums.NfseStatus.Substituida"/>.
+    /// </summary>
+    public Guid? SubstituiNfseId { get; set; }
+
+    /// <summary>cMotivo da substituição (01–05 ou 99).</summary>
+    public string? MotivoSubstituicao { get; set; }
+
+    /// <summary>xMotivo (15 a 255 caracteres; obrigatório com o motivo 99).</summary>
+    public string? DescricaoMotivoSubstituicao { get; set; }
+
     public string CstPisCofins { get; set; } = string.Empty;
 
     public string TpRetPisCofins { get; set; } = string.Empty;

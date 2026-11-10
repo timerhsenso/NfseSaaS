@@ -5,6 +5,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (substituição de nota, C7)
+- Notas › botão **Substituir** (nota autorizada): abre a emissão com os dados
+  da nota, para corrigir e emitir a substituta com o motivo oficial (cMotivo
+  01–05 ou 99 com descrição de 15 a 255 caracteres). A DPS leva o grupo
+  `subst` com a chave da original; autorizada a substituta, a SEFIN cancela a
+  original (evento 105102) e ela fica "Substituída".
+- Campos que a SEFIN não deixa mudar ficam travados e são conferidos antes de
+  gastar o número da DPS: Simples (MEI e ME/EPP) — cliente, competência e
+  valor (E0061/E0063); não optante — competência, serviço e local (E0060).
+  Cliente, contrato e competência ficam sempre travados na tela.
+- Mesma permissão do cancelamento (rota `POST api/nfse/{id}/substituir`); só
+  uma substituta em andamento ou autorizada por nota (índice único parcial);
+  substituta rejeitada pode ser reenviada mantendo a substituição.
+- Detalhe da nota mostra "Substitui" e "Substituída por". Migration
+  `SubstituicaoNfse` (3 colunas e FK em `notas_fiscais`).
+
 ### Adicionado (local da prestação por nota, C2)
 - Emissão: campo **Local da prestação** (busca do município pelo nome). Em
   branco, vai o município da empresa, como sempre. Aparece no resumo antes de

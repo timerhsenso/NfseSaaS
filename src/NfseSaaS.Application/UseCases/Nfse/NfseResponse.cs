@@ -48,10 +48,19 @@ public sealed record NfseResponse(
     string TpRetIssqn,
     decimal? AliquotaIss,
     // C2: cLocPrestacao enviado (nulo nas notas antigas = município da Empresa).
-    string? CodigoMunicipioPrestacao = null)
+    string? CodigoMunicipioPrestacao = null,
+    // C7: qual nota esta substitui e (na original) por qual DPS foi substituída.
+    Guid? SubstituiNfseId = null,
+    int? SubstituiNumeroDps = null,
+    int? SubstituidaPorNumeroDps = null,
+    string? MotivoSubstituicao = null,
+    string? DescricaoMotivoSubstituicao = null)
 {
     /// <summary>tpRetISSQN "2" = ISS retido pelo tomador.</summary>
     public bool IssRetido => TpRetIssqn == "2";
+
+    /// <summary>C7: só nota autorizada (com chave) e ainda não substituída pode ganhar substituta.</summary>
+    public bool PodeSubstituir => Status == NfseStatus.Autorizada && !string.IsNullOrEmpty(ChaveAcesso) && SubstituidaPorNumeroDps is null;
 
     /// <summary>Rejeição da SEFIN explicada (onde corrigir e o que fazer) — null quando não há código de erro da SEFIN. Ver CatalogoRejeicoesSefin.</summary>
     public RejeicaoSefinTraduzida? Rejeicao => CatalogoRejeicoesSefin.Traduzir(CodigoErro, MensagemErro);

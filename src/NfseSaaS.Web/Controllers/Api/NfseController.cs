@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using NfseSaaS.Application.Authorization;
+using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.Nfse;
 using NfseSaaS.Application.UseCases.NfseEventos;
 using NfseSaaS.Domain.Enums;
@@ -22,6 +23,7 @@ public sealed class NfseController : ControllerBase
     private readonly IObterXmlNfseUseCase _obterXmlNfse;
     private readonly IGerarDanfsePdfLoteUseCase _gerarDanfsePdfLote;
     private readonly IEnviarNfsePorEmailUseCase _enviarNfsePorEmail;
+    private readonly IObterDadosSubstituicaoUseCase _obterDadosSubstituicao;
 
     public NfseController(
         IEmitirNfseUseCase emitirNfse,
@@ -33,8 +35,10 @@ public sealed class NfseController : ControllerBase
         IObterDanfsePdfUseCase obterDanfsePdf,
         IObterXmlNfseUseCase obterXmlNfse,
         IGerarDanfsePdfLoteUseCase gerarDanfsePdfLote,
-        IEnviarNfsePorEmailUseCase enviarNfsePorEmail)
+        IEnviarNfsePorEmailUseCase enviarNfsePorEmail,
+        IObterDadosSubstituicaoUseCase obterDadosSubstituicao)
     {
+        _obterDadosSubstituicao = obterDadosSubstituicao;
         _emitirNfse = emitirNfse;
         _listarNfse = listarNfse;
         _obterNfsePorId = obterNfsePorId;
@@ -51,7 +55,29 @@ public sealed class NfseController : ControllerBase
     [HttpPost("emitir")]
     public async Task<IActionResult> Emitir([FromBody] EmitirNfseRequest request, CancellationToken cancellationToken)
     {
+        // Substituir cancela a original: tem rota própria, com a permissão de cancelar.
+        if (request.SubstituirNfseId is not null)
+            throw new RegraNegocioException("Para substituir uma nota, use \"Substituir\" na lista de notas.");
+
         var resultado = await _emitirNfse.ExecutarAsync(request, cancellationToken);
+        return Ok(resultado);
+    }
+
+    /// <summary>C7: motivos oficiais e campos que o regime da empresa não deixa mudar.</summary>
+    [RequerPermissao(TelaCatalogo.Nfse, AcaoPermissao.Excluir)]
+    [HttpGet("{id:guid}/substituicao")]
+    public async Task<IActionResult> DadosSubstituicao(Guid id, CancellationToken cancellationToken)
+        => Ok(await _obterDadosSubstituicao.ExecutarAsync(id, cancellationToken));
+
+    /// <summary>
+    /// C7: emite a substituta da nota {id}; autorizada, a SEFIN cancela a
+    /// original (evento 105102). Mesma permissão do cancelamento.
+    /// </summary>
+    [RequerPermissao(TelaCatalogo.Nfse, AcaoPermissao.Excluir)]
+    [HttpPost("{id:guid}/substituir")]
+    public async Task<IActionResult> Substituir(Guid id, [FromBody] EmitirNfseRequest request, CancellationToken cancellationToken)
+    {
+        var resultado = await _emitirNfse.ExecutarAsync(request with { SubstituirNfseId = id, ReenvioDeNfseId = null }, cancellationToken);
         return Ok(resultado);
     }
 

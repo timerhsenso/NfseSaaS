@@ -91,4 +91,9 @@ public sealed record DpsRequest(
     string TpAmb,
     IbsCbsDps? IbsCbs = null,
     // cLocPrestacao (IBGE). Nulo = município do prestador (comportamento de sempre).
-    string? CodigoMunicipioPrestacao = null);
+    string? CodigoMunicipioPrestacao = null,
+    // Grupo subst (substituição de NFS-e). Nulo = nota comum.
+    SubstituicaoDps? Substituicao = null);
+
+/// <summary>Grupo subst da DPS: chave da NFS-e substituída, cMotivo e xMotivo opcional.</summary>
+public sealed record SubstituicaoDps(string ChaveSubstituida, string CodigoMotivo, string? DescricaoMotivo);

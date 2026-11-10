@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using NfseSaaS.Application.Exceptions;
+using NfseSaaS.Domain.Enums;
 using NfseSaaS.Application.UseCases.Nfse;
 using NfseSaaS.Infrastructure.Persistence;
 
@@ -33,6 +34,14 @@ public sealed class ObterNfsePorIdUseCase : IObterNfsePorIdUseCase
             .Select(r => new { r.Id, r.NumeroDps })
             .FirstOrDefaultAsync(cancellationToken);
 
+        int? substituiNumeroDps = nfse.SubstituiNfseId is { } substituidaId
+            ? await _db.NotasFiscais.AsNoTracking().Where(o => o.Id == substituidaId).Select(o => (int?)o.NumeroDps).FirstOrDefaultAsync(cancellationToken)
+            : null;
+        var substituidaPor = await _db.NotasFiscais.AsNoTracking()
+            .Where(s => s.SubstituiNfseId == nfse.Id && (s.Status == NfseStatus.Processando || s.Status == NfseStatus.Autorizada))
+            .Select(s => (int?)s.NumeroDps)
+            .FirstOrDefaultAsync(cancellationToken);
+
         return new NfseResponse(
             nfse.Id, nfse.EmpresaId, nfse.ClienteId, nfse.ContratoId, nfse.NumeroDps, nfse.SerieDps, nfse.NumeroNfse, nfse.ChaveAcesso,
             nfse.DataCompetencia, nfse.DataEmissao, nfse.ValorServico, nfse.ValorLiquido, nfse.DescricaoServico, nfse.Status,
@@ -43,6 +52,7 @@ public sealed class ObterNfsePorIdUseCase : IObterNfsePorIdUseCase
             reenviadaComo?.Id,
             reenviadaComo?.NumeroDps,
             nfse.RejeicaoPermiteReenvio() && reenviadaComo is null,
-            nfse.CodigoTributacaoNacional, nfse.CodigoNbs, nfse.TpRetIssqn, nfse.AliquotaIss, nfse.CodigoMunicipioPrestacao);
+            nfse.CodigoTributacaoNacional, nfse.CodigoNbs, nfse.TpRetIssqn, nfse.AliquotaIss, nfse.CodigoMunicipioPrestacao,
+            nfse.SubstituiNfseId, substituiNumeroDps, substituidaPor, nfse.MotivoSubstituicao, nfse.DescricaoMotivoSubstituicao);
     }
 }

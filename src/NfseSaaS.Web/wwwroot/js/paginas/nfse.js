@@ -24,6 +24,8 @@ let nfseDetalheAtualId;
 // Id da nota Rejeitada sendo reenviada pelo modal de emissão (null =
 // emissão normal). Ver abrirModalReenvioNfse.
 let nfseReenvioAtualId = null;
+// C7: nota autorizada sendo substituída (null = emissão comum ou reenvio).
+let nfseSubstituicaoAtual = null;
 let modalNotaMensal;
 let candidatosNotaMensal = []; // estado local da grade (inclui selecionado/valorAjustado/status/mensagem por linha)
 let nfseSelecionadas = new Set(); // ids marcados pra download em lote — sobrevive a paginação/redraw do DataTable, só é limpo quando os filtros mudam
@@ -97,7 +99,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     const botaoEmail = podeEmitirNfse && n.status === STATUS_AUTORIZADA
                         ? `<button type="button" class="btn btn-sm btn-outline-secondary btn-enviar-email-nfse" data-id="${n.id}" title="Enviar PDF e XML por e-mail ao cliente"><i class="bi bi-envelope"></i></button>`
                         : '';
-                    return `<button type="button" class="btn btn-sm btn-outline-secondary btn-ver-detalhe" data-id="${n.id}"><i class="bi bi-eye"></i> Detalhes</button> ${botaoPdf} ${botaoEmail} ${botaoReenviar}`;
+                    // C7: substituir = emitir a nota certa e a SEFIN cancela esta (permissão de cancelar).
+                    const botaoSubstituir = podeCancelarNfse && n.podeSubstituir
+                        ? `<button type="button" class="btn btn-sm btn-outline-primary btn-substituir-nfse" data-id="${n.id}" title="Emitir a nota corrigida; a SEFIN cancela esta automaticamente"><i class="bi bi-arrow-left-right"></i></button>`
+                        : '';
+                    return `<button type="button" class="btn btn-sm btn-outline-secondary btn-ver-detalhe" data-id="${n.id}"><i class="bi bi-eye"></i> Detalhes</button> ${botaoPdf} ${botaoEmail} ${botaoSubstituir} ${botaoReenviar}`;
                 }
             }
         ],
@@ -117,6 +123,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const botaoReenviar = e.target.closest('.btn-reenviar-nfse');
         if (botaoReenviar) await executarComBotaoDesabilitado(botaoReenviar, () => abrirModalReenvioNfse(botaoReenviar.dataset.id));
+
+        const botaoSubstituir = e.target.closest('.btn-substituir-nfse');
+        if (botaoSubstituir) await executarComBotaoDesabilitado(botaoSubstituir, () => abrirModalSubstituicaoNfse(botaoSubstituir.dataset.id));
 
         const botaoEmail = e.target.closest('.btn-enviar-email-nfse');
         if (botaoEmail) await executarComBotaoDesabilitado(botaoEmail, () => enviarNfsePorEmail(botaoEmail.dataset.id));
@@ -199,7 +208,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // No reenvio, Cliente e Contrato ficam travados nos da nota
             // original — buscar os Contratos aqui sobrescreveria Serviço/
             // valor/descrição com os do Contrato (aplicarContratoSelecionado).
-            if (nfseReenvioAtualId) return;
+            if (nfseReenvioAtualId || nfseSubstituicaoAtual) return;
             const selecionado = $('#emitir-clienteId').select2('data')[0];
             definirIssRetido(selecionado?.retemIss === true);
             carregarContratosDoCliente(this.value);
@@ -457,6 +466,10 @@ async function abrirModalReenvioNfse(id) {
 // Serviços carregada. Não abre o modal — quem chama decide.
 async function prepararModalEmitirNfse() {
     nfseReenvioAtualId = null;
+    nfseSubstituicaoAtual = null;
+    document.getElementById('bloco-substituicao-nfse').classList.add('d-none');
+    ['emitir-dataCompetencia', 'emitir-valorServico', 'emitir-servicoId'].forEach(id => { document.getElementById(id).disabled = false; });
+    $('#emitir-localPrestacao').prop('disabled', false);
     document.getElementById('titulo-modal-emitir-nfse').textContent = 'Emitir nota fiscal';
     descricaoEditadaPeloUsuario = false;
     valorEditadoPeloUsuario = false;
@@ -610,7 +623,7 @@ function mostrarCamposEmissao() {
     document.getElementById('emitir-campos').classList.remove('d-none');
     document.getElementById('emitir-resumo').classList.add('d-none');
     document.getElementById('btn-voltar-emissao').classList.add('d-none');
-    document.getElementById('btn-confirmar-emissao').textContent = nfseReenvioAtualId ? 'Revisar reenvio' : 'Revisar';
+    document.getElementById('btn-confirmar-emissao').textContent = nfseSubstituicaoAtual ? 'Revisar substituição' : nfseReenvioAtualId ? 'Revisar reenvio' : 'Revisar';
 }
 
 /**
@@ -640,7 +653,8 @@ function mostrarResumoEmissao() {
 
     document.getElementById('emitir-resumo').innerHTML = `
         ${avisoAmbiente}
-        <p class="mb-3">Confira antes de ${nfseReenvioAtualId ? 'reenviar' : 'emitir'}. Depois de autorizada, a nota só pode ser desfeita cancelando.</p>
+        ${nfseSubstituicaoAtual ? `<div class="alert alert-warning py-2 mb-3">Autorizada esta nota, a SEFIN <strong>cancela a DPS nº ${nfseSubstituicaoAtual.numeroDps}</strong> automaticamente.</div>` : ''}
+        <p class="mb-3">Confira antes de ${nfseSubstituicaoAtual ? 'substituir' : nfseReenvioAtualId ? 'reenviar' : 'emitir'}. Depois de autorizada, a nota só pode ser desfeita cancelando.</p>
         <dl class="row resumo-emissao mb-0">
             ${linha('Cliente', escaparHtml(cliente))}
             ${linha('Contrato', escaparHtml(contrato))}
@@ -649,6 +663,7 @@ function mostrarResumoEmissao() {
             ${linha('Valor do serviço', `<strong>${valor}</strong>`)}
             ${linha('ISS', issRetido ? `Retido pelo tomador${aliquota ? ` (alíquota ${escaparHtml(aliquota)}%)` : ' (alíquota da empresa)'}` : 'Não retido')}
             ${linha('Local da prestação', escaparHtml(textoMunicipioSelecionado('emitir-localPrestacao', 'Município da empresa')))}
+            ${nfseSubstituicaoAtual ? linha('Substitui', escaparHtml(`DPS nº ${nfseSubstituicaoAtual.numeroDps} — ${textoSelecionado('emitir-motivoSubstituicao')}`)) : ''}
         </dl>
         <div class="mt-2">
             <div class="form-label mb-1">Descrição que vai na nota</div>
@@ -659,7 +674,7 @@ function mostrarResumoEmissao() {
     document.getElementById('emitir-campos').classList.add('d-none');
     document.getElementById('emitir-resumo').classList.remove('d-none');
     document.getElementById('btn-voltar-emissao').classList.remove('d-none');
-    document.getElementById('btn-confirmar-emissao').textContent = nfseReenvioAtualId ? 'Confirmar e reenviar' : 'Confirmar e emitir';
+    document.getElementById('btn-confirmar-emissao').textContent = nfseSubstituicaoAtual ? 'Confirmar e substituir' : nfseReenvioAtualId ? 'Confirmar e reenviar' : 'Confirmar e emitir';
     ocultarErroFormulario('erro-emitir-nfse');
 }
 
@@ -758,14 +773,25 @@ async function emitirNfse(e) {
         codigoMunicipioPrestacao: $('#emitir-localPrestacao').val() || ''
     };
 
+    // C7: substituição vai pela rota própria, com o motivo oficial.
+    const substituicao = nfseSubstituicaoAtual;
+    if (substituicao) {
+        payload.reenvioDeNfseId = null;
+        payload.motivoSubstituicao = document.getElementById('emitir-motivoSubstituicao').value;
+        payload.descricaoMotivoSubstituicao = document.getElementById('emitir-descricaoMotivoSubstituicao').value.trim() || null;
+    }
+
     try {
-        const resultado = await apiFetch('/api/nfse/emitir', { method: 'POST', body: JSON.stringify(payload) });
+        const resultado = await apiFetch(substituicao ? `/api/nfse/${substituicao.id}/substituir` : '/api/nfse/emitir',
+            { method: 'POST', body: JSON.stringify(payload) });
 
         modalEmitirNfse.hide();
         await carregarNfse();
 
         if (resultado.sucesso) {
-            mostrarToast('Nota fiscal emitida com sucesso.');
+            mostrarToast(substituicao
+                ? `Nota substituta autorizada. A DPS nº ${substituicao.numeroDps} foi cancelada pela SEFIN.`
+                : 'Nota fiscal emitida com sucesso.');
         } else {
             mostrarErro(textoRejeicao('Nota rejeitada pela SEFIN', resultado));
         }
@@ -1196,6 +1222,8 @@ function htmlDetalheNfse(nfse, snapshot) {
                 ${linha('Chave de acesso', `<span class="text-break">${escaparHtml(nfse.chaveAcesso ?? '—')}</span>`)}
                 ${nfse.reenvioDeNumeroDps != null ? linha('Reenvio de', `DPS nº ${nfse.reenvioDeNumeroDps} (rejeitada)`) : ''}
                 ${nfse.reenviadaComoNumeroDps != null ? linha('Reenviada como', `DPS nº ${nfse.reenviadaComoNumeroDps}`) : ''}
+                ${nfse.substituiNumeroDps != null ? linha('Substitui', `DPS nº ${nfse.substituiNumeroDps}${nfse.descricaoMotivoSubstituicao ? ' — ' + escaparHtml(nfse.descricaoMotivoSubstituicao) : ''}`) : ''}
+                ${nfse.substituidaPorNumeroDps != null ? linha('Substituída por', `DPS nº ${nfse.substituidaPorNumeroDps}`) : ''}
             </dl>
         </section>
 
@@ -1298,5 +1326,86 @@ async function preencherNomesMunicipios(raiz) {
         } catch {
             // Fica o código.
         }
+    }
+}
+
+// ---------- Substituição de nota autorizada (C7) ----------
+
+// Mesmo modal da emissão, pré-preenchido com a nota original. Cliente,
+// contrato e competência ficam travados; valor, serviço e local conforme o
+// regime da empresa (a SEFIN não deixa mudar — ver RegrasSubstituicao).
+async function abrirModalSubstituicaoNfse(id) {
+    try {
+        const [nfse, dados] = await Promise.all([
+            apiFetch(`/api/nfse/${id}`),
+            apiFetch(`/api/nfse/${id}/substituicao`)
+        ]);
+        if (dados.impedimento) {
+            mostrarErro(dados.impedimento);
+            return;
+        }
+        await prepararModalEmitirNfse();
+        nfseSubstituicaoAtual = { id: nfse.id, numeroDps: nfse.numeroDps };
+        document.getElementById('titulo-modal-emitir-nfse').textContent =
+            `Substituir nota${nfse.numeroNfse ? ' nº ' + nfse.numeroNfse : ''} — DPS nº ${nfse.numeroDps}`;
+        mostrarCamposEmissao();
+
+        const aviso = document.getElementById('aviso-reenvio-nfse');
+        aviso.replaceChildren();
+        const titulo = document.createElement('strong');
+        titulo.textContent = 'Substituição: ';
+        const texto = document.createElement('span');
+        texto.textContent = 'corrija o que precisar e confirme. Autorizada a nova nota, a SEFIN cancela a original automaticamente.';
+        const dica = document.createElement('div');
+        dica.className = 'small mt-1';
+        dica.textContent = `Pelo regime da empresa, não podem mudar: ${dados.textoCamposTravados}.`;
+        aviso.append(titulo, texto, dica);
+        aviso.classList.remove('d-none');
+
+        const selectMotivo = document.getElementById('emitir-motivoSubstituicao');
+        selectMotivo.replaceChildren(...dados.motivos.map(m => new Option(`${m.codigo} - ${m.descricao}`, m.codigo)));
+        document.getElementById('emitir-descricaoMotivoSubstituicao').value = '';
+        document.getElementById('bloco-substituicao-nfse').classList.remove('d-none');
+
+        const selectCliente = document.getElementById('emitir-clienteId');
+        selectCliente.append(new Option(clientesPorId[nfse.clienteId]?.apelido ?? nfse.clienteId, nfse.clienteId, true, true));
+        $('#emitir-clienteId').prop('disabled', true).trigger('change');
+
+        const campoContrato = document.getElementById('campo-emitir-contrato');
+        const selectContrato = document.getElementById('emitir-contratoId');
+        if (nfse.contratoId) {
+            selectContrato.innerHTML = `<option value="${nfse.contratoId}">Mesmo contrato da nota original</option>`;
+            selectContrato.disabled = true;
+            campoContrato.classList.remove('d-none');
+        }
+
+        const selectServico = document.getElementById('emitir-servicoId');
+        if (nfse.servicoId && [...selectServico.options].some(o => o.value === nfse.servicoId)) {
+            selectServico.value = nfse.servicoId;
+        } else {
+            selectServico.insertBefore(new Option('Selecione o serviço…', '', true, true), selectServico.firstChild);
+        }
+
+        document.getElementById('emitir-descricaoServico').value = nfse.descricaoServico;
+        document.getElementById('emitir-valorServico').value = nfse.valorServico;
+        sugestaoEmissao = { descricao: nfse.descricaoServico, valor: String(nfse.valorServico) };
+        descricaoEditadaPeloUsuario = true;
+        valorEditadoPeloUsuario = true;
+        atualizarAvisoDescricaoEmissao();
+        document.getElementById('emitir-dataCompetencia').value = nfse.dataCompetencia;
+        definirIssRetido(nfse.issRetido === true);
+        if (nfse.issRetido && nfse.aliquotaIss != null) document.getElementById('emitir-aliquotaIss').value = nfse.aliquotaIss;
+        await definirMunicipioNoSelect('emitir-localPrestacao', nfse.codigoMunicipioPrestacao);
+
+        // CampoTravadoSubstituicao: 1 Cliente, 2 Competência, 3 Valor, 4 Serviço, 5 Local.
+        // Competência fica travada sempre (os dois regimes).
+        document.getElementById('emitir-dataCompetencia').disabled = true;
+        if (dados.camposTravados.includes(3)) document.getElementById('emitir-valorServico').disabled = true;
+        if (dados.camposTravados.includes(4)) selectServico.disabled = true;
+        if (dados.camposTravados.includes(5)) $('#emitir-localPrestacao').prop('disabled', true);
+
+        modalEmitirNfse.show();
+    } catch (err) {
+        mostrarErro(err.message);
     }
 }

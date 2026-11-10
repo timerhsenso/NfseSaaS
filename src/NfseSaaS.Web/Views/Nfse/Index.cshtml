@@ -104,6 +104,19 @@
                         <div id="emitir-resumo" class="d-none"></div>
 
                         <div id="emitir-campos">
+                            @* C7: só aparece ao substituir uma nota autorizada. *@
+                            <div id="bloco-substituicao-nfse" class="border rounded p-2 mb-3 d-none">
+                                <div class="row">
+                                    <div class="col-md-5 mb-2">
+                                        <label class="form-label" for="emitir-motivoSubstituicao">Motivo da substituição</label>
+                                        <select class="form-select" id="emitir-motivoSubstituicao"></select>
+                                    </div>
+                                    <div class="col-md-7 mb-2">
+                                        <label class="form-label" for="emitir-descricaoMotivoSubstituicao">Descrição do motivo <span class="text-muted small" id="dica-descricao-motivo">(15 a 255 caracteres)</span></label>
+                                        <input type="text" class="form-control" id="emitir-descricaoMotivoSubstituicao" maxlength="255" placeholder="ex.: descrição do serviço corrigida a pedido do cliente" />
+                                    </div>
+                                </div>
+                            </div>
                         <div class="mb-3">
                             <label class="form-label">Cliente</label>
                             <select class="form-control" id="emitir-clienteId" style="width: 100%" required></select>

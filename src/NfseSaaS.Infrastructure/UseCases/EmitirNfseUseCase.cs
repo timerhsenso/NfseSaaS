@@ -164,6 +164,20 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
         if (original is not null)
             await ValidarReenvioAsync(original, request, cancellationToken);
 
+        // C7: substituição. No reenvio de uma substituta rejeitada, a
+        // substituição vem da tentativa original (a tela não manda de novo).
+        var substituirId = request.SubstituirNfseId ?? original?.SubstituiNfseId;
+        var usarDadosDaOriginal = request.SubstituirNfseId is null && original?.SubstituiNfseId is not null;
+        var motivoSubstituicao = usarDadosDaOriginal ? original!.MotivoSubstituicao : request.MotivoSubstituicao;
+        var descricaoMotivoSubstituicao = usarDadosDaOriginal ? original!.DescricaoMotivoSubstituicao : request.DescricaoMotivoSubstituicao;
+        Domain.Entities.Nfse? substituida = null;
+        if (substituirId is { } idSubstituida)
+        {
+            if (original is not null && original.SubstituiNfseId != idSubstituida)
+                throw new RegraNegocioException("O reenvio precisa manter a mesma nota substituída da tentativa rejeitada.");
+            substituida = await ValidarSubstituicaoAsync(idSubstituida, request, motivoSubstituicao, descricaoMotivoSubstituicao, cancellationToken);
+        }
+
         var empresa = await _db.Empresas.FirstOrDefaultAsync(e => e.Id == request.EmpresaId, cancellationToken)
             ?? throw new RecursoNaoEncontradoException($"Empresa {request.EmpresaId} não encontrada.");
 
@@ -209,6 +223,25 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
         var localPrestacao = RegrasLocalPrestacao.Resolver(
             request.CodigoMunicipioPrestacao ?? original?.CodigoMunicipioPrestacao, localDoContrato, empresa.CodigoMunicipio);
         await ConferenciaMunicipio.GarantirExisteAsync(_db, localPrestacao, cancellationToken);
+
+        // C7: o que a SEFIN não deixa mudar na substituta, pelo regime da empresa.
+        if (substituida is not null)
+        {
+            if (substituida.TipoAmbiente != empresa.TipoAmbiente)
+                throw new RegraNegocioException(
+                    "A nota original é de outro ambiente (homologação/produção) que o atual da empresa: não dá para substituí-la.");
+
+            var documentoOriginal = await _db.Clientes.AsNoTracking()
+                .Where(c => c.Id == substituida.ClienteId).Select(c => c.CpfCnpj).FirstOrDefaultAsync(cancellationToken) ?? string.Empty;
+            var alterados = RegrasSubstituicao.CamposAlteradosIndevidamente(empresa.OpSimpNac, new ComparacaoSubstituicao(
+                documentoOriginal, cliente.CpfCnpj,
+                substituida.DataCompetencia, request.DataCompetencia,
+                substituida.ValorServico, request.ValorServico,
+                substituida.CodigoTributacaoNacional, servico.CodigoTributacaoNacional,
+                substituida.CodigoMunicipioPrestacao ?? empresa.CodigoMunicipio, localPrestacao));
+            if (alterados.Count > 0)
+                throw new RegraNegocioException(RegrasSubstituicao.MensagemCamposTravados(empresa.OpSimpNac, alterados));
+        }
 
         // Retenção de ISS: decidida pelo TOMADOR (Cliente.RetemIss), com
         // ajuste por nota. Alíquota: da nota, senão a da Empresa. Validado
@@ -317,6 +350,9 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
             // ISS é recolhido no DAS e a SEFIN calcula o resto.
             AliquotaIss = issRetido ? aliquotaIss : null,
             CodigoMunicipioPrestacao = localPrestacao,
+            SubstituiNfseId = substituida?.Id,
+            MotivoSubstituicao = substituida is null ? null : motivoSubstituicao,
+            DescricaoMotivoSubstituicao = substituida is null || string.IsNullOrWhiteSpace(descricaoMotivoSubstituicao) ? null : descricaoMotivoSubstituicao.Trim(),
             CstPisCofins = empresa.CstPisCofins,
             TpRetPisCofins = empresa.TpRetPisCofins,
             PercentualTotalTributosSimplesNacional = empresa.PercentualTotalTributosSimplesNacional,
@@ -381,7 +417,10 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
             // banco, sem chance de os dois divergirem.
             TpAmb: nfse.TipoAmbiente.ParaTpAmb(),
             IbsCbs: ibsCbs is null ? null : new IbsCbsDps(ibsCbs.CIndOp, ibsCbs.Cst, ibsCbs.CClassTrib, ibsCbs.ComTributacao),
-            CodigoMunicipioPrestacao: nfse.CodigoMunicipioPrestacao);
+            CodigoMunicipioPrestacao: nfse.CodigoMunicipioPrestacao,
+            Substituicao: substituida is null
+                ? null
+                : new SubstituicaoDps(substituida.ChaveAcesso!, nfse.MotivoSubstituicao!, nfse.DescricaoMotivoSubstituicao));
 
         try
         {
@@ -408,6 +447,18 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
                 }
 
                 _nfseEventoWriter.Registrar(nfse.Id, NfseEventoTipo.Autorizada, mensagem: nfse.ChaveAcesso);
+
+                // C7: autorizada a substituta, a SEFIN cancela a original
+                // (evento 105102). A busca na SEFIN reconhece o mesmo evento
+                // depois e não mexe de novo (nota já Substituida).
+                if (substituida is not null)
+                {
+                    substituida.Status = NfseStatus.Substituida;
+                    _nfseEventoWriter.Registrar(substituida.Id, NfseEventoTipo.Substituida,
+                        mensagem: $"Substituída pela DPS nº {nfse.NumeroDps} (chave {nfse.ChaveAcesso}).");
+                    _auditLogWriter.Registrar("SubstituirNfse", "Nfse", substituida.Id,
+                        new { SubstitutaId = nfse.Id, nfse.NumeroDps, nfse.ChaveAcesso, nfse.MotivoSubstituicao });
+                }
             }
             else
             {
@@ -491,6 +542,37 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
 
         if (numeroDoReenvio is not null)
             throw new RegraNegocioException($"Esta nota já foi reenviada como DPS nº {numeroDoReenvio}.");
+    }
+
+    /// <summary>
+    /// C7: a nota a substituir existe nesta Empresa, está Autorizada (com
+    /// chave), ainda não tem substituta em andamento/autorizada e o motivo
+    /// é válido. O contrato é o mesmo (a Nota Mensal continua contando a
+    /// competência como emitida).
+    /// </summary>
+    private async Task<Domain.Entities.Nfse> ValidarSubstituicaoAsync(
+        Guid idSubstituida, EmitirNfseRequest request, string? motivo, string? descricao, CancellationToken cancellationToken)
+    {
+        var substituida = await _db.NotasFiscais.FirstOrDefaultAsync(n => n.Id == idSubstituida && n.EmpresaId == request.EmpresaId, cancellationToken)
+            ?? throw new RecursoNaoEncontradoException($"Nfse {idSubstituida} não encontrada.");
+
+        if (substituida.Status != NfseStatus.Autorizada || string.IsNullOrWhiteSpace(substituida.ChaveAcesso))
+            throw new RegraNegocioException("Só uma nota autorizada pode ser substituída (cancelada ou já substituída, não).");
+
+        if (RegrasSubstituicao.ProblemaNoMotivo(motivo, descricao) is { } problema)
+            throw new RegraNegocioException(problema);
+
+        if (substituida.ContratoId != request.ContratoId)
+            throw new RegraNegocioException("A substituta precisa manter o mesmo contrato da nota original.");
+
+        var substitutaEmAndamento = await _db.NotasFiscais.AsNoTracking()
+            .Where(s => s.SubstituiNfseId == idSubstituida && (s.Status == NfseStatus.Processando || s.Status == NfseStatus.Autorizada))
+            .Select(s => (int?)s.NumeroDps)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (substitutaEmAndamento is not null)
+            throw new RegraNegocioException($"Esta nota já tem uma substituta (DPS nº {substitutaEmAndamento}).");
+
+        return substituida;
     }
 
     private static EmitirNfseResult ResultadoDaTentativaExistente(Domain.Entities.Nfse existente)

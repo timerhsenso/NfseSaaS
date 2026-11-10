@@ -100,7 +100,13 @@ public sealed class ListarNfseUseCase : IListarNfseUseCase
                 _db.NotasFiscais.Where(r => r.ReenvioDeNfseId == n.Id).Select(r => (int?)r.NumeroDps).FirstOrDefault(),
                 n.Status == NfseStatus.Rejeitada && n.CodigoErro != null && n.CodigoErro != ""
                     && !_db.NotasFiscais.Any(r => r.ReenvioDeNfseId == n.Id),
-                n.CodigoTributacaoNacional, n.CodigoNbs, n.TpRetIssqn, n.AliquotaIss, n.CodigoMunicipioPrestacao))
+                n.CodigoTributacaoNacional, n.CodigoNbs, n.TpRetIssqn, n.AliquotaIss, n.CodigoMunicipioPrestacao,
+                n.SubstituiNfseId,
+                _db.NotasFiscais.Where(o => o.Id == n.SubstituiNfseId).Select(o => (int?)o.NumeroDps).FirstOrDefault(),
+                // Substituta em andamento ou autorizada (tentativas rejeitadas não contam).
+                _db.NotasFiscais.Where(s => s.SubstituiNfseId == n.Id && (s.Status == NfseStatus.Processando || s.Status == NfseStatus.Autorizada))
+                    .Select(s => (int?)s.NumeroDps).FirstOrDefault(),
+                n.MotivoSubstituicao, n.DescricaoMotivoSubstituicao))
             .ToListAsync(cancellationToken);
 
         return new PagedResult<NfseResponse>

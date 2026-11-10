@@ -31,4 +31,9 @@ public sealed record EmitirNfseRequest(
     decimal? AliquotaIss = null,
     // Local da prestação (IBGE) NESTA nota (C2). Nulo = padrão do Contrato
     // ou, sem ele, o município da Empresa; "" = o da Empresa (mesmo com contrato).
-    string? CodigoMunicipioPrestacao = null);
+    string? CodigoMunicipioPrestacao = null,
+    // C7: Id da nota Autorizada que esta substitui, com o motivo oficial
+    // (cMotivo) e a descrição (xMotivo, obrigatória no 99). Ver RegrasSubstituicao.
+    Guid? SubstituirNfseId = null,
+    string? MotivoSubstituicao = null,
+    string? DescricaoMotivoSubstituicao = null);

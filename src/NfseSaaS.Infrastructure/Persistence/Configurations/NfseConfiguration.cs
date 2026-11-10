@@ -58,6 +58,21 @@ public sealed class NfseConfiguration : IEntityTypeConfiguration<Nfse>
         builder.Property(n => n.CodigoMunicipioPrestacao)
             .HasMaxLength(7);
 
+        // C7: substituição. FK para a própria tabela (Restrict: a original
+        // nunca é apagada enquanto houver substituta). No máximo UMA
+        // substituta em andamento ou autorizada por nota (Status é gravado
+        // como texto: Processando/Autorizada);
+        // tentativas rejeitadas não contam e dá para tentar de novo.
+        builder.Property(n => n.MotivoSubstituicao).HasMaxLength(2);
+        builder.Property(n => n.DescricaoMotivoSubstituicao).HasMaxLength(255);
+        builder.HasOne<Nfse>()
+            .WithMany()
+            .HasForeignKey(n => n.SubstituiNfseId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(n => n.SubstituiNfseId)
+            .IsUnique()
+            .HasFilter("\"SubstituiNfseId\" IS NOT NULL AND \"Status\" IN ('Processando', 'Autorizada')");
+
         builder.Property(n => n.CstPisCofins)
             .HasMaxLength(2)
             .IsRequired();
