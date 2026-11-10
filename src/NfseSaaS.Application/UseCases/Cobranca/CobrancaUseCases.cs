@@ -57,7 +57,10 @@ public sealed record AssinaturaResponse(
     bool FundadorReservaSemPrazo,
     DateOnly? CampanhaFundadorAte,
     DateOnly? AcessoAteAposCancelar,
-    bool SemTesteGratis);
+    bool SemTesteGratis,
+    // B2: reajuste do preço de tabela já avisado (nulos = nenhum agendado).
+    decimal? ReajustePrecoNovo = null,
+    DateOnly? ReajusteAplicarEm = null);
 
 public sealed record AssinarRequest(int Plano);
 

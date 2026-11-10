@@ -142,6 +142,12 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
                 ? PrimeiroVencimento(assinatura, assinatura.SemTesteGratis, agora, hoje).Vencimento
                 : null;
 
+        // B2: reajuste já avisado (aparece até ser aplicado ou cancelado).
+        var reajuste = await _db.ReajustesAssinatura.AsNoTracking()
+            .Where(r => r.AssinaturaId == assinatura.Id && r.Status == StatusReajusteAssinatura.Agendado)
+            .Select(r => new { r.PrecoNovo, r.AplicarEm })
+            .FirstOrDefaultAsync(cancellationToken);
+
         return new AssinaturaResponse(
             cobrancaAtiva, isenta, assinatura.Status, assinatura.Plano, planoNome, assinatura.PrecoMensal, assinatura.Fundador,
             assinatura.TesteIniciadoEm, situacao.TesteTerminaEm,
@@ -158,7 +164,9 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
             FundadorReservaSemPrazo: reservaValida && assinatura.FundadorReservaSemPrazo,
             CampanhaFundadorAte: await _catalogo.CampanhaFundadorAteAsync(grupoConta, cancellationToken),
             AcessoAteAposCancelar: assinatura.Status == StatusAssinatura.Cancelada ? assinatura.AcessoAteAposCancelar : null,
-            SemTesteGratis: assinatura.SemTesteGratis);
+            SemTesteGratis: assinatura.SemTesteGratis,
+            ReajustePrecoNovo: reajuste?.PrecoNovo,
+            ReajusteAplicarEm: reajuste?.AplicarEm);
     }
 
     // ---------- Assinar ----------
@@ -314,6 +322,10 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
                 fundador = troca.Fundador
             });
 
+            // Reajuste já avisado para o plano antigo deixa de valer (B2).
+            await ReajusteAssinaturaService.CancelarAgendadosDaAssinaturaAsync(_db, assinatura.Id,
+                "A conta trocou de plano antes da data.", cancellationToken);
+
             assinatura.Plano = novo.Codigo;
             assinatura.PrecoMensal = troca.Preco;
             assinatura.Fundador = troca.Fundador;
@@ -351,6 +363,8 @@ public sealed class CobrancaService : IVerificadorCobranca, IObterAssinaturaUseC
         assinatura.PrimeiraCobrancaEm = null;
         assinatura.LimparFaturaPendente();
         LimparReserva(assinatura);
+        await ReajusteAssinaturaService.CancelarAgendadosDaAssinaturaAsync(_db, assinatura.Id,
+            "A assinatura foi cancelada antes da data.", cancellationToken);
         _auditLogWriter.Registrar("CancelarAssinatura", "Assinatura", assinatura.Id,
             new { assinatura.AsaasAssinaturaId, acessoAte, fundadorPerdido = assinatura.Fundador });
         await _db.SaveChangesAsync(cancellationToken);

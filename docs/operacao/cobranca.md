@@ -29,6 +29,29 @@ Termos de uso, item 8, citam o mesmo prazo).
   conta) + **reserva válida** de quem ainda não assinou. Diminuir não tira o
   preço de quem já é fundador nem de quem já reservou.
 
+## Reajuste de quem já assina (Plataforma › Planos › Reajustar)
+Preço novo do plano vale só para novas assinaturas. Para levar quem já assina
+ao preço de tabela (Termos 1.1, item 8.5):
+1. Cadastre o preço novo do plano em **Preço** (pode ser com data futura).
+2. No plano, **Reajustar**: escolha a data do novo valor (pelo menos 30 dias à
+   frente, no máximo 180) e clique em **Ver prévia**. O novo valor é o preço de
+   tabela do plano naquela data. A prévia mostra quem entra e por que os outros
+   ficam de fora: preço de fundador (item 8.3), menos de 12 meses desde que
+   assinou ou desde o último reajuste, já paga igual ou mais, cobrança
+   desligada ou conta isenta, já tem reajuste agendado.
+3. **Agendar e avisar por e-mail**: o aviso sai na hora para os
+   administradores com e-mail confirmado de cada conta (tipo "Reajuste da
+   assinatura" na tela E-mails). Conta sem ninguém confirmado aparece como
+   "sem aviso" na lista: avise por outro canal ou cancele o lote.
+4. Na data, o job `aplicar-reajustes-assinatura` (07:20) grava o valor no Asaas
+   (a fatura em aberto daquela data em diante muda junto; as vencidas não) e
+   na assinatura. A tela Assinatura do cliente mostra o reajuste até lá.
+- Trocou de plano, cancelou, virou fundador ou mudou de valor antes da data:
+  o reajuste é cancelado (nunca aplicado por cima).
+- **Cancelar lote**: desfaz o que ainda está agendado (não sai e-mail).
+- Asaas recusou: tenta de novo no dia seguinte; depois de 5 vezes fica "Erro
+  no Asaas" e o e-mail de falha de job avisa o operador.
+
 ## Um teste grátis por CNPJ
 
 - Quando o teste de uma conta de perfil **Empresa** começa (primeira nota em

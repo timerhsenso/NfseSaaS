@@ -37,6 +37,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
     public DbSet<NotaMensalidade> NotasMensalidade => Set<NotaMensalidade>();
     public DbSet<Municipio> Municipios => Set<Municipio>();
     public DbSet<PremioIndicacao> PremiosIndicacao => Set<PremioIndicacao>();
+    public DbSet<ReajusteAssinatura> ReajustesAssinatura => Set<ReajusteAssinatura>();
     public DbSet<ConviteIndicacao> ConvitesIndicacao => Set<ConviteIndicacao>();
     public DbSet<ExportacaoDados> ExportacoesDados => Set<ExportacaoDados>();
     public DbSet<Plano> Planos => Set<Plano>();

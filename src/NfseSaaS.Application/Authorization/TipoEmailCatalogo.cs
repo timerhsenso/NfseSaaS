@@ -29,6 +29,9 @@ public static class TipoEmailCatalogo
     /// <summary>Avisos de cobrança aos administradores: teste acabando, fatura criada/vencendo/vencida, bloqueio, cancelamento, pagamento.</summary>
     public const string AvisoCobranca = "AvisoCobranca";
 
+    /// <summary>Aviso prévio (30 dias) de reajuste do preço de tabela para quem já assina.</summary>
+    public const string ReajusteAssinatura = "ReajusteAssinatura";
+
     /// <summary>Convite enviado pela tela "Indique e ganhe" (Reply-To = quem indicou).</summary>
     public const string ConviteIndicacao = "ConviteIndicacao";
 

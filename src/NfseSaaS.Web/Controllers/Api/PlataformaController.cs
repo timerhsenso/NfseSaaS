@@ -31,6 +31,7 @@ public sealed class PlataformaController : ControllerBase
     private readonly ICurrentUser _currentUser;
     private readonly ICobrancaOperadorUseCase _cobrancaOperador;
     private readonly IConciliarCobrancaUseCase _conciliarCobranca;
+    private readonly IReajusteAssinantesUseCase _reajuste;
 
     public PlataformaController(
         IListarTenantsPlataformaUseCase listar,
@@ -46,8 +47,10 @@ public sealed class PlataformaController : ControllerBase
         IConfirmarExclusaoPlanoUseCase confirmarExclusaoPlano,
         ICurrentUser currentUser,
         ICobrancaOperadorUseCase cobrancaOperador,
-        IConciliarCobrancaUseCase conciliarCobranca)
+        IConciliarCobrancaUseCase conciliarCobranca,
+        IReajusteAssinantesUseCase reajuste)
     {
+        _reajuste = reajuste;
         _cobrancaOperador = cobrancaOperador;
         _conciliarCobranca = conciliarCobranca;
         _listar = listar;
@@ -210,6 +213,27 @@ public sealed class PlataformaController : ControllerBase
         await _planos.AdicionarPrecoAsync(id, request, _currentUser.UserId, cancellationToken);
         return NoContent();
     }
+
+    // ---------- Reajuste de quem já assina (B2) ----------
+
+    /// <summary>Quem entra no reajuste para o preço de tabela do plano na data (e por que os outros ficam de fora).</summary>
+    [HttpGet("planos/{id:guid}/reajuste/previa")]
+    public async Task<IActionResult> PreviaReajuste(Guid id, [FromQuery] DateOnly aplicarEm, CancellationToken cancellationToken)
+        => Ok(await _reajuste.PreviaAsync(id, aplicarEm, cancellationToken));
+
+    /// <summary>Agenda o reajuste e manda o aviso por e-mail (pelo menos 30 dias antes).</summary>
+    [HttpPost("planos/{id:guid}/reajuste")]
+    public async Task<IActionResult> AgendarReajuste(Guid id, [FromBody] AgendarReajusteRequest request, CancellationToken cancellationToken)
+        => Ok(await _reajuste.AgendarAsync(id, request, _currentUser.UserId, cancellationToken));
+
+    [HttpGet("planos/{id:guid}/reajustes")]
+    public async Task<IActionResult> ListarReajustes(Guid id, CancellationToken cancellationToken)
+        => Ok(await _reajuste.ListarAsync(id, cancellationToken));
+
+    /// <summary>Cancela o que ainda está agendado no lote (os já aplicados não mudam).</summary>
+    [HttpPost("reajustes/lotes/{loteId:guid}/cancelar")]
+    public async Task<IActionResult> CancelarLoteReajuste(Guid loteId, CancellationToken cancellationToken)
+        => Ok(new { cancelados = await _reajuste.CancelarLoteAsync(loteId, _currentUser.UserId, cancellationToken) });
 
     [HttpGet("vagas-fundador")]
     public async Task<IActionResult> ListarVagasFundador(CancellationToken cancellationToken)

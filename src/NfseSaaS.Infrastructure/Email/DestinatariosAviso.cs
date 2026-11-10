@@ -27,6 +27,30 @@ public static class DestinatariosAviso
     public static Task<List<string>> AdministradoresConfirmadosDaContaAsync(AppDbContext db, Guid tenantId, CancellationToken cancellationToken) =>
         AdministradoresAsync(db, tenantId, apenasEmailConfirmado: true, cancellationToken);
 
+    /// <summary>
+    /// Como <see cref="AdministradoresConfirmadosDaContaAsync"/>, para quem
+    /// roda FORA da conta (operador, job): ignora o filtro global e filtra a
+    /// conta à mão nos usuários e nos grupos.
+    /// </summary>
+    public static async Task<List<string>> AdministradoresConfirmadosDeOutraContaAsync(AppDbContext db, Guid tenantId, CancellationToken cancellationToken)
+    {
+        var agora = DateTimeOffset.UtcNow;
+
+        var emails = await (
+            from u in db.Users.AsNoTracking()
+            join g in db.Grupos.IgnoreQueryFilters().AsNoTracking() on u.GrupoId equals g.Id
+            where u.TenantId == tenantId
+                && g.TenantId == tenantId
+                && g.EhAdministrador
+                && u.Email != null
+                && (u.ConvidadoEm == null || u.ConviteAceitoEm != null)
+                && (u.LockoutEnd == null || u.LockoutEnd < agora)
+                && u.EmailConfirmed
+            select u.Email!).ToListAsync(cancellationToken);
+
+        return Normalizar(emails);
+    }
+
     private static async Task<List<string>> AdministradoresAsync(AppDbContext db, Guid tenantId, bool apenasEmailConfirmado, CancellationToken cancellationToken)
     {
         var agora = DateTimeOffset.UtcNow;

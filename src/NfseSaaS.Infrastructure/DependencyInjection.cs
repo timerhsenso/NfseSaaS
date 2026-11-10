@@ -331,6 +331,11 @@ public static class DependencyInjection
         services.AddScoped<NfseSaaS.Application.UseCases.Indicacao.IListarPremiosIndicacaoPlataformaUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.PremioIndicacaoService>());
         services.AddScoped<NfseSaaS.Application.UseCases.Indicacao.IReabrirPremioIndicacaoUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.PremioIndicacaoService>());
         services.AddScoped<IAplicarPremiosIndicacaoJob, AplicarPremiosIndicacaoJob>();
+        // Reajuste do preço de tabela para quem já assina (B2): operador agenda, job aplica.
+        services.AddScoped<NfseSaaS.Infrastructure.Cobranca.ReajusteAssinaturaService>();
+        services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IReajusteAssinantesUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.ReajusteAssinaturaService>());
+        services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IAplicarReajustesAssinaturaUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.ReajusteAssinaturaService>());
+        services.AddScoped<IAplicarReajustesAssinaturaJob, AplicarReajustesAssinaturaJob>();
         // Avisos de cobrança por e-mail (job diário + disparo pelo webhook) e faixa do painel.
         services.AddScoped<NfseSaaS.Infrastructure.Cobranca.AvisosCobrancaService>();
         services.AddScoped<NfseSaaS.Application.UseCases.Cobranca.IEnviarAvisosCobrancaUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.Cobranca.AvisosCobrancaService>());

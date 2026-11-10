@@ -5,6 +5,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (reajuste de quem já assina, B2)
+- Plataforma › Planos › **Reajustar** (planos com assinantes): leva quem já
+  assina ao preço de tabela do plano numa data escolhida, com **prévia** de
+  quem entra e por que os outros ficam de fora. Regras dos Termos 1.1: aviso
+  com pelo menos 30 dias, no máximo um reajuste a cada 12 meses por
+  assinatura (desde que assinou ou do último reajuste), preço de fundador fora.
+- Aviso por e-mail na hora do agendamento (tipo "Reajuste da assinatura"), só
+  para administradores com e-mail confirmado. Tela Assinatura mostra "a partir
+  de dd/mm: R$ X/mês".
+- Job `aplicar-reajustes-assinatura` (07:20): na data, altera o valor no Asaas
+  e na assinatura. Troca de plano, cancelamento ou valor diferente antes da
+  data cancelam o reajuste; o operador pode cancelar o lote. Falha no Asaas
+  repete no dia seguinte (5 vezes, depois "Erro" e alerta de job).
+- Tabela `reajustes_assinatura`. Migration `ReajusteAssinatura`.
+
 ### Adicionado (cliente compartilhado entre as empresas da conta, C10)
 - Cadastro do cliente com **"Disponível para"**: "Só esta empresa" ou
   "Todas as empresas da conta" (`clientes.EmpresaId` nulo = compartilhado).

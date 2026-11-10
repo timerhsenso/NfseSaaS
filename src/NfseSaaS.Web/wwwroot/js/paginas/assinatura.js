@@ -73,6 +73,7 @@ async function carregarAssinatura() {
     document.getElementById('ass-situacao').innerHTML = `<span class="badge text-bg-${situacao.cor}">${situacao.texto}</span>`;
     document.getElementById('ass-plano').textContent = a.planoNome
         ? `${a.planoNome} · ${reais(a.precoMensal)}/mês${a.fundador ? ' (fundador)' : ''}`
+            + (a.reajusteAplicarEm ? ` · a partir de ${diaBr(a.reajusteAplicarEm)}: ${reais(a.reajustePrecoNovo)}/mês (reajuste avisado por e-mail)` : '')
         : '—';
     document.getElementById('ass-teste').textContent = a.semTesteGratis
         ? 'não disponível: o CNPJ já usou o teste grátis em outra conta'

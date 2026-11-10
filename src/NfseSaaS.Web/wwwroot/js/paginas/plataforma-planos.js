@@ -8,7 +8,15 @@ let planos = [];
 let planoEmEdicao = null;   // null = novo plano
 let planoDoPreco = null;
 let grupoDasVagas = null;
-let modalPlano, modalPreco, modalHistorico, modalVagas, modalExcluirPlano;
+let modalPlano, modalPreco, modalHistorico, modalVagas, modalExcluirPlano, modalReajuste;
+let planoDoReajuste = null;
+// StatusReajusteAssinatura (Domain.Enums): 1 Agendado, 2 Aplicado, 3 Cancelado, 4 Erro.
+const SITUACOES_REAJUSTE = {
+    1: { texto: 'Agendado', cor: 'info' },
+    2: { texto: 'Aplicado', cor: 'success' },
+    3: { texto: 'Cancelado', cor: 'secondary' },
+    4: { texto: 'Erro no Asaas', cor: 'danger' }
+};
 let planoParaExcluir = null;
 let relogioExclusaoPlano = null;
 
@@ -38,6 +46,7 @@ document.addEventListener('DOMContentLoaded', function () {
     modalHistorico = new bootstrap.Modal('#modal-historico-precos');
     modalVagas = new bootstrap.Modal('#modal-vagas');
     modalExcluirPlano = new bootstrap.Modal('#modal-excluir-plano');
+    modalReajuste = new bootstrap.Modal('#modal-reajuste');
 
     tabelaPlanos = new DataTable('#tabela-planos', {
         order: [],
@@ -82,6 +91,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <button type="button" class="btn btn-outline-secondary btn-sm btn-editar-plano" data-id="${id}" title="Alterar"><i class="bi bi-pencil"></i></button>
                     <button type="button" class="btn btn-outline-primary btn-sm btn-preco-plano" data-id="${id}" title="Novo preço"><i class="bi bi-currency-dollar"></i> Preço</button>
                     <button type="button" class="btn btn-outline-secondary btn-sm btn-historico-plano" data-id="${id}" title="Histórico de preços"><i class="bi bi-clock-history"></i></button>
+                    ${p.assinantes > 0 ? `<button type="button" class="btn btn-outline-warning btn-sm btn-reajuste-plano" data-id="${id}" title="Reajustar quem já assina"><i class="bi bi-graph-up-arrow"></i> Reajustar</button>` : ''}
                     ${p.podeExcluir ? `<button type="button" class="btn btn-outline-danger btn-sm btn-excluir-plano" data-id="${id}" title="Excluir (nunca foi assinado)"><i class="bi bi-trash"></i></button>` : ''}
                 </div>`
             }
@@ -101,6 +111,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (botao.classList.contains('btn-editar-plano')) abrirPlano(plano);
         else if (botao.classList.contains('btn-preco-plano')) abrirPreco(plano);
         else if (botao.classList.contains('btn-historico-plano')) await executarComBotaoDesabilitado(botao, () => abrirHistorico(plano));
+        else if (botao.classList.contains('btn-reajuste-plano')) await executarComBotaoDesabilitado(botao, () => abrirReajuste(plano));
         else if (botao.classList.contains('btn-excluir-plano')) await executarComBotaoDesabilitado(botao, () => pedirCodigoExclusaoPlano(plano));
     });
 
@@ -121,6 +132,20 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('form-preco').addEventListener('submit', salvarPreco);
     document.getElementById('form-vagas').addEventListener('submit', salvarVagas);
     document.getElementById('form-excluir-plano').addEventListener('submit', confirmarExclusaoPlano);
+    document.getElementById('btn-previa-reajuste').addEventListener('click', function () {
+        executarComBotaoDesabilitado(this, carregarPreviaReajuste);
+    });
+    document.getElementById('btn-agendar-reajuste').addEventListener('click', function () {
+        executarComBotaoDesabilitado(this, agendarReajuste);
+    });
+    // Mudou data ou motivo: a prévia anterior não vale mais para agendar.
+    ['reajuste-data', 'reajuste-motivo'].forEach(id => document.getElementById(id).addEventListener('input', () => {
+        document.getElementById('btn-agendar-reajuste').disabled = true;
+    }));
+    document.getElementById('corpo-reajustes').addEventListener('click', function (e) {
+        const botao = e.target.closest('.btn-cancelar-lote');
+        if (botao) executarComBotaoDesabilitado(botao, () => cancelarLoteReajuste(botao.dataset.lote));
+    });
     document.getElementById('modal-excluir-plano').addEventListener('hidden.bs.modal', pararRelogioExclusaoPlano);
 
     carregarTudo();
@@ -380,4 +405,116 @@ async function confirmarExclusaoPlano(e) {
             mostrarErroFormulario('erro-excluir-plano', err.message);
         }
     });
+}
+
+// ---------- Reajuste de quem já assina (B2) ----------
+
+function isoDaqui(dias) {
+    const d = new Date();
+    d.setDate(d.getDate() + dias);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+async function abrirReajuste(plano) {
+    planoDoReajuste = plano;
+    document.getElementById('reajuste-nome-plano').textContent = plano.nome;
+    document.getElementById('reajuste-data').value = isoDaqui(31);
+    document.getElementById('reajuste-motivo').value = '';
+    document.getElementById('bloco-previa-reajuste').classList.add('d-none');
+    document.getElementById('btn-agendar-reajuste').disabled = true;
+    ocultarErroFormulario('erro-reajuste');
+    await carregarReajustes();
+    modalReajuste.show();
+}
+
+async function carregarPreviaReajuste() {
+    ocultarErroFormulario('erro-reajuste');
+    const data = document.getElementById('reajuste-data').value;
+    if (!data) {
+        mostrarErroFormulario('erro-reajuste', 'Escolha a data do novo valor.');
+        return;
+    }
+    try {
+        const previa = await apiFetch(`/api/plataforma/planos/${planoDoReajuste.id}/reajuste/previa?aplicarEm=${data}`);
+        document.getElementById('resumo-previa-reajuste').innerHTML =
+            `Preço de tabela em ${dataPlano(previa.aplicarEm)}: <strong>${reaisPlano(previa.precoNovo)}</strong>. ` +
+            `<strong>${previa.entram}</strong> de ${previa.contas.length} assinatura(s) entram e recebem o aviso por e-mail agora.`;
+        document.getElementById('corpo-previa-reajuste').innerHTML = previa.contas.length === 0
+            ? '<tr><td colspan="3" class="text-muted small">Nenhuma assinatura neste plano.</td></tr>'
+            : previa.contas.map(c => `<tr>
+                <td>${escaparHtml(c.conta)}${c.fundador ? ' <span class="badge text-bg-light border">fundador</span>' : ''}</td>
+                <td class="text-end">${reaisPlano(c.precoAtual)}</td>
+                <td>${c.entra
+                    ? `<span class="badge text-bg-success">Entra</span> <span class="small text-muted">→ ${reaisPlano(previa.precoNovo)}</span>`
+                    : `<span class="badge text-bg-secondary">Fica de fora</span> <span class="small text-muted">${escaparHtml(c.motivo ?? '')}</span>`}</td>
+            </tr>`).join('');
+        document.getElementById('bloco-previa-reajuste').classList.remove('d-none');
+        document.getElementById('btn-agendar-reajuste').disabled = previa.entram === 0;
+    } catch (err) {
+        document.getElementById('btn-agendar-reajuste').disabled = true;
+        mostrarErroFormulario('erro-reajuste', err.message);
+    }
+}
+
+async function agendarReajuste() {
+    const data = document.getElementById('reajuste-data').value;
+    const confirmado = await confirmarAcao(
+        `Agendar o reajuste do plano ${planoDoReajuste.nome} para ${dataPlano(data)}? O aviso sai por e-mail agora para os administradores de cada conta que entra.`,
+        { titulo: 'Reajustar assinantes', textoBotao: 'Agendar e avisar' });
+    if (!confirmado) return;
+
+    try {
+        const r = await apiFetch(`/api/plataforma/planos/${planoDoReajuste.id}/reajuste`, {
+            method: 'POST',
+            body: JSON.stringify({ aplicarEm: data, motivo: document.getElementById('reajuste-motivo').value || null })
+        });
+        mostrarToast(`${r.agendados} reajuste(s) agendado(s).${r.semDestinatario ? ` ${r.semDestinatario} sem administrador com e-mail confirmado (aviso não saiu).` : ''}`);
+        document.getElementById('bloco-previa-reajuste').classList.add('d-none');
+        document.getElementById('btn-agendar-reajuste').disabled = true;
+        await carregarReajustes();
+    } catch (err) {
+        mostrarErroFormulario('erro-reajuste', err.message);
+    }
+}
+
+async function carregarReajustes() {
+    const corpo = document.getElementById('corpo-reajustes');
+    try {
+        const lista = await apiFetch(`/api/plataforma/planos/${planoDoReajuste.id}/reajustes`);
+        const lotesComAgendado = new Set(lista.filter(r => r.status === 1).map(r => r.loteId));
+        const lotesComBotao = new Set();
+        corpo.innerHTML = lista.length === 0
+            ? '<tr><td colspan="6" class="text-muted small">Nenhum reajuste ainda.</td></tr>'
+            : lista.map(r => {
+                const s = SITUACOES_REAJUSTE[r.status] ?? { texto: '—', cor: 'secondary' };
+                // Um botão por lote, na primeira linha agendada dele.
+                const botao = lotesComAgendado.has(r.loteId) && r.status === 1 && !lotesComBotao.has(r.loteId)
+                    ? (lotesComBotao.add(r.loteId), `<button type="button" class="btn btn-outline-danger btn-sm btn-cancelar-lote" data-lote="${r.loteId}" title="Cancela todos os agendados deste lote">Cancelar lote</button>`)
+                    : '';
+                return `<tr>
+                    <td>${escaparHtml(r.conta)}${r.motivo ? `<div class="small text-muted">${escaparHtml(r.motivo)}</div>` : ''}</td>
+                    <td class="text-end text-nowrap">${reaisPlano(r.precoAnterior)} → <strong>${reaisPlano(r.precoNovo)}</strong></td>
+                    <td>${dataPlano(r.aplicarEm)}</td>
+                    <td><span class="badge text-bg-${s.cor}">${s.texto}</span>${r.detalhe ? `<div class="small text-muted">${escaparHtml(r.detalhe)}</div>` : ''}</td>
+                    <td class="small">${r.avisadoEm ? dataPlano(r.avisadoEm) : '<span class="text-warning">sem aviso</span>'}</td>
+                    <td>${botao}</td>
+                </tr>`;
+            }).join('');
+    } catch (err) {
+        corpo.innerHTML = `<tr><td colspan="6" class="text-danger small">${escaparHtml(err.message)}</td></tr>`;
+    }
+}
+
+async function cancelarLoteReajuste(loteId) {
+    const confirmado = await confirmarAcao(
+        'Cancelar todos os reajustes ainda agendados deste lote? Os clientes continuam pagando o valor atual (não sai e-mail).',
+        { titulo: 'Cancelar reajuste', textoBotao: 'Cancelar lote', variante: 'perigo' });
+    if (!confirmado) return;
+    try {
+        const r = await apiFetch(`/api/plataforma/reajustes/lotes/${loteId}/cancelar`, { method: 'POST' });
+        mostrarToast(`${r.cancelados} reajuste(s) cancelado(s).`);
+        await carregarReajustes();
+    } catch (err) {
+        mostrarErroFormulario('erro-reajuste', err.message);
+    }
 }

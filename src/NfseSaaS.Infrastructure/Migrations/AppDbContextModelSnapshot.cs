@@ -1766,6 +1766,77 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.ToTable("premios_indicacao", (string)null);
                 });
 
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.ReajusteAssinatura", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("AplicadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("AplicarEm")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("AssinaturaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("AvisadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CriadoPorUsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Detalhe")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid>("LoteId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Motivo")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Plano")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("PrecoAnterior")
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<decimal>("PrecoNovo")
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Tentativas")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssinaturaId")
+                        .IsUnique()
+                        .HasFilter("\"Status\" = 1");
+
+                    b.HasIndex("LoteId");
+
+                    b.HasIndex("Status", "AplicarEm");
+
+                    b.HasIndex("TenantId", "Status");
+
+                    b.ToTable("reajustes_assinatura", (string)null);
+                });
+
             modelBuilder.Entity("NfseSaaS.Domain.Entities.Servico", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2260,6 +2331,21 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.HasOne("NfseSaaS.Domain.Entities.Tenant", null)
                         .WithMany()
                         .HasForeignKey("IndicadoTenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("NfseSaaS.Domain.Entities.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.ReajusteAssinatura", b =>
+                {
+                    b.HasOne("NfseSaaS.Domain.Entities.Assinatura", null)
+                        .WithMany()
+                        .HasForeignKey("AssinaturaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 

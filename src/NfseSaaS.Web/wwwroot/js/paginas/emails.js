@@ -86,6 +86,7 @@ function rotuloTipo(tipo) {
         case 'ExportacaoDados': return 'Exportação dos dados';
         case 'EncerramentoConta': return 'Encerramento da conta';
         case 'AvisoEncerramentoConta': return 'Aviso de encerramento';
+        case 'ReajusteAssinatura': return 'Reajuste da assinatura';
         default: return tipo;
     }
 }
