@@ -407,7 +407,7 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasMaxLength(505)
                         .HasColumnType("character varying(505)");
 
-                    b.Property<Guid>("EmpresaId")
+                    b.Property<Guid?>("EmpresaId")
                         .HasColumnType("uuid");
 
                     b.Property<bool>("EnviarNfsePorEmail")
@@ -452,11 +452,21 @@ namespace NfseSaaS.Infrastructure.Migrations
 
                     b.HasIndex("EmpresaId");
 
+                    b.HasIndex("TenantId", "Apelido")
+                        .IsUnique()
+                        .HasFilter("\"EmpresaId\" IS NULL");
+
+                    b.HasIndex("TenantId", "CpfCnpj")
+                        .IsUnique()
+                        .HasFilter("\"EmpresaId\" IS NULL");
+
                     b.HasIndex("TenantId", "EmpresaId", "Apelido")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"EmpresaId\" IS NOT NULL");
 
                     b.HasIndex("TenantId", "EmpresaId", "CpfCnpj")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"EmpresaId\" IS NOT NULL");
 
                     b.ToTable("clientes", (string)null);
                 });
@@ -2113,8 +2123,7 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.HasOne("NfseSaaS.Domain.Entities.Empresa", null)
                         .WithMany()
                         .HasForeignKey("EmpresaId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("NfseSaaS.Domain.Entities.ConfiguracaoAutomacaoNotaMensal", b =>

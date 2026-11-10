@@ -5,6 +5,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (cliente compartilhado entre as empresas da conta, C10)
+- Cadastro do cliente com **"Disponível para"**: "Só esta empresa" ou
+  "Todas as empresas da conta" (`clientes.EmpresaId` nulo = compartilhado).
+  Mudou o e-mail no compartilhado, muda para todas as empresas. Contas
+  diferentes continuam isoladas. Migration `ClienteCompartilhado`.
+- A lista de uma empresa mostra os exclusivos dela e os compartilhados; se a
+  empresa tem um exclusivo com o mesmo CPF/CNPJ de um compartilhado, só o
+  exclusivo aparece ali (o exclusivo vence). Vale para a tela Clientes, a
+  emissão, os contratos, a busca de notas na SEFIN e a nota da mensalidade.
+- Padrão do campo: perfil Empresa → todas; Contador → só esta; conta com uma
+  empresa → campo oculto (só esta). Coluna "Disponível para" na lista
+  (oculta com uma empresa); `GET api/clientes/disponibilidade`.
+- Proteções: compartilhado só vira exclusivo se não tiver nota nem contrato
+  em outra empresa; um compartilhado por documento na conta; apelido único
+  na lista de cada empresa. Índices únicos de CPF/CNPJ e apelido viram
+  parciais (um para compartilhados, outro para exclusivos). Notas emitidas
+  não mudam (guardam o tomador da época). Exportação: coluna EmpresaCnpj =
+  "Todas" para compartilhados. Clientes atuais ficam como estão (exclusivos).
+
 ### Adicionado (municípios em tabela local, C9)
 - Tabela `municipios` com os 5.571 municípios do IBGE (código, nome, UF),
   carregada no startup a partir de um arquivo embarcado (inclui os que

@@ -407,9 +407,11 @@ public sealed class SincronizarNotasDaSefinUseCase : ISincronizarNotasDaSefinUse
         if (clientesNestaExecucao.TryGetValue(cpfCnpj, out var clienteIdEmMemoria))
             return (clienteIdEmMemoria, false);
 
-        // 2) já existe no banco, de uma sincronização/cadastro anterior.
-        var clienteExistente = await _db.Clientes
-            .FirstOrDefaultAsync(c => c.EmpresaId == empresaId && c.CpfCnpj == cpfCnpj, cancellationToken);
+        // 2) já existe no banco, de uma sincronização/cadastro anterior:
+        // exclusivo da empresa ou, sem ele, compartilhado da conta (C10;
+        // Visiveis já dá a preferência ao exclusivo).
+        var clienteExistente = await ClientesDaEmpresa.Visiveis(_db, empresaId)
+            .FirstOrDefaultAsync(c => c.CpfCnpj == cpfCnpj, cancellationToken);
 
         if (clienteExistente is not null)
         {

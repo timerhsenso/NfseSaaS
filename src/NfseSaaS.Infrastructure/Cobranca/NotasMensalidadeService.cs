@@ -9,6 +9,7 @@ using NfseSaaS.Application.UseCases.Nfse;
 using NfseSaaS.Domain.Entities;
 using NfseSaaS.Domain.Enums;
 using NfseSaaS.Infrastructure.Persistence;
+using NfseSaaS.Infrastructure.UseCases;
 
 namespace NfseSaaS.Infrastructure.Cobranca;
 
@@ -296,8 +297,9 @@ public sealed class NotasMensalidadeService : INotasMensalidadeUseCase
         // CPF/CNPJ só com letras e números (o CNPJ novo é alfanumérico), como no cadastro.
         var documento = new string(conta.Documento.Where(char.IsLetterOrDigit).ToArray());
 
-        var existente = await _db.Clientes
-            .Where(c => c.EmpresaId == empresaEmissoraId && c.CpfCnpj == documento)
+        // C10: cliente exclusivo da LFMS ou compartilhado da conta do operador.
+        var existente = await ClientesDaEmpresa.Visiveis(_db, empresaEmissoraId)
+            .Where(c => c.CpfCnpj == documento)
             .Select(c => (Guid?)c.Id)
             .FirstOrDefaultAsync(cancellationToken);
         if (existente is { } id)
@@ -320,8 +322,8 @@ public sealed class NotasMensalidadeService : INotasMensalidadeUseCase
             select u.Email).FirstOrDefaultAsync(cancellationToken);
 
         var nome = conta.NomeFantasia ?? conta.RazaoSocial;
-        var apelidoUsado = await _db.Clientes.AnyAsync(c => c.EmpresaId == empresaEmissoraId
-            && c.Apelido == RegrasNotaMensalidade.Apelido(nome, documento, false, Cliente.TamanhoMaximoApelido), cancellationToken);
+        var apelidoUsado = await ClientesDaEmpresa.Visiveis(_db, empresaEmissoraId)
+            .AnyAsync(c => c.Apelido == RegrasNotaMensalidade.Apelido(nome, documento, false, Cliente.TamanhoMaximoApelido), cancellationToken);
 
         var cliente = new Cliente
         {

@@ -47,7 +47,7 @@ public sealed class ObterProgressoOnboardingUseCase : IObterProgressoOnboardingU
         var pendencias = empresas.Select(e => e.PendenciasCadastro()).FirstOrDefault(p => p.Count > 0) ?? Array.Empty<string>();
         var temCertificado = idsEmpresas.Any(_certificados.ExisteCertificado);
         var temServico = await _db.Servicos.AsNoTracking().AnyAsync(s => s.Ativo && idsEmpresas.Contains(s.EmpresaId), cancellationToken);
-        var temCliente = await _db.Clientes.AsNoTracking().AnyAsync(c => c.Ativo && idsEmpresas.Contains(c.EmpresaId), cancellationToken);
+        var temCliente = await _db.Clientes.AsNoTracking().AnyAsync(c => c.Ativo && (c.EmpresaId == null || idsEmpresas.Contains(c.EmpresaId.Value)), cancellationToken);
         var temNotaTeste = await _db.NotasFiscais.AsNoTracking()
             .AnyAsync(n => n.Status == NfseStatus.Autorizada && idsEmpresas.Contains(n.EmpresaId), cancellationToken);
         var emProducao = empresas.Any(e => e.TipoAmbiente == TipoAmbiente.Producao);

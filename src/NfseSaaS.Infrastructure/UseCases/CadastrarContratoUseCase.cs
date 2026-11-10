@@ -27,7 +27,8 @@ public sealed class CadastrarContratoUseCase : ICadastrarContratoUseCase
             throw new RecursoNaoEncontradoException($"Empresa {request.EmpresaId} não encontrada.");
 
         // Cliente e Serviços da MESMA Empresa do Contrato (ver EmitirNfseUseCase).
-        var clienteExiste = await _db.Clientes.AnyAsync(c => c.Id == request.ClienteId && c.EmpresaId == request.EmpresaId, cancellationToken);
+        // C10: cliente exclusivo da Empresa ou compartilhado pela conta.
+        var clienteExiste = await ClientesDaEmpresa.Utilizaveis(_db, request.EmpresaId).AnyAsync(c => c.Id == request.ClienteId, cancellationToken);
         if (!clienteExiste)
             throw new RecursoNaoEncontradoException($"Cliente {request.ClienteId} não encontrado.");
 

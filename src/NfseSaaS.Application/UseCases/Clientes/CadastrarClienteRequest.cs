@@ -18,4 +18,7 @@ public sealed record CadastrarClienteRequest(
     bool RetemIss = false,
     bool EnviarNfsePorEmail = false,
     IReadOnlyList<string>? EmailsCopia = null,
-    bool CopiaOculta = false) : IDadosEnvioEmailCliente;
+    bool CopiaOculta = false,
+    // C10: true = disponível para todas as empresas da conta; false = só a
+    // EmpresaId acima; nulo = padrão da conta (RegrasClienteCompartilhado).
+    bool? Compartilhado = null) : IDadosEnvioEmailCliente;

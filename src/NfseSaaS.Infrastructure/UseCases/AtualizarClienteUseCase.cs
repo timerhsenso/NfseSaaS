@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.Clientes;
+using NfseSaaS.Domain.Entities;
 using NfseSaaS.Infrastructure.Persistence;
 
 namespace NfseSaaS.Infrastructure.UseCases;
@@ -32,9 +33,14 @@ public sealed class AtualizarClienteUseCase : IAtualizarClienteUseCase
 
         var uf = await ConferenciaMunicipio.UfConferidaAsync(_db, EnderecoCliente.Normalizar(request.CodigoMunicipio), request.Uf, cancellationToken);
 
-        var apelido = request.Apelido.Trim();
-        await ApelidoCliente.GarantirUnicoAsync(_db, cliente.EmpresaId, apelido, clienteIdIgnorado: cliente.Id, cancellationToken);
+        // C10: "Disponível para" (nulo = não mexe).
+        var empresaAnterior = cliente.EmpresaId;
+        var novaEmpresa = await ResolverEmpresaAsync(cliente, request, cancellationToken);
 
+        var apelido = request.Apelido.Trim();
+        await ApelidoCliente.GarantirUnicoAsync(_db, novaEmpresa, apelido, cliente.CpfCnpj, clienteIdIgnorado: cliente.Id, cancellationToken);
+
+        cliente.EmpresaId = novaEmpresa;
         cliente.Nome = request.Nome;
         cliente.Apelido = apelido;
         cliente.Email = request.Email;
@@ -51,8 +57,48 @@ public sealed class AtualizarClienteUseCase : IAtualizarClienteUseCase
         cliente.EmailsCopia = EmailsCopiaCliente.Juntar(request.EmailsCopia);
         cliente.CopiaOculta = request.CopiaOculta;
 
+        if (empresaAnterior != novaEmpresa)
+            _auditLogWriter.Registrar("AlterarDisponibilidadeCliente", "Cliente", cliente.Id,
+                new { De = empresaAnterior, Para = novaEmpresa, DisponivelPara = RegrasClienteCompartilhado.Texto(novaEmpresa is null) });
+
         _auditLogWriter.Registrar("AtualizarCliente", "Cliente", cliente.Id, new { cliente.Nome, cliente.Apelido });
 
         await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Para onde o cliente vai. Exclusivo → compartilhado: não pode haver
+    /// outro compartilhado com o mesmo documento. Compartilhado → exclusivo
+    /// (da empresa atual da tela): só se ele não tiver nota nem contrato em
+    /// outra empresa e se a empresa não tiver outro exclusivo com o mesmo
+    /// documento. As notas emitidas não mudam (guardam o tomador da época).
+    /// </summary>
+    private async Task<Guid?> ResolverEmpresaAsync(Cliente cliente, AtualizarClienteRequest request, CancellationToken cancellationToken)
+    {
+        if (request.Compartilhado is not bool compartilhado || compartilhado == cliente.Compartilhado)
+            return cliente.EmpresaId;
+
+        if (compartilhado)
+        {
+            if (await _db.Clientes.AnyAsync(c => c.EmpresaId == null && c.CpfCnpj == cliente.CpfCnpj && c.Id != cliente.Id, cancellationToken))
+                throw new RegraNegocioException(RegrasClienteCompartilhado.MensagemDocumentoCompartilhadoRepetido(cliente.CpfCnpj));
+            return null;
+        }
+
+        if (request.EmpresaId is not Guid empresaId || empresaId == Guid.Empty)
+            throw new RegraNegocioException(RegrasClienteCompartilhado.MensagemEmpresaParaExclusivo);
+
+        if (!await _db.Empresas.AnyAsync(e => e.Id == empresaId, cancellationToken))
+            throw new RecursoNaoEncontradoException($"Empresa {empresaId} não encontrada.");
+
+        var notasFora = await _db.NotasFiscais.CountAsync(n => n.ClienteId == cliente.Id && n.EmpresaId != empresaId, cancellationToken);
+        var contratosFora = await _db.Contratos.CountAsync(c => c.ClienteId == cliente.Id && c.EmpresaId != empresaId, cancellationToken);
+        if (notasFora > 0 || contratosFora > 0)
+            throw new RegraNegocioException(RegrasClienteCompartilhado.MensagemUsadoEmOutrasEmpresas(notasFora, contratosFora));
+
+        if (await _db.Clientes.AnyAsync(c => c.EmpresaId == empresaId && c.CpfCnpj == cliente.CpfCnpj && c.Id != cliente.Id, cancellationToken))
+            throw new RegraNegocioException($"Já existe um cliente com o CPF/CNPJ '{cliente.CpfCnpj}' cadastrado para esta empresa.");
+
+        return empresaId;
     }
 }

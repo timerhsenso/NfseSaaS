@@ -23,7 +23,8 @@ public sealed class ListarClientesUseCase : IListarClientesUseCase
 
         var (page, pageSize) = Paginacao.Normalizar(request.Page, request.PageSize);
 
-        var query = _db.Clientes.AsNoTracking().Where(c => c.EmpresaId == request.EmpresaId);
+        // C10: exclusivos da empresa + compartilhados (o exclusivo vence).
+        var query = ClientesDaEmpresa.Visiveis(_db, request.EmpresaId).AsNoTracking();
 
         if (!request.IncluirInativos)
             query = query.Where(c => c.Ativo);

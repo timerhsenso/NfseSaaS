@@ -11,11 +11,13 @@ public sealed class CadastrarClienteUseCase : ICadastrarClienteUseCase
 {
     private readonly AppDbContext _db;
     private readonly IAuditLogWriter _auditLogWriter;
+    private readonly ICurrentTenant _currentTenant;
 
-    public CadastrarClienteUseCase(AppDbContext db, IAuditLogWriter auditLogWriter)
+    public CadastrarClienteUseCase(AppDbContext db, IAuditLogWriter auditLogWriter, ICurrentTenant currentTenant)
     {
         _db = db;
         _auditLogWriter = auditLogWriter;
+        _currentTenant = currentTenant;
     }
 
     public async Task<Guid> ExecutarAsync(CadastrarClienteRequest request, CancellationToken cancellationToken)
@@ -24,20 +26,41 @@ public sealed class CadastrarClienteUseCase : ICadastrarClienteUseCase
         if (!empresaExiste)
             throw new RecursoNaoEncontradoException($"Empresa {request.EmpresaId} não encontrada.");
 
-        var jaExisteClienteComMesmoDocumento = await _db.Clientes
-            .AnyAsync(c => c.EmpresaId == request.EmpresaId && c.CpfCnpj == request.CpfCnpj, cancellationToken);
+        // C10: "Disponível para". Sem escolha na tela, vale o padrão da conta.
+        var disponibilidade = await ObterDisponibilidadeClienteUseCase.CalcularAsync(_db, _currentTenant.TenantId, cancellationToken);
+        var compartilhado = request.Compartilhado ?? disponibilidade.PadraoCompartilhado;
+        Guid? empresaDoCliente = compartilhado ? null : request.EmpresaId;
 
-        if (jaExisteClienteComMesmoDocumento)
-            throw new RegraNegocioException($"Já existe um cliente com o CPF/CNPJ '{request.CpfCnpj}' cadastrado para esta empresa.");
+        if (compartilhado)
+        {
+            if (await _db.Clientes.AnyAsync(c => c.EmpresaId == null && c.CpfCnpj == request.CpfCnpj, cancellationToken))
+                throw new RegraNegocioException(RegrasClienteCompartilhado.MensagemDocumentoCompartilhadoRepetido(request.CpfCnpj));
+
+            // Um compartilhado novo ficaria escondido na própria empresa da
+            // tela pelo exclusivo que ela já tem: o usuário "salvaria" e não
+            // veria nada. Melhor mandar mudar o cadastro que já existe.
+            if (await _db.Clientes.AnyAsync(c => c.EmpresaId == request.EmpresaId && c.CpfCnpj == request.CpfCnpj, cancellationToken))
+                throw new RegraNegocioException(RegrasClienteCompartilhado.MensagemExclusivoNestaEmpresa(request.CpfCnpj));
+        }
+        else
+        {
+            // Exclusivo pode coexistir com um compartilhado do mesmo
+            // documento (ex.: filial com outro e-mail): nesta empresa ele vence.
+            var jaExisteClienteComMesmoDocumento = await _db.Clientes
+                .AnyAsync(c => c.EmpresaId == request.EmpresaId && c.CpfCnpj == request.CpfCnpj, cancellationToken);
+
+            if (jaExisteClienteComMesmoDocumento)
+                throw new RegraNegocioException($"Já existe um cliente com o CPF/CNPJ '{request.CpfCnpj}' cadastrado para esta empresa.");
+        }
 
         var uf = await ConferenciaMunicipio.UfConferidaAsync(_db, EnderecoCliente.Normalizar(request.CodigoMunicipio), request.Uf, cancellationToken);
 
         var apelido = request.Apelido.Trim();
-        await ApelidoCliente.GarantirUnicoAsync(_db, request.EmpresaId, apelido, clienteIdIgnorado: null, cancellationToken);
+        await ApelidoCliente.GarantirUnicoAsync(_db, empresaDoCliente, apelido, request.CpfCnpj, clienteIdIgnorado: null, cancellationToken);
 
         var cliente = new Cliente
         {
-            EmpresaId = request.EmpresaId,
+            EmpresaId = empresaDoCliente,
             CpfCnpj = request.CpfCnpj,
             Nome = request.Nome,
             Apelido = apelido,
@@ -58,7 +81,7 @@ public sealed class CadastrarClienteUseCase : ICadastrarClienteUseCase
 
         _db.Clientes.Add(cliente);
 
-        _auditLogWriter.Registrar("CadastrarCliente", "Cliente", cliente.Id, new { cliente.EmpresaId, cliente.CpfCnpj, cliente.Nome, cliente.Apelido });
+        _auditLogWriter.Registrar("CadastrarCliente", "Cliente", cliente.Id, new { cliente.EmpresaId, cliente.CpfCnpj, cliente.Nome, cliente.Apelido, DisponivelPara = RegrasClienteCompartilhado.Texto(compartilhado) });
 
         await _db.SaveChangesAsync(cancellationToken);
 

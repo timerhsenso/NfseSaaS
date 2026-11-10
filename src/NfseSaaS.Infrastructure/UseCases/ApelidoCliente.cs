@@ -10,16 +10,25 @@ namespace NfseSaaS.Infrastructure.UseCases;
 /// criação automática de Cliente na sincronização com a SEFIN (ADN).
 ///
 /// Unicidade sem diferenciar maiúsculas/minúsculas ("Copenor" e
-/// "COPENOR" são o mesmo apelido na tela). O índice único do banco
-/// compara exato — é só o backstop; a regra de verdade é esta.
+/// "COPENOR" são o mesmo apelido na tela), contada na LISTA de cada
+/// empresa (C10): exclusivos dela + compartilhados que ela enxerga.
+/// - exclusivo da empresa E: não pode repetir outro exclusivo de E nem um
+///   compartilhado visível em E (o compartilhado com o MESMO documento fica
+///   escondido em E por este exclusivo, então não conta);
+/// - compartilhado: não pode repetir outro compartilhado nem um exclusivo
+///   de qualquer empresa onde ele vai aparecer.
+/// Os índices únicos do banco comparam exato e por escopo — são só o
+/// backstop; a regra de verdade é esta.
 /// </summary>
 internal static class ApelidoCliente
 {
     public static async Task GarantirUnicoAsync(
-        AppDbContext db, Guid empresaId, string apelido, Guid? clienteIdIgnorado, CancellationToken cancellationToken)
+        AppDbContext db, Guid? empresaId, string apelido, string cpfCnpj, Guid? clienteIdIgnorado, CancellationToken cancellationToken)
     {
-        if (await ExisteAsync(db, empresaId, apelido, clienteIdIgnorado, cancellationToken))
-            throw new RegraNegocioException($"Já existe um cliente com o apelido '{apelido}' nesta empresa.");
+        if (await ExisteAsync(db, empresaId, apelido, cpfCnpj, clienteIdIgnorado, cancellationToken))
+            throw new RegraNegocioException(empresaId is null
+                ? $"Já existe um cliente com o apelido '{apelido}' numa das empresas da conta."
+                : $"Já existe um cliente com o apelido '{apelido}' nesta empresa.");
     }
 
     /// <summary>
@@ -29,12 +38,12 @@ internal static class ApelidoCliente
     /// contador) até ficar único. O usuário pode trocar depois no cadastro.
     /// </summary>
     public static async Task<string> GerarAPartirDoNomeAsync(
-        AppDbContext db, Guid empresaId, string nome, string cpfCnpj, CancellationToken cancellationToken)
+        AppDbContext db, Guid? empresaId, string nome, string cpfCnpj, CancellationToken cancellationToken)
     {
         var baseApelido = string.IsNullOrWhiteSpace(nome) ? cpfCnpj : nome.Trim();
 
         var candidato = Cortar(baseApelido, Cliente.TamanhoMaximoApelido);
-        if (!await ExisteAsync(db, empresaId, candidato, null, cancellationToken))
+        if (!await ExisteAsync(db, empresaId, candidato, cpfCnpj, null, cancellationToken))
             return candidato;
 
         var finalDocumento = cpfCnpj.Length > 6 ? cpfCnpj[^6..] : cpfCnpj;
@@ -44,7 +53,7 @@ internal static class ApelidoCliente
             var sufixo = tentativa == 1 ? $" {finalDocumento}" : $" {finalDocumento}-{tentativa}";
             candidato = Cortar(baseApelido, Cliente.TamanhoMaximoApelido - sufixo.Length).TrimEnd() + sufixo;
 
-            if (!await ExisteAsync(db, empresaId, candidato, null, cancellationToken))
+            if (!await ExisteAsync(db, empresaId, candidato, cpfCnpj, null, cancellationToken))
                 return candidato;
         }
 
@@ -52,7 +61,7 @@ internal static class ApelidoCliente
     }
 
     private static async Task<bool> ExisteAsync(
-        AppDbContext db, Guid empresaId, string apelido, Guid? clienteIdIgnorado, CancellationToken cancellationToken)
+        AppDbContext db, Guid? empresaId, string apelido, string cpfCnpj, Guid? clienteIdIgnorado, CancellationToken cancellationToken)
     {
         var apelidoMinusculo = apelido.ToLowerInvariant();
 
@@ -67,10 +76,30 @@ internal static class ApelidoCliente
         if (existeEmMemoria)
             return true;
 
-        return await db.Clientes.AnyAsync(c =>
-            c.EmpresaId == empresaId &&
+        var mesmoApelido = db.Clientes.Where(c =>
             (clienteIdIgnorado == null || c.Id != clienteIdIgnorado) &&
-            c.Apelido.ToLower() == apelidoMinusculo,
+            c.Apelido.ToLower() == apelidoMinusculo);
+
+        if (empresaId is Guid empresa)
+        {
+            // Exclusivo de E: outro exclusivo de E, ou compartilhado de outro
+            // documento que E enxerga (E não tem exclusivo com o documento dele).
+            return await mesmoApelido.AnyAsync(c =>
+                c.EmpresaId == empresa ||
+                (c.EmpresaId == null && c.CpfCnpj != cpfCnpj &&
+                 !db.Clientes.Any(x => x.EmpresaId == empresa && x.CpfCnpj == c.CpfCnpj
+                                       && (clienteIdIgnorado == null || x.Id != clienteIdIgnorado))),
+                cancellationToken);
+        }
+
+        // Compartilhado: outro compartilhado, ou exclusivo de outro documento
+        // numa empresa onde este vai aparecer (que não o esconde com um
+        // exclusivo do mesmo documento).
+        return await mesmoApelido.AnyAsync(c =>
+            c.EmpresaId == null ||
+            (c.CpfCnpj != cpfCnpj &&
+             !db.Clientes.Any(x => x.EmpresaId == c.EmpresaId && x.CpfCnpj == cpfCnpj
+                                   && (clienteIdIgnorado == null || x.Id != clienteIdIgnorado))),
             cancellationToken);
     }
 

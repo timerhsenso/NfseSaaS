@@ -16,4 +16,8 @@ public sealed record AtualizarClienteRequest(
     bool RetemIss = false,
     bool EnviarNfsePorEmail = false,
     IReadOnlyList<string>? EmailsCopia = null,
-    bool CopiaOculta = false) : IDadosEnvioEmailCliente;
+    bool CopiaOculta = false,
+    // C10: nulo = não muda "Disponível para". false num compartilhado =
+    // passa a ser só da EmpresaId (a empresa atual da tela).
+    bool? Compartilhado = null,
+    Guid? EmpresaId = null) : IDadosEnvioEmailCliente;

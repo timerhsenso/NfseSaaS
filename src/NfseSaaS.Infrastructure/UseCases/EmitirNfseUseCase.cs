@@ -171,7 +171,8 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
         // filtro de tenant sozinho não garante isso quando o tenant tem
         // várias Empresas (nota da Empresa A para um Cliente cadastrado na
         // Empresa B).
-        var cliente = await _db.Clientes.FirstOrDefaultAsync(c => c.Id == request.ClienteId && c.EmpresaId == request.EmpresaId, cancellationToken)
+        // C10: também vale cliente compartilhado (EmpresaId nulo) da conta.
+        var cliente = await ClientesDaEmpresa.Utilizaveis(_db, request.EmpresaId).FirstOrDefaultAsync(c => c.Id == request.ClienteId, cancellationToken)
             ?? throw new RecursoNaoEncontradoException($"Cliente {request.ClienteId} não encontrado nesta Empresa.");
 
         var servico = await _db.Servicos.FirstOrDefaultAsync(s => s.Id == request.ServicoId && s.EmpresaId == request.EmpresaId, cancellationToken)

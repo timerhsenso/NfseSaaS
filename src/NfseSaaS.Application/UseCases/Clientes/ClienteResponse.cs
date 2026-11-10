@@ -2,7 +2,7 @@ namespace NfseSaaS.Application.UseCases.Clientes;
 
 public sealed record ClienteResponse(
     Guid Id,
-    Guid EmpresaId,
+    Guid? EmpresaId,
     string CpfCnpj,
     string Nome,
     string Apelido,
@@ -21,4 +21,8 @@ public sealed record ClienteResponse(
     IReadOnlyList<string> EmailsCopia,
     bool CopiaOculta,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? UpdatedAt);
+    DateTimeOffset? UpdatedAt)
+{
+    /// <summary>C10: true = disponível para todas as empresas da conta (EmpresaId nulo).</summary>
+    public bool Compartilhado => EmpresaId is null;
+}

@@ -18,6 +18,7 @@ public sealed class ClientesController : ControllerBase
     private readonly IDesativarClienteUseCase _desativarCliente;
     private readonly IReativarClienteUseCase _reativarCliente;
     private readonly IExcluirClienteUseCase _excluirCliente;
+    private readonly IObterDisponibilidadeClienteUseCase _obterDisponibilidade;
 
     public ClientesController(
         ICadastrarClienteUseCase cadastrarCliente,
@@ -26,7 +27,8 @@ public sealed class ClientesController : ControllerBase
         IAtualizarClienteUseCase atualizarCliente,
         IDesativarClienteUseCase desativarCliente,
         IReativarClienteUseCase reativarCliente,
-        IExcluirClienteUseCase excluirCliente)
+        IExcluirClienteUseCase excluirCliente,
+        IObterDisponibilidadeClienteUseCase obterDisponibilidade)
     {
         _cadastrarCliente = cadastrarCliente;
         _listarClientes = listarClientes;
@@ -35,6 +37,15 @@ public sealed class ClientesController : ControllerBase
         _desativarCliente = desativarCliente;
         _reativarCliente = reativarCliente;
         _excluirCliente = excluirCliente;
+        _obterDisponibilidade = obterDisponibilidade;
+    }
+
+    /// <summary>C10: o campo "Disponível para" aparece (conta com mais de uma empresa) e o padrão para cliente novo.</summary>
+    [HttpGet("disponibilidade")]
+    public async Task<IActionResult> Disponibilidade(CancellationToken cancellationToken)
+    {
+        var resultado = await _obterDisponibilidade.ExecutarAsync(cancellationToken);
+        return Ok(resultado);
     }
 
     [RequerPermissao(TelaCatalogo.Clientes, AcaoPermissao.Incluir)]

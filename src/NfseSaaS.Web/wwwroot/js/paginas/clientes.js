@@ -3,6 +3,8 @@ const podeEditarCliente = document.getElementById('btn-novo-cliente') !== null;
 let tabelaClientes;
 let modalCliente;
 let empresaAtualId;
+// C10: campo "Disponível para" (só aparece com mais de uma empresa na conta).
+let disponibilidadeCliente = { mostrarCampo: false, padraoCompartilhado: false };
 
 document.addEventListener('DOMContentLoaded', function () {
     const colunas = [
@@ -10,6 +12,14 @@ document.addEventListener('DOMContentLoaded', function () {
         { data: 'nome' },
         { data: 'cpfCnpj' },
         { data: 'codigoMunicipio' },
+        {
+            data: 'compartilhado',
+            render: (v, type) => type !== 'display'
+                ? (v ? 'Todas as empresas' : 'Só esta empresa')
+                : (v
+                    ? '<span class="badge text-bg-info" title="Mesmo cadastro em todas as empresas da conta"><i class="bi bi-buildings"></i> Todas as empresas</span>'
+                    : '<span class="text-muted small">Só esta empresa</span>')
+        },
         {
             data: 'ativo',
             render: v => v
@@ -76,7 +86,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
     empresaAtualId = obterEmpresaAtualId();
     carregarClientes();
+    carregarDisponibilidadeCliente();
 });
+
+async function carregarDisponibilidadeCliente() {
+    try {
+        disponibilidadeCliente = await apiFetch('/api/clientes/disponibilidade');
+    } catch {
+        // Sem a resposta, o campo fica oculto e vale o padrão do servidor.
+    }
+    // A coluna só faz sentido com mais de uma empresa.
+    tabelaClientes.column(4).visible(disponibilidadeCliente.mostrarCampo === true);
+}
+
+/** Mostra o campo e marca o valor; sem o campo na tela, o servidor decide (padrão da conta). */
+function prepararDisponibilidadeCliente(compartilhado) {
+    const mostrar = disponibilidadeCliente.mostrarCampo === true || compartilhado === true;
+    document.getElementById('bloco-disponibilidade-cliente').classList.toggle('d-none', !mostrar);
+    const valor = compartilhado ?? disponibilidadeCliente.padraoCompartilhado === true;
+    document.getElementById('disponivelPara').value = valor ? 'todas' : 'esta';
+}
 
 async function carregarClientes() {
     if (!empresaAtualId) return;
@@ -144,6 +173,7 @@ function abrirModalNovoCliente() {
     limparFormularioCliente();
     document.getElementById('titulo-modal-cliente').textContent = 'Novo cliente';
     document.getElementById('cpfCnpj').disabled = false;
+    prepararDisponibilidadeCliente(null);
     modalCliente.show();
 }
 
@@ -172,6 +202,7 @@ async function abrirModalEditarCliente(id) {
         document.getElementById('enviarNfsePorEmail').checked = cliente.enviarNfsePorEmail === true;
         document.getElementById('emailsCopia').value = (cliente.emailsCopia || []).join(', ');
         document.getElementById(cliente.copiaOculta ? 'copiaCco' : 'copiaCc').checked = true;
+        prepararDisponibilidadeCliente(cliente.compartilhado === true);
         atualizarEnvioEmailCliente();
         atualizarObrigatoriedadeEndereco();
 
@@ -210,8 +241,15 @@ function montarPayloadCliente() {
         retemIss: document.getElementById('retemIss').checked,
         enviarNfsePorEmail: document.getElementById('enviarNfsePorEmail').checked,
         emailsCopia: lerEmailsCopiaCliente(),
-        copiaOculta: document.getElementById('copiaCco').checked
+        copiaOculta: document.getElementById('copiaCco').checked,
+        compartilhado: lerDisponibilidadeCliente()
     };
+}
+
+/** true/false quando o campo está na tela; null = o servidor decide (cadastro) ou não muda (edição). */
+function lerDisponibilidadeCliente() {
+    if (document.getElementById('bloco-disponibilidade-cliente').classList.contains('d-none')) return null;
+    return document.getElementById('disponivelPara').value === 'todas';
 }
 
 async function salvarCliente(e) {

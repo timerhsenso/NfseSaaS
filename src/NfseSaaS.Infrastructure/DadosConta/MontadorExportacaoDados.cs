@@ -115,7 +115,8 @@ public sealed class MontadorExportacaoDados
             "CodigoMunicipio", "Cep", "Logradouro", "Numero", "Complemento", "Bairro", "Uf",
             "RetemIss", "EnviarNotaPorEmail", "Ativo", "CriadoEm");
         foreach (var c in clientes)
-            tClientes.Adicionar(c.Id, Cnpj(c.EmpresaId), c.CpfCnpj, c.Nome, c.Apelido, c.Email, c.EmailsCopia, c.Telefone,
+            // C10: cliente compartilhado entre as empresas da conta = "Todas".
+            tClientes.Adicionar(c.Id, c.EmpresaId is Guid empresaCliente ? Cnpj(empresaCliente) : "Todas", c.CpfCnpj, c.Nome, c.Apelido, c.Email, c.EmailsCopia, c.Telefone,
                 c.CodigoMunicipio, c.Cep, c.Logradouro, c.Numero, c.Complemento, c.Bairro, c.Uf,
                 c.RetemIss, c.EnviarNfsePorEmail, c.Ativo, c.CreatedAt);
         Tabela(zip, tClientes);

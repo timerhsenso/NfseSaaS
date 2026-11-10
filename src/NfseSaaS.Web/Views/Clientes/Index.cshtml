@@ -27,6 +27,7 @@
                     <th>Nome (razão social)</th>
                     <th>CPF/CNPJ</th>
                     <th>Município (IBGE)</th>
+                    <th>Disponível para</th>
                     <th>Situação</th>
                     @if (podeEditar)
                     {
@@ -82,6 +83,14 @@
                                     <label class="form-label" for="nome">Nome / razão social</label>
                                     <input type="text" class="form-control" id="nome" maxlength="200" required />
                                     <div class="form-text">A nota sai com este nome; o apelido aparece só nas telas e no nome do PDF.</div>
+                                </div>
+                                <div class="col-md-6 mb-3 d-none" id="bloco-disponibilidade-cliente">
+                                    <label class="form-label" for="disponivelPara">Disponível para</label>
+                                    <select class="form-select" id="disponivelPara">
+                                        <option value="esta">Só esta empresa</option>
+                                        <option value="todas">Todas as empresas da conta</option>
+                                    </select>
+                                    <div class="form-text" id="dica-disponibilidade-cliente">Com "Todas", o mesmo cadastro serve para as notas de qualquer empresa da conta: mudou o e-mail aqui, muda em todas.</div>
                                 </div>
                             </div>
                         </section>

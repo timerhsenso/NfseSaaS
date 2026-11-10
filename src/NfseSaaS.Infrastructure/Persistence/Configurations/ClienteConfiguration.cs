@@ -60,19 +60,34 @@ public sealed class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
         builder.Property(c => c.Uf)
             .HasMaxLength(2);
 
-        // Mesmo CPF/CNPJ não pode se repetir para a mesma Empresa — mas
-        // PODE ser cliente de duas Empresas diferentes do mesmo Tenant
-        // (ex.: escritório de contabilidade que atende o mesmo cliente
-        // final através de mais de uma empresa que gerencia).
-        builder.HasIndex(c => new { c.TenantId, c.EmpresaId, c.CpfCnpj })
-            .IsUnique();
+        // C10: EmpresaId nulo = cliente compartilhado entre as empresas da
+        // conta. Coluna calculada, não vai ao banco.
+        builder.Ignore(c => c.Compartilhado);
 
-        // Apelido único por Empresa. O índice compara exato (case-
-        // sensitive no Postgres) — é só o backstop de banco; a regra de
-        // verdade, sem diferenciar maiúsculas/minúsculas, é checada em
-        // CadastrarClienteUseCase/AtualizarClienteUseCase.
+        // Mesmo CPF/CNPJ não se repete no mesmo escopo: um compartilhado por
+        // conta e um exclusivo por Empresa. Os dois PODEM coexistir (na
+        // Empresa que tem o exclusivo, ele vence o compartilhado) — por isso
+        // dois índices parciais, um para cada escopo (no Postgres, NULL nunca
+        // colide num índice único comum).
+        builder.HasIndex(c => new { c.TenantId, c.EmpresaId, c.CpfCnpj })
+            .IsUnique()
+            .HasFilter("\"EmpresaId\" IS NOT NULL");
+
+        builder.HasIndex(c => new { c.TenantId, c.CpfCnpj })
+            .IsUnique()
+            .HasFilter("\"EmpresaId\" IS NULL");
+
+        // Apelido: mesmo desenho. O índice compara exato (case-sensitive no
+        // Postgres) e só dentro do escopo — é o backstop de banco; a regra de
+        // verdade (sem diferenciar maiúsculas/minúsculas e contando a lista
+        // de cada Empresa) é a de ApelidoCliente.
         builder.HasIndex(c => new { c.TenantId, c.EmpresaId, c.Apelido })
-            .IsUnique();
+            .IsUnique()
+            .HasFilter("\"EmpresaId\" IS NOT NULL");
+
+        builder.HasIndex(c => new { c.TenantId, c.Apelido })
+            .IsUnique()
+            .HasFilter("\"EmpresaId\" IS NULL");
 
         // FK real (sem navigation property — este projeto usa acesso
         // direto por EmpresaId, não navegação de grafo de objetos).
@@ -80,7 +95,8 @@ public sealed class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
         // Empresa se ainda existir Cliente apontando pra ela. É o
         // backstop de banco para a mesma regra já checada em
         // ExcluirEmpresaUseCase — fecha a janela de corrida entre o
-        // COUNT() e o DELETE.
+        // COUNT() e o DELETE. Cliente compartilhado (EmpresaId nulo) não
+        // prende nenhuma Empresa.
         builder.HasOne<Empresa>()
             .WithMany()
             .HasForeignKey(c => c.EmpresaId)
