@@ -37,4 +37,6 @@ public sealed record AtualizarContratoRequest(
     DateOnly? VigenciaAlteracaoServicos = null,
     string? MotivoAlteracaoServicos = null,
     bool? ReajusteAutomatico = null,
-    bool AplicarIndiceNegativo = false);
+    bool AplicarIndiceNegativo = false,
+    // C2: nulo = não mexe; "" = volta para o município da Empresa; código = esse município.
+    string? CodigoMunicipioPrestacao = null);

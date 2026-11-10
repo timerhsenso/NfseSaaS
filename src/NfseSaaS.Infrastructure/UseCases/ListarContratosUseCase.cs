@@ -92,7 +92,8 @@ public sealed class ListarContratosUseCase : IListarContratosUseCase
                 x.Contrato.DataUltimoReajuste, x.Contrato.DiasAlertaOverride, diasAlertaEfetivo, x.Contrato.Observacao,
                 dataProximoReajuste, situacao, x.Contrato.Status, x.Contrato.DataFim, x.Contrato.TipoCobranca,
                 x.Contrato.PermitirAlterarValorNaEmissao, x.Contrato.CreatedAt, x.Contrato.UpdatedAt,
-                x.Contrato.ReajusteAutomatico, x.Contrato.AplicarIndiceNegativo, pendente?.Id, pendente?.DataVigencia);
+                x.Contrato.ReajusteAutomatico, x.Contrato.AplicarIndiceNegativo, pendente?.Id, pendente?.DataVigencia,
+                x.Contrato.CodigoMunicipioPrestacao);
         }).ToList();
 
         return new PagedResult<ContratoResponse>

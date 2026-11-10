@@ -55,6 +55,9 @@ public sealed class NfseConfiguration : IEntityTypeConfiguration<Nfse>
         builder.Property(n => n.AliquotaIss)
             .HasPrecision(5, 2);
 
+        builder.Property(n => n.CodigoMunicipioPrestacao)
+            .HasMaxLength(7);
+
         builder.Property(n => n.CstPisCofins)
             .HasMaxLength(2)
             .IsRequired();

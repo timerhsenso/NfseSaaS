@@ -119,6 +119,8 @@ document.addEventListener('DOMContentLoaded', function () {
         // isso o dropdown nasce fora do modal do Bootstrap. minimumInputLength
         // evita carregar a lista de clientes inteira só de abrir o campo
         // (empresaId sempre filtra pra Empresa atual, igual o resto da tela).
+        configurarSelectMunicipio({ select: 'localPrestacaoContrato', modal: 'modal-contrato' });
+
         $('#clienteId').select2({
             dropdownParent: $('#modal-contrato'),
             placeholder: 'Digite o apelido, nome ou CNPJ/CPF do cliente',
@@ -463,6 +465,7 @@ async function abrirModalNovoContrato() {
     document.getElementById('dataInicioContrato').value = dataLocalIso();
 
     try {
+        await definirMunicipioNoSelect('localPrestacaoContrato', null);
         await carregarServicosContrato();
         adicionarLinhaServico();
         modalContrato.show();
@@ -497,6 +500,7 @@ async function abrirModalEditarContrato(id) {
         document.getElementById('reajusteAutomatico').value = contrato.reajusteAutomatico == null ? '' : String(contrato.reajusteAutomatico);
         document.getElementById('aplicarIndiceNegativo').checked = contrato.aplicarIndiceNegativo;
         document.getElementById('observacao').value = contrato.observacao ?? '';
+        await definirMunicipioNoSelect('localPrestacaoContrato', contrato.codigoMunicipioPrestacao);
         aplicarRegraTipoCobranca();
 
         (contrato.servicos ?? []).forEach(s => adicionarLinhaServico(s));
@@ -673,6 +677,8 @@ async function salvarContrato(e) {
                 dataFim: document.getElementById('dataFim').value || null,
                 tipoCobranca: parseInt(document.getElementById('tipoCobranca').value, 10),
                 permitirAlterarValorNaEmissao: document.getElementById('permitirAlterarValorNaEmissao').checked,
+                // C2: "" = município da empresa.
+                codigoMunicipioPrestacao: $('#localPrestacaoContrato').val() || '',
                 servicos: linhasServico,
                 ...lerOpcoesReajusteAutomatico()
             };
@@ -713,6 +719,8 @@ async function salvarContrato(e) {
                 dataFim: document.getElementById('dataFim').value || null,
                 tipoCobranca: parseInt(document.getElementById('tipoCobranca').value, 10),
                 permitirAlterarValorNaEmissao: document.getElementById('permitirAlterarValorNaEmissao').checked,
+                // C2: "" = município da empresa.
+                codigoMunicipioPrestacao: $('#localPrestacaoContrato').val() || '',
                 ...lerOpcoesReajusteAutomatico()
             };
             await apiFetch('/api/contratos', { method: 'POST', body: JSON.stringify(payload) });

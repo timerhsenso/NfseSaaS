@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (local da prestação por nota, C2)
+- Emissão: campo **Local da prestação** (busca do município pelo nome). Em
+  branco, vai o município da empresa, como sempre. Aparece no resumo antes de
+  emitir e no detalhe da nota; o reenvio de nota rejeitada traz o da tentativa
+  anterior.
+- Contrato: **local da prestação padrão** das notas (serviço feito no cliente,
+  em outro município). A Nota Mensal e a automação usam o do contrato; na nota
+  avulsa dá para trocar ou voltar para o da empresa.
+- O código precisa existir na tabela do IBGE (SEFIN E0302), conferido antes de
+  gastar o número da DPS. A nota guarda o `cLocPrestacao` enviado.
+- Migration `LocalPrestacao` (coluna opcional em `notas_fiscais` e em `contratos`).
+
 ### Adicionado (reajuste de quem já assina, B2)
 - Plataforma › Planos › **Reajustar** (planos com assinantes): leva quem já
   assina ao preço de tabela do plano numa data escolhida, com **prévia** de

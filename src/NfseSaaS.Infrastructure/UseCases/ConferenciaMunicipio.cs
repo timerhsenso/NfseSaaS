@@ -12,6 +12,16 @@ namespace NfseSaaS.Infrastructure.UseCases;
 /// </summary>
 internal static class ConferenciaMunicipio
 {
+    /// <summary>C2: código informado para o local da prestação precisa existir (E0302). Em branco passa.</summary>
+    public static async Task GarantirExisteAsync(AppDbContext db, string? codigoMunicipio, CancellationToken cancellationToken)
+    {
+        var codigo = (codigoMunicipio ?? string.Empty).Trim();
+        if (codigo.Length == 0 || !await db.Municipios.AnyAsync(cancellationToken))
+            return;
+        if (!await db.Municipios.AsNoTracking().AnyAsync(m => m.Codigo == codigo, cancellationToken))
+            throw new RegraNegocioException(RegrasMunicipio.MensagemNaoExiste(codigo));
+    }
+
     /// <returns>A UF do município, ou a UF informada quando o código está em branco.</returns>
     public static async Task<string> UfConferidaAsync(AppDbContext db, string? codigoMunicipio, string? ufInformada, CancellationToken cancellationToken)
     {

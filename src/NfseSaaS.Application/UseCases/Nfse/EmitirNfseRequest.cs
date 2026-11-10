@@ -28,4 +28,7 @@ public sealed record EmitirNfseRequest(
     bool? IssRetido = null,
     // Alíquota de ISS (%) NESTA nota. Nula = alíquota da Empresa
     // (Empresa.AliquotaIss). Obrigatória (por um dos dois) quando retido.
-    decimal? AliquotaIss = null);
+    decimal? AliquotaIss = null,
+    // Local da prestação (IBGE) NESTA nota (C2). Nulo = padrão do Contrato
+    // ou, sem ele, o município da Empresa; "" = o da Empresa (mesmo com contrato).
+    string? CodigoMunicipioPrestacao = null);

@@ -43,6 +43,6 @@ public sealed class ObterNfsePorIdUseCase : IObterNfsePorIdUseCase
             reenviadaComo?.Id,
             reenviadaComo?.NumeroDps,
             nfse.RejeicaoPermiteReenvio() && reenviadaComo is null,
-            nfse.CodigoTributacaoNacional, nfse.CodigoNbs, nfse.TpRetIssqn, nfse.AliquotaIss);
+            nfse.CodigoTributacaoNacional, nfse.CodigoNbs, nfse.TpRetIssqn, nfse.AliquotaIss, nfse.CodigoMunicipioPrestacao);
     }
 }

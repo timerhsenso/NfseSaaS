@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Exceptions;
+using NfseSaaS.Application.UseCases.Nfse;
 using NfseSaaS.Application.UseCases.Contratos;
 using NfseSaaS.Domain.Entities;
 using NfseSaaS.Domain.Enums;
@@ -37,6 +38,15 @@ public sealed class AtualizarContratoUseCase : IAtualizarContratoUseCase
         contrato.PermitirAlterarValorNaEmissao = request.PermitirAlterarValorNaEmissao;
         contrato.ReajusteAutomatico = request.ReajusteAutomatico;
         contrato.AplicarIndiceNegativo = request.AplicarIndiceNegativo;
+
+        // C2: nulo = não mexe; em branco = volta para o município da Empresa.
+        if (request.CodigoMunicipioPrestacao is not null)
+        {
+            var municipioEmpresa = await _db.Empresas.Where(e => e.Id == contrato.EmpresaId).Select(e => e.CodigoMunicipio).FirstAsync(cancellationToken);
+            var local = RegrasLocalPrestacao.ParaGuardar(request.CodigoMunicipioPrestacao, municipioEmpresa);
+            await ConferenciaMunicipio.GarantirExisteAsync(_db, local, cancellationToken);
+            contrato.CodigoMunicipioPrestacao = local;
+        }
 
         if (request.Servicos is not null)
             await AtualizarServicosAsync(contrato, request, cancellationToken);

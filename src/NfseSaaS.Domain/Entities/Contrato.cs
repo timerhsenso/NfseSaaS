@@ -64,6 +64,12 @@ public sealed class Contrato : BaseEntity, ITenantEntity
     /// <summary>Fase 6 — se true, a tela de emissão em lote (Fase 7) permite ajustar o valor da linha na hora de gerar a nota; se false, usa sempre o valor do Contrato sem edição.</summary>
     public bool PermitirAlterarValorNaEmissao { get; set; } = true;
 
+    /// <summary>
+    /// Local da prestação (IBGE) padrão das notas deste Contrato (C2), ex.:
+    /// serviço feito no cliente em outro município. Nulo = município da Empresa.
+    /// </summary>
+    public string? CodigoMunicipioPrestacao { get; set; }
+
     /// <summary>De quantos em quantos meses o valor deveria ser reajustado. Padrão de mercado: 12.</summary>
     public int PeriodicidadeReajusteMeses { get; set; } = 12;
 

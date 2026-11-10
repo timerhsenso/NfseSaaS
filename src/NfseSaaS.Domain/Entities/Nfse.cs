@@ -90,6 +90,12 @@ public sealed class Nfse : BaseEntity, ITenantEntity
     /// <summary>pAliq (%) enviado na DPS — obrigatório quando o ISS é retido. Nulo = não enviado.</summary>
     public decimal? AliquotaIss { get; set; }
 
+    /// <summary>
+    /// cLocPrestacao (IBGE) enviado nesta DPS (C2). Nulo nas notas antigas,
+    /// que sempre foram com o município da Empresa.
+    /// </summary>
+    public string? CodigoMunicipioPrestacao { get; set; }
+
     public string CstPisCofins { get; set; } = string.Empty;
 
     public string TpRetPisCofins { get; set; } = string.Empty;

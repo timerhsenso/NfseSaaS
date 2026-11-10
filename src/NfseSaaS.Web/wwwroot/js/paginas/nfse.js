@@ -205,6 +205,8 @@ document.addEventListener('DOMContentLoaded', function () {
             carregarContratosDoCliente(this.value);
         });
 
+        configurarSelectMunicipio({ select: 'emitir-localPrestacao', modal: 'modal-emitir-nfse' });
+
         document.getElementById('emitir-issRetido').addEventListener('change', function () {
             definirIssRetido(this.checked);
         });
@@ -442,6 +444,8 @@ async function abrirModalReenvioNfse(id) {
         // Reenvio relê o cadastro atual (ver aviso acima): retenção pelo
         // padrão ATUAL do Cliente — corrigir o cadastro e reenviar funciona.
         definirIssRetido(clientesPorId[nfse.clienteId]?.retemIss === true);
+        // Local da prestação: o da tentativa rejeitada (dá para trocar).
+        await definirMunicipioNoSelect('emitir-localPrestacao', nfse.codigoMunicipioPrestacao);
 
         modalEmitirNfse.show();
     } catch (err) {
@@ -467,6 +471,7 @@ async function prepararModalEmitirNfse() {
     document.getElementById('erro-emitir-nfse').classList.add('d-none');
     document.getElementById('emitir-dataCompetencia').value = dataLocalIso();
     definirIssRetido(false);
+    await definirMunicipioNoSelect('emitir-localPrestacao', null);
 
     // select2 não some sozinho no form.reset() — limpa manualmente,
     // senão reabrir o modal mostra o cliente da vez anterior.
@@ -643,6 +648,7 @@ function mostrarResumoEmissao() {
             ${linha('Competência', competencia ? `${competencia.slice(5, 7)}/${competencia.slice(0, 4)}` : '—')}
             ${linha('Valor do serviço', `<strong>${valor}</strong>`)}
             ${linha('ISS', issRetido ? `Retido pelo tomador${aliquota ? ` (alíquota ${escaparHtml(aliquota)}%)` : ' (alíquota da empresa)'}` : 'Não retido')}
+            ${linha('Local da prestação', escaparHtml(textoMunicipioSelecionado('emitir-localPrestacao', 'Município da empresa')))}
         </dl>
         <div class="mt-2">
             <div class="form-label mb-1">Descrição que vai na nota</div>
@@ -665,6 +671,7 @@ function aplicarContratoSelecionado() {
     if (!contratoId) {
         // "Nenhum (nota avulsa)" — volta pro fluxo manual de Serviço.
         avisoDiv.classList.add('d-none');
+        definirMunicipioNoSelect('emitir-localPrestacao', null);
         document.getElementById('aviso-contrato-multiplos-servicos').classList.add('d-none');
         document.getElementById('emitir-servicoId').onchange();
         return;
@@ -672,6 +679,9 @@ function aplicarContratoSelecionado() {
 
     const contrato = contratosDoClienteAtual.find(c => c.id === contratoId);
     if (!contrato) return;
+
+    // Local da prestação padrão do Contrato (C2); vazio = da empresa.
+    definirMunicipioNoSelect('emitir-localPrestacao', contrato.codigoMunicipioPrestacao);
 
     // Desde a Fase 6 o Contrato tem N linhas de serviço (contrato.servicos),
     // não mais um servicoId único — o código antigo lia contrato.servicoId
@@ -743,7 +753,9 @@ async function emitirNfse(e) {
         issRetido: document.getElementById('emitir-issRetido').checked,
         aliquotaIss: document.getElementById('emitir-issRetido').checked && document.getElementById('emitir-aliquotaIss').value !== ''
             ? parseFloat(document.getElementById('emitir-aliquotaIss').value)
-            : null
+            : null,
+        // Sempre explícito: "" = município da empresa (mesmo com contrato que tenha outro padrão).
+        codigoMunicipioPrestacao: $('#emitir-localPrestacao').val() || ''
     };
 
     try {
@@ -776,6 +788,7 @@ async function abrirDetalheNfse(id) {
         ]);
 
         document.getElementById('detalhe-nfse-dados').innerHTML = htmlDetalheNfse(nfse, snapshot);
+        preencherNomesMunicipios(document.getElementById('detalhe-nfse-dados'));
 
         document.getElementById('detalhe-nfse-eventos').innerHTML = eventos.length
             ? eventos.map(ev => `
@@ -1208,6 +1221,9 @@ function htmlDetalheNfse(nfse, snapshot) {
                 ${linha('Valor do serviço', `<strong>${moeda(nfse.valorServico)}</strong>`)}
                 ${linha('Valor líquido', moeda(nfse.valorLiquido))}
                 ${linha('ISS', iss)}
+                ${linha('Local da prestação', nfse.codigoMunicipioPrestacao
+                    ? `<span data-municipio-codigo="${escaparHtml(nfse.codigoMunicipioPrestacao)}">${escaparHtml(nfse.codigoMunicipioPrestacao)}</span>`
+                    : 'Município da empresa')}
             </dl>
         </section>
 
@@ -1271,4 +1287,16 @@ async function baixarXmlMes(e) {
             mostrarErroFormulario('erro-xml-mes', err.message);
         }
     });
+}
+
+// C2: troca o código IBGE pelo "Nome/UF (código)" nos elementos marcados.
+async function preencherNomesMunicipios(raiz) {
+    for (const el of raiz.querySelectorAll('[data-municipio-codigo]')) {
+        try {
+            const m = await apiFetch(`/api/consultas/municipio/${el.dataset.municipioCodigo}`);
+            el.textContent = `${m.nome}${m.uf ? '/' + m.uf : ''} (${el.dataset.municipioCodigo})`;
+        } catch {
+            // Fica o código.
+        }
+    }
 }

@@ -46,7 +46,9 @@ public sealed record NfseResponse(
     string CodigoTributacaoNacional,
     string CodigoNbs,
     string TpRetIssqn,
-    decimal? AliquotaIss)
+    decimal? AliquotaIss,
+    // C2: cLocPrestacao enviado (nulo nas notas antigas = município da Empresa).
+    string? CodigoMunicipioPrestacao = null)
 {
     /// <summary>tpRetISSQN "2" = ISS retido pelo tomador.</summary>
     public bool IssRetido => TpRetIssqn == "2";

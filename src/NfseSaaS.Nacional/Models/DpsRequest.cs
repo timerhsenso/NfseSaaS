@@ -89,4 +89,6 @@ public sealed record DpsRequest(
     string CodigoNbs,
     string DescricaoServico,
     string TpAmb,
-    IbsCbsDps? IbsCbs = null);
+    IbsCbsDps? IbsCbs = null,
+    // cLocPrestacao (IBGE). Nulo = município do prestador (comportamento de sempre).
+    string? CodigoMunicipioPrestacao = null);

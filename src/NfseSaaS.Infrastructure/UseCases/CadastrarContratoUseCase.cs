@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Exceptions;
+using NfseSaaS.Application.UseCases.Nfse;
 using NfseSaaS.Application.UseCases.Contratos;
 using NfseSaaS.Domain.Entities;
 using NfseSaaS.Domain.Enums;
@@ -22,9 +23,12 @@ public sealed class CadastrarContratoUseCase : ICadastrarContratoUseCase
 
     public async Task<Guid> ExecutarAsync(CadastrarContratoRequest request, CancellationToken cancellationToken)
     {
-        var empresaExiste = await _db.Empresas.AnyAsync(e => e.Id == request.EmpresaId, cancellationToken);
-        if (!empresaExiste)
-            throw new RecursoNaoEncontradoException($"Empresa {request.EmpresaId} não encontrada.");
+        var municipioEmpresa = await _db.Empresas.Where(e => e.Id == request.EmpresaId).Select(e => e.CodigoMunicipio).FirstOrDefaultAsync(cancellationToken)
+            ?? throw new RecursoNaoEncontradoException($"Empresa {request.EmpresaId} não encontrada.");
+
+        // C2: local da prestação padrão das notas (igual ao da Empresa = não guarda).
+        var localPrestacao = RegrasLocalPrestacao.ParaGuardar(request.CodigoMunicipioPrestacao, municipioEmpresa);
+        await ConferenciaMunicipio.GarantirExisteAsync(_db, localPrestacao, cancellationToken);
 
         // Cliente e Serviços da MESMA Empresa do Contrato (ver EmitirNfseUseCase).
         // C10: cliente exclusivo da Empresa ou compartilhado pela conta.
@@ -54,6 +58,7 @@ public sealed class CadastrarContratoUseCase : ICadastrarContratoUseCase
             Status = request.Status,
             TipoCobranca = request.TipoCobranca,
             PermitirAlterarValorNaEmissao = request.PermitirAlterarValorNaEmissao,
+            CodigoMunicipioPrestacao = localPrestacao,
             ReajusteAutomatico = request.ReajusteAutomatico,
             AplicarIndiceNegativo = request.AplicarIndiceNegativo
         };

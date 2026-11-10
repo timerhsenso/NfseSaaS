@@ -613,6 +613,10 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<Guid>("ClienteId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("CodigoMunicipioPrestacao")
+                        .HasMaxLength(7)
+                        .HasColumnType("character varying(7)");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1378,6 +1382,10 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<string>("CodigoErro")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<string>("CodigoMunicipioPrestacao")
+                        .HasMaxLength(7)
+                        .HasColumnType("character varying(7)");
 
                     b.Property<string>("CodigoNbs")
                         .IsRequired()

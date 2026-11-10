@@ -31,4 +31,6 @@ public sealed record ContratoResponse(
     // Reajuste do aniversário aguardando aprovação (nulo se não há) — a
     // tela de Contratos mostra o selo e o Histórico de valores, a decisão.
     Guid? ReajustePendenteId,
-    DateOnly? ReajustePendenteVigencia);
+    DateOnly? ReajustePendenteVigencia,
+    // C2: local da prestação padrão das notas (nulo = município da Empresa).
+    string? CodigoMunicipioPrestacao = null);

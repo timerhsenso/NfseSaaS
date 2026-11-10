@@ -185,7 +185,10 @@ public sealed class DpsBuilder : IDpsBuilder
 
         var serv = AddNode(doc, infDps, "serv");
         var locPrest = AddNode(doc, serv, "locPrest");
-        Add(doc, locPrest, "cLocPrestacao", request.Prestador.CodigoMunicipio);
+        // C2: local da prestação escolhido na nota/contrato; sem escolha, o do prestador.
+        Add(doc, locPrest, "cLocPrestacao", string.IsNullOrWhiteSpace(request.CodigoMunicipioPrestacao)
+            ? request.Prestador.CodigoMunicipio
+            : request.CodigoMunicipioPrestacao);
 
         var cServ = AddNode(doc, serv, "cServ");
         Add(doc, cServ, "cTribNac", request.CodigoTributacaoNacional);

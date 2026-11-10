@@ -23,4 +23,6 @@ public sealed record CadastrarContratoRequest(
     TipoCobrancaContrato TipoCobranca,
     bool PermitirAlterarValorNaEmissao,
     bool? ReajusteAutomatico = null,
-    bool AplicarIndiceNegativo = false);
+    bool AplicarIndiceNegativo = false,
+    // C2: local da prestação (IBGE) padrão das notas. Nulo/em branco = município da Empresa.
+    string? CodigoMunicipioPrestacao = null);

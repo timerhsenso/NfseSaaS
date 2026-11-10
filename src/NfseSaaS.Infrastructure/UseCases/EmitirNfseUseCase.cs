@@ -190,15 +190,25 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
         // tela: um Contrato de outro Cliente aqui seria um vínculo de
         // rastreabilidade errado (mesmo a Nfse em si continuando correta,
         // já que Servico/Valor/Descrição vêm de request, não do Contrato).
+        string? localDoContrato = null;
         if (request.ContratoId.HasValue)
         {
-            var contratoValido = await _db.Contratos.AnyAsync(
-                c => c.Id == request.ContratoId.Value && c.ClienteId == request.ClienteId && c.EmpresaId == request.EmpresaId,
-                cancellationToken);
+            var contrato = await _db.Contratos.AsNoTracking()
+                .Where(c => c.Id == request.ContratoId.Value && c.ClienteId == request.ClienteId && c.EmpresaId == request.EmpresaId)
+                .Select(c => new { c.CodigoMunicipioPrestacao })
+                .FirstOrDefaultAsync(cancellationToken);
 
-            if (!contratoValido)
+            if (contrato is null)
                 throw new RegraNegocioException($"Contrato {request.ContratoId} não encontrado para este Cliente/Empresa.");
+            localDoContrato = contrato.CodigoMunicipioPrestacao;
         }
+
+        // Local da prestação (C2): nota → (reenvio: o da original) → contrato →
+        // município da Empresa. Conferido na tabela do IBGE antes de gastar o
+        // número da DPS (E0302).
+        var localPrestacao = RegrasLocalPrestacao.Resolver(
+            request.CodigoMunicipioPrestacao ?? original?.CodigoMunicipioPrestacao, localDoContrato, empresa.CodigoMunicipio);
+        await ConferenciaMunicipio.GarantirExisteAsync(_db, localPrestacao, cancellationToken);
 
         // Retenção de ISS: decidida pelo TOMADOR (Cliente.RetemIss), com
         // ajuste por nota. Alíquota: da nota, senão a da Empresa. Validado
@@ -306,6 +316,7 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
             // Alíquota só vai pra DPS quando há retenção — sem retenção o
             // ISS é recolhido no DAS e a SEFIN calcula o resto.
             AliquotaIss = issRetido ? aliquotaIss : null,
+            CodigoMunicipioPrestacao = localPrestacao,
             CstPisCofins = empresa.CstPisCofins,
             TpRetPisCofins = empresa.TpRetPisCofins,
             PercentualTotalTributosSimplesNacional = empresa.PercentualTotalTributosSimplesNacional,
@@ -369,7 +380,8 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
             // de empresa.TipoAmbiente de novo — mesma fonte que vai pro
             // banco, sem chance de os dois divergirem.
             TpAmb: nfse.TipoAmbiente.ParaTpAmb(),
-            IbsCbs: ibsCbs is null ? null : new IbsCbsDps(ibsCbs.CIndOp, ibsCbs.Cst, ibsCbs.CClassTrib, ibsCbs.ComTributacao));
+            IbsCbs: ibsCbs is null ? null : new IbsCbsDps(ibsCbs.CIndOp, ibsCbs.Cst, ibsCbs.CClassTrib, ibsCbs.ComTributacao),
+            CodigoMunicipioPrestacao: nfse.CodigoMunicipioPrestacao);
 
         try
         {

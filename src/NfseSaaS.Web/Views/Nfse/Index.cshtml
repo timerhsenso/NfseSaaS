@@ -149,6 +149,12 @@
                                     <label class="form-check-label" for="emitir-issRetido">ISS retido pelo tomador</label>
                                 </div>
                             </div>
+                            @* Local da prestação (C2): vazio = município da empresa; contrato pode ter outro padrão. *@
+                            <div class="col-12 mb-3 order-last">
+                                <label class="form-label" for="emitir-localPrestacao">Local da prestação</label>
+                                <select class="form-select" id="emitir-localPrestacao"><option></option></select>
+                                <div class="form-text">Em branco, vai o município da empresa. Para serviços cujo ISS é devido onde o serviço é feito (limpeza, vigilância, mão de obra…), o ISS passa a ser do município escolhido.</div>
+                            </div>
                             @* Só aparece com ISS retido — é quando a alíquota vai pra DPS (pAliq). *@
                             <div class="col-md-6 mb-3 d-none" id="campo-emitir-aliquotaIss">
                                 <label class="form-label" for="emitir-aliquotaIss">Alíquota de ISS (%)</label>

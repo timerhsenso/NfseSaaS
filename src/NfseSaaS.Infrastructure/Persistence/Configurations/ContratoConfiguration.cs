@@ -23,6 +23,9 @@ public sealed class ContratoConfiguration : IEntityTypeConfiguration<Contrato>
         builder.Property(c => c.IndiceReajuste)
             .HasConversion<int?>();
 
+        builder.Property(c => c.CodigoMunicipioPrestacao)
+            .HasMaxLength(7);
+
         builder.Property(c => c.Observacao)
             .HasMaxLength(2000);
 

@@ -404,6 +404,56 @@ function configurarBuscaMunicipio(ids) {
 }
 
 /**
+ * C2: select2 de município (local da prestação). Vazio = município da
+ * empresa. ids: { select, modal, placeholder }.
+ */
+function configurarSelectMunicipio(ids) {
+    $('#' + ids.select).select2({
+        dropdownParent: ids.modal ? $('#' + ids.modal) : undefined,
+        placeholder: ids.placeholder ?? 'Município da empresa',
+        allowClear: true,
+        minimumInputLength: 2,
+        width: '100%',
+        language: {
+            inputTooShort: () => 'Digite pelo menos 2 letras do município.',
+            searching: () => 'Buscando…',
+            noResults: () => 'Nenhum município encontrado.'
+        },
+        ajax: {
+            url: '/api/catalogos/municipios',
+            dataType: 'json',
+            delay: 250,
+            data: params => ({ busca: params.term, limite: 20 }),
+            processResults: data => ({ results: data.results })
+        }
+    });
+}
+
+/** Põe um município (pelo código) no select2 de município; sem código, limpa. */
+async function definirMunicipioNoSelect(idSelect, codigo) {
+    const $select = $('#' + idSelect);
+    $select.empty();
+    if (!codigo) {
+        $select.val(null).trigger('change');
+        return;
+    }
+    let texto = codigo;
+    try {
+        const m = await apiFetch(`/api/consultas/municipio/${codigo}`);
+        texto = `${m.nome}${m.uf ? '/' + m.uf : ''} (${codigo})`;
+    } catch {
+        // Sem o nome, fica o código (a emissão confere de novo).
+    }
+    $select.append(new Option(texto, codigo, true, true)).trigger('change');
+}
+
+/** Nome do município selecionado (texto do select2) ou o padrão. */
+function textoMunicipioSelecionado(idSelect, padrao) {
+    const dado = $('#' + idSelect).select2('data')[0];
+    return dado?.id ? dado.text : padrao;
+}
+
+/**
  * CEP → preenche logradouro, bairro, UF e código IBGE do município
  * (ViaCEP, via /api/consultas/cep). ids: { cep, logradouro, bairro,
  * complemento, uf, codigoMunicipio, nomeMunicipio, statusCep, numero,
