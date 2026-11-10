@@ -5,6 +5,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (verificação em duas etapas, B3)
+- Opcional, por usuário: menu do usuário › **Verificação em duas etapas**.
+  Ligada, o login pede, depois da senha, um código de 6 dígitos enviado ao
+  e-mail (direto pelo SMTP, fora do log de e-mails). Para ligar, um código
+  chega ao e-mail e é digitado (o e-mail passa a contar como confirmado);
+  para desligar, a senha. Opção "não pedir de novo neste navegador" por 14
+  dias. Código errado conta como tentativa de login (5 erradas bloqueiam por
+  15 minutos). Aviso por e-mail ao ligar e ao desligar; registro na
+  auditoria; selo "2 etapas" na tela Usuários. Usa o 2FA do próprio
+  Identity: sem migration.
+- O e-mail do código tem prazo de 20 segundos para sair: SMTP travado vira
+  "não conseguimos enviar, tente de novo" em vez de a tela de login parar.
+- Testes de integração não mandam mais e-mail de verdade (o SMTP dos
+  user-secrets do PC travava a suíte por 2 minutos).
+
 ### Alterado (endereço do tomador, C3)
 - Cliente pessoa física (CPF) sem retenção de ISS pode ficar **sem endereço**:
   a DPS vai sem o grupo `end`. Para CNPJ e para quem retém o ISS o endereço

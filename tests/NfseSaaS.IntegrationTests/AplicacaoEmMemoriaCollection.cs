@@ -1,8 +1,11 @@
+using System.Net;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.Consultas;
 using NfseSaaS.Infrastructure.Cobranca;
@@ -46,6 +49,10 @@ public sealed class AplicacaoTesteFactory : WebApplicationFactory<Program>
         builder.ConfigureTestServices(servicos =>
         {
             servicos.AddScoped<IConsultarCnpjUseCase, ConsultaCnpjFalsa>();
+            servicos.AddTransient<IStartupFilter, IpDoTesteStartupFilter>();
+            // Nenhum teste manda e-mail de verdade: com o SMTP dos user-secrets
+            // do PC, um servidor lento travava o teste por 2 minutos.
+            servicos.AddScoped<IEmailSender, EmailSenderDosTestes>();
             servicos.PostConfigure<CobrancaOptions>(cobranca =>
             {
                 cobranca.Ativa = false;
@@ -54,6 +61,38 @@ public sealed class AplicacaoTesteFactory : WebApplicationFactory<Program>
             });
         });
     }
+}
+
+/// <summary>E-mail dos testes: aceita tudo na hora e não manda nada.</summary>
+public sealed class EmailSenderDosTestes : IEmailSender
+{
+    public Task<ResultadoEnvioEmail> EnviarAsync(string destinatarioEmail, string assunto, string corpoHtml, CancellationToken cancellationToken) =>
+        Task.FromResult(new ResultadoEnvioEmail(true, null));
+
+    public Task<ResultadoEnvioEmail> EnviarAsync(string destinatarioEmail, string assunto, string corpoHtml, IReadOnlyCollection<AnexoEmail> anexos, CancellationToken cancellationToken) =>
+        Task.FromResult(new ResultadoEnvioEmail(true, null));
+}
+
+/// <summary>
+/// No TestServer toda requisição chega sem IP, e o limite de taxa por IP
+/// (15 por minuto nas rotas de login) é dividido pela suíte inteira. Um
+/// teste que precisa de muitas chamadas dessas manda o cabeçalho
+/// <see cref="Cabecalho"/> com um IP só dele.
+/// </summary>
+public sealed class IpDoTesteStartupFilter : IStartupFilter
+{
+    public const string Cabecalho = "X-Teste-Ip";
+
+    public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+    {
+        app.Use((context, proximo) =>
+        {
+            if (context.Request.Headers.TryGetValue(Cabecalho, out var ip) && IPAddress.TryParse(ip.ToString(), out var endereco))
+                context.Connection.RemoteIpAddress = endereco;
+            return proximo(context);
+        });
+        next(app);
+    };
 }
 
 /// <summary>

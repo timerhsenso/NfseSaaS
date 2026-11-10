@@ -27,6 +27,24 @@
     <button type="submit" class="btn btn-primary w-100">Entrar</button>
 </form>
 
+@* Verificação em duas etapas (B3): aparece depois da senha certa, quando ligada. *@
+<form id="form-codigo" class="d-none" novalidate>
+    <p class="mb-3">Enviamos um código de 6 dígitos para <strong id="email-codigo"></strong>. Digite-o abaixo (você tem <span id="minutos-codigo">5</span> minutos).</p>
+    <div class="mb-3">
+        <label class="form-label" for="codigo">Código</label>
+        <input type="text" class="form-control form-control-lg text-center" id="codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="9" placeholder="000000" />
+    </div>
+    <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="lembrar-navegador" />
+        <label class="form-check-label" for="lembrar-navegador">Não pedir de novo neste navegador por <span id="dias-lembrar">14</span> dias</label>
+    </div>
+    <button type="submit" class="btn btn-primary w-100">Confirmar</button>
+    <div class="d-flex justify-content-between mt-2 small">
+        <a href="#" id="link-reenviar-codigo">Enviar outro código</a>
+        <a href="/Account/Login" id="link-voltar-login">Voltar</a>
+    </div>
+</form>
+
 <div class="text-center mt-3">
     <a href="/Account/Registrar">Criar uma conta nova</a>
 </div>

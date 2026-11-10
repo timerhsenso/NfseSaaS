@@ -548,3 +548,87 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 });
+
+/**
+ * Verificação em duas etapas (B3) — modal do menu do usuário, presente
+ * em todas as telas do _Layout. Ligar: código por e-mail; desligar: senha.
+ */
+document.addEventListener('DOMContentLoaded', function () {
+    const modalEl = document.getElementById('modalDuploFator');
+    if (!modalEl) return;
+
+    const erro = document.getElementById('erro-duplo-fator');
+    const sucesso = document.getElementById('sucesso-duplo-fator');
+    const blocoDesligado = document.getElementById('duplo-fator-desligado');
+    const blocoLigado = document.getElementById('duplo-fator-ligado');
+    const formAtivar = document.getElementById('form-duplo-fator-ativar');
+
+    function mensagem(div, texto) {
+        erro.classList.add('d-none');
+        sucesso.classList.add('d-none');
+        if (!div) return;
+        div.textContent = texto;
+        div.classList.remove('d-none');
+    }
+
+    async function carregar() {
+        const situacao = await apiFetch('/api/auth/duplo-fator');
+        document.getElementById('email-duplo-fator').textContent = situacao.emailMascarado;
+        blocoLigado.classList.toggle('d-none', !situacao.ligado);
+        blocoDesligado.classList.toggle('d-none', situacao.ligado);
+        formAtivar.classList.add('d-none');
+        formAtivar.reset();
+        document.getElementById('form-duplo-fator-desligar').reset();
+    }
+
+    modalEl.addEventListener('show.bs.modal', async function () {
+        mensagem(null);
+        try {
+            await carregar();
+        } catch (err) {
+            mensagem(erro, err.message);
+        }
+    });
+
+    document.getElementById('btn-duplo-fator-enviar').addEventListener('click', async function () {
+        mensagem(null);
+        try {
+            const r = await apiFetch('/api/auth/duplo-fator/codigo', { method: 'POST' });
+            mensagem(sucesso, `Enviamos um código para ${r.email}. Digite-o abaixo.`);
+            formAtivar.classList.remove('d-none');
+            document.getElementById('codigo-duplo-fator').focus();
+        } catch (err) {
+            mensagem(erro, err.message);
+        }
+    });
+
+    formAtivar.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const codigo = document.getElementById('codigo-duplo-fator').value.replace(/\D/g, '');
+        if (codigo.length !== 6) {
+            mensagem(erro, 'O código tem 6 números.');
+            return;
+        }
+        try {
+            await apiFetch('/api/auth/duplo-fator/ativar', { method: 'POST', body: JSON.stringify({ codigo }) });
+            await carregar();
+            mensagem(sucesso, 'Verificação em duas etapas ligada. No próximo login, o código será pedido.');
+        } catch (err) {
+            mensagem(erro, err.message);
+        }
+    });
+
+    document.getElementById('form-duplo-fator-desligar').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        try {
+            await apiFetch('/api/auth/duplo-fator/desligar', {
+                method: 'POST',
+                body: JSON.stringify({ senha: document.getElementById('senha-duplo-fator').value })
+            });
+            await carregar();
+            mensagem(sucesso, 'Verificação em duas etapas desligada.');
+        } catch (err) {
+            mensagem(erro, err.message);
+        }
+    });
+});

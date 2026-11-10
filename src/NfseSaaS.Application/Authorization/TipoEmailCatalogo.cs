@@ -8,6 +8,9 @@ public static class TipoEmailCatalogo
     public const string EsqueciSenha = "EsqueciSenha";
     public const string AvisoTrocaSenha = "AvisoTrocaSenha";
 
+    /// <summary>Verificação em duas etapas ligada ou desligada pelo próprio usuário.</summary>
+    public const string AvisoDuploFator = "AvisoDuploFator";
+
     /// <summary>Link para confirmar o e-mail da conta (cadastro ou "Reenviar" no aviso do topo).</summary>
     public const string ConfirmacaoEmail = "ConfirmacaoEmail";
 

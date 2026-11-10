@@ -12,7 +12,8 @@ document.addEventListener('DOMContentLoaded', async function () {
                 render: (data, type, usuario) => {
                     if (usuario.pendente) return '<span class="badge text-bg-warning">Pendente</span>';
                     if (usuario.bloqueado) return '<span class="badge text-bg-danger">Bloqueado</span>';
-                    return '<span class="badge text-bg-success">Ativo</span>';
+                    return '<span class="badge text-bg-success">Ativo</span>'
+                        + (usuario.duploFator ? ' <span class="badge text-bg-info" title="Login com código por e-mail">2 etapas</span>' : '');
                 }
             },
             {

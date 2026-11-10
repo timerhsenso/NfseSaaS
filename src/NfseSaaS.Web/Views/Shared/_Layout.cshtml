@@ -216,6 +216,7 @@
                         </div>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalAlterarSenha">Alterar senha</a></li>
+                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalDuploFator">Verificação em duas etapas</a></li>
                             <li><a class="dropdown-item" href="/MeusDados">Meus dados</a></li>
                             <li><a class="dropdown-item" href="/termos" target="_blank" rel="noopener">Termos de uso</a></li>
                             <li><a class="dropdown-item" href="/privacidade" target="_blank" rel="noopener">Política de privacidade</a></li>
@@ -308,6 +309,49 @@
                         <button type="submit" class="btn btn-primary">Salvar</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    @* Verificação em duas etapas (B3) — lógica em site.js. *@
+    <div class="modal fade" id="modalDuploFator" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Verificação em duas etapas</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="erro-duplo-fator" class="alert alert-danger d-none"></div>
+                    <div id="sucesso-duplo-fator" class="alert alert-success d-none"></div>
+                    <p class="text-muted small">Depois da senha, o login pede um código enviado para o seu e-mail (<strong id="email-duplo-fator"></strong>). Mesmo que alguém descubra a sua senha, não entra sem acesso ao seu e-mail.</p>
+
+                    <div id="duplo-fator-desligado" class="d-none">
+                        <p><span class="badge text-bg-secondary">Desligada</span></p>
+                        <button type="button" class="btn btn-primary" id="btn-duplo-fator-enviar">Ligar: enviar código para o meu e-mail</button>
+                        <form id="form-duplo-fator-ativar" class="d-none mt-3" novalidate>
+                            <label class="form-label" for="codigo-duplo-fator">Código recebido</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="codigo-duplo-fator" inputmode="numeric" autocomplete="one-time-code" maxlength="9" placeholder="000000" />
+                                <button type="submit" class="btn btn-primary">Ligar</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div id="duplo-fator-ligado" class="d-none">
+                        <p><span class="badge text-bg-success">Ligada</span></p>
+                        <form id="form-duplo-fator-desligar" novalidate>
+                            <label class="form-label" for="senha-duplo-fator">Para desligar, confirme a sua senha</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="senha-duplo-fator" autocomplete="current-password" />
+                                <button type="submit" class="btn btn-outline-danger">Desligar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
             </div>
         </div>
     </div>

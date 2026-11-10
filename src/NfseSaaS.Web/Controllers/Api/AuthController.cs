@@ -62,7 +62,8 @@ public sealed record UsuarioResponse(
     DateTimeOffset? ConvidadoEm,
     DateTimeOffset? ConviteAceitoEm,
     bool Bloqueado,
-    bool EhVoce)
+    bool EhVoce,
+    bool DuploFator = false)
 {
     /// <summary>Convidado mas ainda não aceitou. Falso pro primeiro Administrador de cada Tenant (não passou por convite).</summary>
     public bool Pendente => ConvidadoEm is not null && ConviteAceitoEm is null;
@@ -106,6 +107,7 @@ public sealed class AuthController : ControllerBase
     private readonly IConsultarCnpjUseCase _consultarCnpj;
     private readonly ICriarEmpresaInicialService _empresaInicial;
     private readonly IConfirmacaoEmailService _confirmacaoEmail;
+    private readonly IEmailSender _emailSender;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
@@ -124,6 +126,7 @@ public sealed class AuthController : ControllerBase
         IConsultarCnpjUseCase consultarCnpj,
         ICriarEmpresaInicialService empresaInicial,
         IConfirmacaoEmailService confirmacaoEmail,
+        IEmailSender emailSender,
         ILogger<AuthController> logger)
     {
         _db = db;
@@ -141,6 +144,7 @@ public sealed class AuthController : ControllerBase
         _consultarCnpj = consultarCnpj;
         _empresaInicial = empresaInicial;
         _confirmacaoEmail = confirmacaoEmail;
+        _emailSender = emailSender;
         _logger = logger;
     }
 
@@ -374,6 +378,22 @@ public sealed class AuthController : ControllerBase
                 });
 
             return StatusCode(StatusCodes.Status403Forbidden, new { erro = "Esta conta está suspensa. Fale com o suporte da micoempresa para reativar." });
+        }
+
+        // Verificação em duas etapas (B3): senha certa, falta o código do
+        // e-mail. O Identity guardou quem é num cookie de 5 minutos; a etapa
+        // 2 é DuploFatorController.LoginCodigo.
+        if (resultado.RequiresTwoFactor && usuario is not null)
+        {
+            var enviado = await DuploFatorController.EnviarCodigoLoginAsync(_userManager, _emailSender, _logger, usuario, cancellationToken);
+            return Ok(new
+            {
+                requerCodigo = true,
+                email = NfseSaaS.Application.UseCases.Plataforma.CodigoExclusaoConta.MascararEmail(usuario.Email!),
+                enviado,
+                minutos = NfseSaaS.Application.UseCases.Seguranca.RegrasDuploFator.MinutosParaDigitar,
+                diasLembrar = NfseSaaS.Application.UseCases.Seguranca.RegrasDuploFator.DiasLembrarNavegador
+            });
         }
 
         return resultado.Succeeded ? Ok() : Unauthorized();
@@ -657,7 +677,8 @@ public sealed class AuthController : ControllerBase
                 u.ConvidadoEm,
                 u.ConviteAceitoEm,
                 u.LockoutEnd != null && u.LockoutEnd > agora,
-                u.Id == _currentUser.UserId)
+                u.Id == _currentUser.UserId,
+                u.TwoFactorEnabled)
         ).ToListAsync(cancellationToken);
 
         return Ok(usuarios);

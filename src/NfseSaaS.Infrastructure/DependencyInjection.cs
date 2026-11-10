@@ -146,6 +146,20 @@ public static class DependencyInjection
         services.Configure<SecurityStampValidatorOptions>(options =>
             options.ValidationInterval = TimeSpan.FromMinutes(1));
 
+        // Verificação em duas etapas (B3): "não pedir de novo neste navegador"
+        // dura 14 dias (cookie do Identity, invalidado ao desligar ou trocar
+        // o SecurityStamp); a etapa do código dura 5 minutos (padrão).
+        services.Configure<Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationOptions>(
+            IdentityConstants.TwoFactorRememberMeScheme, options =>
+            {
+                options.ExpireTimeSpan = TimeSpan.FromDays(NfseSaaS.Application.UseCases.Seguranca.RegrasDuploFator.DiasLembrarNavegador);
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+            });
+        services.Configure<Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationOptions>(
+            IdentityConstants.TwoFactorUserIdScheme, options =>
+                options.ExpireTimeSpan = TimeSpan.FromMinutes(NfseSaaS.Application.UseCases.Seguranca.RegrasDuploFator.MinutosParaDigitar));
+
         // Por padrão, o cookie do Identity REDIRECIONA (302) para uma
         // página de login em caso de falha de autenticação — faz sentido
         // para MVC, mas não para as rotas /api (que não têm essa página e
