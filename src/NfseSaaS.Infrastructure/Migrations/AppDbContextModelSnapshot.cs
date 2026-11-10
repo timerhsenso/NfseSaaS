@@ -1310,6 +1310,36 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.ToTable("movimentacoes_valor_contrato", (string)null);
                 });
 
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.Municipio", b =>
+                {
+                    b.Property<string>("Codigo")
+                        .HasMaxLength(7)
+                        .HasColumnType("character varying(7)");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("NomeBusca")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Uf")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)");
+
+                    b.HasKey("Codigo");
+
+                    b.HasIndex("NomeBusca");
+
+                    b.HasIndex("Uf", "NomeBusca");
+
+                    b.ToTable("municipios", (string)null);
+                });
+
             modelBuilder.Entity("NfseSaaS.Domain.Entities.Nfse", b =>
                 {
                     b.Property<Guid>("Id")

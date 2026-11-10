@@ -24,6 +24,8 @@ public sealed class AtualizarEmpresaUseCase : IAtualizarEmpresaUseCase
         if (empresa is null)
             throw new RecursoNaoEncontradoException($"Empresa {id} não encontrada.");
 
+        var uf = await ConferenciaMunicipio.UfConferidaAsync(_db, request.CodigoMunicipio, request.Uf, cancellationToken);
+
         empresa.RazaoSocial = request.RazaoSocial;
         empresa.NomeFantasia = request.NomeFantasia;
         empresa.InscricaoMunicipal = request.InscricaoMunicipal;
@@ -35,7 +37,7 @@ public sealed class AtualizarEmpresaUseCase : IAtualizarEmpresaUseCase
         empresa.Numero = request.Numero;
         empresa.Complemento = request.Complemento;
         empresa.Bairro = request.Bairro;
-        empresa.Uf = request.Uf;
+        empresa.Uf = uf;
         empresa.OpSimpNac = request.OpSimpNac;
         empresa.RegApTribSN = request.RegApTribSN;
         empresa.RegEspTrib = request.RegEspTrib;

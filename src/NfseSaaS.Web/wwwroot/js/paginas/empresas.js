@@ -92,6 +92,10 @@ document.addEventListener('DOMContentLoaded', function () {
             codigoMunicipio: 'codigoMunicipio', nomeMunicipio: 'nome-municipio-empresa', statusCep: 'status-cep-empresa',
             numero: 'numero', botao: 'btn-buscar-cep-empresa', aoPreencher: atualizarStatusSecoesEmpresa
         });
+        configurarBuscaMunicipio({
+            busca: 'busca-municipio-empresa', codigoMunicipio: 'codigoMunicipio', uf: 'uf',
+            nomeMunicipio: 'nome-municipio-empresa', modal: 'modal-empresa'
+        });
 
         // ✓ / ! em cada seção conforme o preenchimento.
         const formEmpresa = document.getElementById('form-empresa');

@@ -24,6 +24,8 @@ public sealed class CadastrarEmpresaUseCase : ICadastrarEmpresaUseCase
 
     public async Task<Guid> ExecutarAsync(CadastrarEmpresaRequest request, CancellationToken cancellationToken)
     {
+        var uf = await ConferenciaMunicipio.UfConferidaAsync(_db, request.CodigoMunicipio, request.Uf, cancellationToken);
+
         var empresa = new Empresa
         {
             Cnpj = request.Cnpj,
@@ -38,7 +40,7 @@ public sealed class CadastrarEmpresaUseCase : ICadastrarEmpresaUseCase
             Numero = request.Numero,
             Complemento = request.Complemento,
             Bairro = request.Bairro,
-            Uf = request.Uf,
+            Uf = uf,
             OpSimpNac = request.OpSimpNac,
             RegApTribSN = request.RegApTribSN,
             RegEspTrib = request.RegEspTrib,

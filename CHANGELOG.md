@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (municípios em tabela local, C9)
+- Tabela `municipios` com os 5.571 municípios do IBGE (código, nome, UF),
+  carregada no startup a partir de um arquivo embarcado (inclui os que
+  faltam e atualiza nomes; nunca apaga). Migration `Municipios`.
+- Telas de Cliente e de Empresa: além do CEP, **busca do município pelo
+  nome** ("salvador", "são paulo/sp" ou o código), que preenche o código
+  IBGE e a UF. O nome ao lado do código vem da tabela (não depende mais da
+  API do IBGE no ar).
+- Ao salvar Cliente ou Empresa, o código do município precisa existir (a
+  SEFIN rejeitaria a nota, E0238) e a UF passa a ser a do município.
+
 ### Adicionado (verificação em duas etapas, B3)
 - Opcional, por usuário: menu do usuário › **Verificação em duas etapas**.
   Ligada, o login pede, depois da senha, um código de 6 dígitos enviado ao

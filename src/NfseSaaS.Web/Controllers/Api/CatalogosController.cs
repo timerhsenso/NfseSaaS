@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NfseSaaS.Application.Fiscal.IbsCbs;
 using NfseSaaS.Application.UseCases.Catalogos;
+using NfseSaaS.Application.UseCases.Municipios;
 
 namespace NfseSaaS.Web.Controllers.Api;
 
@@ -19,13 +20,32 @@ public sealed class CatalogosController : ControllerBase
 {
     private readonly IBuscarCodigoTributacaoNacionalUseCase _buscarCodigoTributacaoNacional;
     private readonly IBuscarCodigoNbsUseCase _buscarCodigoNbs;
+    private readonly IMunicipiosUseCase _municipios;
 
     public CatalogosController(
         IBuscarCodigoTributacaoNacionalUseCase buscarCodigoTributacaoNacional,
-        IBuscarCodigoNbsUseCase buscarCodigoNbs)
+        IBuscarCodigoNbsUseCase buscarCodigoNbs,
+        IMunicipiosUseCase municipios)
     {
         _buscarCodigoTributacaoNacional = buscarCodigoTributacaoNacional;
         _buscarCodigoNbs = buscarCodigoNbs;
+        _municipios = municipios;
+    }
+
+    /// <summary>
+    /// Municípios do IBGE pelo nome (C9), no formato do select2. Aceita
+    /// "salvador", "salvador ba", "são paulo/sp" ou o código de 7 dígitos;
+    /// uf filtra o estado.
+    /// </summary>
+    [HttpGet("municipios")]
+    public async Task<IActionResult> BuscarMunicipios([FromQuery] string? busca, [FromQuery] string? uf, [FromQuery] int limite, CancellationToken cancellationToken)
+    {
+        var limiteReal = limite is > 0 and <= 50 ? limite : RegrasMunicipio.LimiteBusca;
+        var resultado = await _municipios.BuscarAsync(busca, uf, limiteReal, cancellationToken);
+        return Ok(new
+        {
+            results = resultado.Select(m => new { id = m.Codigo, text = RegrasMunicipio.Exibicao(m.Nome, m.Uf), nome = m.Nome, uf = m.Uf })
+        });
     }
 
     /// <summary>

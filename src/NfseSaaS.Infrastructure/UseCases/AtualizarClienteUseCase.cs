@@ -30,6 +30,8 @@ public sealed class AtualizarClienteUseCase : IAtualizarClienteUseCase
             && EnderecoCliente.Vazio(request.CodigoMunicipio, request.Cep, request.Logradouro, request.Numero, request.Bairro, request.Uf, request.Complemento))
             throw new RegraNegocioException(motivo);
 
+        var uf = await ConferenciaMunicipio.UfConferidaAsync(_db, EnderecoCliente.Normalizar(request.CodigoMunicipio), request.Uf, cancellationToken);
+
         var apelido = request.Apelido.Trim();
         await ApelidoCliente.GarantirUnicoAsync(_db, cliente.EmpresaId, apelido, clienteIdIgnorado: cliente.Id, cancellationToken);
 
@@ -43,7 +45,7 @@ public sealed class AtualizarClienteUseCase : IAtualizarClienteUseCase
         cliente.Numero = EnderecoCliente.Normalizar(request.Numero);
         cliente.Complemento = string.IsNullOrWhiteSpace(request.Complemento) ? null : request.Complemento.Trim();
         cliente.Bairro = EnderecoCliente.Normalizar(request.Bairro);
-        cliente.Uf = EnderecoCliente.Normalizar(request.Uf).ToUpperInvariant();
+        cliente.Uf = uf;
         cliente.RetemIss = request.RetemIss;
         cliente.EnviarNfsePorEmail = request.EnviarNfsePorEmail;
         cliente.EmailsCopia = EmailsCopiaCliente.Juntar(request.EmailsCopia);

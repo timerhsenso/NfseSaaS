@@ -30,6 +30,8 @@ public sealed class CadastrarClienteUseCase : ICadastrarClienteUseCase
         if (jaExisteClienteComMesmoDocumento)
             throw new RegraNegocioException($"Já existe um cliente com o CPF/CNPJ '{request.CpfCnpj}' cadastrado para esta empresa.");
 
+        var uf = await ConferenciaMunicipio.UfConferidaAsync(_db, EnderecoCliente.Normalizar(request.CodigoMunicipio), request.Uf, cancellationToken);
+
         var apelido = request.Apelido.Trim();
         await ApelidoCliente.GarantirUnicoAsync(_db, request.EmpresaId, apelido, clienteIdIgnorado: null, cancellationToken);
 
@@ -47,7 +49,7 @@ public sealed class CadastrarClienteUseCase : ICadastrarClienteUseCase
             Numero = EnderecoCliente.Normalizar(request.Numero),
             Complemento = string.IsNullOrWhiteSpace(request.Complemento) ? null : request.Complemento.Trim(),
             Bairro = EnderecoCliente.Normalizar(request.Bairro),
-            Uf = EnderecoCliente.Normalizar(request.Uf).ToUpperInvariant(),
+            Uf = uf,
             RetemIss = request.RetemIss,
             EnviarNfsePorEmail = request.EnviarNfsePorEmail,
             EmailsCopia = EmailsCopiaCliente.Juntar(request.EmailsCopia),

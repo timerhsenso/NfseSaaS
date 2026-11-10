@@ -19,7 +19,7 @@ public interface IConsultarCepUseCase
     Task<ConsultaCepResponse> ExecutarAsync(string cep, CancellationToken cancellationToken);
 }
 
-/// <summary>Nome do município a partir do código IBGE (fonte pública: API de localidades do IBGE).</summary>
+/// <summary>Nome do município a partir do código IBGE (tabela local de municípios, C9).</summary>
 public interface IConsultarMunicipioUseCase
 {
     Task<ConsultaMunicipioResponse> ExecutarAsync(string codigoMunicipio, CancellationToken cancellationToken);

@@ -52,6 +52,10 @@ document.addEventListener('DOMContentLoaded', function () {
             codigoMunicipio: 'codigoMunicipio', nomeMunicipio: 'nome-municipio-cliente', statusCep: 'status-cep-cliente',
             numero: 'numero', botao: 'btn-buscar-cep-cliente'
         });
+        configurarBuscaMunicipio({
+            busca: 'busca-municipio-cliente', codigoMunicipio: 'codigoMunicipio', uf: 'uf',
+            nomeMunicipio: 'nome-municipio-cliente', modal: 'modal-cliente'
+        });
         document.getElementById('enviarNfsePorEmail').addEventListener('change', atualizarEnvioEmailCliente);
         document.getElementById('retemIss').addEventListener('change', atualizarObrigatoriedadeEndereco);
         ['cpfCnpj', ...CAMPOS_ENDERECO_CLIENTE, 'complemento'].forEach(id =>

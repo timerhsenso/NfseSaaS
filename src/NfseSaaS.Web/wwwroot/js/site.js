@@ -341,7 +341,7 @@ function atualizarStatusSecoes(formId, painelSeletor, navSeletor) {
     });
 }
 
-/** Mostra "Salvador — BA" abaixo do código IBGE (consulta no servidor, com cache). */
+/** Mostra "Salvador — BA" abaixo do código IBGE (tabela local de municípios). */
 async function mostrarNomeMunicipio(idCodigo, idRotulo) {
     const rotulo = document.getElementById(idRotulo);
     const codigo = (document.getElementById(idCodigo)?.value ?? '').replace(/\D/g, '');
@@ -356,10 +356,51 @@ async function mostrarNomeMunicipio(idCodigo, idRotulo) {
     try {
         const m = await apiFetch(`/api/consultas/municipio/${codigo}`);
         rotulo.innerHTML = `<i class="bi bi-geo-alt-fill text-primary"></i> <strong>${escaparHtml(m.nome)}${m.uf ? ' — ' + escaparHtml(m.uf) : ''}</strong>`;
-    } catch {
-        // Sem o nome (serviço do IBGE fora do ar), o código continua valendo.
-        rotulo.textContent = `Código IBGE ${codigo} — nome do município indisponível agora.`;
+    } catch (err) {
+        // Tabela local do IBGE (C9): código que não existe é erro de cadastro.
+        rotulo.textContent = err.message || `Código IBGE ${codigo} não encontrado.`;
+        rotulo.classList.add('text-danger');
     }
+}
+
+/**
+ * Busca do município pelo nome (C9), num <select> com select2: ao escolher,
+ * preenche o código IBGE e a UF. ids: { busca, codigoMunicipio, uf,
+ * nomeMunicipio, modal }.
+ */
+function configurarBuscaMunicipio(ids) {
+    const $busca = $('#' + ids.busca);
+    if (!$busca.length) return;
+
+    $busca.select2({
+        dropdownParent: ids.modal ? $('#' + ids.modal) : undefined,
+        placeholder: 'Ou busque pelo nome: Salvador, São Paulo/SP…',
+        allowClear: true,
+        minimumInputLength: 2,
+        width: '100%',
+        language: {
+            inputTooShort: () => 'Digite pelo menos 2 letras do município.',
+            searching: () => 'Buscando…',
+            noResults: () => 'Nenhum município encontrado.'
+        },
+        ajax: {
+            url: '/api/catalogos/municipios',
+            dataType: 'json',
+            delay: 250,
+            data: params => ({ busca: params.term, limite: 20 }),
+            processResults: data => ({ results: data.results })
+        }
+    });
+
+    $busca.on('select2:select', async e => {
+        const m = e.params.data;
+        const codigo = document.getElementById(ids.codigoMunicipio);
+        codigo.value = m.id;
+        if (ids.uf && m.uf) document.getElementById(ids.uf).value = m.uf;
+        codigo.dispatchEvent(new Event('input', { bubbles: true }));
+        await mostrarNomeMunicipio(ids.codigoMunicipio, ids.nomeMunicipio);
+        $busca.val(null).trigger('change');
+    });
 }
 
 /**

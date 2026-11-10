@@ -264,7 +264,10 @@ public static class DependencyInjection
         services.AddHttpClient("ConsultaEndereco");
         services.AddScoped<ConsultaEnderecoClient>();
         services.AddScoped<IConsultarCepUseCase>(sp => sp.GetRequiredService<ConsultaEnderecoClient>());
-        services.AddScoped<IConsultarMunicipioUseCase>(sp => sp.GetRequiredService<ConsultaEnderecoClient>());
+        // Municípios (C9): tabela local, também para o nome pelo código (antes: API do IBGE).
+        services.AddScoped<NfseSaaS.Infrastructure.UseCases.MunicipiosService>();
+        services.AddScoped<NfseSaaS.Application.UseCases.Municipios.IMunicipiosUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.UseCases.MunicipiosService>());
+        services.AddScoped<IConsultarMunicipioUseCase>(sp => sp.GetRequiredService<NfseSaaS.Infrastructure.UseCases.MunicipiosService>());
 
         services.AddScoped<IBuscarCodigoTributacaoNacionalUseCase, BuscarCodigoTributacaoNacionalUseCase>();
         services.AddScoped<IBuscarCodigoNbsUseCase, BuscarCodigoNbsUseCase>();
