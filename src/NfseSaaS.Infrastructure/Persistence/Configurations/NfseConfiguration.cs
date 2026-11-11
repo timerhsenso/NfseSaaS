@@ -134,10 +134,12 @@ public sealed class NfseConfiguration : IEntityTypeConfiguration<Nfse>
             .HasFilter("\"ChaveAcesso\" IS NOT NULL");
 
         // Duas emissões com a mesma IdempotencyKey, para a mesma
-        // Empresa/Tenant, são a MESMA tentativa lógica (retry) — nunca
-        // duas notas distintas. Filtrado porque a maioria das emissões
+        // Empresa/Tenant e o mesmo ambiente, são a MESMA tentativa lógica
+        // (retry) — nunca duas notas distintas. O ambiente entra na chave:
+        // a Nota Mensal testada em homologação não pode travar a de
+        // produção do mesmo mês. Filtrado porque a maioria das emissões
         // não informa chave (comportamento antigo continua permitido).
-        builder.HasIndex(n => new { n.TenantId, n.EmpresaId, n.IdempotencyKey })
+        builder.HasIndex(n => new { n.TenantId, n.EmpresaId, n.TipoAmbiente, n.IdempotencyKey })
             .IsUnique()
             .HasFilter("\"IdempotencyKey\" IS NOT NULL");
 

@@ -153,7 +153,7 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             {
                 data: 'notasNoMes', className: 'text-end',
-                render: (v, type, t) => type === 'display' ? `${v}<div class="small text-muted">${t.notasTotal} no total</div>` : v
+                render: (v, type, t) => type === 'display' ? `${v}<div class="small text-muted">${t.notasTotal} no total (produção)</div>` : v
             },
             { data: 'ultimaNota', render: (v, type) => type === 'display' ? dataCurta(v) : (v ?? '') },
             {

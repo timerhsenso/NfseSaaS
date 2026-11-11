@@ -1538,12 +1538,12 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .IsUnique()
                         .HasFilter("\"SubstituiNfseId\" IS NOT NULL AND \"Status\" IN ('Processando', 'Autorizada')");
 
-                    b.HasIndex("TenantId", "EmpresaId", "IdempotencyKey")
-                        .IsUnique()
-                        .HasFilter("\"IdempotencyKey\" IS NOT NULL");
-
                     b.HasIndex("TenantId", "EmpresaId", "NumeroDps", "SerieDps")
                         .IsUnique();
+
+                    b.HasIndex("TenantId", "EmpresaId", "TipoAmbiente", "IdempotencyKey")
+                        .IsUnique()
+                        .HasFilter("\"IdempotencyKey\" IS NOT NULL");
 
                     b.ToTable("notas_fiscais", (string)null);
                 });

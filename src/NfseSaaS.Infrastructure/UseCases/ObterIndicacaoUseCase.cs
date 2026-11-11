@@ -60,7 +60,7 @@ public sealed class ObterIndicacaoUseCase : IObterIndicacaoUseCase
         var comNota = ids.Count == 0
             ? new HashSet<Guid>()
             : (await _db.NotasFiscais.IgnoreQueryFilters().AsNoTracking()
-                .Where(n => ids.Contains(n.TenantId) && n.Status == NfseStatus.Autorizada)
+                .Where(n => ids.Contains(n.TenantId) && n.Status == NfseStatus.Autorizada && n.TipoAmbiente == TipoAmbiente.Producao)
                 .Select(n => n.TenantId)
                 .Distinct()
                 .ToListAsync(cancellationToken)).ToHashSet();

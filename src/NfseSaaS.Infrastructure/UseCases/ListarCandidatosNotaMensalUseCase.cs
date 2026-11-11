@@ -19,9 +19,15 @@ public sealed class ListarCandidatosNotaMensalUseCase : IListarCandidatosNotaMen
 
     public async Task<IReadOnlyList<ContratoCandidatoNotaMensalResponse>> ExecutarAsync(Guid empresaId, DateOnly competencia, CancellationToken cancellationToken)
     {
-        var empresaExiste = await _db.Empresas.AnyAsync(e => e.Id == empresaId, cancellationToken);
-        if (!empresaExiste)
-            throw new RecursoNaoEncontradoException($"Empresa {empresaId} não encontrada.");
+        // Homologação é homologação, produção é produção: tudo o que esta
+        // tela lê das notas (já emitido, último valor, total da última nota)
+        // é só do ambiente ATUAL da empresa. A nota guarda o ambiente em que
+        // nasceu (Nfse.TipoAmbiente), então teste em homologação nunca marca
+        // o mês de produção como resolvido nem vira sugestão de valor.
+        var ambiente = await _db.Empresas.Where(e => e.Id == empresaId)
+            .Select(e => (TipoAmbiente?)e.TipoAmbiente)
+            .FirstOrDefaultAsync(cancellationToken)
+            ?? throw new RecursoNaoEncontradoException($"Empresa {empresaId} não encontrada.");
 
         var contratos = await (
             from c in _db.Contratos.AsNoTracking()
@@ -56,7 +62,8 @@ public sealed class ListarCandidatosNotaMensalUseCase : IListarCandidatosNotaMen
         var contratosComNotaNaCompetencia = await _db.NotasFiscais.AsNoTracking()
             .Where(n => n.ContratoId != null && contratoIds.Contains(n.ContratoId.Value)
                 && n.DataCompetencia >= inicioMes && n.DataCompetencia <= fimMes
-                && n.Status == NfseStatus.Autorizada)
+                && n.Status == NfseStatus.Autorizada
+                && n.TipoAmbiente == ambiente)
             .Select(n => n.ContratoId!.Value)
             .Distinct()
             .ToListAsync(cancellationToken);
@@ -76,6 +83,7 @@ public sealed class ListarCandidatosNotaMensalUseCase : IListarCandidatosNotaMen
         var notasAnteriores = await _db.NotasFiscais.AsNoTracking()
             .Where(n => n.ContratoId != null && contratoIds.Contains(n.ContratoId.Value)
                 && n.Status == NfseStatus.Autorizada
+                && n.TipoAmbiente == ambiente
                 && n.DataCompetencia < inicioMes && n.DataCompetencia >= limiteHistorico)
             .Select(n => new { ContratoId = n.ContratoId!.Value, n.CodigoTributacaoNacional, n.DataCompetencia, n.CreatedAt, n.ValorServico, n.ComposicaoValoresJson })
             .ToListAsync(cancellationToken);

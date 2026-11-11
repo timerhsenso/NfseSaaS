@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Corrigido (homologação é homologação, produção é produção)
+- **Nota Mensal** separa os ambientes: nota de teste em homologação não marca
+  o mês de produção como "Já emitido", não vira "última nota" nem entra no
+  "Repetir últimos valores"; o mesmo vale ao voltar para homologação.
+- **Trava contra nota repetida por ambiente** (migration
+  `NotaIdempotenciaPorAmbiente`: o índice único da chave de idempotência
+  passa a incluir o ambiente). Antes, o lote em produção devolvia a nota de
+  homologação do mesmo mês como "Emitida" sem mandar nada para a SEFIN.
+- Reenvio de nota rejeitada só no mesmo ambiente em que ela nasceu.
+- Automação da Nota Mensal confere o mês anterior só no ambiente atual.
+- Indique e ganhe ("já emitiu nota") e Plataforma › Contas contam só notas de
+  produção.
+
 ### Corrigido (número da NFS-e enorme na lista)
 - Algumas notas mostravam no **Número** o Id da nota ("NFS" + chave de 50
   dígitos) em vez do número oficial curto (ex.: 44). Ao subir, o sistema

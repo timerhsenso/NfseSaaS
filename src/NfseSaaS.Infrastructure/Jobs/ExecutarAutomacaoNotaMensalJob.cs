@@ -280,7 +280,8 @@ public sealed class ExecutarAutomacaoNotaMensalJob : IExecutarAutomacaoNotaMensa
             var confirmou = await db.NotasFiscais.AsNoTracking().AnyAsync(n =>
                 n.EmpresaId == empresa.Id
                 && n.DataCompetencia >= competenciaAnterior && n.DataCompetencia <= fimMesAnterior
-                && n.Status == NfseStatus.Autorizada);
+                && n.Status == NfseStatus.Autorizada
+                && n.TipoAmbiente == empresa.TipoAmbiente);
 
             configuracao.CompetenciasSemConfirmacao = confirmou ? 0 : configuracao.CompetenciasSemConfirmacao + 1;
 

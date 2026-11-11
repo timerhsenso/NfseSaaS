@@ -131,8 +131,13 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
 
         if (!string.IsNullOrWhiteSpace(request.IdempotencyKey))
         {
+            // A chave vale por ambiente: a tentativa de homologação com a
+            // mesma chave (ex.: Nota Mensal testada antes de ir para
+            // produção) não é a mesma nota da produção.
+            var ambienteAtual = contaEmpresa?.TipoAmbiente;
             var existente = await _db.NotasFiscais.FirstOrDefaultAsync(
-                n => n.EmpresaId == request.EmpresaId && n.IdempotencyKey == request.IdempotencyKey,
+                n => n.EmpresaId == request.EmpresaId && n.IdempotencyKey == request.IdempotencyKey
+                    && n.TipoAmbiente == ambienteAtual,
                 cancellationToken);
 
             if (existente is not null)
@@ -163,7 +168,7 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
         }
 
         if (original is not null)
-            await ValidarReenvioAsync(original, request, cancellationToken);
+            await ValidarReenvioAsync(original, request, contaEmpresa?.TipoAmbiente, cancellationToken);
 
         // C7: substituição. No reenvio de uma substituta rejeitada, a
         // substituição vem da tentativa original (a tela não manda de novo).
@@ -539,8 +544,15 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
     /// valor, descrição e competência podem mudar — é justamente o que se
     /// corrige) e a original ainda não foi reenviada antes.
     /// </summary>
-    private async Task ValidarReenvioAsync(Domain.Entities.Nfse original, EmitirNfseRequest request, CancellationToken cancellationToken)
+    private async Task ValidarReenvioAsync(Domain.Entities.Nfse original, EmitirNfseRequest request, TipoAmbiente? ambienteAtual, CancellationToken cancellationToken)
     {
+        // Homologação é homologação, produção é produção: a rejeitada de um
+        // ambiente não é reenviada no outro (viraria nota de verdade a
+        // partir de um teste, ou o contrário).
+        if (ambienteAtual is not null && original.TipoAmbiente != ambienteAtual)
+            throw new RegraNegocioException(
+                "Esta nota rejeitada é de outro ambiente (homologação/produção) que o atual da empresa: emita uma nota nova em vez de reenviar.");
+
         if (original.ClienteId != request.ClienteId || original.ContratoId != request.ContratoId)
             throw new RegraNegocioException("O reenvio precisa manter o mesmo Cliente e Contrato da nota rejeitada.");
 

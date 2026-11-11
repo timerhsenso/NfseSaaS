@@ -54,8 +54,9 @@ public sealed class ListarTenantsPlataformaUseCase : IListarTenantsPlataformaUse
         var agoraBrasilia = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-3));
         var inicioMesUtc = new DateTimeOffset(agoraBrasilia.Year, agoraBrasilia.Month, 1, 0, 0, 0, TimeSpan.FromHours(-3)).ToUniversalTime();
 
+        // Uso real da conta: só notas de produção (homologação é teste).
         var notas = await _db.NotasFiscais.AsNoTracking().IgnoreQueryFilters()
-            .Where(n => n.Status == NfseStatus.Autorizada)
+            .Where(n => n.Status == NfseStatus.Autorizada && n.TipoAmbiente == TipoAmbiente.Producao)
             .GroupBy(n => n.TenantId)
             .Select(g => new
             {
