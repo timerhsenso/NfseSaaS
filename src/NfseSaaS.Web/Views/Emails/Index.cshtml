@@ -3,9 +3,13 @@
 }
 
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <span>E-mails enviados pelo sistema</span>
-        <div class="d-flex gap-2">
+    <div class="card-body">
+        @* Pesquisa daqui vai ao servidor (destinatário): a barra não ganha a pesquisa automática. *@
+        <div class="barra-lista" id="barra-tabela-emails" data-sem-pesquisa="true">
+            <label class="busca-lista">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input type="search" class="form-control" id="filtro-busca" placeholder="Buscar destinatário…" aria-label="Buscar destinatário" />
+            </label>
             <select class="form-select form-select-sm" id="filtro-status" style="width: auto;">
                 <option value="">Todos os status</option>
                 <option value="Pendente">Pendente</option>
@@ -32,10 +36,7 @@
                 <option value="AvisoEncerramentoConta">Aviso de encerramento</option>
                 <option value="ReajusteAssinatura">Reajuste da assinatura</option>
             </select>
-            <input type="text" class="form-control form-control-sm" id="filtro-busca" placeholder="Buscar destinatário..." style="width: 220px;" />
         </div>
-    </div>
-    <div class="card-body">
         <table id="tabela-emails" class="table table-striped table-bordered w-100">
             <thead>
                 <tr>

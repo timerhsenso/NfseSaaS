@@ -55,8 +55,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     return c ? `<span title="${escaparHtml(c.nome)}">${escaparHtml(c.apelido)}</span>` : id;
                 }
             },
-            { data: 'valorServico', render: v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) },
-            { data: 'valorLiquido', render: v => v == null ? '—' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) },
+            {
+                // Valor do serviço; o líquido aparece embaixo só quando é diferente (retenções).
+                data: 'valorServico',
+                render: (v, t, n) => {
+                    if (t !== 'display') return Number(v);
+                    const liquido = n.valorLiquido != null && Number(n.valorLiquido) !== Number(v)
+                        ? `<br><small class="text-muted">líquido ${formatarMoedaNfse(n.valorLiquido)}</small>`
+                        : '';
+                    return `${formatarMoedaNfse(v)}${liquido}`;
+                }
+            },
             {
                 data: 'status',
                 render: (v, t, n) => {
@@ -70,14 +79,16 @@ document.addEventListener('DOMContentLoaded', function () {
             {
                 data: 'dataEmissao',
                 render: {
-                    // Formato "DD/MM/AAAA, HH:mm:ss" não é ordenável como
-                    // texto (o dia vem primeiro) — sem isso, o DataTable
-                    // comparava a string exibida e misturava meses/anos
-                    // fora de ordem. "display" é só o que aparece na
-                    // tela; "sort" é o valor real (timestamp) usado pra
-                    // ordenar, nunca visto pelo usuário.
-                    display: v => v ? new Date(v).toLocaleString('pt-BR') : '—',
-                    sort: v => v ? new Date(v).getTime() : 0
+                    // "display" é só o que aparece (data em cima, hora menor
+                    // embaixo); "sort" é o valor real (timestamp) usado pra
+                    // ordenar — o texto "DD/MM/AAAA" ordenaria errado.
+                    display: v => {
+                        if (!v) return '—';
+                        const d = new Date(v);
+                        return `${d.toLocaleDateString('pt-BR')}<br><small class="text-muted">${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</small>`;
+                    },
+                    sort: v => v ? new Date(v).getTime() : 0,
+                    _: v => v ? new Date(v).toLocaleString('pt-BR') : ''
                 }
             },
             {
@@ -85,39 +96,59 @@ document.addEventListener('DOMContentLoaded', function () {
                 orderable: false,
                 render: (d, t, n) => {
                     const temPdf = n.status === STATUS_AUTORIZADA || n.status === STATUS_CANCELADA;
-                    const botaoPdf = temPdf
-                        ? `<a class="btn btn-sm btn-outline-secondary" href="/api/nfse/${n.id}/danfse-pdf" title="Baixar PDF (DANFSe)"><i class="bi bi-file-earmark-pdf"></i></a>`
-                        + ` <a class="btn btn-sm btn-outline-secondary" href="/api/nfse/${n.id}/xml" download title="Baixar XML da nota"><i class="bi bi-filetype-xml"></i></a>`
-                        : '';
                     // podeReenviar já vem resolvido pelo backend (rejeição
                     // segura de reenviar + ainda não reenviada) — a tela
-                    // só soma a permissão de emitir.
-                    const botaoReenviar = podeEmitirNfse && n.podeReenviar
-                        ? `<button type="button" class="btn btn-sm btn-outline-warning btn-reenviar-nfse" data-id="${n.id}" title="Reenviar com os dados atuais do cadastro"><i class="bi bi-arrow-repeat"></i> Reenviar</button>`
-                        : '';
-                    // Manda (de novo) o PDF e o XML pro e-mail do tomador.
-                    const botaoEmail = podeEmitirNfse && n.status === STATUS_AUTORIZADA
-                        ? `<button type="button" class="btn btn-sm btn-outline-secondary btn-enviar-email-nfse" data-id="${n.id}" title="Enviar PDF e XML por e-mail ao cliente"><i class="bi bi-envelope"></i></button>`
-                        : '';
-                    // C7: substituir = emitir a nota certa e a SEFIN cancela esta (permissão de cancelar).
-                    const botaoSubstituir = podeCancelarNfse && n.podeSubstituir
-                        ? `<button type="button" class="btn btn-sm btn-outline-primary btn-substituir-nfse" data-id="${n.id}" title="Emitir a nota corrigida; a SEFIN cancela esta automaticamente"><i class="bi bi-arrow-left-right"></i></button>`
-                        : '';
-                    return `<button type="button" class="btn btn-sm btn-outline-secondary btn-ver-detalhe" data-id="${n.id}"><i class="bi bi-eye"></i> Detalhes</button> ${botaoPdf} ${botaoEmail} ${botaoSubstituir} ${botaoReenviar}`;
+                    // só soma a permissão de emitir. Na rejeitada, reenviar
+                    // é O que se faz: fica à vista.
+                    const reenviar = podeEmitirNfse && n.podeReenviar;
+                    const dados = { id: n.id };
+                    return acoesDaLinha(
+                        [
+                            temPdf && { classe: 'btn-pdf-nfse', icone: 'bi-file-earmark-pdf', texto: 'Baixar PDF (DANFSe)', dados },
+                            reenviar && { classe: 'btn-reenviar-nfse', icone: 'bi-arrow-repeat', texto: 'Reenviar', titulo: 'Reenviar com os dados atuais do cadastro', cor: 'warning', mostrarTexto: true, dados }
+                        ],
+                        [
+                            { classe: 'btn-ver-detalhe', icone: 'bi-eye', texto: 'Detalhes', dados },
+                            temPdf && { classe: 'btn-xml-nfse', icone: 'bi-filetype-xml', texto: 'Baixar XML', dados },
+                            // Manda (de novo) o PDF e o XML pro e-mail do tomador.
+                            podeEmitirNfse && n.status === STATUS_AUTORIZADA && { classe: 'btn-enviar-email-nfse', icone: 'bi-envelope', texto: 'Enviar por e-mail ao cliente', dados },
+                            // C7: substituir = emitir a nota certa e a SEFIN cancela esta (permissão de cancelar).
+                            podeCancelarNfse && n.podeSubstituir && { divisor: true },
+                            podeCancelarNfse && n.podeSubstituir && { classe: 'btn-substituir-nfse', icone: 'bi-arrow-left-right', texto: 'Substituir (corrigir) nota', dados }
+                        ]);
                 }
             }
         ],
         // Sem isso, o DataTables cai no default (1ª coluna, checkbox,
         // não ordenável) — a API já manda mais recente primeiro, mas a
-        // tabela reordenava na tela por cima disso. Índice 6 = coluna
-        // "Emissão" (0-based: checkbox, número, cliente, valor,
-        // valorLíquido, status, emissão, ações).
-        order: [[6, 'desc']],
+        // tabela reordenava na tela por cima disso. Índice 5 = coluna
+        // "Emissão" (0-based: checkbox, número, cliente, valor, status,
+        // emissão, ações).
+        order: [[5, 'desc']],
+        // Clicar na linha (fora de botão/checkbox) abre os Detalhes.
+        createdRow: tr => tr.classList.add('linha-clicavel'),
     });
 
-    configurarExportacao(tabelaNfse, 'NotasFiscais');
+    // XML do mês também leva dados para fora: fica no menu Exportar.
+    configurarExportacao(tabelaNfse, 'NotasFiscais', {
+        extras: [{ texto: 'XML do mês (para o contador)', icone: 'bi-filetype-xml', acao: abrirXmlMes }]
+    });
 
     document.getElementById('tabela-nfse').addEventListener('click', async function (e) {
+        const pdf = e.target.closest('.btn-pdf-nfse');
+        if (pdf) window.location.href = `/api/nfse/${pdf.dataset.id}/danfse-pdf`;
+
+        const xml = e.target.closest('.btn-xml-nfse');
+        if (xml) window.location.href = `/api/nfse/${xml.dataset.id}/xml`;
+
+        // Clique na linha (não em botão, menu, link ou checkbox) = Detalhes.
+        const linha = e.target.closest('tr.linha-clicavel');
+        if (linha && !e.target.closest('button, a, input, .dropdown-menu')) {
+            const dadosLinha = tabelaNfse.row(linha).data();
+            if (dadosLinha) await abrirDetalheNfse(dadosLinha.id);
+            return;
+        }
+
         const botao = e.target.closest('.btn-ver-detalhe');
         if (botao) await executarComBotaoDesabilitado(botao, () => abrirDetalheNfse(botao.dataset.id));
 
@@ -150,7 +181,12 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.getElementById('btn-baixar-selecionadas').addEventListener('click', baixarDanfsePdfLote);
-    document.getElementById('btn-xml-mes').addEventListener('click', abrirXmlMes);
+    document.getElementById('btn-desmarcar-nfse').addEventListener('click', function () {
+        nfseSelecionadas.clear();
+        document.getElementById('check-selecionar-todas-nfse').checked = false;
+        tabelaNfse.draw(false);
+        atualizarBotaoBaixarSelecionadas();
+    });
     document.getElementById('form-xml-mes').addEventListener('submit', baixarXmlMes);
 
     modalDetalheNfse = new bootstrap.Modal(document.getElementById('modal-detalhe-nfse'));
@@ -291,20 +327,21 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Período padrão: últimos 30 dias, mesmo default do portal nacional
-    // (tela "Notas recebidas") — familiar pra quem já usa os dois.
-    const hoje = new Date();
-    const trintaDiasAtras = new Date(hoje);
-    trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
-    document.getElementById('filtro-data-fim').value = hoje.toISOString().slice(0, 10);
-    document.getElementById('filtro-data-inicio').value = trintaDiasAtras.toISOString().slice(0, 10);
+    // Período: atalhos (padrão "Este mês"); as datas só aparecem no
+    // "Personalizado". Os campos de data continuam sendo o que vai pra API.
+    const periodo = document.getElementById('filtro-periodo');
+    aplicarPeriodoNfse(periodo.value);
+    periodo.addEventListener('change', function () {
+        aplicarPeriodoNfse(this.value);
+        carregarNfse();
+    });
 
     ['filtro-data-inicio', 'filtro-data-fim', 'filtro-status', 'filtro-cliente'].forEach(id =>
         document.getElementById(id).addEventListener('change', carregarNfse));
 
     document.getElementById('btn-limpar-filtros-nfse').addEventListener('click', function () {
-        document.getElementById('filtro-data-inicio').value = trintaDiasAtras.toISOString().slice(0, 10);
-        document.getElementById('filtro-data-fim').value = hoje.toISOString().slice(0, 10);
+        periodo.value = 'este-mes';
+        aplicarPeriodoNfse('este-mes');
         document.getElementById('filtro-status').value = '';
         document.getElementById('filtro-cliente').value = '';
         carregarNfse();
@@ -324,7 +361,7 @@ async function carregarClientesParaMapa() {
         for (const c of resultado.items) clientesPorId[c.id] = { apelido: c.apelido, nome: c.nome, retemIss: c.retemIss };
 
         const selectFiltroCliente = document.getElementById('filtro-cliente');
-        selectFiltroCliente.innerHTML = '<option value="">Todos</option>' +
+        selectFiltroCliente.innerHTML = '<option value="">Todos os clientes</option>' +
             resultado.items.map(c => `<option value="${c.id}">${escaparHtml(c.apelido)}</option>`).join('');
     } catch (err) {
         mostrarErro(err.message);
@@ -349,8 +386,48 @@ function montarQueryFiltrosNfse() {
     return params.toString();
 }
 
+// Datas De/Até a partir do atalho de período (datas locais, sem fuso).
+function aplicarPeriodoNfse(valor) {
+    const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const hoje = new Date();
+    const inicio = document.getElementById('filtro-data-inicio');
+    const fim = document.getElementById('filtro-data-fim');
+    const personalizado = valor === 'personalizado';
+
+    document.getElementById('filtro-periodo-personalizado').classList.toggle('d-none', !personalizado);
+    document.getElementById('filtro-periodo-personalizado').classList.toggle('d-flex', personalizado);
+    if (personalizado) {
+        if (!inicio.value) inicio.value = iso(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+        if (!fim.value) fim.value = iso(hoje);
+        return;
+    }
+
+    const intervalos = {
+        'este-mes': [new Date(hoje.getFullYear(), hoje.getMonth(), 1), hoje],
+        'mes-passado': [new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1), new Date(hoje.getFullYear(), hoje.getMonth(), 0)],
+        '30-dias': [new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - 30), hoje],
+        'este-ano': [new Date(hoje.getFullYear(), 0, 1), hoje]
+    };
+    const [de, ate] = intervalos[valor] ?? intervalos['este-mes'];
+    inicio.value = iso(de);
+    fim.value = iso(ate);
+}
+
+// "Limpar filtros" só aparece quando algum filtro saiu do padrão.
+function atualizarLimparFiltrosNfse() {
+    const ativo = document.getElementById('filtro-periodo').value !== 'este-mes'
+        || document.getElementById('filtro-status').value !== ''
+        || document.getElementById('filtro-cliente').value !== '';
+    document.getElementById('btn-limpar-filtros-nfse').classList.toggle('d-none', !ativo);
+}
+
+function formatarMoedaNfse(v) {
+    return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
 async function carregarNfse() {
     if (!empresaAtualIdNfse) return;
+    atualizarLimparFiltrosNfse();
     try {
         const resultado = await apiFetch(`/api/nfse?${montarQueryFiltrosNfse()}`);
         nfseSelecionadas.clear();
@@ -1260,8 +1337,20 @@ async function emitirNotaMensal() {
     }
 }
 
+// Com notas marcadas, a barra de seleção (quantas, total, baixar) toma o
+// lugar dos filtros; desmarcou tudo, os filtros voltam.
 function atualizarBotaoBaixarSelecionadas() {
-    document.getElementById('btn-baixar-selecionadas').disabled = nfseSelecionadas.size === 0;
+    const quantidade = nfseSelecionadas.size;
+    document.getElementById('btn-baixar-selecionadas').disabled = quantidade === 0;
+    document.getElementById('barra-selecao-nfse').classList.toggle('d-none', quantidade === 0);
+    document.getElementById('filtros-nfse').classList.toggle('d-none', quantidade > 0);
+    if (quantidade === 0) return;
+
+    const total = tabelaNfse.rows().data().toArray()
+        .filter(n => nfseSelecionadas.has(n.id))
+        .reduce((soma, n) => soma + Number(n.valorServico || 0), 0);
+    document.getElementById('selecao-nfse-resumo').textContent =
+        `${quantidade} ${quantidade === 1 ? 'nota selecionada' : 'notas selecionadas'} · ${formatarMoedaNfse(total)}`;
 }
 
 async function baixarDanfsePdfLote() {

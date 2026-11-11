@@ -87,13 +87,17 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             {
                 data: 'id', orderable: false,
-                render: (id, type, p) => `<div class="d-flex gap-1 flex-nowrap">
-                    <button type="button" class="btn btn-outline-secondary btn-sm btn-editar-plano" data-id="${id}" title="Alterar"><i class="bi bi-pencil"></i></button>
-                    <button type="button" class="btn btn-outline-primary btn-sm btn-preco-plano" data-id="${id}" title="Novo preço"><i class="bi bi-currency-dollar"></i> Preço</button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm btn-historico-plano" data-id="${id}" title="Histórico de preços"><i class="bi bi-clock-history"></i></button>
-                    ${p.assinantes > 0 ? `<button type="button" class="btn btn-outline-warning btn-sm btn-reajuste-plano" data-id="${id}" title="Reajustar quem já assina"><i class="bi bi-graph-up-arrow"></i> Reajustar</button>` : ''}
-                    ${p.podeExcluir ? `<button type="button" class="btn btn-outline-danger btn-sm btn-excluir-plano" data-id="${id}" title="Excluir (nunca foi assinado)"><i class="bi bi-trash"></i></button>` : ''}
-                </div>`
+                render: (id, type, p) => acoesDaLinha(
+                    [
+                        { classe: 'btn-preco-plano', icone: 'bi-currency-dollar', texto: 'Preço', titulo: 'Novo preço', cor: 'primary', mostrarTexto: true, dados: { id } },
+                        { classe: 'btn-editar-plano', icone: 'bi-pencil', texto: 'Alterar', dados: { id } }
+                    ],
+                    [
+                        { classe: 'btn-historico-plano', icone: 'bi-clock-history', texto: 'Histórico de preços', dados: { id } },
+                        p.assinantes > 0 && { classe: 'btn-reajuste-plano', icone: 'bi-graph-up-arrow', texto: 'Reajustar quem já assina', dados: { id } },
+                        { divisor: true },
+                        p.podeExcluir && { classe: 'btn-excluir-plano', icone: 'bi-trash', texto: 'Excluir (nunca foi assinado)', perigo: true, dados: { id } }
+                    ])
             }
         ]
     });

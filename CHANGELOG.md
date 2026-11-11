@@ -5,6 +5,29 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Alterado (telas de lista mais limpas — todas as telas)
+- **Cabeçalho da página com as ações**: título à esquerda; à direita
+  **Exportar ▾**, **⋯** (ações raras) e a ação principal. Sai o título
+  repetido dos cartões ("Notas fiscais emitidas", "Clientes cadastrados"…).
+- **Exportar ▾** num menu só (Excel, CSV, Copiar, Imprimir), em todas as
+  listas; em Notas, o **XML do mês** entrou nesse menu. Rodapé "exportado
+  por" e registro na auditoria continuam iguais.
+- **Uma barra acima da tabela**: pesquisa + filtros da tela. "Exibir N",
+  "Mostrando…" e paginação ficaram embaixo da tabela.
+- **Ações das linhas**: até 2 botões à vista + **⋯** com o resto; Excluir
+  sempre no ⋯ (evita clique sem querer). Clientes, Serviços, Empresas,
+  Contratos, Usuários, Grupos, Planos, Contas da plataforma e Notas.
+- **Notas Fiscais**: período em atalhos (Este mês, Mês passado, Últimos 30
+  dias, Este ano, Personalizado — as datas só aparecem no personalizado);
+  "Limpar filtros" só com filtro ativo; com notas marcadas aparece a barra
+  "N selecionadas · R$ total · Baixar PDFs (ZIP)"; linha mostra PDF + ⋯
+  (Detalhes, XML, Enviar por e-mail, Substituir); clicar na linha abre os
+  Detalhes; valor líquido só aparece (embaixo do valor) quando é diferente;
+  emissão com a hora menor embaixo. "Buscar notas da SEFIN" foi para o ⋯.
+- Contratos: "Verificar reajustes agora" no ⋯. Índices: "Importar do Banco
+  Central agora" no ⋯. Usuários: o formulário de convite abre pelo botão
+  "Convidar usuário". Plataforma: "Jobs (Hangfire)" no ⋯.
+
 ### Adicionado (número do contrato e totais da lista)
 - **Nº do contrato** (texto livre, até 30 caracteres, único por empresa sem
   diferenciar maiúsculas). Ao abrir "Novo contrato" já vem o próximo

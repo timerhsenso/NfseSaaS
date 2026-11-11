@@ -74,39 +74,27 @@ function situacaoCobrancaPlataforma(t) {
     return `<div class="small text-muted mt-1">${texto}</div>` + (selos.length ? `<div class="mt-1 d-flex flex-wrap gap-1">${selos.join('')}</div>` : '');
 }
 
-// Menu "Cobrança" da linha: só o que vale para a situação da conta.
-function menuCobranca(t, nome) {
+// Itens de cobrança do "⋯" da linha: só o que vale para a situação da conta.
+function itensCobranca(t, nome) {
     const c = t.cobranca || {};
+    const item = (acao, icone, texto) => ({ classe: 'btn-cobranca', icone, texto, dados: { acao, id: t.id, nome } });
     // Liberar nova exportação dos dados (Meus dados): vale para qualquer conta.
-    const exportacao = `<li><hr class="dropdown-divider"></li><li><button type="button" class="dropdown-item btn-cobranca" data-acao="liberar-exportacao" data-id="${t.id}" data-nome="${nome}"><i class="bi bi-file-earmark-zip"></i> Liberar nova exportação dos dados</button></li>`;
-    if (c.isentaNaConfiguracao) return `<div class="dropdown">
-        <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-three-dots"></i></button>
-        <ul class="dropdown-menu dropdown-menu-end">${exportacao.replace('<li><hr class="dropdown-divider"></li>', '')}</ul>
-    </div>`;
-    const itens = [];
+    const exportacao = item('liberar-exportacao', 'bi-file-earmark-zip', 'Liberar nova exportação dos dados');
+    if (c.isentaNaConfiguracao) return [exportacao];
+
     // Já assinou: teste e isenção não se aplicam (faturas no Asaas); só
     // conferir a situação com o Asaas agora, sem esperar a conciliação diária.
-    if (c.temAssinaturaNoGateway) {
-        itens.push(`<li><button type="button" class="dropdown-item btn-cobranca" data-acao="conciliar" data-id="${t.id}" data-nome="${nome}"><i class="bi bi-arrow-repeat"></i> Conferir com o Asaas agora</button></li>`);
-        itens.push(exportacao);
-        return `<div class="dropdown">
-        <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-credit-card"></i></button>
-        <ul class="dropdown-menu dropdown-menu-end">${itens.join('')}</ul>
-    </div>`;
-    }
+    if (c.temAssinaturaNoGateway)
+        return [item('conciliar', 'bi-arrow-repeat', 'Conferir com o Asaas agora'), { divisor: true }, exportacao];
+
     const podeTeste = t.statusAssinatura !== 4 && !c.isenta;
-    if (podeTeste && !c.semTesteGratis)
-        itens.push(`<li><button type="button" class="dropdown-item btn-cobranca" data-acao="prorrogar" data-id="${t.id}" data-nome="${nome}"><i class="bi bi-calendar-plus"></i> Prorrogar teste…</button></li>`);
-    if (podeTeste)
-        itens.push(`<li><button type="button" class="dropdown-item btn-cobranca" data-acao="liberar" data-id="${t.id}" data-nome="${nome}"><i class="bi bi-arrow-counterclockwise"></i> Liberar novo teste…</button></li>`);
-    itens.push(c.isenta
-        ? `<li><button type="button" class="dropdown-item btn-cobranca" data-acao="remover-isencao" data-id="${t.id}" data-nome="${nome}"><i class="bi bi-x-circle"></i> Remover isenção</button></li>`
-        : `<li><button type="button" class="dropdown-item btn-cobranca" data-acao="isentar" data-id="${t.id}" data-nome="${nome}"><i class="bi bi-gift"></i> Isentar de cobrança…</button></li>`);
-    itens.push(exportacao);
-    return `<div class="dropdown">
-        <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-credit-card"></i></button>
-        <ul class="dropdown-menu dropdown-menu-end">${itens.join('')}</ul>
-    </div>`;
+    return [
+        podeTeste && !c.semTesteGratis && item('prorrogar', 'bi-calendar-plus', 'Prorrogar teste…'),
+        podeTeste && item('liberar', 'bi-arrow-counterclockwise', 'Liberar novo teste…'),
+        c.isenta ? item('remover-isencao', 'bi-x-circle', 'Remover isenção') : item('isentar', 'bi-gift', 'Isentar de cobrança…'),
+        { divisor: true },
+        exportacao
+    ];
 }
 
 // StatusPremioIndicacao (Domain.Enums): 1 Pendente, 2 Aplicando, 3 Aplicado, 4 Erro.
@@ -177,20 +165,20 @@ document.addEventListener('DOMContentLoaded', function () {
             {
                 data: null, orderable: false,
                 render: (d, type, t) => {
-                    const nome = escaparHtml(t.nomeFantasia || t.razaoSocial);
+                    const nome = t.nomeFantasia || t.razaoSocial;
                     // Encerrada com dados já apagados: não há mais o que fazer pela tela.
                     if (t.dadosExpurgadosEm) return '';
+                    const dados = { id: t.id, nome };
                     const principal = t.ativo
-                        ? `<button type="button" class="btn btn-sm btn-outline-danger btn-suspender" data-id="${t.id}" data-nome="${nome}"><i class="bi bi-pause-circle"></i> Suspender</button>`
-                        : `<button type="button" class="btn btn-sm btn-outline-success btn-reativar" data-id="${t.id}" data-nome="${nome}" data-encerrada="${t.encerradaEm ? '1' : ''}"><i class="bi bi-play-circle"></i> ${t.encerradaEm ? 'Reabrir' : 'Reativar'}</button>`;
-                    const encerrar = !t.encerradaEm
-                        ? ` <button type="button" class="btn btn-sm btn-outline-dark btn-encerrar-tenant" data-id="${t.id}" data-nome="${nome}" title="Encerrar a conta (apaga os dados em 90 dias)"><i class="bi bi-door-closed"></i></button>`
-                        : '';
-                    // Só aparece para conta que nunca teve nota (a regra completa é conferida no servidor).
-                    const excluir = t.notasTotal === 0
-                        ? ` <button type="button" class="btn btn-sm btn-outline-danger btn-excluir-tenant" data-id="${t.id}" data-nome="${nome}" title="Excluir definitivamente"><i class="bi bi-trash"></i></button>`
-                        : '';
-                    return `<div class="d-flex gap-1">${principal}${t.encerradaEm ? '' : menuCobranca(t, nome)}${encerrar}${excluir}</div>`;
+                        ? { classe: 'btn-suspender', icone: 'bi-pause-circle', texto: 'Suspender', cor: 'danger', mostrarTexto: true, dados }
+                        : { classe: 'btn-reativar', icone: 'bi-play-circle', texto: t.encerradaEm ? 'Reabrir' : 'Reativar', cor: 'success', mostrarTexto: true, dados: { ...dados, encerrada: t.encerradaEm ? '1' : '' } };
+                    return acoesDaLinha([principal], [
+                        ...(t.encerradaEm ? [] : itensCobranca(t, nome)),
+                        { divisor: true },
+                        !t.encerradaEm && { classe: 'btn-encerrar-tenant', icone: 'bi-door-closed', texto: 'Encerrar a conta (apaga os dados em 90 dias)', dados },
+                        // Só aparece para conta que nunca teve nota (a regra completa é conferida no servidor).
+                        t.notasTotal === 0 && { classe: 'btn-excluir-tenant', icone: 'bi-trash', texto: 'Excluir definitivamente', perigo: true, dados }
+                    ]);
                 }
             }
         ],

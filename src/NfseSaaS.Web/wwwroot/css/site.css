@@ -382,7 +382,7 @@ a:hover {
 .page-head {
     display: flex;
     justify-content: space-between;
-    align-items: flex-end;
+    align-items: center;
     gap: 16px;
     margin-bottom: 20px;
     flex-wrap: wrap;
@@ -961,6 +961,126 @@ div.dt-container .dt-paging .page-item.active .page-link {
 div.dt-container .dt-paging .page-item.disabled .page-link {
     color: #94a3b8;
     background: var(--surface);
+}
+
+/* =============== Padrão das listas (exportacao.js) ===============
+   Cabeçalho da página com as ações; uma barra (pesquisa + filtros) acima
+   da tabela; "Exibir/Mostrando/paginação" embaixo. */
+
+.acoes-pagina {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.barra-lista {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.barra-lista .form-select,
+.barra-lista .form-control {
+    width: auto;
+}
+
+.barra-lista .filtro-rotulado {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: calc(13px * var(--escala-fonte));
+    color: var(--muted);
+}
+
+.barra-lista .filtro-rotulado .form-select,
+.barra-lista .filtro-rotulado .form-control {
+    min-width: 0;
+}
+
+/* Grupo de filtros da barra (display sem !important: d-none ainda esconde). */
+.filtros-lista {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.busca-lista {
+    position: relative;
+    flex: 1 1 240px;
+    max-width: 360px;
+    margin: 0;
+}
+
+.busca-lista i {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
+}
+
+.barra-lista .busca-lista input {
+    width: 100%;
+    padding-left: 32px;
+}
+
+.barra-selecao {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    flex: 1 1 320px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: var(--primary-ring);
+    color: var(--text);
+    font-size: calc(13px * var(--escala-fonte));
+}
+
+.acoes-linha {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.acoes-linha .dropdown-item {
+    font-size: calc(13px * var(--escala-fonte));
+}
+
+/* Totais do rodapé (Contratos) sem conteúdo: sem a linha de borda. */
+#totais-contratos:empty {
+    display: none !important;
+}
+
+/* Linha que abre os detalhes ao clicar (ex.: Notas). */
+tr.linha-clicavel {
+    cursor: pointer;
+}
+
+div.dt-container .dt-layout-row:last-child {
+    margin-top: 12px;
+}
+
+div.dt-container .dt-info {
+    display: inline-block;
+    margin-left: 12px;
+}
+
+@media (max-width: 768px) {
+    .busca-lista {
+        max-width: none;
+        flex-basis: 100%;
+    }
+
+    .acoes-pagina {
+        width: 100%;
+    }
 }
 
 .dt-buttons.btn-group {

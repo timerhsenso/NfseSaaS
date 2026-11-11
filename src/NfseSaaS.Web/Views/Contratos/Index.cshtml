@@ -6,23 +6,30 @@
     var podeEditar = User.PodeAlterar(NfseSaaS.Application.Authorization.TelaCatalogo.Contratos);
 }
 
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span>Contratos cadastrados</span>
-        <div class="d-flex align-items-center gap-2">
-            <div id="botoes-exportacao-tabela-contratos"></div>
-            @if (podeEditar)
-            {
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-verificar-reajustes" data-requer-empresa
-                        title="Calcula agora os reajustes de aniversário pelo índice (o sistema também faz isso todo dia às 10:10)">
-                    <i class="bi bi-arrow-repeat"></i> Verificar reajustes
-                </button>
-                <button type="button" class="btn btn-primary btn-sm" id="btn-novo-contrato" data-requer-empresa>
-                    <i class="bi bi-plus-lg"></i> Novo contrato
-                </button>
-            }
+@section AcoesPagina {
+    <div id="botoes-exportacao-tabela-contratos"></div>
+    @if (podeEditar)
+    {
+        <div class="dropdown">
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="dropdown" aria-expanded="false" title="Mais ações" aria-label="Mais ações">
+                <i class="bi bi-three-dots" aria-hidden="true"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                    <button type="button" class="dropdown-item" id="btn-verificar-reajustes" data-requer-empresa
+                            title="Calcula agora os reajustes de aniversário pelo índice (o sistema também faz isso todo dia às 10:10)">
+                        <i class="bi bi-arrow-repeat me-2" aria-hidden="true"></i>Verificar reajustes agora
+                    </button>
+                </li>
+            </ul>
         </div>
-    </div>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-novo-contrato" data-requer-empresa>
+            <i class="bi bi-plus-lg"></i> Novo contrato
+        </button>
+    }
+}
+
+<div class="card">
     <div class="card-body">
         <div id="resultado-verificar-reajustes" class="d-none"></div>
         <table id="tabela-contratos" class="table table-striped table-bordered w-100">

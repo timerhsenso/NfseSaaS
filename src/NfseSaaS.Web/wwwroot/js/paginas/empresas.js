@@ -40,27 +40,23 @@ document.addEventListener('DOMContentLoaded', function () {
         colunas.push({
             data: null,
             orderable: false,
-            render: (data, type, empresa) => `
-                <button type="button" class="btn btn-sm btn-outline-primary btn-editar" data-id="${empresa.id}">
-                    <i class="bi bi-pencil"></i>
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-info btn-certificado" data-id="${empresa.id}" data-nome="${empresa.razaoSocial}">
-                    <i class="bi bi-file-earmark-lock"></i>
-                </button>
-                ${empresa.tipoAmbiente === AMBIENTE_HOMOLOGACAO ? `
-                <button type="button" class="btn btn-sm btn-outline-danger btn-alterar-ambiente" data-id="${empresa.id}" data-nome="${empresa.razaoSocial}" data-novo-ambiente="${AMBIENTE_PRODUCAO}" title="Promover para Produção">
-                    <i class="bi bi-rocket-takeoff"></i>
-                </button>` : `
-                <button type="button" class="btn btn-sm btn-outline-secondary btn-alterar-ambiente" data-id="${empresa.id}" data-nome="${empresa.razaoSocial}" data-novo-ambiente="${AMBIENTE_HOMOLOGACAO}" title="Voltar para Homologação">
-                    <i class="bi bi-arrow-counterclockwise"></i>
-                </button>`}
-                <button type="button" class="btn btn-sm btn-outline-warning btn-alternar-ativo" data-id="${empresa.id}" data-ativo="${empresa.ativo}">
-                    <i class="bi ${empresa.ativo ? 'bi-toggle-on' : 'bi-toggle-off'}"></i>
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-danger btn-excluir" data-id="${empresa.id}">
-                    <i class="bi bi-trash"></i>
-                </button>
-            `
+            render: (data, type, empresa) => {
+                const dados = { id: empresa.id, nome: empresa.razaoSocial };
+                const homologacao = empresa.tipoAmbiente === AMBIENTE_HOMOLOGACAO;
+                return acoesDaLinha(
+                    [
+                        { classe: 'btn-editar', icone: 'bi-pencil', texto: 'Editar', cor: 'primary', dados: { id: empresa.id } },
+                        { classe: 'btn-certificado', icone: 'bi-file-earmark-lock', texto: 'Certificado digital', dados }
+                    ],
+                    [
+                        homologacao
+                            ? { classe: 'btn-alterar-ambiente', icone: 'bi-rocket-takeoff', texto: 'Promover para Produção', dados: { ...dados, novoAmbiente: AMBIENTE_PRODUCAO } }
+                            : { classe: 'btn-alterar-ambiente', icone: 'bi-arrow-counterclockwise', texto: 'Voltar para Homologação', dados: { ...dados, novoAmbiente: AMBIENTE_HOMOLOGACAO } },
+                        { classe: 'btn-alternar-ativo', icone: empresa.ativo ? 'bi-toggle-off' : 'bi-toggle-on', texto: empresa.ativo ? 'Inativar' : 'Ativar', dados: { id: empresa.id, ativo: empresa.ativo } },
+                        { divisor: true },
+                        { classe: 'btn-excluir', icone: 'bi-trash', texto: 'Excluir', perigo: true, dados: { id: empresa.id } }
+                    ]);
+            }
         });
     }
 

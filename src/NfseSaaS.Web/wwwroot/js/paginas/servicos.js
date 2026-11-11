@@ -28,17 +28,13 @@ document.addEventListener('DOMContentLoaded', function () {
         colunas.push({
             data: null,
             orderable: false,
-            render: (data, type, servico) => `
-                <button type="button" class="btn btn-sm btn-outline-primary btn-editar" data-id="${servico.id}">
-                    <i class="bi bi-pencil"></i>
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-warning btn-alternar-ativo" data-id="${servico.id}" data-ativo="${servico.ativo}">
-                    <i class="bi ${servico.ativo ? 'bi-toggle-on' : 'bi-toggle-off'}"></i>
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-danger btn-excluir" data-id="${servico.id}">
-                    <i class="bi bi-trash"></i>
-                </button>
-            `
+            render: (data, type, servico) => acoesDaLinha(
+                [{ classe: 'btn-editar', icone: 'bi-pencil', texto: 'Editar', cor: 'primary', dados: { id: servico.id } }],
+                [
+                    { classe: 'btn-alternar-ativo', icone: servico.ativo ? 'bi-toggle-off' : 'bi-toggle-on', texto: servico.ativo ? 'Inativar' : 'Ativar', dados: { id: servico.id, ativo: servico.ativo } },
+                    { divisor: true },
+                    { classe: 'btn-excluir', icone: 'bi-trash', texto: 'Excluir', perigo: true, dados: { id: servico.id } }
+                ])
         });
     }
 

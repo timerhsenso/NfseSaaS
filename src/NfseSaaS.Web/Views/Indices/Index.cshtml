@@ -5,26 +5,34 @@
     var operador = User.EhOperadorPlataforma();
 }
 
+@section AcoesPagina {
+    @if (operador)
+    {
+        <div class="dropdown">
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="dropdown" aria-expanded="false" title="Mais ações" aria-label="Mais ações">
+                <i class="bi bi-three-dots" aria-hidden="true"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                    <button type="button" class="dropdown-item" id="btn-importar-indices">
+                        <i class="bi bi-cloud-download me-2" aria-hidden="true"></i>Importar do Banco Central agora
+                    </button>
+                </li>
+            </ul>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-lancar-indice">
+            <i class="bi bi-plus-lg"></i> Lançar valor
+        </button>
+    }
+}
+
 <div class="card mb-3">
-    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <div class="d-flex align-items-center gap-2">
+    <div class="card-body">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
             <label class="form-label mb-0" for="indice-selecionado">Índice</label>
             <select class="form-select form-select-sm" id="indice-selecionado" style="width:auto"></select>
             <span class="text-muted small" id="indice-info"></span>
         </div>
-        @if (operador)
-        {
-            <div class="d-flex align-items-center gap-2">
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-importar-indices">
-                    <i class="bi bi-cloud-download"></i> Importar agora
-                </button>
-                <button type="button" class="btn btn-primary btn-sm" id="btn-lancar-indice">
-                    <i class="bi bi-plus-lg"></i> Lançar valor
-                </button>
-            </div>
-        }
-    </div>
-    <div class="card-body">
         <div id="resultado-importacao" class="alert d-none"></div>
         <p class="text-muted small mb-0">
             Variações mensais importadas todo dia do Banco Central (SGS). O reajuste anual do contrato usa o

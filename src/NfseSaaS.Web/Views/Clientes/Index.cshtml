@@ -6,19 +6,17 @@
     var podeEditar = User.PodeAlterar(NfseSaaS.Application.Authorization.TelaCatalogo.Clientes);
 }
 
+@section AcoesPagina {
+    <div id="botoes-exportacao-tabela-clientes"></div>
+    @if (podeEditar)
+    {
+        <button type="button" class="btn btn-primary btn-sm" id="btn-novo-cliente" data-requer-empresa>
+            <i class="bi bi-plus-lg"></i> Novo cliente
+        </button>
+    }
+}
+
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span>Clientes cadastrados</span>
-        <div class="d-flex align-items-center gap-2">
-            <div id="botoes-exportacao-tabela-clientes"></div>
-            @if (podeEditar)
-            {
-                <button type="button" class="btn btn-primary btn-sm" id="btn-novo-cliente" data-requer-empresa>
-                    <i class="bi bi-plus-lg"></i> Novo cliente
-                </button>
-            }
-        </div>
-    </div>
     <div class="card-body">
         <table id="tabela-clientes" class="table table-striped table-bordered w-100">
             <thead>

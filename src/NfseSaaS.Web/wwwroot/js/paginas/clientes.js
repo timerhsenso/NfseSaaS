@@ -32,17 +32,13 @@ document.addEventListener('DOMContentLoaded', function () {
         colunas.push({
             data: null,
             orderable: false,
-            render: (data, type, cliente) => `
-                <button type="button" class="btn btn-sm btn-outline-primary btn-editar" data-id="${cliente.id}">
-                    <i class="bi bi-pencil"></i>
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-warning btn-alternar-ativo" data-id="${cliente.id}" data-ativo="${cliente.ativo}">
-                    <i class="bi ${cliente.ativo ? 'bi-toggle-on' : 'bi-toggle-off'}"></i>
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-danger btn-excluir" data-id="${cliente.id}">
-                    <i class="bi bi-trash"></i>
-                </button>
-            `
+            render: (data, type, cliente) => acoesDaLinha(
+                [{ classe: 'btn-editar', icone: 'bi-pencil', texto: 'Editar', cor: 'primary', dados: { id: cliente.id } }],
+                [
+                    { classe: 'btn-alternar-ativo', icone: cliente.ativo ? 'bi-toggle-off' : 'bi-toggle-on', texto: cliente.ativo ? 'Inativar' : 'Ativar', dados: { id: cliente.id, ativo: cliente.ativo } },
+                    { divisor: true },
+                    { classe: 'btn-excluir', icone: 'bi-trash', texto: 'Excluir', perigo: true, dados: { id: cliente.id } }
+                ])
         });
     }
 

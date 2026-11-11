@@ -230,6 +230,11 @@
             <section class="content">
                 <div class="page-head">
                     <h1>@ViewData["Title"]</h1>
+                    @if (IsSectionDefined("AcoesPagina"))
+                    {
+                        @* Ações da tela: Exportar ▾, ⋯ e a ação principal (padrão das listas, exportacao.js). *@
+                        <div class="acoes-pagina">@await RenderSectionAsync("AcoesPagina")</div>
+                    }
                 </div>
                 @if (avisoNovosTermos)
                 {

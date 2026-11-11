@@ -2,6 +2,11 @@
     ViewData["Title"] = "Planos e preços";
 }
 
+@section AcoesPagina {
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-atualizar-planos"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
+    <button type="button" class="btn btn-primary btn-sm" id="btn-novo-plano"><i class="bi bi-plus-lg"></i> Novo plano</button>
+}
+
 <div class="alert alert-info small">
     <i class="bi bi-info-circle"></i>
     Preço novo vale <strong>só para novas assinaturas</strong>: quem já assina continua pagando o preço contratado,
@@ -23,13 +28,7 @@
 </div>
 
 <div class="card mt-3">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-tags"></i> Planos</span>
-        <div class="d-flex gap-2">
-            <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-atualizar-planos"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
-            <button type="button" class="btn btn-primary btn-sm" id="btn-novo-plano"><i class="bi bi-plus-lg"></i> Novo plano</button>
-        </div>
-    </div>
+    <div class="card-header"><i class="bi bi-tags"></i> Planos</div>
     <div class="card-body">
         <table id="tabela-planos" class="table w-100">
             <thead>

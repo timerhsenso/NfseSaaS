@@ -5,16 +5,16 @@
     var podeExcluir = User.PodeExcluir(NfseSaaS.Application.Authorization.TelaCatalogo.Grupos);
 }
 
+@section AcoesPagina {
+    @if (podeIncluir)
+    {
+        <button type="button" class="btn btn-primary btn-sm" id="btn-novo-grupo">
+            <i class="bi bi-plus-lg"></i> Novo grupo
+        </button>
+    }
+}
+
 <div class="card" id="pagina-grupos" data-pode-alterar="@podeAlterar.ToString().ToLowerInvariant()" data-pode-excluir="@podeExcluir.ToString().ToLowerInvariant()">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span>Grupos de permissão</span>
-        @if (podeIncluir)
-        {
-            <button type="button" class="btn btn-primary btn-sm" id="btn-novo-grupo">
-                <i class="bi bi-plus-lg"></i> Novo grupo
-            </button>
-        }
-    </div>
     <div class="card-body">
         <table id="tabela-grupos" class="table table-striped table-bordered w-100">
             <thead>

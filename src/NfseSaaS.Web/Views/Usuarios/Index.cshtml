@@ -2,9 +2,17 @@
     ViewData["Title"] = "Usuários";
 }
 
-<div class="card mb-4">
-    <div class="card-header">Convidar usuário</div>
+@section AcoesPagina {
+    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#painel-convite"
+            aria-expanded="false" aria-controls="painel-convite">
+        <i class="bi bi-person-plus"></i> Convidar usuário
+    </button>
+}
+
+@* Convite fica recolhido: abre pelo botão do cabeçalho (lista primeiro). *@
+<div class="card mb-4 collapse" id="painel-convite">
     <div class="card-body">
+        <h6 class="mb-3">Convidar usuário</h6>
         <div id="erro-convite" class="alert alert-danger d-none"></div>
         <div id="sucesso-convite" class="alert alert-success d-none"></div>
 
@@ -25,7 +33,6 @@
 </div>
 
 <div class="card">
-    <div class="card-header">Usuários</div>
     <div class="card-body">
         <table id="tabela-usuarios" class="table table-striped table-bordered w-100">
             <thead>

@@ -23,28 +23,14 @@ document.addEventListener('DOMContentLoaded', function () {
             {
                 data: null,
                 orderable: false,
-                render: (data, type, grupo) => {
-                    let botoes = `
-                        <button type="button" class="btn btn-sm btn-outline-primary btn-matriz" data-id="${grupo.id}" data-nome="${grupo.nome}" data-admin="${grupo.ehAdministrador}" title="Permissões">
-                            <i class="bi bi-shield-check"></i>
-                        </button>
-                    `;
-                    if (podeAlterar) {
-                        botoes += `
-                            <button type="button" class="btn btn-sm btn-outline-secondary btn-editar-grupo" data-id="${grupo.id}" data-nome="${grupo.nome}" data-descricao="${grupo.descricao || ''}" title="Renomear">
-                                <i class="bi bi-pencil"></i>
-                            </button>
-                        `;
-                    }
-                    if (podeExcluir && !grupo.ehAdministrador) {
-                        botoes += `
-                            <button type="button" class="btn btn-sm btn-outline-danger btn-excluir-grupo" data-id="${grupo.id}" title="Excluir">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        `;
-                    }
-                    return botoes;
-                }
+                render: (data, type, grupo) => acoesDaLinha(
+                    [
+                        { classe: 'btn-matriz', icone: 'bi-shield-check', texto: 'Permissões', cor: 'primary', dados: { id: grupo.id, nome: grupo.nome, admin: grupo.ehAdministrador } },
+                        podeAlterar && { classe: 'btn-editar-grupo', icone: 'bi-pencil', texto: 'Renomear', dados: { id: grupo.id, nome: grupo.nome, descricao: grupo.descricao || '' } }
+                    ],
+                    [
+                        podeExcluir && !grupo.ehAdministrador && { classe: 'btn-excluir-grupo', icone: 'bi-trash', texto: 'Excluir', perigo: true, dados: { id: grupo.id } }
+                    ])
             }
         ],
         order: [[0, 'asc']],

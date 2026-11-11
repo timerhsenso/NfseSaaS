@@ -61,49 +61,27 @@ async function carregarGruposParaSelects() {
 }
 
 function montarAcoes(usuario) {
+    const dados = { id: usuario.id, email: usuario.email, grupoId: usuario.grupoId || '' };
+
     if (usuario.pendente) {
-        return `
-            <button type="button" class="btn btn-sm btn-outline-primary btn-reenviar" data-id="${usuario.id}" title="Reenviar e-mail de convite">
-                <i class="bi bi-envelope-arrow-up"></i>
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-danger btn-excluir-usuario" data-id="${usuario.id}" title="Excluir convite">
-                <i class="bi bi-trash"></i>
-            </button>
-        `;
+        return acoesDaLinha(
+            [{ classe: 'btn-reenviar', icone: 'bi-envelope-arrow-up', texto: 'Reenviar e-mail de convite', cor: 'primary', dados }],
+            [{ classe: 'btn-excluir-usuario', icone: 'bi-trash', texto: 'Excluir convite', perigo: true, dados }]);
     }
 
+    const grupo = { classe: 'btn-editar-grupo', icone: 'bi-person-gear', texto: 'Alterar grupo', cor: 'primary', dados };
     if (usuario.ehVoce) {
-        return `
-            <button type="button" class="btn btn-sm btn-outline-primary btn-editar-grupo" data-id="${usuario.id}" data-email="${usuario.email}" data-grupo-id="${usuario.grupoId || ''}" title="Alterar grupo">
-                <i class="bi bi-person-gear"></i>
-            </button>
-            <span class="text-muted ms-1">Você</span>
-        `;
+        return acoesDaLinha([grupo]) + ' <span class="text-muted ms-1">Você</span>';
     }
 
-    const botaoGrupo = `
-        <button type="button" class="btn btn-sm btn-outline-primary btn-editar-grupo" data-id="${usuario.id}" data-email="${usuario.email}" data-grupo-id="${usuario.grupoId || ''}" title="Alterar grupo">
-            <i class="bi bi-person-gear"></i>
-        </button>
-    `;
-
-    const botaoResetarSenha = `
-        <button type="button" class="btn btn-sm btn-outline-secondary btn-resetar-senha" data-id="${usuario.id}" data-email="${usuario.email}" title="Resetar senha">
-            <i class="bi bi-key"></i>
-        </button>
-    `;
-
-    const botaoBloqueio = usuario.bloqueado
-        ? `<button type="button" class="btn btn-sm btn-outline-success btn-desbloquear" data-id="${usuario.id}" title="Desbloquear acesso"><i class="bi bi-unlock"></i></button>`
-        : `<button type="button" class="btn btn-sm btn-outline-warning btn-bloquear" data-id="${usuario.id}" title="Bloquear acesso"><i class="bi bi-lock"></i></button>`;
-
-    const botaoExcluir = `
-        <button type="button" class="btn btn-sm btn-outline-danger btn-excluir-usuario" data-id="${usuario.id}" title="Excluir usuário">
-            <i class="bi bi-trash"></i>
-        </button>
-    `;
-
-    return botaoGrupo + botaoResetarSenha + botaoBloqueio + botaoExcluir;
+    return acoesDaLinha([grupo], [
+        { classe: 'btn-resetar-senha', icone: 'bi-key', texto: 'Resetar senha', dados },
+        usuario.bloqueado
+            ? { classe: 'btn-desbloquear', icone: 'bi-unlock', texto: 'Desbloquear acesso', dados }
+            : { classe: 'btn-bloquear', icone: 'bi-lock', texto: 'Bloquear acesso', dados },
+        { divisor: true },
+        { classe: 'btn-excluir-usuario', icone: 'bi-trash', texto: 'Excluir usuário', perigo: true, dados }
+    ]);
 }
 
 async function carregarUsuarios() {

@@ -89,17 +89,14 @@ document.addEventListener('DOMContentLoaded', function () {
         colunas.push({
             data: null,
             orderable: false,
-            render: (data, type, contrato) => `
-                <button type="button" class="btn btn-sm btn-outline-secondary btn-historico" data-id="${contrato.id}" data-descricao="${escaparHtml(rotuloContrato(contrato))}" title="Histórico de valores e reajustes">
-                    <i class="bi bi-clock-history"></i>
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-primary btn-editar" data-id="${contrato.id}">
-                    <i class="bi bi-pencil"></i>
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-danger btn-excluir" data-id="${contrato.id}">
-                    <i class="bi bi-trash"></i>
-                </button>
-            `
+            render: (data, type, contrato) => acoesDaLinha(
+                [
+                    { classe: 'btn-editar', icone: 'bi-pencil', texto: 'Editar', cor: 'primary', dados: { id: contrato.id } },
+                    { classe: 'btn-historico', icone: 'bi-clock-history', texto: 'Histórico de valores e reajustes', dados: { id: contrato.id, descricao: rotuloContrato(contrato) } }
+                ],
+                [
+                    { classe: 'btn-excluir', icone: 'bi-trash', texto: 'Excluir', perigo: true, dados: { id: contrato.id } }
+                ])
         });
     }
 

@@ -2,6 +2,18 @@
     ViewData["Title"] = "Contas da plataforma";
 }
 
+@section AcoesPagina {
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-atualizar-plataforma"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
+    <div class="dropdown">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="dropdown" aria-expanded="false" title="Mais ações" aria-label="Mais ações">
+            <i class="bi bi-three-dots" aria-hidden="true"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li><a href="/hangfire" class="dropdown-item" target="_blank" rel="noopener"><i class="bi bi-cpu me-2" aria-hidden="true"></i>Jobs (Hangfire)</a></li>
+        </ul>
+    </div>
+}
+
 <div class="stats">
     <div class="stat">
         <div class="stat-top"><span class="stat-label">Contas ativas</span><div class="stat-icon"><i class="bi bi-buildings"></i></div></div>
@@ -54,9 +66,9 @@
 </div>
 
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <span>Contas (clientes do micoempresa)</span>
-        <div class="d-flex align-items-center gap-2">
+    <div class="card-body">
+        <h6 class="mb-3">Contas (clientes do micoempresa)</h6>
+        <div class="barra-lista" id="barra-tabela-tenants">
             <label class="visually-hidden" for="filtro-situacao">Filtrar contas</label>
             <select class="form-select form-select-sm" id="filtro-situacao" style="width:auto">
                 <option value="">Todas as contas</option>
@@ -70,11 +82,7 @@
                 <option value="suspensa">Suspensas</option>
                 <option value="encerrada">Encerradas</option>
             </select>
-            <a href="/hangfire" class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener"><i class="bi bi-cpu"></i> Jobs (Hangfire)</a>
-            <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-atualizar-plataforma"><i class="bi bi-arrow-clockwise"></i> Atualizar</button>
         </div>
-    </div>
-    <div class="card-body">
         <table id="tabela-tenants" class="table w-100">
             <thead>
                 <tr>

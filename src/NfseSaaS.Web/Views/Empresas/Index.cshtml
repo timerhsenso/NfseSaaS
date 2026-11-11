@@ -6,19 +6,17 @@
     var podeEditar = User.PodeAlterar(NfseSaaS.Application.Authorization.TelaCatalogo.Empresas);
 }
 
+@section AcoesPagina {
+    <div id="botoes-exportacao-tabela-empresas"></div>
+    @if (podeEditar)
+    {
+        <button type="button" class="btn btn-primary btn-sm" id="btn-nova-empresa">
+            <i class="bi bi-plus-lg"></i> Nova empresa
+        </button>
+    }
+}
+
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span>Empresas cadastradas</span>
-        <div class="d-flex align-items-center gap-2">
-            <div id="botoes-exportacao-tabela-empresas"></div>
-            @if (podeEditar)
-            {
-                <button type="button" class="btn btn-primary btn-sm" id="btn-nova-empresa">
-                    <i class="bi bi-plus-lg"></i> Nova empresa
-                </button>
-            }
-        </div>
-    </div>
     <div class="card-body">
         <table id="tabela-empresas" class="table table-striped table-bordered w-100">
             <thead>
