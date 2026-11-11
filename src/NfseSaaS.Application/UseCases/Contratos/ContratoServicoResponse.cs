@@ -6,4 +6,5 @@ public sealed record ContratoServicoResponse(
     string ServicoDescricao,
     decimal Quantidade,
     decimal ValorUnitario,
-    decimal ValorTotal);
+    decimal ValorTotal,
+    bool ValorVariavel = false);

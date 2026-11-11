@@ -36,4 +36,7 @@ public sealed record EmitirNfseRequest(
     // (cMotivo) e a descrição (xMotivo, obrigatória no 99). Ver RegrasSubstituicao.
     Guid? SubstituirNfseId = null,
     string? MotivoSubstituicao = null,
-    string? DescricaoMotivoSubstituicao = null);
+    string? DescricaoMotivoSubstituicao = null,
+    // Valor de cada serviço do Contrato que compõe esta nota (só gravado;
+    // a soma tem que bater com ValorServico). Nulo = nota sem composição.
+    IReadOnlyList<ItemComposicaoNfse>? Composicao = null);

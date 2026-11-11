@@ -94,6 +94,9 @@ public sealed class NfseConfiguration : IEntityTypeConfiguration<Nfse>
         builder.Property(n => n.SnapshotFiscalJson)
             .HasColumnType("jsonb");
 
+        builder.Property(n => n.ComposicaoValoresJson)
+            .HasColumnType("jsonb");
+
         builder.Property(n => n.Status)
             .HasConversion<string>()
             .HasMaxLength(20);

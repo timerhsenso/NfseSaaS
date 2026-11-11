@@ -758,6 +758,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<decimal>("ValorUnitario")
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<bool>("ValorVariavel")
+                        .HasColumnType("boolean");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ContratoId");
@@ -1396,6 +1399,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<string>("ComposicaoValoresJson")
+                        .HasColumnType("jsonb");
 
                     b.Property<Guid?>("ContratoId")
                         .HasColumnType("uuid");

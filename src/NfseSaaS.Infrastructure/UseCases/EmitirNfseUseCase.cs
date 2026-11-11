@@ -11,6 +11,7 @@ using NfseSaaS.Application.UseCases.Clientes;
 using NfseSaaS.Application.UseCases.Nfse;
 using NfseSaaS.Domain.Enums;
 using NfseSaaS.Domain.Snapshots;
+using NfseSaaS.Infrastructure.Contratos;
 using NfseSaaS.Infrastructure.Persistence;
 using NfseSaaS.Nacional.Exceptions;
 using NfseSaaS.Nacional.Helpers;
@@ -351,6 +352,12 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
             AliquotaIss = issRetido ? aliquotaIss : null,
             CodigoMunicipioPrestacao = localPrestacao,
             SubstituiNfseId = substituida?.Id,
+            // Valor de cada serviço do Contrato. Reenvio e substituição com o
+            // mesmo total herdam a composição da nota anterior.
+            ComposicaoValoresJson = ComposicaoValoresNfse.Serializar(request.Composicao, request.ValorServico)
+                ?? (original is not null && original.ValorServico == request.ValorServico ? original.ComposicaoValoresJson
+                    : substituida is not null && substituida.ValorServico == request.ValorServico ? substituida.ComposicaoValoresJson
+                    : null),
             MotivoSubstituicao = substituida is null ? null : motivoSubstituicao,
             DescricaoMotivoSubstituicao = substituida is null || string.IsNullOrWhiteSpace(descricaoMotivoSubstituicao) ? null : descricaoMotivoSubstituicao.Trim(),
             CstPisCofins = empresa.CstPisCofins,

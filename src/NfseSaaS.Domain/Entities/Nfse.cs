@@ -103,6 +103,14 @@ public sealed class Nfse : BaseEntity, ITenantEntity
     /// </summary>
     public Guid? SubstituiNfseId { get; set; }
 
+    /// <summary>
+    /// Valor de cada serviço do Contrato que compôs esta nota (JSON, ver
+    /// ItemComposicaoNfse). A NFS-e só tem o total; isto é nosso, para a Nota
+    /// Mensal sugerir o "último valor" de cada serviço. Nulo = nota avulsa ou
+    /// emitida antes.
+    /// </summary>
+    public string? ComposicaoValoresJson { get; set; }
+
     /// <summary>cMotivo da substituição (01–05 ou 99).</summary>
     public string? MotivoSubstituicao { get; set; }
 

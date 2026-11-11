@@ -53,6 +53,7 @@ public sealed class ObterNfsePorIdUseCase : IObterNfsePorIdUseCase
             reenviadaComo?.NumeroDps,
             nfse.RejeicaoPermiteReenvio() && reenviadaComo is null,
             nfse.CodigoTributacaoNacional, nfse.CodigoNbs, nfse.TpRetIssqn, nfse.AliquotaIss, nfse.CodigoMunicipioPrestacao,
-            nfse.SubstituiNfseId, substituiNumeroDps, substituidaPor, nfse.MotivoSubstituicao, nfse.DescricaoMotivoSubstituicao);
+            nfse.SubstituiNfseId, substituiNumeroDps, substituidaPor, nfse.MotivoSubstituicao, nfse.DescricaoMotivoSubstituicao,
+            NfseSaaS.Infrastructure.Contratos.ComposicaoValoresNfse.Desserializar(nfse.ComposicaoValoresJson));
     }
 }

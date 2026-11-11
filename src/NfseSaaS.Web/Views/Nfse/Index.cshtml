@@ -275,7 +275,8 @@
 
 @if (podeEmitir)
 {
-    <div class="modal fade" id="modal-nota-mensal" tabindex="-1">
+    <div class="modal fade" id="modal-nota-mensal" tabindex="-1"
+         data-pode-editar-contratos="@(User.PodeAlterar(NfseSaaS.Application.Authorization.TelaCatalogo.Contratos) ? "true" : "false")">
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
@@ -299,13 +300,26 @@
 
                     <div id="nota-mensal-sem-candidatos" class="text-muted small d-none">Nenhum contrato Mensal/Ativo encontrado pra esta Empresa.</div>
 
+                    @* Valor por serviço: variável vem com o último valor; fixo vem do contrato. *@
+                    <div id="barra-nota-mensal" class="d-flex flex-wrap align-items-center gap-2 mb-2 d-none">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-nm-repetir-ultimos"
+                                title="Nos serviços de valor variável das linhas marcadas, usa o valor da última nota">
+                            <i class="bi bi-arrow-repeat"></i> Repetir últimos valores
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="btn-nm-gravar-todos"
+                                title="Nos serviços de valor fixo que você alterou, grava o novo valor no contrato (Histórico de valores)">
+                            <i class="bi bi-save"></i> Gravar alterações nos contratos
+                        </button>
+                        <span class="ms-auto small text-muted" id="total-nota-mensal"></span>
+                    </div>
+
                     <table class="table table-sm table-striped d-none" id="tabela-nota-mensal">
                         <thead>
                             <tr>
                                 <th style="width:30px"></th>
                                 <th>Cliente</th>
                                 <th>Descrição / serviços</th>
-                                <th style="width:140px">Valor</th>
+                                <th style="width:300px">Valor</th>
                                 <th style="width:220px">Status</th>
                             </tr>
                         </thead>

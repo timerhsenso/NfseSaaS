@@ -80,7 +80,7 @@ public sealed class ListarContratosUseCase : IListarContratosUseCase
 
             var servicos = linhasPorContrato
                 .Where(l => l.ContratoId == x.Contrato.Id)
-                .Select(l => new ContratoServicoResponse(l.Linha.Id, l.Linha.ServicoId, l.ServicoDescricao, l.Linha.Quantidade, l.Linha.ValorUnitario, l.Linha.ValorTotal))
+                .Select(l => new ContratoServicoResponse(l.Linha.Id, l.Linha.ServicoId, l.ServicoDescricao, l.Linha.Quantidade, l.Linha.ValorUnitario, l.Linha.ValorTotal, l.Linha.ValorVariavel))
                 .ToList();
 
             pendentes.TryGetValue(x.Contrato.Id, out var pendente);

@@ -14,6 +14,11 @@ public sealed class EmitirNotaMensalLoteRequestValidator : AbstractValidator<Emi
         {
             item.RuleFor(i => i.ContratoId).NotEmpty();
             item.RuleFor(i => i.ValorTotalAjustado).GreaterThan(0).When(i => i.ValorTotalAjustado.HasValue);
+            item.RuleForEach(i => i.Servicos).ChildRules(s =>
+            {
+                s.RuleFor(x => x.ContratoServicoId).NotEmpty();
+                s.RuleFor(x => x.Valor).GreaterThan(0).WithMessage("O valor de cada serviço precisa ser maior que zero.");
+            });
         });
     }
 }

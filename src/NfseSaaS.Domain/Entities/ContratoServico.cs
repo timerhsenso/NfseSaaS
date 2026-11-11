@@ -38,6 +38,13 @@ public sealed class ContratoServico : BaseEntity, ITenantEntity
 
     public decimal ValorUnitario { get; set; }
 
+    /// <summary>
+    /// O valor desta linha muda a cada nota (ex.: horas de suporte). Na Nota
+    /// Mensal ele vem com o último valor emitido em vez do valor do contrato,
+    /// nunca é gravado de volta no contrato e a automação não emite sozinha.
+    /// </summary>
+    public bool ValorVariavel { get; set; }
+
     /// <summary>Nunca persistido — sempre Quantidade * ValorUnitario (ver ContratoServicoConfiguration.Ignore).</summary>
     public decimal ValorTotal => Quantidade * ValorUnitario;
 }

@@ -72,7 +72,8 @@ public sealed class CadastrarContratoUseCase : ICadastrarContratoUseCase
                 ContratoId = contrato.Id,
                 ServicoId = servico.ServicoId,
                 Quantidade = servico.Quantidade,
-                ValorUnitario = servico.ValorUnitario
+                ValorUnitario = servico.ValorUnitario,
+                ValorVariavel = servico.ValorVariavel
             });
         }
 

@@ -76,6 +76,15 @@ public sealed class AtualizarContratoUseCase : IAtualizarContratoUseCase
             .Where(cs => cs.ContratoId == contrato.Id)
             .ToListAsync(cancellationToken);
 
+        // "Valor variável" é só o jeito de sugerir o valor na Nota Mensal:
+        // muda sem virar evento do Histórico de valores.
+        foreach (var atual in linhasAtuais)
+        {
+            var pedido = servicos.FirstOrDefault(s => s.ServicoId == atual.ServicoId);
+            if (pedido is not null)
+                atual.ValorVariavel = pedido.ValorVariavel;
+        }
+
         var mudou = linhasAtuais.Count != servicos.Count
             || linhasAtuais.Any(a => !servicos.Any(d => d.ServicoId == a.ServicoId && d.Quantidade == a.Quantidade && d.ValorUnitario == a.ValorUnitario));
 
@@ -124,7 +133,8 @@ public sealed class AtualizarContratoUseCase : IAtualizarContratoUseCase
                     ContratoId = contrato.Id,
                     ServicoId = novo.ServicoId,
                     Quantidade = novo.Quantidade,
-                    ValorUnitario = novo.ValorUnitario
+                    ValorUnitario = novo.ValorUnitario,
+                    ValorVariavel = novo.ValorVariavel
                 });
             }
         }

@@ -131,7 +131,13 @@ public sealed class ExecutarAutomacaoNotaMensalJob : IExecutarAutomacaoNotaMensa
         // dentro de EmitirNotaMensalLoteUseCase (Id determinístico) —
         // filtrar aqui só evita uma chamada desnecessária à SEFIN pra
         // algo que já sabemos que não vai gerar nota nova.
-        var pendentes = candidatos.Where(c => !c.JaEmitidoNestaCompetencia).ToList();
+        var naoEmitidos = candidatos.Where(c => !c.JaEmitidoNestaCompetencia).ToList();
+
+        // Contrato com serviço de valor variável não sai sozinho: o valor
+        // muda a cada nota e só quem emite sabe o deste mês. Vai para o
+        // e-mail como "precisa de revisão".
+        var paraRevisar = naoEmitidos.Where(c => c.Linhas.Any(l => l.ValorVariavel)).ToList();
+        var pendentes = naoEmitidos.Where(c => !c.Linhas.Any(l => l.ValorVariavel)).ToList();
 
         // Log com as contagens (não só "nenhum pendente") — sem isso,
         // "0 candidatos" (join com Contrato/Cliente não achou nada
@@ -143,7 +149,12 @@ public sealed class ExecutarAutomacaoNotaMensalJob : IExecutarAutomacaoNotaMensa
             empresa.Id, competencia, candidatos.Count, candidatos.Count - pendentes.Count, pendentes.Count);
 
         if (pendentes.Count == 0)
+        {
+            if (paraRevisar.Count > 0)
+                await EnviarEmailResumoAsync(emailQueue, empresa, competencia, Array.Empty<ItemResultadoNotaMensalResponse>(),
+                    Array.Empty<ItemResultadoNotaMensalResponse>(), paraRevisar);
             return;
+        }
 
         var request = new EmitirNotaMensalLoteRequest(
             empresa.Id,
@@ -159,7 +170,7 @@ public sealed class ExecutarAutomacaoNotaMensalJob : IExecutarAutomacaoNotaMensa
             "Automação de Nota Mensal: Empresa {EmpresaId}, competência {Competencia:yyyy-MM} — {Sucessos} emitida(s), {Falhas} falharam.",
             empresa.Id, competencia, sucessos.Count, falhas.Count);
 
-        await EnviarEmailResumoAsync(emailQueue, empresa, competencia, sucessos, falhas);
+        await EnviarEmailResumoAsync(emailQueue, empresa, competencia, sucessos, falhas, paraRevisar);
     }
 
     private static async Task EnviarEmailResumoAsync(
@@ -167,12 +178,15 @@ public sealed class ExecutarAutomacaoNotaMensalJob : IExecutarAutomacaoNotaMensa
         Empresa empresa,
         DateOnly competencia,
         IReadOnlyList<ItemResultadoNotaMensalResponse> sucessos,
-        IReadOnlyList<ItemResultadoNotaMensalResponse> falhas)
+        IReadOnlyList<ItemResultadoNotaMensalResponse> falhas,
+        IReadOnlyList<ContratoCandidatoNotaMensalResponse> paraRevisar)
     {
         var nomeCompetencia = competencia.ToString("MM/yyyy");
-        var assunto = falhas.Count == 0
-            ? $"Nota Mensal {nomeCompetencia} emitida — {empresa.RazaoSocial}"
-            : $"Nota Mensal {nomeCompetencia} — {sucessos.Count} emitida(s), {falhas.Count} com falha — {empresa.RazaoSocial}";
+        var assunto = falhas.Count > 0
+            ? $"Nota Mensal {nomeCompetencia} — {sucessos.Count} emitida(s), {falhas.Count} com falha — {empresa.RazaoSocial}"
+            : paraRevisar.Count > 0
+                ? $"Nota Mensal {nomeCompetencia} — {sucessos.Count} emitida(s), {paraRevisar.Count} aguardando o valor — {empresa.RazaoSocial}"
+                : $"Nota Mensal {nomeCompetencia} emitida — {empresa.RazaoSocial}";
 
         var corpo = new StringBuilder();
         corpo.Append($"<p>A automação de Nota Mensal da competência <strong>{nomeCompetencia}</strong> rodou para <strong>{WebUtility.HtmlEncode(empresa.RazaoSocial)}</strong>.</p>");
@@ -187,6 +201,14 @@ public sealed class ExecutarAutomacaoNotaMensalJob : IExecutarAutomacaoNotaMensa
                 corpo.Append($"<li>{WebUtility.HtmlEncode(falha.ClienteNome)} — {WebUtility.HtmlEncode(falha.DescricaoNota)}: {motivo}</li>");
             }
             corpo.Append("</ul><p>Esses contratos podem ser emitidos manualmente pela tela de Nota Mensal.</p>");
+        }
+
+        if (paraRevisar.Count > 0)
+        {
+            corpo.Append($"<p><strong>{paraRevisar.Count}</strong> contrato(s) com serviço de <strong>valor variável</strong> aguardam o valor deste mês:</p><ul>");
+            foreach (var c in paraRevisar)
+                corpo.Append($"<li>{WebUtility.HtmlEncode(c.ClienteNome)} — {WebUtility.HtmlEncode(c.Descricao)}</li>");
+            corpo.Append("</ul><p>Informe os valores e emita pela tela de Nota Mensal (o último valor de cada serviço já vem sugerido).</p>");
         }
 
         // usuarioId: null — não foi um clique de usuário que disparou

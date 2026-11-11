@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.NotaMensal;
 using NfseSaaS.Domain.Enums;
+using NfseSaaS.Infrastructure.Contratos;
 using NfseSaaS.Infrastructure.Persistence;
 
 namespace NfseSaaS.Infrastructure.UseCases;
@@ -68,6 +69,32 @@ public sealed class ListarCandidatosNotaMensalUseCase : IListarCandidatosNotaMen
             .Select(m => new { m.ContratoId, m.Status, m.DataVigencia })
             .ToListAsync(cancellationToken);
 
+        // Último valor de cada serviço: a nota autorizada mais recente do
+        // contrato ANTES desta competência, por código de tributação (cada
+        // código vira uma nota). Olha até 13 meses para trás.
+        var limiteHistorico = inicioMes.AddMonths(-13);
+        var notasAnteriores = await _db.NotasFiscais.AsNoTracking()
+            .Where(n => n.ContratoId != null && contratoIds.Contains(n.ContratoId.Value)
+                && n.Status == NfseStatus.Autorizada
+                && n.DataCompetencia < inicioMes && n.DataCompetencia >= limiteHistorico)
+            .Select(n => new { ContratoId = n.ContratoId!.Value, n.CodigoTributacaoNacional, n.DataCompetencia, n.CreatedAt, n.ValorServico, n.ComposicaoValoresJson })
+            .ToListAsync(cancellationToken);
+        var ultimaPorGrupo = notasAnteriores
+            .GroupBy(n => (n.ContratoId, n.CodigoTributacaoNacional))
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(n => n.DataCompetencia).ThenByDescending(n => n.CreatedAt).First());
+
+        (decimal? Valor, DateOnly? Competencia) Ultimo(Guid contratoId, Guid contratoServicoId, string codigo, int linhasDoMesmoCodigo)
+        {
+            if (!ultimaPorGrupo.TryGetValue((contratoId, codigo), out var nota))
+                return (null, null);
+            var item = ComposicaoValoresNfse.Desserializar(nota.ComposicaoValoresJson).FirstOrDefault(i => i.ContratoServicoId == contratoServicoId);
+            if (item is not null)
+                return (item.Valor, nota.DataCompetencia);
+            // Nota sem composição (antiga ou avulsa): o total só vale se o
+            // serviço foi o único daquele código no contrato.
+            return linhasDoMesmoCodigo == 1 ? (nota.ValorServico, nota.DataCompetencia) : (null, null);
+        }
+
         string? Aviso(Guid contratoId)
         {
             var eventos = eventosQueAfetam.Where(e => e.ContratoId == contratoId).ToList();
@@ -85,10 +112,17 @@ public sealed class ListarCandidatosNotaMensalUseCase : IListarCandidatosNotaMen
 
         return contratos.Select(x =>
         {
-            var linhas = linhasPorContrato
-                .Where(l => l.ContratoId == x.Contrato.Id)
-                .Select(l => new LinhaCandidataNotaMensalResponse(
-                    l.Linha.ServicoId, l.Descricao, l.CodigoTributacaoNacional, l.Linha.Quantidade, l.Linha.ValorUnitario, l.Linha.ValorTotal))
+            var doContrato = linhasPorContrato.Where(l => l.ContratoId == x.Contrato.Id).ToList();
+            var linhas = doContrato
+                .Select(l =>
+                {
+                    var (ultimo, competenciaUltimo) = Ultimo(x.Contrato.Id, l.Linha.Id, l.CodigoTributacaoNacional,
+                        doContrato.Count(o => o.CodigoTributacaoNacional == l.CodigoTributacaoNacional));
+                    return new LinhaCandidataNotaMensalResponse(
+                        l.Linha.ServicoId, l.Descricao, l.CodigoTributacaoNacional, l.Linha.Quantidade, l.Linha.ValorUnitario, l.Linha.ValorTotal,
+                        l.Linha.Id, l.Linha.ValorVariavel, ultimo, competenciaUltimo,
+                        RegrasValorNotaMensal.Sugestao(l.Linha.ValorTotal, l.Linha.ValorVariavel, ultimo));
+                })
                 .ToList();
 
             return new ContratoCandidatoNotaMensalResponse(

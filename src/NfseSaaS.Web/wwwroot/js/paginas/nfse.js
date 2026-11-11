@@ -27,7 +27,7 @@ let nfseReenvioAtualId = null;
 // C7: nota autorizada sendo substituída (null = emissão comum ou reenvio).
 let nfseSubstituicaoAtual = null;
 let modalNotaMensal;
-let candidatosNotaMensal = []; // estado local da grade (inclui selecionado/valorAjustado/status/mensagem por linha)
+let candidatosNotaMensal = []; // estado local da grade (selecionado, valores por serviço, status e mensagem por linha)
 let nfseSelecionadas = new Set(); // ids marcados pra download em lote — sobrevive a paginação/redraw do DataTable, só é limpo quando os filtros mudam
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -241,8 +241,27 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('btn-nota-mensal').addEventListener('click', abrirModalNotaMensal);
         document.getElementById('btn-buscar-candidatos-nota-mensal').addEventListener('click', buscarCandidatosNotaMensal);
         document.getElementById('btn-emitir-nota-mensal').addEventListener('click', emitirNotaMensal);
-        document.getElementById('linhas-nota-mensal').addEventListener('change', function (e) {
-            if (e.target.classList.contains('nm-check') || e.target.classList.contains('nm-valor')) atualizarBotaoEmitirNotaMensal();
+        document.getElementById('btn-nm-repetir-ultimos').addEventListener('click', repetirUltimosValoresNotaMensal);
+        document.getElementById('btn-nm-gravar-todos').addEventListener('click', gravarTodosNoContratoNotaMensal);
+        const corpoNotaMensal = document.getElementById('linhas-nota-mensal');
+        corpoNotaMensal.addEventListener('input', function (e) {
+            if (e.target.classList.contains('nm-valor-servico'))
+                aoMudarValorServicoNotaMensal(Number(e.target.dataset.i), Number(e.target.dataset.j), e.target.value);
+        });
+        corpoNotaMensal.addEventListener('click', function (e) {
+            const usar = e.target.closest('.nm-usar-ultimo');
+            if (!usar) return;
+            e.preventDefault();
+            const i = Number(usar.dataset.i), j = Number(usar.dataset.j);
+            const s = candidatosNotaMensal[i].valores[j];
+            const campo = corpoNotaMensal.querySelector(`.nm-valor-servico[data-i="${i}"][data-j="${j}"]`);
+            campo.value = s.ultimoValor;
+            aoMudarValorServicoNotaMensal(i, j, s.ultimoValor);
+        });
+        corpoNotaMensal.addEventListener('change', function (e) {
+            if (e.target.classList.contains('nm-gravar'))
+                candidatosNotaMensal[e.target.dataset.i].valores[e.target.dataset.j].gravar = e.target.checked;
+            if (e.target.classList.contains('nm-check') || e.target.classList.contains('nm-valor-servico')) atualizarBotaoEmitirNotaMensal();
         });
     }
 
@@ -946,9 +965,19 @@ async function buscarCandidatosNotaMensal() {
         candidatosNotaMensal = candidatos.map(c => ({
             ...c,
             selecionado: !c.jaEmitidoNestaCompetencia,
-            valorAjustado: c.valorTotal,
             status: c.jaEmitidoNestaCompetencia ? 'ja-emitido' : 'pendente',
-            mensagem: c.jaEmitidoNestaCompetencia ? 'Já tem nota nesta competência.' : null
+            mensagem: c.jaEmitidoNestaCompetencia ? 'Já tem nota nesta competência.' : null,
+            // Um valor por serviço: variável vem com o último emitido, fixo com o do contrato.
+            valores: c.linhas.map(l => ({
+                contratoServicoId: l.contratoServicoId,
+                descricao: l.servicoDescricao,
+                variavel: l.valorVariavel === true,
+                valorContrato: Number(l.valorTotal),
+                ultimoValor: l.ultimoValor != null ? Number(l.ultimoValor) : null,
+                ultimaCompetencia: l.ultimaCompetencia,
+                valor: Number(l.valorSugerido || l.valorTotal),
+                gravar: false
+            }))
         }));
 
         renderizarLinhasNotaMensal();
@@ -957,49 +986,156 @@ async function buscarCandidatosNotaMensal() {
     }
 }
 
+const podeEditarContratosNotaMensal = () =>
+    document.getElementById('modal-nota-mensal')?.dataset.podeEditarContratos === 'true';
+
+const reaisNotaMensal = v => Number(v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const competenciaCurta = iso => iso ? `${iso.substring(5, 7)}/${iso.substring(0, 4)}` : '';
+
+/** Valor fixo diferente do contrato. */
+const valorFixoAlterado = s => !s.variavel && Math.round(s.valor * 100) !== Math.round(s.valorContrato * 100);
+
+/** Contrato que não deixa mudar o valor só nesta nota: mudou o fixo, tem que gravar. */
+const gravarObrigatorio = (c, s) => valorFixoAlterado(s) && !c.permitirAlterarValorNaEmissao;
+
+function podeEditarServicoNotaMensal(c, s) {
+    if (c.status !== 'pendente') return false;
+    return s.variavel || c.permitirAlterarValorNaEmissao || podeEditarContratosNotaMensal();
+}
+
+/** Dica embaixo do campo: último valor (variável) ou "gravar no contrato" (fixo alterado). */
+function htmlExtraServicoNotaMensal(c, i, j) {
+    const s = c.valores[j];
+    if (s.variavel) {
+        if (s.ultimoValor == null) return '<span class="small text-muted">sem nota anterior</span>';
+        const igual = Math.round(s.ultimoValor * 100) === Math.round(s.valor * 100);
+        return igual
+            ? `<span class="small text-muted"><i class="bi bi-check2"></i> último valor (${competenciaCurta(s.ultimaCompetencia)})</span>`
+            : `<a href="#" class="small nm-usar-ultimo" data-i="${i}" data-j="${j}" title="Usar o valor da última nota">último: ${reaisNotaMensal(s.ultimoValor)} (${competenciaCurta(s.ultimaCompetencia)})</a>`;
+    }
+    if (!valorFixoAlterado(s)) return '';
+    if (!podeEditarContratosNotaMensal())
+        return '<span class="small text-muted">só nesta nota</span>';
+    const obrigatorio = gravarObrigatorio(c, s);
+    const marcado = obrigatorio || s.gravar;
+    return `<div class="form-check form-check-inline small mb-0" title="${obrigatorio
+            ? 'Este contrato não permite valor diferente só nesta nota: o novo valor vai para o contrato.'
+            : 'Marcado, o valor vira o do contrato (Histórico de valores). Desmarcado, vale só nesta nota.'}">
+        <input class="form-check-input nm-gravar" type="checkbox" id="nm-gravar-${i}-${j}" data-i="${i}" data-j="${j}"
+            ${marcado ? 'checked' : ''} ${obrigatorio || c.status !== 'pendente' ? 'disabled' : ''}>
+        <label class="form-check-label" for="nm-gravar-${i}-${j}">gravar no contrato <span class="text-muted">(era ${reaisNotaMensal(s.valorContrato)})</span></label>
+    </div>`;
+}
+
+function totalCandidatoNotaMensal(c) {
+    return c.valores.reduce((soma, s) => soma + (Number(s.valor) || 0), 0);
+}
+
 function renderizarLinhasNotaMensal() {
     const corpo = document.getElementById('linhas-nota-mensal');
     const tabela = document.getElementById('tabela-nota-mensal');
     const semCandidatos = document.getElementById('nota-mensal-sem-candidatos');
+    const barra = document.getElementById('barra-nota-mensal');
 
     if (candidatosNotaMensal.length === 0) {
         tabela.classList.add('d-none');
+        barra.classList.add('d-none');
         semCandidatos.classList.remove('d-none');
         atualizarBotaoEmitirNotaMensal();
         return;
     }
 
     tabela.classList.remove('d-none');
+    barra.classList.remove('d-none');
     semCandidatos.classList.add('d-none');
+    document.getElementById('btn-nm-gravar-todos').classList.toggle('d-none', !podeEditarContratosNotaMensal());
 
     corpo.innerHTML = candidatosNotaMensal.map((c, i) => {
-        const servicos = c.linhas.map(l => l.servicoDescricao).join(', ');
-        const podeEditarValor = c.permitirAlterarValorNaEmissao && c.status === 'pendente';
-        const statusHtml = renderizarStatusNotaMensal(c);
+        const servicos = c.linhas.map(l => escaparHtml(l.servicoDescricao)).join(', ');
+        const varios = c.valores.length > 1;
+        const campos = c.valores.map((s, j) => `
+            <div class="${varios ? 'mb-2' : ''}">
+                ${varios ? `<div class="small text-muted text-truncate" title="${escaparHtml(s.descricao)}">${escaparHtml(s.descricao)}${s.variavel
+                    ? ' <span class="badge text-bg-light border">variável</span>' : ''}</div>`
+                    : (s.variavel ? '<div class="small"><span class="badge text-bg-light border">variável</span></div>' : '')}
+                <input type="number" step="0.01" min="0.01" class="form-control form-control-sm nm-valor-servico" data-i="${i}" data-j="${j}"
+                    value="${s.valor}" ${podeEditarServicoNotaMensal(c, s) ? '' : 'readonly'} aria-label="Valor de ${escaparHtml(s.descricao)}">
+                <div id="nm-extra-${i}-${j}">${htmlExtraServicoNotaMensal(c, i, j)}</div>
+            </div>`).join('');
 
         return `
             <tr>
                 <td><input type="checkbox" class="form-check-input nm-check" data-i="${i}" ${c.selecionado ? 'checked' : ''} ${c.status === 'sucesso' ? 'disabled' : ''}></td>
-                <td>${c.clienteNome}</td>
-                <td>${c.descricao}<br><small class="text-muted">${servicos}</small>${c.avisoReajuste
+                <td>${escaparHtml(c.clienteNome)}</td>
+                <td>${escaparHtml(c.descricao)}<br><small class="text-muted">${servicos}</small>${c.avisoReajuste
                     ? `<div class="small text-warning-emphasis mt-1"><i class="bi bi-exclamation-triangle"></i> ${escaparHtml(c.avisoReajuste)}</div>` : ''}</td>
                 <td>
-                    <input type="number" step="0.01" min="0.01" class="form-control form-control-sm nm-valor" data-i="${i}"
-                        value="${c.valorAjustado}" ${podeEditarValor ? '' : 'readonly'}>
+                    ${campos}
+                    ${varios ? `<div class="small fw-semibold text-end" id="nm-total-${i}">Total ${reaisNotaMensal(totalCandidatoNotaMensal(c))}</div>` : ''}
                 </td>
-                <td>${statusHtml}</td>
+                <td>${renderizarStatusNotaMensal(c)}</td>
             </tr>
         `;
     }).join('');
 
     corpo.querySelectorAll('.nm-check').forEach(el => el.addEventListener('change', e => {
         candidatosNotaMensal[e.target.dataset.i].selecionado = e.target.checked;
-    }));
-    corpo.querySelectorAll('.nm-valor').forEach(el => el.addEventListener('input', e => {
-        candidatosNotaMensal[e.target.dataset.i].valorAjustado = parseFloat(e.target.value) || 0;
+        atualizarTotalNotaMensal();
     }));
 
+    atualizarTotalNotaMensal();
     atualizarBotaoEmitirNotaMensal();
+}
+
+/** Campo de valor mudou: atualiza só a dica e o total da linha (sem redesenhar, para não perder o foco). */
+function aoMudarValorServicoNotaMensal(i, j, valor) {
+    const c = candidatosNotaMensal[i];
+    const s = c.valores[j];
+    s.valor = parseFloat(valor) || 0;
+    if (!valorFixoAlterado(s)) s.gravar = false;
+    document.getElementById(`nm-extra-${i}-${j}`).innerHTML = htmlExtraServicoNotaMensal(c, i, j);
+    const total = document.getElementById(`nm-total-${i}`);
+    if (total) total.textContent = `Total ${reaisNotaMensal(totalCandidatoNotaMensal(c))}`;
+    atualizarTotalNotaMensal();
+    atualizarBotaoEmitirNotaMensal();
+}
+
+function atualizarTotalNotaMensal() {
+    const selecionados = candidatosNotaMensal.filter(c => c.selecionado && c.status === 'pendente');
+    const total = selecionados.reduce((soma, c) => soma + totalCandidatoNotaMensal(c), 0);
+    document.getElementById('total-nota-mensal').textContent = selecionados.length === 0
+        ? ''
+        : `${selecionados.length} nota(s) selecionada(s) · ${reaisNotaMensal(total)}`;
+}
+
+function repetirUltimosValoresNotaMensal() {
+    let alterados = 0;
+    candidatosNotaMensal.forEach(c => {
+        if (!c.selecionado || c.status !== 'pendente') return;
+        c.valores.forEach(s => {
+            if (s.variavel && s.ultimoValor != null && s.valor !== s.ultimoValor) {
+                s.valor = s.ultimoValor;
+                alterados++;
+            }
+        });
+    });
+    renderizarLinhasNotaMensal();
+    mostrarToast(alterados === 0 ? 'Nada para repetir: os valores variáveis já são os da última nota.' : `${alterados} valor(es) preenchido(s) com o da última nota.`);
+}
+
+function gravarTodosNoContratoNotaMensal() {
+    let marcados = 0;
+    candidatosNotaMensal.forEach(c => {
+        if (!c.selecionado || c.status !== 'pendente') return;
+        c.valores.forEach(s => {
+            if (valorFixoAlterado(s) && !s.gravar) {
+                s.gravar = true;
+                marcados++;
+            }
+        });
+    });
+    renderizarLinhasNotaMensal();
+    mostrarToast(marcados === 0 ? 'Nenhum valor fixo alterado para gravar.' : `${marcados} valor(es) serão gravados nos contratos ao emitir.`);
 }
 
 function renderizarStatusNotaMensal(c) {
@@ -1010,8 +1146,9 @@ function renderizarStatusNotaMensal(c) {
 }
 
 function atualizarBotaoEmitirNotaMensal() {
-    const temSelecionado = candidatosNotaMensal.some(c => c.selecionado && c.status !== 'sucesso');
-    document.getElementById('btn-emitir-nota-mensal').disabled = !temSelecionado;
+    const selecionados = candidatosNotaMensal.filter(c => c.selecionado && c.status !== 'sucesso');
+    const valoresOk = selecionados.every(c => c.valores.every(s => Number(s.valor) > 0));
+    document.getElementById('btn-emitir-nota-mensal').disabled = selecionados.length === 0 || !valoresOk;
 }
 
 async function emitirNotaMensal() {
@@ -1024,7 +1161,13 @@ async function emitirNotaMensal() {
         .filter(c => c.selecionado && c.status !== 'sucesso')
         .map(c => ({
             contratoId: c.contratoId,
-            valorTotalAjustado: c.permitirAlterarValorNaEmissao ? c.valorAjustado : null
+            valorTotalAjustado: null,
+            // Valor de cada serviço; "gravar no contrato" só em fixo alterado.
+            servicos: c.valores.map(s => ({
+                contratoServicoId: s.contratoServicoId,
+                valor: Number(s.valor),
+                gravarNoContrato: valorFixoAlterado(s) && (s.gravar || gravarObrigatorio(c, s))
+            }))
         }));
 
     if (itens.length === 0) return;
@@ -1057,6 +1200,18 @@ async function emitirNotaMensal() {
             c.numeroNfse = doContrato.map(r => r.numeroNfse).filter(Boolean).join(', ');
             c.mensagem = todasOk ? null : doContrato.filter(r => !r.sucesso).map(r => r.mensagem).join('; ');
             if (todasOk) c.selecionado = false; // sucesso sai da seleção — reprocessar só pega o que ainda falhou
+        }
+
+        // O que foi gravado no contrato já é o valor dele (com ou sem sucesso
+        // na SEFIN: a gravação acontece antes de emitir).
+        for (const c of candidatosNotaMensal) {
+            if (!(porContrato.get(c.contratoId) ?? []).some(r => r.contratoAtualizado)) continue;
+            c.valores.forEach(s => {
+                if (valorFixoAlterado(s) && (s.gravar || gravarObrigatorio(c, s))) {
+                    s.valorContrato = s.valor;
+                    s.gravar = false;
+                }
+            });
         }
 
         renderizarLinhasNotaMensal();
@@ -1248,6 +1403,9 @@ function htmlDetalheNfse(nfse, snapshot) {
             <dl class="row mb-0">
                 ${linha('Valor do serviço', `<strong>${moeda(nfse.valorServico)}</strong>`)}
                 ${linha('Valor líquido', moeda(nfse.valorLiquido))}
+                ${(nfse.composicao ?? []).length > 1
+                    ? linha('Composição', nfse.composicao.map(i => `${escaparHtml(i.descricao)}: ${Number(i.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`).join('<br>'))
+                    : ''}
                 ${linha('ISS', iss)}
                 ${linha('Local da prestação', nfse.codigoMunicipioPrestacao
                     ? `<span data-municipio-codigo="${escaparHtml(nfse.codigoMunicipioPrestacao)}">${escaparHtml(nfse.codigoMunicipioPrestacao)}</span>`

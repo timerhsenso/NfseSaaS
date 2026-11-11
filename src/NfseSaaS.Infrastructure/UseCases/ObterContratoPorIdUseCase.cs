@@ -33,7 +33,7 @@ public sealed class ObterContratoPorIdUseCase : IObterContratoPorIdUseCase
             from cs in _db.ContratoServicos.AsNoTracking()
             where cs.ContratoId == id
             join srv in _db.Servicos.AsNoTracking() on cs.ServicoId equals srv.Id
-            select new ContratoServicoResponse(cs.Id, cs.ServicoId, srv.Descricao, cs.Quantidade, cs.ValorUnitario, cs.ValorTotal))
+            select new ContratoServicoResponse(cs.Id, cs.ServicoId, srv.Descricao, cs.Quantidade, cs.ValorUnitario, cs.Quantidade * cs.ValorUnitario, cs.ValorVariavel))
             .ToListAsync(cancellationToken);
 
         var pendente = await _db.MovimentacoesValorContrato.AsNoTracking()

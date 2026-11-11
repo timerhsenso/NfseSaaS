@@ -10,4 +10,11 @@ namespace NfseSaaS.Application.UseCases.NotaMensal;
 /// </summary>
 public sealed record EmitirNotaMensalItemRequest(
     Guid ContratoId,
-    decimal? ValorTotalAjustado);
+    decimal? ValorTotalAjustado,
+    // Valor de cada serviço nesta emissão (vence ValorTotalAjustado). Serviço
+    // fora da lista = valor do contrato. Ver RegrasValorNotaMensal.
+    IReadOnlyList<ValorServicoNotaMensalRequest>? Servicos = null);
+
+/// <param name="ContratoServicoId">Linha do Contrato (ContratoServico.Id).</param>
+/// <param name="GravarNoContrato">Serviço de valor fixo: o valor passa a ser o do contrato (Histórico de valores).</param>
+public sealed record ValorServicoNotaMensalRequest(Guid ContratoServicoId, decimal Valor, bool GravarNoContrato = false);

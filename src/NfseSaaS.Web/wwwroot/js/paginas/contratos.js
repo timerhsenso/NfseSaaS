@@ -291,6 +291,8 @@ function adicionarLinhaServico(linha) {
         <td><input type="number" step="0.01" min="0.01" class="form-control form-control-sm campo-linha-quantidade" value="${linha?.quantidade ?? 1}" /></td>
         <td><input type="number" step="0.01" min="0.01" class="form-control form-control-sm campo-linha-valor" value="${linha?.valorUnitario ?? ''}" /></td>
         <td class="text-end campo-linha-total">R$ 0,00</td>
+        <td class="text-center"><input type="checkbox" class="form-check-input campo-linha-variavel" ${linha?.valorVariavel ? 'checked' : ''}
+            title="Valor muda a cada nota: na Nota Mensal vem o último valor emitido e a automação não emite sozinha" /></td>
         <td><button type="button" class="btn btn-sm btn-outline-danger btn-remover-linha-servico"><i class="bi bi-x-lg"></i></button></td>
     `;
     tr.dataset.servicoSelecionado = linha?.servicoId ?? '';
@@ -390,7 +392,9 @@ function coletarLinhasServico() {
     return Array.from(document.querySelectorAll('#linhas-servico-contrato .linha-servico-contrato')).map(tr => ({
         servicoId: tr.querySelector('.campo-linha-servico').value,
         quantidade: parseFloat(tr.querySelector('.campo-linha-quantidade').value) || 0,
-        valorUnitario: parseFloat(tr.querySelector('.campo-linha-valor').value) || 0
+        valorUnitario: parseFloat(tr.querySelector('.campo-linha-valor').value) || 0,
+        // Não entra em normalizarLinhas: mudar só isto não vira evento do Histórico de valores.
+        valorVariavel: tr.querySelector('.campo-linha-variavel').checked
     }));
 }
 

@@ -8,4 +8,7 @@ public sealed record ItemResultadoNotaMensalResponse(
     bool Sucesso,
     Guid? NfseId,
     string? NumeroNfse,
-    string? Mensagem);
+    string? Mensagem,
+    // "Gravar no contrato" foi aplicado (acontece antes de emitir, então
+    // vale mesmo com a nota recusada).
+    bool ContratoAtualizado = false);

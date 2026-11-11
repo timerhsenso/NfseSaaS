@@ -5,6 +5,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (Nota Mensal com valor por serviço)
+- Contrato: cada serviço pode ser marcado como **valor variável** (muda a
+  cada nota, ex.: horas de suporte). Mudar só essa marcação não vira evento
+  do Histórico de valores.
+- Nota Mensal: **um campo de valor por serviço** (com o total da linha).
+  Serviço variável vem com o **último valor emitido** e a dica "último: R$ X
+  (mm/aaaa)" para repetir com um clique; serviço fixo vem do contrato e, se
+  alterado, oferece **"gravar no contrato"** (vira Alteração no Histórico de
+  valores, vigência no 1º dia da competência; obrigatório quando o contrato
+  não permite valor diferente só na nota; só para quem pode alterar contratos).
+- Botões **Repetir últimos valores** e **Gravar alterações nos contratos**, e o
+  total das notas selecionadas.
+- A nota guarda o valor de cada serviço (`ComposicaoValoresJson`), mostrado no
+  detalhe; reenvio e substituição com o mesmo total herdam a composição.
+- Automação (modo automático): contrato com serviço variável não é emitido
+  sozinho; entra no e-mail como "aguardando o valor".
+- Migration `ValorVariavelNotaMensal`.
+
 ### Adicionado (substituição de nota, C7)
 - Notas › botão **Substituir** (nota autorizada): abre a emissão com os dados
   da nota, para corrigir e emitir a substituta com o motivo oficial (cMotivo

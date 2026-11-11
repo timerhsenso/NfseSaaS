@@ -54,7 +54,9 @@ public sealed record NfseResponse(
     int? SubstituiNumeroDps = null,
     int? SubstituidaPorNumeroDps = null,
     string? MotivoSubstituicao = null,
-    string? DescricaoMotivoSubstituicao = null)
+    string? DescricaoMotivoSubstituicao = null,
+    // Valor de cada serviço do Contrato (só no detalhe; nulo na listagem).
+    IReadOnlyList<ItemComposicaoNfse>? Composicao = null)
 {
     /// <summary>tpRetISSQN "2" = ISS retido pelo tomador.</summary>
     public bool IssRetido => TpRetIssqn == "2";
