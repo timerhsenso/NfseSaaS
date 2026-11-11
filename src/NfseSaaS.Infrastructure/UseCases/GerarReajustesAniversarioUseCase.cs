@@ -123,7 +123,7 @@ public sealed class GerarReajustesAniversarioUseCase : IGerarReajustesAniversari
                 ResultadoReajusteAniversario.AguardandoIndice, null, contrato.ValorAtual, null, acumulado.Mensagem);
 
         var percentual = ReajusteContrato.PercentualEfetivo(percentualCalculado, contrato.AplicarIndiceNegativo);
-        var valorNovo = ReajusteContrato.CalcularValor(contrato.ValorAtual, percentual);
+        var valorNovo = await ReajusteContrato.CalcularValorNovoAsync(_db, contrato, percentual, cancellationToken);
         var mantidoPorNegativo = percentual != percentualCalculado;
 
         var evento = new MovimentacaoValorContrato

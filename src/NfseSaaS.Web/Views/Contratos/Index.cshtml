@@ -336,21 +336,12 @@
                         <h6 class="text-muted">Registrar novo reajuste</h6>
                         <div class="row">
                             <div class="col-md-4 mb-3">
-                                <label class="form-label">Data do reajuste</label>
+                                <label class="form-label" for="reajuste-dataReajuste">Data do reajuste</label>
                                 <input type="date" class="form-control" id="reajuste-dataReajuste" required />
+                                <div class="form-text" id="reajuste-dica-data"></div>
                             </div>
                             <div class="col-md-4 mb-3">
-                                <label class="form-label">Valor novo</label>
-                                <input type="number" step="0.01" min="0.01" class="form-control" id="reajuste-valorNovo" required />
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">% aplicado</label>
-                                <input type="number" step="0.01" class="form-control" id="reajuste-percentual" placeholder="calculado ou digite" />
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Índice usado</label>
+                                <label class="form-label" for="reajuste-indiceUsado">Índice usado</label>
                                 <select class="form-select" id="reajuste-indiceUsado">
                                     <option value="">Não definido</option>
                                     <option value="0">IPCA</option>
@@ -362,11 +353,26 @@
                                     <option value="99">Outro</option>
                                 </select>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Observação</label>
+                        </div>
+
+                        @* Simulação pelo índice: recalcula sozinha ao abrir e ao trocar data/índice (contratos.js › simularReajuste). *@
+                        <div id="reajuste-sugestao" class="mb-3" aria-live="polite"></div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label" for="reajuste-valorNovo">Valor novo</label>
+                                <input type="number" step="0.01" min="0.01" class="form-control" id="reajuste-valorNovo" required />
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label" for="reajuste-percentual">% aplicado</label>
+                                <input type="number" step="0.0001" class="form-control" id="reajuste-percentual" placeholder="calculado ou digite" />
+                            </div>
+                            <div class="col-md-5 mb-3">
+                                <label class="form-label" for="reajuste-observacao">Observação</label>
                                 <input type="text" class="form-control" id="reajuste-observacao" maxlength="500" placeholder="opcional" />
                             </div>
                         </div>
+                        <div class="form-text mb-2 d-none" id="reajuste-dica-variavel"></div>
                         <div class="text-end">
                             <button type="submit" class="btn btn-primary btn-sm">Registrar reajuste</button>
                         </div>

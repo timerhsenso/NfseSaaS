@@ -21,6 +21,7 @@ public sealed class ContratosController : ControllerBase
     private readonly IAtualizarContratoUseCase _atualizarContrato;
     private readonly IExcluirContratoUseCase _excluirContrato;
     private readonly IRegistrarReajusteUseCase _registrarReajuste;
+    private readonly ISimularReajusteContratoUseCase _simularReajuste;
     private readonly IListarHistoricoValoresContratoUseCase _listarHistoricoValores;
     private readonly IUploadDocumentoContratoUseCase _uploadDocumento;
     private readonly IListarDocumentosContratoUseCase _listarDocumentos;
@@ -40,8 +41,10 @@ public sealed class ContratosController : ControllerBase
         IListarDocumentosContratoUseCase listarDocumentos,
         IExcluirDocumentoContratoUseCase excluirDocumento,
         IObterDocumentoContratoParaDownloadUseCase obterDocumentoParaDownload,
-        IObterHistoricoContratoUseCase obterHistorico)
+        IObterHistoricoContratoUseCase obterHistorico,
+        ISimularReajusteContratoUseCase simularReajuste)
     {
+        _simularReajuste = simularReajuste;
         _cadastrarContrato = cadastrarContrato;
         _listarContratos = listarContratos;
         _obterContratoPorId = obterContratoPorId;
@@ -104,6 +107,22 @@ public sealed class ContratosController : ControllerBase
     }
 
     /// <summary>Registra um reajuste manual — vira um evento do Histórico de valores (ver RegistrarReajusteUseCase).</summary>
+    /// <summary>
+    /// Simula o reajuste pelo índice (acumulado de 12 meses), sem gravar —
+    /// a tela mostra o percentual e o valor novo antes de "Registrar".
+    /// </summary>
+    [HttpGet("{id:guid}/reajustes/simulacao")]
+    public async Task<IActionResult> SimularReajuste(
+        Guid id,
+        [FromQuery] IndiceReajusteContrato? indice,
+        [FromQuery] DateOnly? data,
+        [FromQuery] bool? aplicarNegativo,
+        CancellationToken cancellationToken)
+    {
+        var resultado = await _simularReajuste.ExecutarAsync(id, new SimularReajusteRequest(indice, data, aplicarNegativo), cancellationToken);
+        return Ok(resultado);
+    }
+
     [RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Alterar)]
     [HttpPost("{id:guid}/reajustes")]
     public async Task<IActionResult> RegistrarReajuste(Guid id, [FromBody] RegistrarReajusteRequest request, CancellationToken cancellationToken)

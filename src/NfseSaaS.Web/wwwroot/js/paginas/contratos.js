@@ -41,6 +41,10 @@ let empresaAtualIdContratos;
 let contratoAtualParaHistorico;
 // Evento "aguardando aprovação" do contrato aberto no Histórico de valores.
 let reajustePendenteAtual = null;
+// Simulação do reajuste pelo índice (modal Histórico de valores).
+let simulacaoReajuste = null;          // última resposta da simulação
+let aplicarNegativoEscolhido = null;   // null = regra do contrato; true/false = escolha na tela
+let sequenciaSimulacao = 0;            // descarta resposta atrasada
 let catalogoServicosContratos = []; // cache do combo, reaproveitado nas linhas dinâmicas
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -753,40 +757,238 @@ async function excluirContrato(id) {
 
 async function abrirModalHistorico(contratoId, descricao) {
     contratoAtualParaHistorico = null;
+    simulacaoReajuste = null;
+    aplicarNegativoEscolhido = null;
     ocultarErroFormulario('erro-reajuste');
     document.getElementById('titulo-modal-historico').textContent = `Histórico de valores — ${descricao}`;
-    document.getElementById('form-reajuste').reset();
-    document.getElementById('reajuste-contratoId').value = contratoId;
-    document.getElementById('reajuste-dataReajuste').value = dataLocalIso();
+    limparFormularioReajuste(contratoId);
 
     try {
         const contrato = await apiFetch(`/api/contratos/${contratoId}`);
         contratoAtualParaHistorico = contrato;
 
-        // % e valor novo se calculam um a partir do outro — digitar
-        // qualquer um dos dois já atualiza o outro, usando o valor atual
-        // do contrato como base.
+        // % e valor novo se calculam um a partir do outro, sempre sobre a
+        // parte FIXA do contrato (serviço variável fica fora do reajuste —
+        // mesma regra do servidor).
         const campoValorNovo = document.getElementById('reajuste-valorNovo');
         const campoPercentual = document.getElementById('reajuste-percentual');
-
         campoValorNovo.oninput = function () {
-            if (!campoValorNovo.value) return;
-            const percentual = (parseFloat(campoValorNovo.value) / contrato.valorAtual - 1) * 100;
-            campoPercentual.value = percentual.toFixed(2);
+            marcarSugestaoComoNaoUsada();
+            const { atual, fixa } = partesReajuste();
+            if (!campoValorNovo.value || !fixa) return;
+            campoPercentual.value = ((parseFloat(campoValorNovo.value) - atual) / fixa * 100).toFixed(2);
         };
         campoPercentual.oninput = function () {
+            marcarSugestaoComoNaoUsada();
             if (!campoPercentual.value) return;
-            const valorNovo = contrato.valorAtual * (1 + parseFloat(campoPercentual.value) / 100);
-            campoValorNovo.value = valorNovo.toFixed(2);
+            campoValorNovo.value = valorNovoComPercentual(parseFloat(campoPercentual.value)).toFixed(2);
+        };
+
+        document.getElementById('reajuste-dataReajuste').onchange = () => simularReajuste();
+        document.getElementById('reajuste-indiceUsado').onchange = () => {
+            aplicarNegativoEscolhido = null;
+            simularReajuste();
         };
 
         document.getElementById('reajuste-indiceUsado').value = contrato.indiceReajuste ?? '';
 
+        // Primeiro a simulação (traz a data sugerida e a parte variável, que
+        // o painel do reajuste pendente também usa), depois o histórico.
+        await simularReajuste({ inicial: true });
         await carregarHistorico(contratoId);
         modalHistoricoReajuste.show();
     } catch (err) {
         mostrarErro(err.message);
     }
+}
+
+function limparFormularioReajuste(contratoId) {
+    document.getElementById('form-reajuste').reset();
+    document.getElementById('reajuste-contratoId').value = contratoId;
+    document.getElementById('reajuste-dataReajuste').value = dataLocalIso();
+    document.getElementById('reajuste-sugestao').innerHTML = '';
+    document.getElementById('reajuste-dica-data').innerHTML = '';
+    document.getElementById('reajuste-dica-variavel').classList.add('d-none');
+    const observacao = document.getElementById('reajuste-observacao');
+    delete observacao.dataset.automatica;
+    // Texto digitado pela pessoa não é sobrescrito por "Usar este reajuste".
+    observacao.oninput = () => { observacao.dataset.automatica = 'false'; };
+}
+
+// Valor atual, parte variável (fora do reajuste) e parte fixa (base do %).
+function partesReajuste() {
+    const atual = Number(contratoAtualParaHistorico?.valorAtual ?? 0);
+    const variavel = Number(simulacaoReajuste?.parteVariavel ?? 0);
+    return { atual, variavel, fixa: atual - variavel };
+}
+
+// Mesma conta do servidor (ReajusteContrato.CalcularValorNovo).
+function valorNovoComPercentual(percentual) {
+    const { variavel, fixa } = partesReajuste();
+    return variavel + Math.round(fixa * (1 + percentual / 100) * 100) / 100;
+}
+
+function formatarMesCurto(iso) {
+    const [ano, mes] = String(iso).split('-');
+    const nomes = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+    return `${nomes[parseInt(mes, 10) - 1]}/${ano}`;
+}
+
+// Chamada ao abrir (inicial: o servidor escolhe data e índice do contrato)
+// e a cada troca de data/índice. Só a resposta mais recente é desenhada.
+async function simularReajuste({ inicial = false } = {}) {
+    const contratoId = document.getElementById('reajuste-contratoId').value;
+    const indice = document.getElementById('reajuste-indiceUsado').value;
+    const data = document.getElementById('reajuste-dataReajuste').value;
+    const caixa = document.getElementById('reajuste-sugestao');
+    const minhaVez = ++sequenciaSimulacao;
+
+    const parametros = new URLSearchParams();
+    if (!inicial) {
+        if (indice !== '') parametros.set('indice', indice);
+        if (data) parametros.set('data', data);
+    }
+    if (aplicarNegativoEscolhido !== null) parametros.set('aplicarNegativo', aplicarNegativoEscolhido);
+
+    caixa.innerHTML = '<div class="small text-muted"><span class="spinner-border spinner-border-sm me-1"></span>Calculando pelo índice…</div>';
+
+    try {
+        const r = await apiFetch(`/api/contratos/${contratoId}/reajustes/simulacao?${parametros}`);
+        if (minhaVez !== sequenciaSimulacao) return;
+        simulacaoReajuste = r;
+
+        if (inicial) {
+            document.getElementById('reajuste-dataReajuste').value = r.dataSugerida;
+            if (r.indice != null) document.getElementById('reajuste-indiceUsado').value = String(r.indice);
+        }
+
+        // "Não definido" escolhido na tela: o servidor usou o índice do
+        // contrato, mas a pessoa quer sem índice — não sugere nada.
+        if (!inicial && indice === '') {
+            renderizarSugestaoReajuste({ ...r, disponivel: false, mensagem: 'Escolha o índice para calcular o reajuste, ou informe o valor novo.' });
+        } else {
+            renderizarSugestaoReajuste(r);
+        }
+        renderizarDicasReajuste(r);
+    } catch (err) {
+        if (minhaVez !== sequenciaSimulacao) return;
+        caixa.innerHTML = `<div class="small text-danger">Não foi possível calcular pelo índice: ${escaparHtml(err.message)}</div>`;
+    }
+}
+
+function renderizarDicasReajuste(r) {
+    const dicaData = document.getElementById('reajuste-dica-data');
+    const dataTela = document.getElementById('reajuste-dataReajuste').value;
+    if (r.aniversario && dataTela === r.aniversario) {
+        dicaData.innerHTML = '<i class="bi bi-calendar-check me-1"></i>Aniversário do contrato';
+    } else if (r.aniversario) {
+        dicaData.innerHTML = `Aniversário: <a href="#" id="link-usar-aniversario">${formatarDataContrato(r.aniversario)}</a>`;
+        document.getElementById('link-usar-aniversario').onclick = ev => {
+            ev.preventDefault();
+            document.getElementById('reajuste-dataReajuste').value = r.aniversario;
+            simularReajuste();
+        };
+    } else {
+        dicaData.innerHTML = '';
+    }
+
+    const dicaVariavel = document.getElementById('reajuste-dica-variavel');
+    const variavel = Number(r.parteVariavel ?? 0);
+    dicaVariavel.classList.toggle('d-none', variavel <= 0);
+    if (variavel > 0) {
+        const nomes = (r.servicosForaDoReajuste ?? []).map(escaparHtml).join(', ');
+        dicaVariavel.innerHTML = `<i class="bi bi-info-circle me-1"></i>Fica fora do reajuste (valor variável, muda a cada nota): ` +
+            `<strong>${nomes || 'serviço variável'}</strong> — ${formatarReais(variavel)} mantido. O % vale sobre a parte fixa (${formatarReais(r.valorAtual - variavel)}).`;
+    }
+}
+
+function renderizarSugestaoReajuste(r) {
+    const caixa = document.getElementById('reajuste-sugestao');
+    const nomeIndice = r.indice != null ? (ROTULOS_INDICE_REAJUSTE[r.indice] ?? 'Índice') : 'Índice';
+
+    if (!r.disponivel) {
+        const linkIndices = r.indice != null && r.indice !== 99 && /falta|desatualizad|publicad/i.test(r.mensagem ?? '')
+            ? ' <a href="/Indices" target="_blank" rel="noopener">Abrir Índices econômicos</a>'
+            : '';
+        caixa.innerHTML = `<div class="alert alert-light border small mb-0"><i class="bi bi-calculator me-1"></i>${escaparHtml(r.mensagem ?? '')}${linkIndices}</div>`;
+        return;
+    }
+
+    const diferenca = Number(r.valorNovo) - Number(r.valorAtual);
+    const sinal = diferenca > 0 ? '+' : diferenca < 0 ? '−' : '';
+    const indiceNegativo = Number(r.percentualIndice) < 0;
+
+    let linhaNegativo = '';
+    if (r.negativoMantido) {
+        const motivo = aplicarNegativoEscolhido === false ? 'por escolha sua' : 'conforme o contrato';
+        linhaNegativo = `<div class="small mt-1 text-warning-emphasis"><i class="bi bi-arrow-down-right me-1"></i>` +
+            `Acumulado negativo: o valor fica igual (${motivo}). <a href="#" data-negativo="true">Aplicar a redução mesmo assim</a></div>`;
+    } else if (indiceNegativo) {
+        const motivo = aplicarNegativoEscolhido === true ? 'por escolha sua' : 'o contrato permite reduzir';
+        linhaNegativo = `<div class="small mt-1 text-warning-emphasis"><i class="bi bi-arrow-down-right me-1"></i>` +
+            `Acumulado negativo: o valor diminui (${motivo}). <a href="#" data-negativo="false">Manter o valor</a></div>`;
+    }
+
+    const meses = (r.meses ?? []).map(m =>
+        `<tr><td>${formatarMesCurto(m.competencia)}</td><td class="text-end">${formatarPercentualContrato(m.variacao)}</td></tr>`).join('');
+
+    caixa.innerHTML = `
+        <div class="border rounded p-3 bg-body-tertiary" id="quadro-sugestao-reajuste">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                <div>
+                    <div class="small text-muted">${nomeIndice} acumulado em 12 meses · ${formatarMesCurto(r.competenciaInicio)} a ${formatarMesCurto(r.competenciaFim)}</div>
+                    <div class="fs-5 fw-semibold">${formatarPercentualContrato(r.percentualIndice)}</div>
+                    <div>${formatarReais(r.valorAtual)} → <strong>${formatarReais(r.valorNovo)}</strong>
+                        <span class="text-muted">(${sinal}${formatarReais(Math.abs(diferenca))} por mês)</span></div>
+                    ${linhaNegativo}
+                </div>
+                <div class="text-end">
+                    <button type="button" class="btn btn-success btn-sm" id="btn-usar-reajuste-indice"><i class="bi bi-check2 me-1"></i>Usar este reajuste</button>
+                    <div class="small text-success mt-1 d-none" id="sugestao-usada"><i class="bi bi-check-circle me-1"></i>Preenchido abaixo — confira e registre.</div>
+                </div>
+            </div>
+            <a href="#" class="small" id="link-ver-meses">ver os 12 meses</a>
+            <div class="d-none mt-2" id="reajuste-meses">
+                <table class="table table-sm small mb-0" style="max-width: 280px">
+                    <thead><tr><th>Mês</th><th class="text-end">Variação</th></tr></thead>
+                    <tbody>${meses}</tbody>
+                </table>
+            </div>
+        </div>`;
+
+    document.getElementById('btn-usar-reajuste-indice').onclick = () => usarSugestaoReajuste(r, nomeIndice);
+    document.getElementById('link-ver-meses').onclick = ev => {
+        ev.preventDefault();
+        const tabela = document.getElementById('reajuste-meses');
+        tabela.classList.toggle('d-none');
+        ev.currentTarget.textContent = tabela.classList.contains('d-none') ? 'ver os 12 meses' : 'esconder os meses';
+    };
+    caixa.querySelectorAll('[data-negativo]').forEach(link => link.onclick = ev => {
+        ev.preventDefault();
+        aplicarNegativoEscolhido = link.dataset.negativo === 'true';
+        simularReajuste();
+    });
+}
+
+function usarSugestaoReajuste(r, nomeIndice) {
+    document.getElementById('reajuste-valorNovo').value = Number(r.valorNovo).toFixed(2);
+    document.getElementById('reajuste-percentual').value = Number(r.percentualAplicado);
+
+    const observacao = document.getElementById('reajuste-observacao');
+    if (!observacao.value.trim() || observacao.dataset.automatica === 'true') {
+        observacao.value = `${nomeIndice} acumulado ${formatarPercentualContrato(r.percentualIndice)} ` +
+            `(${formatarMesCurto(r.competenciaInicio)} a ${formatarMesCurto(r.competenciaFim)})` +
+            (r.negativoMantido ? ' — negativo, valor mantido' : '');
+        observacao.dataset.automatica = 'true';
+    }
+
+    document.getElementById('sugestao-usada')?.classList.remove('d-none');
+    document.querySelector('#form-reajuste button[type="submit"]').focus();
+}
+
+// Digitou outro valor/% depois de "Usar": a sugestão continua como referência.
+function marcarSugestaoComoNaoUsada() {
+    document.getElementById('sugestao-usada')?.classList.add('d-none');
 }
 
 // TipoMovimentacaoValor / StatusMovimentacaoValor (Domain.Enums) como número.
@@ -856,9 +1058,12 @@ async function registrarReajuste(e) {
     try {
         await apiFetch(`/api/contratos/${contratoId}/reajustes`, { method: 'POST', body: JSON.stringify(payload) });
 
-        document.getElementById('form-reajuste').reset();
-        document.getElementById('reajuste-contratoId').value = contratoId;
-        document.getElementById('reajuste-dataReajuste').value = dataLocalIso();
+        // Valor e aniversário mudaram: recarrega o contrato e a simulação.
+        contratoAtualParaHistorico = await apiFetch(`/api/contratos/${contratoId}`);
+        aplicarNegativoEscolhido = null;
+        limparFormularioReajuste(contratoId);
+        document.getElementById('reajuste-indiceUsado').value = contratoAtualParaHistorico.indiceReajuste ?? '';
+        await simularReajuste({ inicial: true });
 
         await carregarHistorico(contratoId);
         await carregarContratos(); // valorAtual/situação mudaram na tabela principal também
@@ -917,7 +1122,8 @@ function renderizarPainelReajustePendente(evento) {
 
     const valorAtual = contratoAtualParaHistorico?.valorAtual ?? evento.valorAnterior;
     const percentual = percentualEfetivoPendente(evento);
-    const valorNovo = Math.round(valorAtual * (1 + percentual / 100) * 100) / 100;
+    // Mesma conta do servidor: o % vale só sobre a parte fixa.
+    const valorNovo = valorNovoComPercentual(percentual);
     const nomeIndice = ROTULOS_INDICE_REAJUSTE[evento.indice] ?? 'Índice';
 
     document.getElementById('pendente-resumo').innerHTML =
@@ -940,19 +1146,19 @@ function renderizarPainelReajustePendente(evento) {
 function configurarPainelReajustePendente() {
     const campoPercentual = document.getElementById('negociado-percentual');
     const campoValor = document.getElementById('negociado-valor');
-    const base = () => contratoAtualParaHistorico?.valorAtual ?? 0;
-
-    // % e valor se calculam um a partir do outro; o servidor recebe só o que foi digitado por último.
+    // % e valor se calculam um a partir do outro (sobre a parte fixa, como
+    // no servidor); o servidor recebe só o que foi digitado por último.
     let ultimoDigitado = 'percentual';
     campoPercentual.addEventListener('input', () => {
         ultimoDigitado = 'percentual';
         if (campoPercentual.value === '') return;
-        campoValor.value = (base() * (1 + parseFloat(campoPercentual.value) / 100)).toFixed(2);
+        campoValor.value = valorNovoComPercentual(parseFloat(campoPercentual.value)).toFixed(2);
     });
     campoValor.addEventListener('input', () => {
         ultimoDigitado = 'valor';
-        if (campoValor.value === '' || !base()) return;
-        campoPercentual.value = ((parseFloat(campoValor.value) / base() - 1) * 100).toFixed(2);
+        const { atual, fixa } = partesReajuste();
+        if (campoValor.value === '' || !fixa) return;
+        campoPercentual.value = ((parseFloat(campoValor.value) - atual) / fixa * 100).toFixed(2);
     });
 
     document.getElementById('btn-mostrar-negociar').addEventListener('click', () => {

@@ -20,6 +20,38 @@ public static class ReajusteContrato
     public static decimal CalcularValor(decimal valorAtual, decimal percentual) =>
         Math.Round(valorAtual * (1m + percentual / 100m), 2, MidpointRounding.AwayFromZero);
 
+    /// <summary>
+    /// Quanto do valor do Contrato NÃO entra no reajuste: as linhas de valor
+    /// variável (ex.: HelpDesk, que muda a cada nota — o valor do cadastro é
+    /// só uma referência). Contrato só com linhas variáveis reajusta tudo
+    /// (comportamento de antes): senão o reajuste não teria efeito nenhum.
+    /// </summary>
+    public static decimal ParteVariavel(IReadOnlyCollection<ContratoServico> linhas)
+    {
+        if (!linhas.Any(l => !l.ValorVariavel))
+            return 0m;
+
+        return linhas.Where(l => l.ValorVariavel)
+            .Sum(l => Math.Round(l.Quantidade * l.ValorUnitario, 2, MidpointRounding.AwayFromZero));
+    }
+
+    /// <summary>
+    /// Valor novo do Contrato com o percentual aplicado só na parte fixa:
+    /// variável + (atual − variável) × (1 + p/100). Mesma conta da simulação,
+    /// do reajuste automático e da aprovação.
+    /// </summary>
+    public static decimal CalcularValorNovo(decimal valorAtual, decimal parteVariavel, decimal percentual) =>
+        parteVariavel + CalcularValor(valorAtual - parteVariavel, percentual);
+
+    public static async Task<decimal> CalcularValorNovoAsync(
+        AppDbContext db, Contrato contrato, decimal percentual, CancellationToken cancellationToken)
+    {
+        var linhas = await db.ContratoServicos.AsNoTracking()
+            .Where(cs => cs.ContratoId == contrato.Id)
+            .ToListAsync(cancellationToken);
+        return CalcularValorNovo(contrato.ValorAtual, ParteVariavel(linhas), percentual);
+    }
+
     /// <summary>Índice negativo só reduz o valor se o Contrato permitir; senão o reajuste é 0% (mantém o valor).</summary>
     public static decimal PercentualEfetivo(decimal percentualCalculado, bool aplicarIndiceNegativo) =>
         percentualCalculado < 0 && !aplicarIndiceNegativo ? 0m : percentualCalculado;
@@ -61,10 +93,15 @@ public static class ReajusteContrato
         var valorAnterior = contrato.ValorAtual;
 
         var linhas = await db.ContratoServicos.Where(cs => cs.ContratoId == contrato.Id).ToListAsync(cancellationToken);
-        if (valorAnterior != 0 && valorNovo != valorAnterior)
+
+        // Reajuste é da parte fixa: linha variável fica com o valor de
+        // referência que tem (ver ParteVariavel).
+        var parteVariavel = ParteVariavel(linhas);
+        var baseReajustavel = valorAnterior - parteVariavel;
+        if (baseReajustavel != 0 && valorNovo != valorAnterior)
         {
-            var fator = valorNovo / valorAnterior;
-            foreach (var linha in linhas)
+            var fator = (valorNovo - parteVariavel) / baseReajustavel;
+            foreach (var linha in linhas.Where(l => parteVariavel == 0 || !l.ValorVariavel))
                 linha.ValorUnitario = Math.Round(linha.ValorUnitario * fator, 2, MidpointRounding.AwayFromZero);
         }
 
@@ -76,7 +113,7 @@ public static class ReajusteContrato
         evento.ValorAnterior = valorAnterior;
         evento.ValorNovo = valorNovo;
         evento.PercentualAplicado = percentualAplicado
-            ?? (valorAnterior == 0 ? null : Math.Round((valorNovo - valorAnterior) / valorAnterior * 100, 4));
+            ?? (baseReajustavel == 0 ? null : Math.Round((valorNovo - valorAnterior) / baseReajustavel * 100, 4));
         evento.ComposicaoJson = await ComposicaoContrato.SerializarAsync(
             db, linhas.Select(l => (l.ServicoId, l.Quantidade, l.ValorUnitario)), cancellationToken);
     }

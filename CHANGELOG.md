@@ -5,6 +5,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (simular reajuste pelo índice)
+- **Histórico de valores › Registrar novo reajuste** calcula sozinho, ao
+  abrir e a cada troca de data ou índice, o **acumulado de 12 meses** do
+  índice (a mesma conta do reajuste automático do aniversário) e mostra
+  "valor atual → valor novo", com os 12 meses para conferir. **Usar este
+  reajuste** preenche valor, % e observação; a pessoa confere e registra.
+  Rota `GET api/contratos/{id}/reajustes/simulacao` (não grava nada).
+- Data proposta: o **aniversário do contrato** quando vencido ou a até 45
+  dias; senão hoje (link para voltar ao aniversário).
+- Acumulado negativo segue a regra do contrato (mantém ou reduz), com a
+  opção de inverter na hora. Índice "Outro", sem índice, mês faltando ou
+  tabela parada: o quadro explica e aponta para Índices econômicos.
+
+### Alterado
+- **Reajuste vale só para a parte fixa do contrato**: serviço de valor
+  variável (ex.: HelpDesk) fica com o valor de referência e o % é calculado
+  sobre os fixos — no reajuste manual, no automático do aniversário e na
+  aprovação. Contrato só com serviços variáveis reajusta tudo, como antes.
+
 ### Corrigido (homologação é homologação, produção é produção)
 - **Nota Mensal** separa os ambientes: nota de teste em homologação não marca
   o mês de produção como "Já emitido", não vira "última nota" nem entra no

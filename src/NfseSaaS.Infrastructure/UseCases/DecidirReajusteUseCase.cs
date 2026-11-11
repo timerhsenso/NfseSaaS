@@ -54,7 +54,8 @@ public sealed class DecidirReajusteUseCase : IDecidirReajusteUseCase
                 var percentual = ReajusteContrato.PercentualEfetivo(evento.PercentualCalculado ?? 0m, contrato.AplicarIndiceNegativo);
                 if (motivo is not null) evento.Motivo = motivo;
                 await ReajusteContrato.AplicarAsync(
-                    _db, contrato, evento, ReajusteContrato.CalcularValor(valorAtual, percentual), percentual, cancellationToken);
+                    _db, contrato, evento, await ReajusteContrato.CalcularValorNovoAsync(_db, contrato, percentual, cancellationToken),
+                    percentual, cancellationToken);
                 break;
             }
 
@@ -70,7 +71,7 @@ public sealed class DecidirReajusteUseCase : IDecidirReajusteUseCase
                 else
                 {
                     percentual = request.PercentualNegociado!.Value;
-                    valorNovo = ReajusteContrato.CalcularValor(valorAtual, percentual.Value);
+                    valorNovo = await ReajusteContrato.CalcularValorNovoAsync(_db, contrato, percentual.Value, cancellationToken);
                 }
 
                 evento.Motivo = motivo;
