@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NfseSaaS.Application.UseCases.HistoricoValoresContrato;
 using NfseSaaS.Infrastructure.Contratos;
 using NfseSaaS.Domain.Entities;
 using NfseSaaS.Application.Abstractions;
@@ -200,7 +201,7 @@ public sealed class EmitirNotaMensalLoteUseCase : IEmitirNotaMensalLoteUseCase
             DataVigencia = vigencia,
             ValorAnterior = valorAnterior,
             ValorNovo = contrato.ValorAtual,
-            PercentualAplicado = valorAnterior == 0 ? null : Math.Round((contrato.ValorAtual - valorAnterior) / valorAnterior * 100, 4),
+            PercentualAplicado = PercentualVariacao.Calcular(valorAnterior, contrato.ValorAtual),
             Motivo = $"Valor ajustado na Nota Mensal de {competencia:MM/yyyy}",
             ComposicaoJson = await ComposicaoContrato.SerializarAsync(
                 _db, linhas.Select(l => (l.ServicoId, l.Quantidade, l.ValorUnitario)), cancellationToken)

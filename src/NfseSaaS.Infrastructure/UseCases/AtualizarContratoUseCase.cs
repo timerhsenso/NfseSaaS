@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NfseSaaS.Application.UseCases.HistoricoValoresContrato;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.Nfse;
@@ -154,7 +155,7 @@ public sealed class AtualizarContratoUseCase : IAtualizarContratoUseCase
             DataVigencia = vigencia,
             ValorAnterior = valorAnterior,
             ValorNovo = contrato.ValorAtual,
-            PercentualAplicado = valorAnterior == 0 ? null : Math.Round((contrato.ValorAtual - valorAnterior) / valorAnterior * 100, 4),
+            PercentualAplicado = PercentualVariacao.Calcular(valorAnterior, contrato.ValorAtual),
             Indice = request.TipoAlteracaoServicos == TipoMovimentacaoValor.Reajuste ? contrato.IndiceReajuste : null,
             Motivo = string.IsNullOrEmpty(motivo) ? null : motivo,
             ComposicaoJson = await ComposicaoContrato.SerializarAsync(

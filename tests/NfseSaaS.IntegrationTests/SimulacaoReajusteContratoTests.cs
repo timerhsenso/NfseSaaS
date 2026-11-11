@@ -119,6 +119,21 @@ public class SimulacaoReajusteContratoTests
                 .SingleAsync(m => m.ContratoId == contratoId && m.Tipo == TipoMovimentacaoValor.Reajuste);
             Assert.Equal(12.683m, reajuste.PercentualAplicado);
             Assert.Equal(1626.83m, (await db.Contratos.AsNoTracking().SingleAsync(c => c.Id == contratoId)).ValorAtual);
+
+            // Contrato cadastrado com R$ 1 e corrigido para R$ 2.000: grava
+            // (antes: "numeric field overflow"), sem percentual sem sentido.
+            var marcadorId = await new CadastrarContratoUseCase(db, audit).ExecutarAsync(new CadastrarContratoRequest(
+                empresa.Id, cliente.Id, "Cadastrado com R$ 1",
+                new[] { new ContratoServicoRequest(manutencao.Id, 1, 1m) },
+                new DateOnly(2026, 1, 1), 12, null, null, null, StatusContrato.Ativo, null,
+                TipoCobrancaContrato.Mensal, PermitirAlterarValorNaEmissao: false), CancellationToken.None);
+            await new RegistrarReajusteUseCase(db, audit).ExecutarAsync(marcadorId,
+                new RegistrarReajusteRequest(new DateOnly(2026, 11, 1), 2000m, null, null), CancellationToken.None);
+            db.ChangeTracker.Clear();
+            var correcao = await db.MovimentacoesValorContrato.AsNoTracking()
+                .SingleAsync(m => m.ContratoId == marcadorId && m.Tipo == TipoMovimentacaoValor.Reajuste);
+            Assert.Equal(2000m, correcao.ValorNovo);
+            Assert.Null(correcao.PercentualAplicado);
         }
         finally
         {

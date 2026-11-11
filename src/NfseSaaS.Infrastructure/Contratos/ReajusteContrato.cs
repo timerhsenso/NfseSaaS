@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using NfseSaaS.Application.UseCases.HistoricoValoresContrato;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Domain.Entities;
 using NfseSaaS.Domain.Enums;
@@ -112,8 +113,8 @@ public static class ReajusteContrato
         evento.Status = StatusMovimentacaoValor.Aplicado;
         evento.ValorAnterior = valorAnterior;
         evento.ValorNovo = valorNovo;
-        evento.PercentualAplicado = percentualAplicado
-            ?? (baseReajustavel == 0 ? null : Math.Round((valorNovo - valorAnterior) / baseReajustavel * 100, 4));
+        evento.PercentualAplicado = PercentualVariacao.CabeNaColuna(percentualAplicado)
+            ?? PercentualVariacao.Calcular(valorAnterior, valorNovo, baseReajustavel);
         evento.ComposicaoJson = await ComposicaoContrato.SerializarAsync(
             db, linhas.Select(l => (l.ServicoId, l.Quantidade, l.ValorUnitario)), cancellationToken);
     }

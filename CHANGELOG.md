@@ -5,6 +5,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Corrigido (erro ao salvar contrato cadastrado com R$ 1)
+- Corrigir o valor de um contrato cadastrado com valor simbólico (R$ 1 →
+  R$ 2.000) dava erro 500 ("numeric field overflow"): a variação de
+  +199.900% não cabe na coluna do percentual do Histórico de valores.
+  Regra única `PercentualVariacao`: variação fora do que a coluna guarda
+  (±99.999,9999%) fica sem percentual ("—"), com os valores anterior e novo
+  registrados. Vale para editar o contrato, registrar reajuste, aprovar
+  reajuste e "gravar no contrato" da Nota Mensal.
+
 ### Adicionado (simular reajuste pelo índice)
 - **Histórico de valores › Registrar novo reajuste** calcula sozinho, ao
   abrir e a cada troca de data ou índice, o **acumulado de 12 meses** do
