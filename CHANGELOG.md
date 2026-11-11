@@ -5,6 +5,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Corrigido (número da NFS-e enorme na lista)
+- Algumas notas mostravam no **Número** o Id da nota ("NFS" + chave de 50
+  dígitos) em vez do número oficial curto (ex.: 44). Ao subir, o sistema
+  corrige sozinho (`NumeroNfseCorrecao`, idempotente, sem migration): usa o
+  nNFSe do XML; sem XML, o número que está dentro da chave de acesso.
+- Regra única `NumeroNfseOficial` em todos os pontos que gravam o número
+  (emissão e busca na SEFIN): nunca guarda Id; se o XML vier sem nNFSe, o
+  número é tirado da chave de acesso.
+
 ### Alterado (Nota Mensal: repetir últimos valores)
 - **Repetir últimos valores** vale para todos os serviços (fixos e variáveis):
   cada um recebe o valor que teve na última nota; fixo que mudou mostra

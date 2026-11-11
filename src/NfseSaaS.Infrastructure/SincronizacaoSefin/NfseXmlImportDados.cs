@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Xml;
+using NfseSaaS.Application.UseCases.Nfse;
 
 namespace NfseSaaS.Infrastructure.SincronizacaoSefin;
 
@@ -34,7 +35,13 @@ internal sealed class NfseXmlImportDados
 
     public string SerieDps() => Texto("//n:NFSe/n:infNFSe/n:DPS/n:infDPS/n:serie") ?? string.Empty;
 
-    public string? NumeroNfse() => Texto("//n:NFSe/n:infNFSe/n:nNFSe");
+    /// <summary>
+    /// Número oficial (nNFSe). Se faltar ou vier fora do formato, usa o
+    /// número que está dentro do Id da nota (chave de acesso).
+    /// </summary>
+    public string? NumeroNfse() =>
+        NumeroNfseOficial.Normalizar(Texto("//n:NFSe/n:infNFSe/n:nNFSe"))
+        ?? NumeroNfseOficial.DaChave(Texto("//n:NFSe/n:infNFSe/@Id"));
 
     /// <summary>CNPJ (ou CPF) do prestador declarado na DPS — quem EMITIU a nota.</summary>
     public string PrestadorDocumento() =>

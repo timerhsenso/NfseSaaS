@@ -453,6 +453,10 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
                     nfse.NumeroNfse = new NfseSaaS.Infrastructure.SincronizacaoSefin.NfseXmlImportDados(nfse.XmlNfse).NumeroNfse();
                 }
 
+                // Sem XML na resposta (ou XML sem número): o número está
+                // dentro da chave de acesso.
+                nfse.NumeroNfse ??= NumeroNfseOficial.DaChave(nfse.ChaveAcesso);
+
                 _nfseEventoWriter.Registrar(nfse.Id, NfseEventoTipo.Autorizada, mensagem: nfse.ChaveAcesso);
 
                 // C7: autorizada a substituta, a SEFIN cancela a original
