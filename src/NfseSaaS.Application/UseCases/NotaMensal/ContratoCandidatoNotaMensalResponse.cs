@@ -20,4 +20,9 @@ public sealed record ContratoCandidatoNotaMensalResponse(
     // Reajuste que afeta ESTA competência e que o valor acima não reflete:
     // aguardando aprovação com vigência até o fim do mês, ou já aplicado com
     // vigência depois dele (nota de competência antiga emitida atrasada).
-    string? AvisoReajuste = null);
+    string? AvisoReajuste = null,
+    // Total da última competência com nota autorizada antes desta (todas as
+    // notas do contrato naquele mês). Serve de referência quando as notas
+    // antigas não guardam o valor de cada serviço.
+    decimal? UltimoTotal = null,
+    DateOnly? UltimoTotalCompetencia = null);

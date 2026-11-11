@@ -5,6 +5,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Alterado (Nota Mensal: repetir últimos valores)
+- **Repetir últimos valores** vale para todos os serviços (fixos e variáveis):
+  cada um recebe o valor que teve na última nota; fixo que mudou mostra
+  "gravar no contrato". A dica "última nota: R$ X" também aparece no fixo.
+- Contrato com vários serviços cuja última nota é anterior à separação por
+  serviço mostra o **total da última nota** na linha para dividir; o aviso
+  do botão diz quantos ficaram assim.
+
 ### Adicionado (Nota Mensal com valor por serviço)
 - Contrato: cada serviço pode ser marcado como **valor variável** (muda a
   cada nota, ex.: horas de suporte). Mudar só essa marcação não vira evento

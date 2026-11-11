@@ -153,6 +153,15 @@ public class NotaMensalValorVariavelTests
             Assert.Equal(800m, helpDeskNov.UltimoValor);
             Assert.Equal(outubro, helpDeskNov.UltimaCompetencia);
             Assert.Equal(800m, helpDeskNov.ValorSugerido);
+            // Total da última competência faturada (referência para notas antigas sem composição).
+            Assert.Equal(2300m, candidato.UltimoTotal);
+            Assert.Equal(outubro, candidato.UltimoTotalCompetencia);
+
+            // Nota antiga (sem composição): os serviços ficam sem "último valor", só o total.
+            await db.NotasFiscais.Where(n => n.Id == r.NfseId).ExecuteUpdateAsync(x => x.SetProperty(n => n.ComposicaoValoresJson, (string?)null));
+            var semComposicao = Assert.Single(await listar.ExecutarAsync(empresa.Id, new DateOnly(2026, 11, 1), CancellationToken.None));
+            Assert.All(semComposicao.Linhas, l => Assert.Null(l.UltimoValor));
+            Assert.Equal(2300m, semComposicao.UltimoTotal);
         }
         finally
         {

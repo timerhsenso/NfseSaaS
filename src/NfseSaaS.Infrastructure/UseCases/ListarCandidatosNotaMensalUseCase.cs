@@ -83,6 +83,18 @@ public sealed class ListarCandidatosNotaMensalUseCase : IListarCandidatosNotaMen
             .GroupBy(n => (n.ContratoId, n.CodigoTributacaoNacional))
             .ToDictionary(g => g.Key, g => g.OrderByDescending(n => n.DataCompetencia).ThenByDescending(n => n.CreatedAt).First());
 
+        // Total da última competência faturada de cada contrato (soma das
+        // notas daquele mês, um por código de tributação).
+        var ultimoTotalPorContrato = notasAnteriores
+            .GroupBy(n => n.ContratoId)
+            .ToDictionary(g => g.Key, g =>
+            {
+                var competencia = g.Max(n => n.DataCompetencia);
+                var mes = new DateOnly(competencia.Year, competencia.Month, 1);
+                var doMes = g.Where(n => n.DataCompetencia >= mes && n.DataCompetencia < mes.AddMonths(1)).ToList();
+                return (Total: doMes.Sum(n => n.ValorServico), Competencia: mes);
+            });
+
         (decimal? Valor, DateOnly? Competencia) Ultimo(Guid contratoId, Guid contratoServicoId, string codigo, int linhasDoMesmoCodigo)
         {
             if (!ultimaPorGrupo.TryGetValue((contratoId, codigo), out var nota))
@@ -128,7 +140,9 @@ public sealed class ListarCandidatosNotaMensalUseCase : IListarCandidatosNotaMen
             return new ContratoCandidatoNotaMensalResponse(
                 x.Contrato.Id, x.Contrato.ClienteId, x.ClienteNome, x.Contrato.Descricao,
                 linhas, x.Contrato.ValorAtual, x.Contrato.PermitirAlterarValorNaEmissao,
-                setComNota.Contains(x.Contrato.Id), Aviso(x.Contrato.Id));
+                setComNota.Contains(x.Contrato.Id), Aviso(x.Contrato.Id),
+                ultimoTotalPorContrato.TryGetValue(x.Contrato.Id, out var ultimoTotal) ? ultimoTotal.Total : null,
+                ultimoTotalPorContrato.TryGetValue(x.Contrato.Id, out var ultimoMes) ? ultimoMes.Competencia : null);
         }).ToList();
     }
 }

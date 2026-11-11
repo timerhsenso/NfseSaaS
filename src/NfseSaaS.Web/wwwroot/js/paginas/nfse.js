@@ -1003,16 +1003,25 @@ function podeEditarServicoNotaMensal(c, s) {
     return s.variavel || c.permitirAlterarValorNaEmissao || podeEditarContratosNotaMensal();
 }
 
-/** Dica embaixo do campo: último valor (variável) ou "gravar no contrato" (fixo alterado). */
+/**
+ * Dica embaixo do campo: o valor deste serviço na última nota (clique para
+ * usar) e, no serviço fixo alterado, "gravar no contrato".
+ */
 function htmlExtraServicoNotaMensal(c, i, j) {
     const s = c.valores[j];
-    if (s.variavel) {
-        if (s.ultimoValor == null) return '<span class="small text-muted">sem nota anterior</span>';
+    let html = '';
+    if (s.ultimoValor != null) {
         const igual = Math.round(s.ultimoValor * 100) === Math.round(s.valor * 100);
-        return igual
-            ? `<span class="small text-muted"><i class="bi bi-check2"></i> último valor (${competenciaCurta(s.ultimaCompetencia)})</span>`
-            : `<a href="#" class="small nm-usar-ultimo" data-i="${i}" data-j="${j}" title="Usar o valor da última nota">último: ${reaisNotaMensal(s.ultimoValor)} (${competenciaCurta(s.ultimaCompetencia)})</a>`;
+        html += igual
+            ? `<div class="small text-muted"><i class="bi bi-check2"></i> igual à última nota (${competenciaCurta(s.ultimaCompetencia)})</div>`
+            : `<div><a href="#" class="small nm-usar-ultimo" data-i="${i}" data-j="${j}" title="Usar o valor deste serviço na última nota">última nota: ${reaisNotaMensal(s.ultimoValor)} (${competenciaCurta(s.ultimaCompetencia)})</a></div>`;
+    } else if (s.variavel && c.ultimoTotal == null) {
+        html += '<div class="small text-muted">sem nota anterior</div>';
     }
+    return html + htmlGravarNoContratoNotaMensal(c, s, i, j);
+}
+
+function htmlGravarNoContratoNotaMensal(c, s, i, j) {
     if (!valorFixoAlterado(s)) return '';
     if (!podeEditarContratosNotaMensal())
         return '<span class="small text-muted">só nesta nota</span>';
@@ -1072,6 +1081,10 @@ function renderizarLinhasNotaMensal() {
                 <td>
                     ${campos}
                     ${varios ? `<div class="small fw-semibold text-end" id="nm-total-${i}">Total ${reaisNotaMensal(totalCandidatoNotaMensal(c))}</div>` : ''}
+                    ${soTotalDaUltimaNota(c)
+                        ? `<div class="small text-info-emphasis mt-1" title="Notas emitidas antes de 11/2026 guardam só o total, não o valor de cada serviço">
+                            <i class="bi bi-info-circle"></i> Última nota: <strong>${reaisNotaMensal(c.ultimoTotal)}</strong> (${competenciaCurta(c.ultimoTotalCompetencia)}) — divida entre os serviços</div>`
+                        : ''}
                 </td>
                 <td>${renderizarStatusNotaMensal(c)}</td>
             </tr>
@@ -1108,19 +1121,39 @@ function atualizarTotalNotaMensal() {
         : `${selecionados.length} nota(s) selecionada(s) · ${reaisNotaMensal(total)}`;
 }
 
+/** Contrato com vários serviços cuja última nota (antiga) só tem o total. */
+function soTotalDaUltimaNota(c) {
+    return c.valores.length > 1 && c.ultimoTotal != null && c.valores.every(s => s.ultimoValor == null);
+}
+
+/**
+ * Cada serviço (fixo ou variável) recebe o valor que teve na última nota.
+ * Fixo que mudou mostra "gravar no contrato" para você decidir.
+ */
 function repetirUltimosValoresNotaMensal() {
     let alterados = 0;
+    let soTotal = 0;
     candidatosNotaMensal.forEach(c => {
         if (!c.selecionado || c.status !== 'pendente') return;
+        if (soTotalDaUltimaNota(c)) {
+            soTotal++;
+            return;
+        }
         c.valores.forEach(s => {
-            if (s.variavel && s.ultimoValor != null && s.valor !== s.ultimoValor) {
+            if (s.ultimoValor != null && Math.round(s.valor * 100) !== Math.round(s.ultimoValor * 100)) {
                 s.valor = s.ultimoValor;
+                if (!valorFixoAlterado(s)) s.gravar = false;
                 alterados++;
             }
         });
     });
     renderizarLinhasNotaMensal();
-    mostrarToast(alterados === 0 ? 'Nada para repetir: os valores variáveis já são os da última nota.' : `${alterados} valor(es) preenchido(s) com o da última nota.`);
+
+    const partes = [];
+    partes.push(alterados === 0 ? 'Nenhum valor mudou: os campos já estão com os da última nota.' : `${alterados} valor(es) preenchido(s) com o da última nota.`);
+    if (soTotal > 0)
+        partes.push(`${soTotal} contrato(s) têm só o total da última nota (emitida antes da separação por serviço): o total aparece na linha para você dividir.`);
+    mostrarToast(partes.join(' '));
 }
 
 function gravarTodosNoContratoNotaMensal() {
