@@ -1,3 +1,4 @@
+using NfseSaaS.Domain.Entities;
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using NfseSaaS.Application.Exceptions;
@@ -146,7 +147,7 @@ public sealed class ListarCandidatosNotaMensalUseCase : IListarCandidatosNotaMen
                 .ToList();
 
             return new ContratoCandidatoNotaMensalResponse(
-                x.Contrato.Id, x.Contrato.ClienteId, x.ClienteNome, x.Contrato.Descricao,
+                x.Contrato.Id, x.Contrato.ClienteId, x.ClienteNome, NumeroContratoRegras.Rotulo(x.Contrato.Numero, x.Contrato.Descricao),
                 linhas, x.Contrato.ValorAtual, x.Contrato.PermitirAlterarValorNaEmissao,
                 setComNota.Contains(x.Contrato.Id), Aviso(x.Contrato.Id),
                 ultimoTotalPorContrato.TryGetValue(x.Contrato.Id, out var ultimoTotal) ? ultimoTotal.Total : null,

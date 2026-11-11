@@ -29,7 +29,7 @@
             <thead>
                 <tr>
                     <th>Cliente</th>
-                    <th>Descrição</th>
+                    <th>Nº</th>
                     <th>Serviços</th>
                     <th>Valor atual</th>
                     <th>Cobrança</th>
@@ -43,6 +43,8 @@
                 </tr>
             </thead>
         </table>
+        @* Somatório do que está na lista (respeita a pesquisa) — contratos.js › atualizarTotaisContratos. *@
+        <div id="totais-contratos" class="d-flex flex-wrap justify-content-end gap-4 border-top pt-3 mt-2" aria-live="polite"></div>
     </div>
 </div>
 
@@ -80,9 +82,16 @@
                                 <label class="form-label">Cliente</label>
                                 <select class="form-control" id="clienteId" style="width: 100%" required></select>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Descrição do contrato</label>
-                                <input type="text" class="form-control" id="descricao" maxlength="200" required placeholder="ex.: Manutenção sistema A" />
+                            <div class="row">
+                                <div class="col-md-5 mb-3">
+                                    <label class="form-label" for="numeroContrato">Nº do contrato</label>
+                                    <input type="text" class="form-control" id="numeroContrato" maxlength="30" required placeholder="ex.: 2026/0001" />
+                                    <div class="form-text">Sugerido pelo sistema; pode usar a sua numeração.</div>
+                                </div>
+                                <div class="col-md-7 mb-3">
+                                    <label class="form-label" for="descricao">Descrição <span class="text-muted fw-normal">(opcional)</span></label>
+                                    <input type="text" class="form-control" id="descricao" maxlength="200" placeholder="ex.: Folha + RH filial Camaçari" />
+                                </div>
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">

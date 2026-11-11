@@ -5,6 +5,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (número do contrato e totais da lista)
+- **Nº do contrato** (texto livre, até 30 caracteres, único por empresa sem
+  diferenciar maiúsculas). Ao abrir "Novo contrato" já vem o próximo
+  "ano/NNNN" da empresa (ex.: 2026/0001), e dá para trocar pela numeração
+  própria. Rota `GET api/contratos/proximo-numero`. Migration `NumeroContrato`.
+- Contratos que já existem ganham número ao subir o sistema
+  (`NumeroContratoBackfill`): por empresa, na ordem da data de início, com o
+  ano do início (2019/0001…). Idempotente.
+- **Descrição do contrato agora é opcional.** A coluna "Descrição" da lista
+  virou **Nº** (com a descrição pequena embaixo, quando houver) e a pesquisa
+  acha pelo número. Nota Mensal, e-mails da automação, reajustes, Histórico
+  de valores e o combo de contrato na emissão mostram "Contrato 2026/0007".
+  A exportação de dados ganhou a coluna Numero.
+- **Rodapé da lista de Contratos**: receita mensal ativa (Ativos com cobrança
+  Mensal, R$/mês) e total da lista, respeitando a pesquisa.
+
 ### Corrigido (erro ao salvar contrato cadastrado com R$ 1)
 - Corrigir o valor de um contrato cadastrado com valor simbólico (R$ 1 →
   R$ 2.000) dava erro 500 ("numeric field overflow"): a variação de

@@ -133,13 +133,13 @@ public sealed class MontadorExportacaoDados
         Tabela(zip, tServicos);
 
         // ----- Contratos -----
-        var contratos = await _db.Contratos.AsNoTracking().OrderBy(c => c.Descricao).ToListAsync(cancellationToken);
+        var contratos = await _db.Contratos.AsNoTracking().OrderBy(c => c.Numero).ThenBy(c => c.Descricao).ToListAsync(cancellationToken);
         var tContratos = new TabelaExportacao("contratos",
-            "Id", "EmpresaCnpj", "ClienteId", "Cliente", "Descricao", "ValorAtual", "DataInicio", "DataFim", "Status",
+            "Id", "EmpresaCnpj", "ClienteId", "Cliente", "Numero", "Descricao", "ValorAtual", "DataInicio", "DataFim", "Status",
             "TipoCobranca", "PermitirAlterarValorNaEmissao", "PeriodicidadeReajusteMeses", "IndiceReajuste",
             "DataUltimoReajuste", "ReajusteAutomatico", "AplicarIndiceNegativo", "Observacao", "CriadoEm");
         foreach (var c in contratos)
-            tContratos.Adicionar(c.Id, Cnpj(c.EmpresaId), c.ClienteId, clientePorId.GetValueOrDefault(c.ClienteId)?.Apelido, c.Descricao,
+            tContratos.Adicionar(c.Id, Cnpj(c.EmpresaId), c.ClienteId, clientePorId.GetValueOrDefault(c.ClienteId)?.Apelido, c.Numero, c.Descricao,
                 c.ValorAtual, c.DataInicioContrato, c.DataFim, c.Status, c.TipoCobranca, c.PermitirAlterarValorNaEmissao,
                 c.PeriodicidadeReajusteMeses, c.IndiceReajuste, c.DataUltimoReajuste, c.ReajusteAutomatico,
                 c.AplicarIndiceNegativo, c.Observacao, c.CreatedAt);

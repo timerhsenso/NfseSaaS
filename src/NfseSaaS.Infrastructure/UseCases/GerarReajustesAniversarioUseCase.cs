@@ -65,7 +65,7 @@ public sealed class GerarReajustesAniversarioUseCase : IGerarReajustesAniversari
                 && c.IndiceReajuste != null && c.IndiceReajuste != IndiceReajusteContrato.Outro
                 && c.PeriodicidadeReajusteMeses > 0
                 && c.ValorAtual > 0)
-            .OrderBy(c => c.Descricao)
+            .OrderBy(c => c.Numero).ThenBy(c => c.Descricao)
             .ToListAsync(cancellationToken);
 
         var contratoIds = contratos.Select(c => c.Id).ToList();
@@ -113,13 +113,13 @@ public sealed class GerarReajustesAniversarioUseCase : IGerarReajustesAniversari
         var indice = contrato.IndiceReajuste!.Value;
 
         if (aniversario < hoje.AddDays(-DiasMaximosAtraso))
-            return new ReajusteAniversarioItem(contrato.Id, contrato.Descricao, aniversario, indice,
+            return new ReajusteAniversarioItem(contrato.Id, NumeroContratoRegras.Rotulo(contrato.Numero, contrato.Descricao), aniversario, indice,
                 ResultadoReajusteAniversario.AtrasadoDemais, null, contrato.ValorAtual, null,
                 $"Aniversário há mais de {DiasMaximosAtraso} dias — registre o reajuste manualmente no Histórico de valores.");
 
         var acumulado = await _calcularAcumulado.ExecutarAsync(indice, aniversario, cancellationToken);
         if (!acumulado.Disponivel || acumulado.PercentualAcumulado is not { } percentualCalculado)
-            return new ReajusteAniversarioItem(contrato.Id, contrato.Descricao, aniversario, indice,
+            return new ReajusteAniversarioItem(contrato.Id, NumeroContratoRegras.Rotulo(contrato.Numero, contrato.Descricao), aniversario, indice,
                 ResultadoReajusteAniversario.AguardandoIndice, null, contrato.ValorAtual, null, acumulado.Mensagem);
 
         var percentual = ReajusteContrato.PercentualEfetivo(percentualCalculado, contrato.AplicarIndiceNegativo);
@@ -159,7 +159,7 @@ public sealed class GerarReajustesAniversarioUseCase : IGerarReajustesAniversari
             aplicarAgora ? "AplicarReajusteAutomaticoContrato" : "ProporReajusteContrato", "Contrato", contrato.Id,
             new { Aniversario = aniversario, Indice = indice, PercentualCalculado = percentualCalculado, PercentualAplicado = percentual, evento.ValorAnterior, ValorNovo = valorNovo });
 
-        return new ReajusteAniversarioItem(contrato.Id, contrato.Descricao, aniversario, indice,
+        return new ReajusteAniversarioItem(contrato.Id, NumeroContratoRegras.Rotulo(contrato.Numero, contrato.Descricao), aniversario, indice,
             aplicarAgora ? ResultadoReajusteAniversario.AplicadoAutomaticamente : ResultadoReajusteAniversario.AguardandoAprovacao,
             percentualCalculado, evento.ValorAnterior, valorNovo, evento.Motivo);
     }

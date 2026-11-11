@@ -27,7 +27,14 @@ public sealed class AtualizarContratoUseCase : IAtualizarContratoUseCase
         var contrato = await _db.Contratos.FirstOrDefaultAsync(c => c.Id == id, cancellationToken)
             ?? throw new RecursoNaoEncontradoException($"Contrato {id} não encontrado.");
 
-        contrato.Descricao = request.Descricao;
+        contrato.Descricao = request.Descricao?.Trim() ?? string.Empty;
+
+        // Número: nulo = não mexe (quem chama sem ele); informado = troca.
+        if (NumeroContratoRegras.Normalizar(request.Numero) is { } numero && numero != contrato.Numero)
+        {
+            await NumeracaoContrato.GarantirUnicoAsync(_db, contrato.EmpresaId, numero, contrato.Id, cancellationToken);
+            contrato.Numero = numero;
+        }
         contrato.DataInicioContrato = request.DataInicioContrato;
         contrato.PeriodicidadeReajusteMeses = request.PeriodicidadeReajusteMeses;
         contrato.IndiceReajuste = request.IndiceReajuste;
@@ -52,7 +59,7 @@ public sealed class AtualizarContratoUseCase : IAtualizarContratoUseCase
         if (request.Servicos is not null)
             await AtualizarServicosAsync(contrato, request, cancellationToken);
 
-        _auditLogWriter.Registrar("AtualizarContrato", "Contrato", contrato.Id, new { contrato.Descricao });
+        _auditLogWriter.Registrar("AtualizarContrato", "Contrato", contrato.Id, new { contrato.Numero, contrato.Descricao });
 
         await _db.SaveChangesAsync(cancellationToken);
     }

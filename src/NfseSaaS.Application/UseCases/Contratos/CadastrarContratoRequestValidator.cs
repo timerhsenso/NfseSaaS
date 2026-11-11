@@ -1,4 +1,5 @@
 using FluentValidation;
+using NfseSaaS.Domain.Entities;
 using NfseSaaS.Domain.Enums;
 
 namespace NfseSaaS.Application.UseCases.Contratos;
@@ -9,7 +10,8 @@ public sealed class CadastrarContratoRequestValidator : AbstractValidator<Cadast
     {
         RuleFor(x => x.EmpresaId).NotEmpty();
         RuleFor(x => x.ClienteId).NotEmpty();
-        RuleFor(x => x.Descricao).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.Descricao).MaximumLength(200);
+        RuleFor(x => x.Numero).MaximumLength(NumeroContratoRegras.TamanhoMaximo).WithName("Número do contrato");
         RuleFor(x => x.Status).IsInEnum();
 
         // Reajuste (periodicidade/índice/alerta) só se aplica a cobrança

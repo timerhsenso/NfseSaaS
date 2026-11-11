@@ -232,6 +232,7 @@ public static class DependencyInjection
 
         services.AddScoped<IRegistrarReajusteUseCase, RegistrarReajusteUseCase>();
         services.AddScoped<ISimularReajusteContratoUseCase, SimularReajusteContratoUseCase>();
+        services.AddScoped<IObterProximoNumeroContratoUseCase, ObterProximoNumeroContratoUseCase>();
         services.AddScoped<IListarHistoricoValoresContratoUseCase, ListarHistoricoValoresContratoUseCase>();
         services.AddScoped<IGerarReajustesAniversarioUseCase, GerarReajustesAniversarioUseCase>();
         services.AddScoped<IDecidirReajusteUseCase, DecidirReajusteUseCase>();

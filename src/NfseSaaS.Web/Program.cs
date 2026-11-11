@@ -250,6 +250,7 @@ try
     await NfseSaaS.Infrastructure.Persistence.Seeders.MunicipioSeeder.SeedAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.PlanosSeeder.SeedAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.NumeroNfseCorrecao.CorrigirAsync(app.Services);
+    await NfseSaaS.Infrastructure.Persistence.Seeders.NumeroContratoBackfill.PreencherAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.AutomacaoNotaMensalJobSincronizador.SincronizarAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.IndicesEconomicosJobSincronizador.SincronizarAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.AvisoCertificadoJobSincronizador.SincronizarAsync(app.Services);

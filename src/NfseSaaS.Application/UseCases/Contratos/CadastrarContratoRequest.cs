@@ -11,7 +11,8 @@ namespace NfseSaaS.Application.UseCases.Contratos;
 public sealed record CadastrarContratoRequest(
     Guid EmpresaId,
     Guid ClienteId,
-    string Descricao,
+    // Nome opcional (desde 11/11/2026 o número identifica o contrato).
+    string? Descricao,
     IReadOnlyList<ContratoServicoRequest> Servicos,
     DateOnly DataInicioContrato,
     int PeriodicidadeReajusteMeses,
@@ -25,4 +26,6 @@ public sealed record CadastrarContratoRequest(
     bool? ReajusteAutomatico = null,
     bool AplicarIndiceNegativo = false,
     // C2: local da prestação (IBGE) padrão das notas. Nulo/em branco = município da Empresa.
-    string? CodigoMunicipioPrestacao = null);
+    string? CodigoMunicipioPrestacao = null,
+    // Número do contrato (texto livre, único na empresa). Nulo/vazio = o próximo "ano/NNNN" da empresa.
+    string? Numero = null);

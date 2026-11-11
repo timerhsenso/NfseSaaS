@@ -44,6 +44,7 @@ public sealed class ListarContratosUseCase : IListarContratosUseCase
             var busca = request.Busca.Trim();
             query = query.Where(x =>
                 EF.Functions.ILike(x.Contrato.Descricao, $"%{busca}%") ||
+                (x.Contrato.Numero != null && EF.Functions.ILike(x.Contrato.Numero, $"%{busca}%")) ||
                 EF.Functions.ILike(x.ClienteNome, $"%{busca}%") ||
                 EF.Functions.ILike(x.ClienteRazaoSocial, $"%{busca}%"));
         }
@@ -51,7 +52,7 @@ public sealed class ListarContratosUseCase : IListarContratosUseCase
         var totalCount = await query.CountAsync(cancellationToken);
 
         var itens = await query
-            .OrderBy(x => x.ClienteNome).ThenBy(x => x.Contrato.Descricao)
+            .OrderBy(x => x.ClienteNome).ThenBy(x => x.Contrato.Numero).ThenBy(x => x.Contrato.Descricao)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);
@@ -93,7 +94,7 @@ public sealed class ListarContratosUseCase : IListarContratosUseCase
                 dataProximoReajuste, situacao, x.Contrato.Status, x.Contrato.DataFim, x.Contrato.TipoCobranca,
                 x.Contrato.PermitirAlterarValorNaEmissao, x.Contrato.CreatedAt, x.Contrato.UpdatedAt,
                 x.Contrato.ReajusteAutomatico, x.Contrato.AplicarIndiceNegativo, pendente?.Id, pendente?.DataVigencia,
-                x.Contrato.CodigoMunicipioPrestacao);
+                x.Contrato.CodigoMunicipioPrestacao, x.Contrato.Numero);
         }).ToList();
 
         return new PagedResult<ContratoResponse>

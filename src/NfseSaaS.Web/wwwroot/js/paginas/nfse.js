@@ -567,7 +567,7 @@ async function carregarContratosDoCliente(clienteId) {
         campoContrato.classList.remove('d-none');
         selectContrato.innerHTML =
             '<option value="">Nenhum (nota avulsa)</option>' +
-            contratosDoClienteAtual.map(c => `<option value="${c.id}">${c.descricao} — ${Number(c.valorAtual).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</option>`).join('');
+            contratosDoClienteAtual.map(c => `<option value="${c.id}">${escaparHtml(rotuloContrato(c))} — ${Number(c.valorAtual).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</option>`).join('');
 
         // Só 1 Contrato ativo pra este Cliente: já vem selecionado (evita
         // o retrabalho de escolher toda vez), mas continua visível e

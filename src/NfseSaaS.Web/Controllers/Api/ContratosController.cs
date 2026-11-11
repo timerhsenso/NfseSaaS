@@ -22,6 +22,7 @@ public sealed class ContratosController : ControllerBase
     private readonly IExcluirContratoUseCase _excluirContrato;
     private readonly IRegistrarReajusteUseCase _registrarReajuste;
     private readonly ISimularReajusteContratoUseCase _simularReajuste;
+    private readonly IObterProximoNumeroContratoUseCase _proximoNumero;
     private readonly IListarHistoricoValoresContratoUseCase _listarHistoricoValores;
     private readonly IUploadDocumentoContratoUseCase _uploadDocumento;
     private readonly IListarDocumentosContratoUseCase _listarDocumentos;
@@ -42,8 +43,10 @@ public sealed class ContratosController : ControllerBase
         IExcluirDocumentoContratoUseCase excluirDocumento,
         IObterDocumentoContratoParaDownloadUseCase obterDocumentoParaDownload,
         IObterHistoricoContratoUseCase obterHistorico,
-        ISimularReajusteContratoUseCase simularReajuste)
+        ISimularReajusteContratoUseCase simularReajuste,
+        IObterProximoNumeroContratoUseCase proximoNumero)
     {
+        _proximoNumero = proximoNumero;
         _simularReajuste = simularReajuste;
         _cadastrarContrato = cadastrarContrato;
         _listarContratos = listarContratos;
@@ -107,6 +110,14 @@ public sealed class ContratosController : ControllerBase
     }
 
     /// <summary>Registra um reajuste manual — vira um evento do Histórico de valores (ver RegistrarReajusteUseCase).</summary>
+    /// <summary>Número proposto para o próximo contrato da empresa ("ano/NNNN").</summary>
+    [HttpGet("proximo-numero")]
+    public async Task<IActionResult> ProximoNumero([FromQuery] Guid empresaId, CancellationToken cancellationToken)
+    {
+        var numero = await _proximoNumero.ExecutarAsync(empresaId, cancellationToken);
+        return Ok(new { numero });
+    }
+
     /// <summary>
     /// Simula o reajuste pelo índice (acumulado de 12 meses), sem gravar —
     /// a tela mostra o percentual e o valor novo antes de "Registrar".

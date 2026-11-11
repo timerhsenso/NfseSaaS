@@ -15,7 +15,8 @@ namespace NfseSaaS.Application.UseCases.Contratos;
 /// houver demanda real, mesmo padrão do resto do projeto.
 /// </summary>
 public sealed record AtualizarContratoRequest(
-    string Descricao,
+    // Nome opcional (desde 11/11/2026 o número identifica o contrato).
+    string? Descricao,
     DateOnly DataInicioContrato,
     int PeriodicidadeReajusteMeses,
     IndiceReajusteContrato? IndiceReajuste,
@@ -39,4 +40,6 @@ public sealed record AtualizarContratoRequest(
     bool? ReajusteAutomatico = null,
     bool AplicarIndiceNegativo = false,
     // C2: nulo = não mexe; "" = volta para o município da Empresa; código = esse município.
-    string? CodigoMunicipioPrestacao = null);
+    string? CodigoMunicipioPrestacao = null,
+    // Número do contrato: nulo = não mexe; informado = troca (único na empresa).
+    string? Numero = null);

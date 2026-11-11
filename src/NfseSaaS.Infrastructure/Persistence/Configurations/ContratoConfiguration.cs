@@ -17,6 +17,14 @@ public sealed class ContratoConfiguration : IEntityTypeConfiguration<Contrato>
             .HasMaxLength(200)
             .IsRequired();
 
+        // Texto livre (cada um numera do seu jeito), único por empresa.
+        // Filtrado: contrato antigo fica nulo até o backfill da subida.
+        builder.Property(c => c.Numero)
+            .HasMaxLength(NfseSaaS.Domain.Entities.NumeroContratoRegras.TamanhoMaximo);
+        builder.HasIndex(c => new { c.TenantId, c.EmpresaId, c.Numero })
+            .IsUnique()
+            .HasFilter("\"Numero\" IS NOT NULL");
+
         builder.Property(c => c.ValorAtual)
             .HasColumnType("numeric(18,2)");
 

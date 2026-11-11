@@ -33,4 +33,6 @@ public sealed record ContratoResponse(
     Guid? ReajustePendenteId,
     DateOnly? ReajustePendenteVigencia,
     // C2: local da prestação padrão das notas (nulo = município da Empresa).
-    string? CodigoMunicipioPrestacao = null);
+    string? CodigoMunicipioPrestacao = null,
+    // Número do contrato (nulo só em contrato antigo antes do backfill).
+    string? Numero = null);

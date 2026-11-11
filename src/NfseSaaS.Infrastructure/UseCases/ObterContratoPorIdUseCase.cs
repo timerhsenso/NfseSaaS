@@ -55,6 +55,6 @@ public sealed class ObterContratoPorIdUseCase : IObterContratoPorIdUseCase
             dataProximoReajuste, situacao, resultado.Contrato.Status, resultado.Contrato.DataFim, resultado.Contrato.TipoCobranca,
             resultado.Contrato.PermitirAlterarValorNaEmissao, resultado.Contrato.CreatedAt, resultado.Contrato.UpdatedAt,
             resultado.Contrato.ReajusteAutomatico, resultado.Contrato.AplicarIndiceNegativo, pendente?.Id, pendente?.DataVigencia,
-            resultado.Contrato.CodigoMunicipioPrestacao);
+            resultado.Contrato.CodigoMunicipioPrestacao, resultado.Contrato.Numero);
     }
 }

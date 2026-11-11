@@ -56,7 +56,7 @@ public sealed class EmitirNotaMensalLoteUseCase : IEmitirNotaMensalLoteUseCase
 
             if (contrato.TipoCobranca != TipoCobrancaContrato.Mensal || contrato.Status != StatusContrato.Ativo)
             {
-                resultados.Add(new ItemResultadoNotaMensalResponse(contrato.Id, "—", contrato.Descricao, false, null, null, "Contrato não é mais elegível (precisa ser Mensal e Ativo)."));
+                resultados.Add(new ItemResultadoNotaMensalResponse(contrato.Id, "—", NumeroContratoRegras.Rotulo(contrato.Numero, contrato.Descricao), false, null, null, "Contrato não é mais elegível (precisa ser Mensal e Ativo)."));
                 continue;
             }
 
@@ -72,7 +72,7 @@ public sealed class EmitirNotaMensalLoteUseCase : IEmitirNotaMensalLoteUseCase
 
             if (linhas.Count == 0)
             {
-                resultados.Add(new ItemResultadoNotaMensalResponse(contrato.Id, clienteNome, contrato.Descricao, false, null, null, "Contrato sem serviços cadastrados."));
+                resultados.Add(new ItemResultadoNotaMensalResponse(contrato.Id, clienteNome, NumeroContratoRegras.Rotulo(contrato.Numero, contrato.Descricao), false, null, null, "Contrato sem serviços cadastrados."));
                 continue;
             }
 
@@ -96,7 +96,7 @@ public sealed class EmitirNotaMensalLoteUseCase : IEmitirNotaMensalLoteUseCase
                 }
                 catch (InvalidOperationException ex)
                 {
-                    resultados.Add(new ItemResultadoNotaMensalResponse(contrato.Id, clienteNome, contrato.Descricao, false, null, null, ex.Message));
+                    resultados.Add(new ItemResultadoNotaMensalResponse(contrato.Id, clienteNome, NumeroContratoRegras.Rotulo(contrato.Numero, contrato.Descricao), false, null, null, ex.Message));
                     continue;
                 }
 

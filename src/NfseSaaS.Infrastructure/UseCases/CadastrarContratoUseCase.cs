@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using NfseSaaS.Application.Abstractions;
+using NfseSaaS.Application.Common;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.Nfse;
 using NfseSaaS.Application.UseCases.Contratos;
@@ -43,11 +44,17 @@ public sealed class CadastrarContratoUseCase : ICadastrarContratoUseCase
 
         var valorAtual = request.Servicos.Sum(s => s.Quantidade * s.ValorUnitario);
 
+        // Número: o digitado (texto livre) ou o próximo "ano/NNNN" da empresa.
+        var numero = NumeroContratoRegras.Normalizar(request.Numero)
+            ?? await NumeracaoContrato.ProximoAsync(_db, request.EmpresaId, DataBrasilia.Hoje().Year, cancellationToken);
+        await NumeracaoContrato.GarantirUnicoAsync(_db, request.EmpresaId, numero, null, cancellationToken);
+
         var contrato = new Contrato
         {
             EmpresaId = request.EmpresaId,
             ClienteId = request.ClienteId,
-            Descricao = request.Descricao,
+            Numero = numero,
+            Descricao = request.Descricao?.Trim() ?? string.Empty,
             ValorAtual = valorAtual,
             DataInicioContrato = request.DataInicioContrato,
             PeriodicidadeReajusteMeses = request.PeriodicidadeReajusteMeses,
@@ -91,7 +98,7 @@ public sealed class CadastrarContratoUseCase : ICadastrarContratoUseCase
                 _db, request.Servicos.Select(s => (s.ServicoId, s.Quantidade, s.ValorUnitario)), cancellationToken)
         });
 
-        _auditLogWriter.Registrar("CadastrarContrato", "Contrato", contrato.Id, new { contrato.EmpresaId, contrato.ClienteId, contrato.Descricao, contrato.ValorAtual, TotalLinhas = request.Servicos.Count });
+        _auditLogWriter.Registrar("CadastrarContrato", "Contrato", contrato.Id, new { contrato.EmpresaId, contrato.ClienteId, contrato.Numero, contrato.Descricao, contrato.ValorAtual, TotalLinhas = request.Servicos.Count });
 
         await _db.SaveChangesAsync(cancellationToken);
 

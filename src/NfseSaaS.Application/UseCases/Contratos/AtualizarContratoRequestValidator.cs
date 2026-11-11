@@ -1,4 +1,5 @@
 using FluentValidation;
+using NfseSaaS.Domain.Entities;
 using NfseSaaS.Application.Common;
 using NfseSaaS.Domain.Enums;
 
@@ -8,7 +9,10 @@ public sealed class AtualizarContratoRequestValidator : AbstractValidator<Atuali
 {
     public AtualizarContratoRequestValidator()
     {
-        RuleFor(x => x.Descricao).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.Descricao).MaximumLength(200);
+        RuleFor(x => x.Numero).MaximumLength(NumeroContratoRegras.TamanhoMaximo).WithName("Número do contrato");
+        RuleFor(x => x.Numero).Must(n => n is null || !string.IsNullOrWhiteSpace(n))
+            .WithMessage("Informe o número do contrato.");
         RuleFor(x => x.Status).IsInEnum();
 
         // Ver comentário completo em CadastrarContratoRequestValidator —

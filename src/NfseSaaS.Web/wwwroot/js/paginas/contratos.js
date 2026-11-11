@@ -50,7 +50,15 @@ let catalogoServicosContratos = []; // cache do combo, reaproveitado nas linhas 
 document.addEventListener('DOMContentLoaded', function () {
     const colunas = [
         { data: 'clienteNome' },
-        { data: 'descricao' },
+        {
+            // Número (ordena/pesquisa por ele) + descrição opcional embaixo.
+            data: 'numero',
+            render: (numero, type, contrato) => {
+                if (type !== 'display') return `${numero ?? ''} ${contrato.descricao ?? ''}`.trim();
+                const desc = contrato.descricao ? `<div class="small text-muted">${escaparHtml(contrato.descricao)}</div>` : '';
+                return `<span class="fw-semibold text-nowrap">${escaparHtml(numero ?? '—')}</span>${desc}`;
+            }
+        },
         {
             data: 'servicos',
             render: servicos => (servicos ?? []).map(s => s.servicoDescricao).join(', ') || '—'
@@ -82,7 +90,7 @@ document.addEventListener('DOMContentLoaded', function () {
             data: null,
             orderable: false,
             render: (data, type, contrato) => `
-                <button type="button" class="btn btn-sm btn-outline-secondary btn-historico" data-id="${contrato.id}" data-descricao="${contrato.descricao}" title="Histórico de valores e reajustes">
+                <button type="button" class="btn btn-sm btn-outline-secondary btn-historico" data-id="${contrato.id}" data-descricao="${escaparHtml(rotuloContrato(contrato))}" title="Histórico de valores e reajustes">
                     <i class="bi bi-clock-history"></i>
                 </button>
                 <button type="button" class="btn btn-sm btn-outline-primary btn-editar" data-id="${contrato.id}">
@@ -98,6 +106,7 @@ document.addEventListener('DOMContentLoaded', function () {
     tabelaContratos = new DataTable('#tabela-contratos', {
         columns: colunas,
     });
+    tabelaContratos.on('draw', atualizarTotaisContratos);
 
     configurarExportacao(tabelaContratos, 'Contratos');
 
@@ -166,6 +175,35 @@ document.addEventListener('DOMContentLoaded', function () {
     empresaAtualIdContratos = obterEmpresaAtualId();
     carregarContratos();
 });
+
+// Rodapé: receita mensal ativa (contratos Ativos com cobrança Mensal) e
+// total do que está na lista agora (respeita a pesquisa da tabela).
+function atualizarTotaisContratos() {
+    const alvo = document.getElementById('totais-contratos');
+    if (!alvo || !tabelaContratos) return;
+
+    const linhas = tabelaContratos.rows({ search: 'applied' }).data().toArray();
+    const somar = lista => lista.reduce((t, c) => t + Number(c.valorAtual || 0), 0);
+    const ativosMensais = linhas.filter(c => c.status === 1 && c.tipoCobranca === 1);
+    const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
+
+    if (linhas.length === 0) {
+        alvo.innerHTML = '';
+        return;
+    }
+
+    alvo.innerHTML = `
+        <div class="text-end">
+            <div class="small text-muted">Receita mensal ativa</div>
+            <div class="fs-5 fw-semibold text-success">${formatarReais(somar(ativosMensais))}<span class="fs-6 fw-normal text-muted">/mês</span></div>
+            <div class="small text-muted">${plural(ativosMensais.length, 'contrato ativo mensal', 'contratos ativos mensais')}</div>
+        </div>
+        <div class="text-end">
+            <div class="small text-muted">Total da lista</div>
+            <div class="fs-5 fw-semibold">${formatarReais(somar(linhas))}</div>
+            <div class="small text-muted">${plural(linhas.length, 'contrato', 'contratos')}${tabelaContratos.search() ? ' (filtrados)' : ''}</div>
+        </div>`;
+}
 
 async function carregarContratos() {
     if (!empresaAtualIdContratos) return;
@@ -457,7 +495,7 @@ function renderizarResumoContrato(contrato) {
             // Abre o Histórico só depois que este modal terminou de fechar
             // (dois modais do Bootstrap ao mesmo tempo quebram o fundo escuro).
             document.getElementById('modal-contrato').addEventListener('hidden.bs.modal',
-                () => abrirModalHistorico(contrato.id, contrato.descricao), { once: true });
+                () => abrirModalHistorico(contrato.id, rotuloContrato(contrato)), { once: true });
             modalContrato.hide();
         });
     }
@@ -473,6 +511,9 @@ async function abrirModalNovoContrato() {
     document.getElementById('dataInicioContrato').value = dataLocalIso();
 
     try {
+        // Já mostra o número que o contrato vai ter (pode trocar).
+        const proximo = await apiFetch(`/api/contratos/proximo-numero?empresaId=${empresaAtualIdContratos}`);
+        document.getElementById('numeroContrato').value = proximo.numero;
         await definirMunicipioNoSelect('localPrestacaoContrato', null);
         await carregarServicosContrato();
         adicionarLinhaServico();
@@ -490,12 +531,13 @@ async function abrirModalEditarContrato(id) {
     try {
         const contrato = await apiFetch(`/api/contratos/${id}`);
         document.getElementById('cliente-modal-contrato').textContent = contrato.clienteNome;
-        document.getElementById('titulo-modal-contrato').textContent = contrato.descricao;
+        document.getElementById('titulo-modal-contrato').textContent = rotuloContrato(contrato);
         renderizarResumoContrato(contrato);
         await carregarServicosContrato();
         preencherClienteAtual(contrato.clienteId, contrato.clienteNome);
 
         document.getElementById('contratoId').value = contrato.id;
+        document.getElementById('numeroContrato').value = contrato.numero ?? '';
         document.getElementById('descricao').value = contrato.descricao;
         document.getElementById('dataInicioContrato').value = contrato.dataInicioContrato;
         document.getElementById('dataFim').value = contrato.dataFim ?? '';
@@ -675,7 +717,8 @@ async function salvarContrato(e) {
     try {
         if (id) {
             const payload = {
-                descricao: document.getElementById('descricao').value,
+                numero: document.getElementById('numeroContrato').value.trim(),
+                descricao: document.getElementById('descricao').value.trim(),
                 dataInicioContrato: document.getElementById('dataInicioContrato').value,
                 periodicidadeReajusteMeses: parseInt(document.getElementById('periodicidadeReajusteMeses').value, 10),
                 indiceReajuste: indiceReajuste,
@@ -716,7 +759,8 @@ async function salvarContrato(e) {
             const payload = {
                 empresaId: empresaAtualIdContratos,
                 clienteId: document.getElementById('clienteId').value,
-                descricao: document.getElementById('descricao').value,
+                numero: document.getElementById('numeroContrato').value.trim(),
+                descricao: document.getElementById('descricao').value.trim(),
                 servicos: linhasServico,
                 dataInicioContrato: document.getElementById('dataInicioContrato').value,
                 periodicidadeReajusteMeses: parseInt(document.getElementById('periodicidadeReajusteMeses').value, 10),

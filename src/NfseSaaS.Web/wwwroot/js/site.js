@@ -544,6 +544,16 @@ function dataLocalIso(data) {
  * (template literal + innerHTML / render do DataTables) — dado vindo do
  * cadastro (nome, apelido) pode ter <, &, aspas.
  */
+// Como o contrato aparece em títulos e combos: "Contrato 2026/0007 — Folha filial"
+// (mesma regra de NumeroContratoRegras.Rotulo no servidor).
+function rotuloContrato(c) {
+    const numero = (c?.numero ?? '').trim();
+    const descricao = (c?.descricao ?? '').trim();
+    if (numero && descricao) return `Contrato ${numero} — ${descricao}`;
+    if (numero) return `Contrato ${numero}`;
+    return descricao || 'Contrato';
+}
+
 function escaparHtml(texto) {
     return String(texto ?? '')
         .replace(/&/g, '&amp;')

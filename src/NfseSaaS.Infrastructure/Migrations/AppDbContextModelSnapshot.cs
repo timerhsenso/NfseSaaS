@@ -643,6 +643,10 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<int?>("IndiceReajuste")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Numero")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
                     b.Property<string>("Observacao")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
@@ -684,6 +688,10 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.HasIndex("TenantId", "ClienteId");
 
                     b.HasIndex("TenantId", "EmpresaId");
+
+                    b.HasIndex("TenantId", "EmpresaId", "Numero")
+                        .IsUnique()
+                        .HasFilter("\"Numero\" IS NOT NULL");
 
                     b.ToTable("contratos", (string)null);
                 });

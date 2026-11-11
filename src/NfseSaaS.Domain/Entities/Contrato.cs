@@ -27,7 +27,19 @@ public sealed class Contrato : BaseEntity, ITenantEntity
 
     public Guid ClienteId { get; set; }
 
-    /// <summary>Rótulo próprio do Contrato (ex.: "Manutenção sistema A") — pode ser igual ou diferente da descrição do Servico.</summary>
+    /// <summary>
+    /// Número do contrato — como o cliente e o financeiro se referem a ele
+    /// ("contrato 2026/0007"). TEXTO livre: o sistema propõe ano/sequência
+    /// da empresa, mas cada um pode usar a própria numeração ("CT-15",
+    /// "0042/A"). Único por empresa. Nulo só em contrato antigo ainda não
+    /// numerado (NumeroContratoBackfill preenche ao subir).
+    /// </summary>
+    public string? Numero { get; set; }
+
+    /// <summary>
+    /// Nome opcional do Contrato (ex.: "Folha + RH filial Camaçari"). Vazio
+    /// = só o número e os serviços identificam (desde 11/11/2026).
+    /// </summary>
     public string Descricao { get; set; } = string.Empty;
 
     /// <summary>
