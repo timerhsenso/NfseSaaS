@@ -66,12 +66,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 ].filter(Boolean).join(' ') + `<div class="small text-muted">fundador: ${GRUPOS_FUNDADOR[p.publico] ?? '—'}</div>`
             },
             {
-                data: 'maxEmpresas',
+                data: 'maxEmpresas', className: 'col-curta',
                 render: (v, type, p) => type !== 'display' ? v :
                     `${v} empresa(s)<div class="small text-muted">${p.notasPorMes ? p.notasPorMes + ' notas/mês' : 'notas sem limite'}</div>`
             },
             {
-                data: 'precoMensal', className: 'text-end',
+                data: 'precoMensal', className: 'text-end col-valor',
                 render: (v, type, p) => type !== 'display' ? (v ?? 0) :
                     (v == null ? '<span class="text-danger small">sem preço vigente</span>' :
                         `<strong>${reaisPlano(v)}</strong><div class="small text-muted">fundador ${reaisPlano(p.precoFundador)} · desde ${dataPlano(p.vigenteDesde)}</div>`) +
@@ -79,9 +79,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         ? `<div class="small text-info">a partir de ${dataPlano(p.proximoVigenteDesde)}: ${reaisPlano(p.proximoPrecoMensal)} / ${reaisPlano(p.proximoPrecoFundador)}</div>`
                         : '')
             },
-            { data: 'assinantes', className: 'text-end' },
+            { data: 'assinantes', className: 'text-end col-valor' },
             {
-                data: 'aVenda',
+                data: 'aVenda', className: 'col-curta',
                 render: (v, type) => type !== 'display' ? (v ? 'À venda' : 'Fora de venda') :
                     (v ? '<span class="badge text-bg-success">À venda</span>' : '<span class="badge text-bg-secondary">Fora de venda</span>')
             },

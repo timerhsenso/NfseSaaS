@@ -15,9 +15,9 @@ document.addEventListener('DOMContentLoaded', function () {
         columns: [
             { data: 'nome' },
             { data: 'descricao', render: v => v || '—' },
-            { data: 'quantidadeUsuarios' },
+            { data: 'quantidadeUsuarios', className: 'col-valor' },
             {
-                data: 'padrao',
+                data: 'padrao', className: 'col-curta',
                 render: v => v ? '<span class="badge text-bg-secondary">Padrão</span>' : '<span class="badge text-bg-light border">Personalizado</span>'
             },
             {

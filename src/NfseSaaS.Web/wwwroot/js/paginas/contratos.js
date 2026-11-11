@@ -63,18 +63,18 @@ document.addEventListener('DOMContentLoaded', function () {
             data: 'servicos',
             render: servicos => (servicos ?? []).map(s => s.servicoDescricao).join(', ') || '—'
         },
-        { data: 'valorAtual', render: v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) },
-        { data: 'tipoCobranca', render: v => ROTULOS_TIPO_COBRANCA[v] ?? '—' },
+        { data: 'valorAtual', className: 'col-valor', render: v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) },
+        { data: 'tipoCobranca', className: 'col-curta', render: v => ROTULOS_TIPO_COBRANCA[v] ?? '—' },
         {
-            data: 'status',
+            data: 'status', className: 'col-curta',
             render: v => {
                 const r = ROTULOS_STATUS_CONTRATO[v] ?? { texto: 'Desconhecido', cor: 'secondary' };
                 return `<span class="badge text-bg-${r.cor}">${r.texto}</span>`;
             }
         },
-        { data: 'dataProximoReajuste', render: v => v ? new Date(v + 'T00:00:00').toLocaleDateString('pt-BR') : '—' },
+        { data: 'dataProximoReajuste', className: 'col-curta', render: v => v ? new Date(v + 'T00:00:00').toLocaleDateString('pt-BR') : '—' },
         {
-            data: 'situacao',
+            data: 'situacao', className: 'col-curta',
             render: (v, type, contrato) => {
                 const r = ROTULOS_SITUACAO_CONTRATO[v] ?? { texto: 'Desconhecida', cor: 'secondary' };
                 const pendente = contrato.reajustePendenteId

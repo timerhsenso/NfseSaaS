@@ -1053,6 +1053,41 @@ div.dt-container .dt-paging .page-item.disabled .page-link {
     font-size: calc(13px * var(--escala-fonte));
 }
 
+/* Larguras das colunas (11/11/2026): quem tem conteúdo curto encolhe ao
+   tamanho do valor e não quebra; o resto da largura fica com os textos.
+   - col-curta: status, datas, situação, tipo;
+   - col-codigo: CPF/CNPJ, códigos (alinhado à esquerda, mesmo sendo número);
+   - col-valor: dinheiro e contagens (à direita, dígitos alinhados).
+   Ações e caixas de marcar ficam sempre justas. */
+table.dataTable th.col-curta,
+table.dataTable td.col-curta,
+table.dataTable th.col-codigo,
+table.dataTable td.col-codigo,
+table.dataTable th.col-valor,
+table.dataTable td.col-valor,
+table.dataTable td:has(> .acoes-linha),
+table.dataTable td:has(> .form-check-input) {
+    width: 1%;
+    white-space: nowrap;
+}
+
+table.dataTable th.col-codigo,
+table.dataTable td.col-codigo {
+    text-align: left !important;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Código é número para o DataTables (ícone de ordenar iria para a esquerda). */
+table.dataTable th.col-codigo div.dt-column-header {
+    flex-direction: row !important;
+}
+
+table.dataTable th.col-valor,
+table.dataTable td.col-valor {
+    text-align: right !important;
+    font-variant-numeric: tabular-nums;
+}
+
 /* Totais do rodapé (Contratos) sem conteúdo: sem a linha de borda. */
 #totais-contratos:empty {
     display: none !important;

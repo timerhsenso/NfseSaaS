@@ -18,18 +18,18 @@ let empresaCertificadoAtualId;
 document.addEventListener('DOMContentLoaded', function () {
     const colunas = [
         { data: 'razaoSocial' },
-        { data: 'cnpj' },
-        { data: 'inscricaoMunicipal' },
-        { data: 'codigoMunicipio' },
+        { data: 'cnpj', className: 'col-codigo' },
+        { data: 'inscricaoMunicipal', className: 'col-codigo' },
+        { data: 'codigoMunicipio', className: 'col-codigo' },
         {
-            data: 'tipoAmbiente',
+            data: 'tipoAmbiente', className: 'col-curta',
             render: v => {
                 const rotulo = ROTULOS_AMBIENTE[v] ?? { texto: 'Desconhecido', cor: 'secondary' };
                 return `<span class="badge text-bg-${rotulo.cor}">${rotulo.texto}</span>`;
             }
         },
         {
-            data: 'ativo',
+            data: 'ativo', className: 'col-curta',
             render: v => v
                 ? '<span class="badge text-bg-success">Ativa</span>'
                 : '<span class="badge text-bg-secondary">Inativa</span>'

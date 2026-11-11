@@ -34,18 +34,18 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.getElementById('acumulado-data').value = dataLocalIso();
 
     const colunas = [
-        { data: 'competencia', render: (v, type) => type === 'display' ? formatarCompetencia(v) : v },
+        { data: 'competencia', className: 'col-curta', render: (v, type) => type === 'display' ? formatarCompetencia(v) : v },
         {
             data: 'variacao',
-            className: 'text-end',
+            className: 'col-valor',
             render: (v, type) => type === 'display'
                 ? `<span class="${v < 0 ? 'text-danger' : ''}">${formatarPercentual(v)}</span>`
                 : v
         },
-        { data: 'fonte', render: v => ROTULOS_FONTE_INDICE[v] ?? v },
+        { data: 'fonte', className: 'col-curta', render: v => ROTULOS_FONTE_INDICE[v] ?? v },
         {
             data: 'atualizadoEm',
-            className: 'text-nowrap',
+            className: 'col-curta',
             render: (v, type) => type === 'display'
                 ? new Date(v).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
                 : v

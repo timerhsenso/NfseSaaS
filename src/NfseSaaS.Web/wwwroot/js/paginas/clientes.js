@@ -10,10 +10,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const colunas = [
         { data: 'apelido' },
         { data: 'nome' },
-        { data: 'cpfCnpj' },
-        { data: 'codigoMunicipio' },
+        { data: 'cpfCnpj', className: 'col-codigo' },
+        { data: 'codigoMunicipio', className: 'col-codigo' },
         {
-            data: 'compartilhado',
+            data: 'compartilhado', className: 'col-curta',
             render: (v, type) => type !== 'display'
                 ? (v ? 'Todas as empresas' : 'Só esta empresa')
                 : (v
@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     : '<span class="text-muted small">Só esta empresa</span>')
         },
         {
-            data: 'ativo',
+            data: 'ativo', className: 'col-curta',
             render: v => v
                 ? '<span class="badge text-bg-success">Ativo</span>'
                 : '<span class="badge text-bg-secondary">Inativo</span>'

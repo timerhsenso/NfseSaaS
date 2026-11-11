@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             { data: 'grupo' },
             {
                 data: null,
+                className: 'col-curta',
                 render: (data, type, usuario) => {
                     if (usuario.pendente) return '<span class="badge text-bg-warning">Pendente</span>';
                     if (usuario.bloqueado) return '<span class="badge text-bg-danger">Bloqueado</span>';

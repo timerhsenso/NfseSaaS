@@ -7,9 +7,9 @@ document.addEventListener('DOMContentLoaded', function () {
             { data: 'destinatario', render: (v, type, email) => renderDestinatarioEmail(email, type) },
             { data: 'tipo', render: v => rotuloTipo(v) },
             { data: 'assunto' },
-            { data: 'status', render: v => rotuloStatus(v) },
-            { data: 'tentativas' },
-            { data: 'createdAt', render: v => new Date(v).toLocaleString('pt-BR') },
+            { data: 'status', className: 'col-curta', render: v => rotuloStatus(v) },
+            { data: 'tentativas', className: 'col-valor' },
+            { data: 'createdAt', className: 'col-curta', render: v => new Date(v).toLocaleString('pt-BR') },
             {
                 data: null,
                 orderable: false,

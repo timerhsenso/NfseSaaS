@@ -8,16 +8,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const colunas = [
         { data: 'descricao' },
         {
-            data: 'codigoTributacaoNacional',
+            data: 'codigoTributacaoNacional', className: 'col-codigo',
             // Código de obra/evento cadastrado antes do bloqueio: não emite (ver AvisoCodigo).
             render: (codigo, tipo, linha) => tipo !== 'display' || !linha.avisoCodigo
                 ? codigo
                 : `${escaparHtml(codigo)} <span class="badge text-bg-warning" title="${escaparHtml(linha.avisoCodigo)}">não emite</span>`
         },
-        { data: 'codigoNbs' },
-        { data: 'valorPadrao', render: v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) },
+        { data: 'codigoNbs', className: 'col-codigo' },
+        { data: 'valorPadrao', className: 'col-valor', render: v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) },
         {
-            data: 'ativo',
+            data: 'ativo', className: 'col-curta',
             render: v => v
                 ? '<span class="badge text-bg-success">Ativo</span>'
                 : '<span class="badge text-bg-secondary">Inativo</span>'

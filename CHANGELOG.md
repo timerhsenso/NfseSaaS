@@ -5,6 +5,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Alterado (largura das colunas nas listas)
+- Colunas com valor curto (códigos, CPF/CNPJ, valores, datas, status,
+  ações) ficam do tamanho do conteúdo e não quebram; a sobra vai para os
+  textos (descrição, nome, cliente). Códigos alinhados à esquerda, valores à
+  direita com dígitos alinhados. Vale para todas as listas (classes
+  `col-curta`, `col-codigo`, `col-valor`; `autoWidth` do DataTables desligado).
+
 ### Alterado (telas de lista mais limpas — todas as telas)
 - **Cabeçalho da página com as ações**: título à esquerda; à direita
   **Exportar ▾**, **⋯** (ações raras) e a ação principal. Sai o título

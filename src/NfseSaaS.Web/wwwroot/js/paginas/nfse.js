@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', function () {
             {
                 // Número oficial da NFS-e (quando autorizada) e, embaixo, a DPS que a originou.
                 data: null,
+                className: 'col-curta',
                 render: (d, t, n) => t !== 'display'
                     ? `${n.numeroNfse ?? ''} ${n.numeroDps}`
                     : n.numeroNfse
@@ -57,7 +58,7 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             {
                 // Valor do serviço; o líquido aparece embaixo só quando é diferente (retenções).
-                data: 'valorServico',
+                data: 'valorServico', className: 'col-valor',
                 render: (v, t, n) => {
                     if (t !== 'display') return Number(v);
                     const liquido = n.valorLiquido != null && Number(n.valorLiquido) !== Number(v)
@@ -67,7 +68,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             },
             {
-                data: 'status',
+                data: 'status', className: 'col-curta',
                 render: (v, t, n) => {
                     const r = ROTULOS_STATUS[v] ?? { texto: 'Desconhecido', cor: 'secondary' };
                     const reenviada = n.reenviadaComoNumeroDps != null
@@ -77,7 +78,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             },
             {
-                data: 'dataEmissao',
+                data: 'dataEmissao', className: 'col-curta',
                 render: {
                     // "display" é só o que aparece (data em cima, hora menor
                     // embaixo); "sort" é o valor real (timestamp) usado pra

@@ -24,6 +24,11 @@
 
     // Pesquisa sai do topo (vai para a barra da lista); rodapé com
     // "Exibir N" + "Mostrando…" à esquerda e a paginação à direita.
+    // Larguras pelo conteúdo (CSS col-curta/col-codigo/col-valor), não
+    // divididas por igual: código, valor, data e status ficam justos e a
+    // sobra vai para os textos (descrição, nome, cliente).
+    DataTable.defaults.autoWidth = false;
+
     DataTable.defaults.layout = {
         topStart: null,
         topEnd: null,

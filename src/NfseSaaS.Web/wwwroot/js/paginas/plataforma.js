@@ -131,21 +131,21 @@ document.addEventListener('DOMContentLoaded', function () {
                         : '')
             },
             { data: 'emailResponsavel', render: v => v ? escaparHtml(v) : '—' },
-            { data: 'criadoEm', render: (v, type) => type === 'display' ? dataCurta(v) : v },
-            { data: 'usuarios', className: 'text-end' },
+            { data: 'criadoEm', className: 'col-curta', render: (v, type) => type === 'display' ? dataCurta(v) : v },
+            { data: 'usuarios', className: 'text-end col-valor' },
             {
-                data: 'empresas', className: 'text-end',
+                data: 'empresas', className: 'text-end col-valor',
                 render: (v, type, t) => type === 'display'
                     ? `${v}${t.empresasEmProducao ? `<div class="small text-muted">${t.empresasEmProducao} em produção</div>` : ''}`
                     : v
             },
             {
-                data: 'notasNoMes', className: 'text-end',
+                data: 'notasNoMes', className: 'text-end col-valor',
                 render: (v, type, t) => type === 'display' ? `${v}<div class="small text-muted">${t.notasTotal} no total (produção)</div>` : v
             },
-            { data: 'ultimaNota', render: (v, type) => type === 'display' ? dataCurta(v) : (v ?? '') },
+            { data: 'ultimaNota', className: 'col-curta', render: (v, type) => type === 'display' ? dataCurta(v) : (v ?? '') },
             {
-                data: 'ativo',
+                data: 'ativo', className: 'col-curta',
                 render: (v, type, t) => {
                     if (type !== 'display') return (t.encerradaEm ? 'Encerrada ' : v ? 'Ativa ' : 'Suspensa ') + categoriaConta(t);
                     const cobranca = situacaoCobrancaPlataforma(t);
@@ -198,7 +198,7 @@ document.addEventListener('DOMContentLoaded', function () {
         order: [[0, 'desc']],
         pageLength: 10,
         columns: [
-            { data: 'criadoEm', render: (v, type) => type === 'display' ? dataCurta(v) : v },
+            { data: 'criadoEm', className: 'col-curta', render: (v, type) => type === 'display' ? dataCurta(v) : v },
             {
                 data: 'conta',
                 render: (v, type, p) => type !== 'display' ? v :
@@ -206,7 +206,7 @@ document.addEventListener('DOMContentLoaded', function () {
             },
             { data: 'contaIndicada', render: (v, type) => type === 'display' ? escaparHtml(v) : v },
             {
-                data: 'status',
+                data: 'status', className: 'col-curta',
                 render: (v, type, p) => type !== 'display' ? v :
                     situacaoPremioPlataforma(v) + (p.aplicadoEm ? `<div class="small text-muted mt-1">${dataCurta(p.aplicadoEm)}</div>` : '')
             },
