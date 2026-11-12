@@ -56,7 +56,10 @@ public sealed record NfseResponse(
     string? MotivoSubstituicao = null,
     string? DescricaoMotivoSubstituicao = null,
     // Valor de cada serviço do Contrato (só no detalhe; nulo na listagem).
-    IReadOnlyList<ItemComposicaoNfse>? Composicao = null)
+    IReadOnlyList<ItemComposicaoNfse>? Composicao = null,
+    // Último e-mail da nota ao cliente (envelope da lista): quando e como ficou. Nulo = nunca enviada.
+    DateTimeOffset? EmailUltimoEnvioEm = null,
+    StatusEmailLog? EmailUltimoStatus = null)
 {
     /// <summary>tpRetISSQN "2" = ISS retido pelo tomador.</summary>
     public bool IssRetido => TpRetIssqn == "2";

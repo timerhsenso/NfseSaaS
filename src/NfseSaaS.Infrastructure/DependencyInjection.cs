@@ -106,6 +106,8 @@ public static class DependencyInjection
         services.AddScoped<AnexosNfseEmail>();
         services.AddScoped<AvisoReajustesAniversario>();
         services.AddScoped<IEnviarNfsePorEmailUseCase, EnviarNfsePorEmailUseCase>();
+        services.AddScoped<IEnvioEmailNfseUseCase, EnvioEmailNfseService>();
+        services.AddScoped<NfseSaaS.Application.UseCases.EmailNota.IModeloEmailNotaUseCase, ModeloEmailNotaService>();
         services.AddHostedService<EmailDispatchHostedService>();
 
         services

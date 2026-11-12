@@ -667,7 +667,7 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
     {
         try
         {
-            var envio = await _enviarNfsePorEmail.ExecutarAsync(nfseId, automatico: true, cancellationToken);
+            var envio = await _enviarNfsePorEmail.ExecutarAsync(nfseId, automatico: true, texto: null, cancellationToken);
             if (!envio.Enfileirado)
                 _logger.LogInformation("Nota {NfseId} autorizada sem e-mail ao tomador: {Motivo}", nfseId, envio.Motivo);
         }

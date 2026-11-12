@@ -103,9 +103,9 @@ public sealed class EmailDispatchHostedService : BackgroundService
         var copias = EmailsCopiaCliente.Separar(log.Copias);
 
         if (log.NfseId is not { } idNota)
-            return responderPara is null && copias.Count == 0
+            return responderPara is null && copias.Count == 0 && log.CopiaOcultaFixa is null
                 ? await emailSender.EnviarAsync(item.Destinatario, item.Assunto, item.CorpoHtml, cancellationToken)
-                : await emailSender.EnviarAsync(new MensagemEmail(item.Destinatario, item.Assunto, item.CorpoHtml, null, responderPara, copias, log.CopiasOcultas), cancellationToken);
+                : await emailSender.EnviarAsync(new MensagemEmail(item.Destinatario, item.Assunto, item.CorpoHtml, null, responderPara, copias, log.CopiasOcultas, log.CopiaOcultaFixa), cancellationToken);
 
         IReadOnlyCollection<AnexoEmail> anexos;
         try
@@ -119,6 +119,6 @@ public sealed class EmailDispatchHostedService : BackgroundService
             return new ResultadoEnvioEmail(false, $"Não foi possível anexar a nota: {ex.Message}");
         }
 
-        return await emailSender.EnviarAsync(new MensagemEmail(item.Destinatario, item.Assunto, item.CorpoHtml, anexos, responderPara, copias, log.CopiasOcultas), cancellationToken);
+        return await emailSender.EnviarAsync(new MensagemEmail(item.Destinatario, item.Assunto, item.CorpoHtml, anexos, responderPara, copias, log.CopiasOcultas, log.CopiaOcultaFixa), cancellationToken);
     }
 }

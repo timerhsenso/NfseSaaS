@@ -29,6 +29,12 @@ let nfseSubstituicaoAtual = null;
 let modalNotaMensal;
 let candidatosNotaMensal = []; // estado local da grade (selecionado, valores por serviço, status e mensagem por linha)
 let nfseSelecionadas = new Set(); // ids marcados pra download em lote — sobrevive a paginação/redraw do DataTable, só é limpo quando os filtros mudam
+// E-mail da nota: modal de uma nota, modal do lote e notas emitidas pela Nota Mensal nesta abertura.
+let modalEmailNfse = null;
+let modalEmailLote = null;
+let nfseIdEmailAtual = null;
+let idsEmailLote = [];
+let nmNfseIdsEmitidas = [];
 
 document.addEventListener('DOMContentLoaded', function () {
     tabelaNfse = new DataTable('#tabela-nfse', {
@@ -51,9 +57,10 @@ document.addEventListener('DOMContentLoaded', function () {
             {
                 // Apelido na grade; razão social na dica (title) do mouse.
                 data: 'clienteId',
-                render: id => {
+                render: (id, t, n) => {
                     const c = clientesPorId[id];
-                    return c ? `<span title="${escaparHtml(c.nome)}">${escaparHtml(c.apelido)}</span>` : id;
+                    const nome = c ? `<span title="${escaparHtml(c.nome)}">${escaparHtml(c.apelido)}</span>` : id;
+                    return t === 'display' ? nome + envelopeEmailNfse(n) : (c ? c.apelido : id);
                 }
             },
             {
@@ -160,7 +167,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (botaoSubstituir) await executarComBotaoDesabilitado(botaoSubstituir, () => abrirModalSubstituicaoNfse(botaoSubstituir.dataset.id));
 
         const botaoEmail = e.target.closest('.btn-enviar-email-nfse');
-        if (botaoEmail) await executarComBotaoDesabilitado(botaoEmail, () => enviarNfsePorEmail(botaoEmail.dataset.id));
+        if (botaoEmail) await executarComBotaoDesabilitado(botaoEmail, () => abrirModalEmailNfse(botaoEmail.dataset.id));
     });
 
     document.getElementById('tabela-nfse').addEventListener('change', function (e) {
@@ -182,6 +189,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     document.getElementById('btn-baixar-selecionadas').addEventListener('click', baixarDanfsePdfLote);
+    configurarEmailNfse();
     document.getElementById('btn-desmarcar-nfse').addEventListener('click', function () {
         nfseSelecionadas.clear();
         document.getElementById('check-selecionar-todas-nfse').checked = false;
@@ -1020,6 +1028,8 @@ async function abrirModalNotaMensal(competenciaMesOverride) {
     }
     ocultarErroFormulario('erro-nota-mensal');
     candidatosNotaMensal = [];
+    nmNfseIdsEmitidas = [];
+    document.getElementById('nm-email-pendentes').classList.add('d-none');
     document.getElementById('nota-mensal-competencia').value = competenciaMesOverride || mesAtualIso();
     document.getElementById('tabela-nota-mensal').classList.add('d-none');
     document.getElementById('nota-mensal-sem-candidatos').classList.add('d-none');
@@ -1328,6 +1338,11 @@ async function emitirNotaMensal() {
         renderizarLinhasNotaMensal();
         await carregarNfse();
 
+        resultados.filter(r => r.sucesso && r.nfseId).forEach(r => {
+            if (!nmNfseIdsEmitidas.includes(r.nfseId)) nmNfseIdsEmitidas.push(r.nfseId);
+        });
+        await atualizarEmailPendentesNotaMensal();
+
         const totalFalhas = [...porContrato.values()].filter(rs => rs.some(r => !r.sucesso)).length;
         if (totalFalhas === 0) mostrarToast('Lote emitido com sucesso.');
         else mostrarToast(`Lote processado: ${totalFalhas} contrato(s) com falha — revise e emita de novo.`);
@@ -1343,6 +1358,8 @@ async function emitirNotaMensal() {
 function atualizarBotaoBaixarSelecionadas() {
     const quantidade = nfseSelecionadas.size;
     document.getElementById('btn-baixar-selecionadas').disabled = quantidade === 0;
+    const botaoEmail = document.getElementById('btn-email-selecionadas');
+    if (botaoEmail) botaoEmail.disabled = quantidade === 0;
     document.getElementById('barra-selecao-nfse').classList.toggle('d-none', quantidade === 0);
     document.getElementById('filtros-nfse').classList.toggle('d-none', quantidade > 0);
     if (quantidade === 0) return;
@@ -1408,20 +1425,184 @@ async function baixarDanfsePdfLote() {
     }
 }
 
-/**
- * Botão "envelope" da grid: entra na fila de e-mails (PDF e XML anexos,
- * gerados na hora do envio). O resultado final aparece na tela de E-mails.
- */
-async function enviarNfsePorEmail(id) {
-    const confirmado = await confirmarAcao('Enviar o PDF e o XML desta nota para o e-mail do cliente?', { titulo: 'Enviar nota por e-mail', textoBotao: 'Enviar' });
-    if (!confirmado) return;
+// ---------------------------------------------------------------------
+// E-mail da nota ao cliente: uma nota (modal com o texto do modelo já
+// preenchido, ajustável só neste envio), várias (barra de seleção) e o
+// atalho da Nota Mensal. Entra na fila de e-mails (PDF e XML anexados na
+// hora do envio); o resultado final aparece na tela de E-mails.
+// ---------------------------------------------------------------------
 
+// StatusEmailLog (Domain.Enums): 0 Pendente, 1 Enviado, 2 Falhou.
+function envelopeEmailNfse(n) {
+    if (n.emailUltimoStatus == null) return '';
+    const quando = n.emailUltimoEnvioEm ? new Date(n.emailUltimoEnvioEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+    const [icone, cor, texto] = n.emailUltimoStatus === 1 ? ['bi-envelope-check', 'text-success', `E-mail enviado em ${quando}`]
+        : n.emailUltimoStatus === 2 ? ['bi-envelope-exclamation', 'text-danger', 'O último e-mail falhou — veja na tela de E-mails']
+        : ['bi-envelope', 'text-muted', 'E-mail na fila de envio'];
+    return ` <i class="bi ${icone} ${cor} ms-1" title="${escaparHtml(texto)}" aria-label="${escaparHtml(texto)}"></i>`;
+}
+
+function configurarEmailNfse() {
+    const modalEnvio = document.getElementById('modal-email-nfse');
+    if (!modalEnvio) return; // sem permissão de emitir
+    modalEmailNfse = new bootstrap.Modal(modalEnvio);
+    modalEmailLote = new bootstrap.Modal(document.getElementById('modal-email-lote'));
+
+    document.getElementById('form-email-nfse').addEventListener('submit', async e => {
+        e.preventDefault();
+        await executarComBotaoDesabilitado(document.getElementById('btn-confirmar-email-nfse'), enviarEmailNfse);
+    });
+    document.getElementById('btn-email-selecionadas').addEventListener('click', () => abrirModalEmailLote([...nfseSelecionadas]));
+    document.getElementById('btn-confirmar-email-lote').addEventListener('click', e =>
+        executarComBotaoDesabilitado(e.currentTarget, enviarEmailLote));
+    document.getElementById('btn-nm-enviar-email')?.addEventListener('click', e =>
+        executarComBotaoDesabilitado(e.currentTarget, enviarEmailPendentesNotaMensal));
+}
+
+async function abrirModalEmailNfse(id) {
+    ocultarErroFormulario('erro-email-nfse');
+    let previa;
     try {
-        const resultado = await apiFetch(`/api/nfse/${id}/enviar-email`, { method: 'POST' });
-        const copias = resultado.copias?.length ? ` (+${resultado.copias.length} em cópia)` : '';
-        mostrarToast(`Nota enviada para ${resultado.destinatario}${copias}. Acompanhe a entrega na tela de E-mails.`);
+        previa = await apiFetch(`/api/nfse/${id}/email-previa`);
     } catch (err) {
         mostrarErro(err.message);
+        return;
+    }
+    if (previa.impedimento) {
+        mostrarErro(previa.impedimento === 'Cliente sem e-mail no cadastro.'
+            ? 'O cliente desta nota não tem e-mail cadastrado. Inclua o e-mail no cadastro do cliente e tente de novo.'
+            : previa.impedimento);
+        return;
+    }
+
+    nfseIdEmailAtual = id;
+    const linha = (rotulo, valor) => `<dt class="col-sm-3 text-muted fw-normal">${rotulo}</dt><dd class="col-sm-9 mb-1">${valor}</dd>`;
+    const copias = previa.copias?.length
+        ? linha(previa.copiasOcultas ? 'Cópia oculta' : 'Cópia', previa.copias.map(escaparHtml).join(', ')) : '';
+    const fixa = previa.copiaOcultaPara ? linha('Cópia oculta', escaparHtml(previa.copiaOcultaPara)) : '';
+    const resposta = previa.responderPara ? linha('Respostas para', escaparHtml(previa.responderPara)) : '';
+    document.getElementById('email-nfse-destino').innerHTML =
+        linha('Para', `<strong>${escaparHtml(previa.destinatario)}</strong>`) + copias + fixa + resposta;
+
+    const ultimo = document.getElementById('email-nfse-ultimo');
+    ultimo.innerHTML = previa.ultimoEnvioEm
+        ? `<i class="bi bi-info-circle me-1"></i>${previa.ultimoStatus === 2 ? 'O último envio falhou' : 'Já enviada'} em ` +
+          `${new Date(previa.ultimoEnvioEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}. Enviar de novo manda outra cópia.`
+        : '';
+    document.getElementById('email-nfse-homologacao').classList.toggle('d-none', !previa.homologacao);
+    document.getElementById('email-nfse-assunto').value = previa.assunto;
+    document.getElementById('email-nfse-mensagem').value = previa.mensagem;
+    modalEmailNfse.show();
+}
+
+async function enviarEmailNfse() {
+    ocultarErroFormulario('erro-email-nfse');
+    const assunto = document.getElementById('email-nfse-assunto').value.trim();
+    const mensagem = document.getElementById('email-nfse-mensagem').value.trim();
+    if (!assunto || !mensagem) {
+        mostrarErroFormulario('erro-email-nfse', 'Preencha o assunto e a mensagem.');
+        return;
+    }
+    try {
+        const resultado = await apiFetch(`/api/nfse/${nfseIdEmailAtual}/enviar-email`, {
+            method: 'POST', body: JSON.stringify({ assunto, mensagem })
+        });
+        modalEmailNfse.hide();
+        const copias = resultado.copias?.length ? ` (+${resultado.copias.length} em cópia)` : '';
+        mostrarToast(`Nota enviada para ${resultado.destinatario}${copias}. Acompanhe a entrega na tela de E-mails.`);
+        await carregarNfse();
+    } catch (err) {
+        mostrarErroFormulario('erro-email-nfse', err.message);
+    }
+}
+
+function plural(n, um, varios) {
+    return `${n} ${n === 1 ? um : varios}`;
+}
+
+async function abrirModalEmailLote(ids) {
+    if (!ids.length) return;
+    idsEmailLote = ids;
+    ocultarErroFormulario('erro-email-lote');
+    const resultado = document.getElementById('email-lote-resultado');
+    resultado.classList.add('d-none');
+    resultado.innerHTML = '';
+    document.getElementById('btn-confirmar-email-lote').classList.remove('d-none');
+    document.getElementById('btn-fechar-email-lote').textContent = 'Cancelar';
+    document.getElementById('email-lote-pular').checked = true;
+
+    let previa;
+    try {
+        previa = await apiFetch('/api/nfse/enviar-email/lote/previa', { method: 'POST', body: JSON.stringify({ nfseIds: ids }) });
+    } catch (err) {
+        mostrarErro(err.message);
+        return;
+    }
+
+    const fora = [];
+    if (previa.semEmail) fora.push(`${plural(previa.semEmail, 'sem e-mail no cadastro do cliente', 'sem e-mail no cadastro do cliente')}`);
+    if (previa.naoAutorizadas) fora.push(`${plural(previa.naoAutorizadas, 'não autorizada', 'não autorizadas')}`);
+    document.getElementById('email-lote-resumo').innerHTML =
+        `<p class="mb-2"><strong>${plural(previa.enviaveis, 'nota', 'notas')}</strong> para <strong>${plural(previa.clientes, 'cliente', 'clientes')}</strong>.</p>` +
+        (previa.jaEnviadas ? `<p class="mb-2 small">${plural(previa.jaEnviadas, 'já foi enviada', 'já foram enviadas')} antes.</p>` : '') +
+        (fora.length ? `<p class="mb-0 small text-muted">Não vão: ${fora.join(', ')}.</p>` : '');
+    document.getElementById('email-lote-opcao-pular').classList.toggle('d-none', previa.jaEnviadas === 0);
+    document.getElementById('btn-confirmar-email-lote').disabled = previa.enviaveis === 0;
+    modalEmailLote.show();
+}
+
+async function enviarEmailLote() {
+    ocultarErroFormulario('erro-email-lote');
+    try {
+        const r = await apiFetch('/api/nfse/enviar-email/lote', {
+            method: 'POST',
+            body: JSON.stringify({ nfseIds: idsEmailLote, pularJaEnviadas: document.getElementById('email-lote-pular').checked })
+        });
+        const resultado = document.getElementById('email-lote-resultado');
+        const falhas = (r.naoEnviadas ?? []).map(n =>
+            `<li>Nota ${escaparHtml(n.numero)} — ${escaparHtml(n.cliente)}: ${escaparHtml(n.motivo)}</li>`).join('');
+        resultado.innerHTML =
+            `<div class="alert alert-success mb-2"><i class="bi bi-check2-circle me-1"></i>${plural(r.enfileiradas, 'e-mail na fila de envio', 'e-mails na fila de envio')}` +
+            `${r.puladas ? ` · ${plural(r.puladas, 'pulada (já enviada)', 'puladas (já enviadas)')}` : ''}.</div>` +
+            (falhas ? `<div class="small">Não enviadas:<ul class="mb-0">${falhas}</ul></div>` : '');
+        resultado.classList.remove('d-none');
+        document.getElementById('btn-confirmar-email-lote').classList.add('d-none');
+        document.getElementById('btn-fechar-email-lote').textContent = 'Fechar';
+        await carregarNfse();
+    } catch (err) {
+        mostrarErroFormulario('erro-email-lote', err.message);
+    }
+}
+
+// Nota Mensal: depois de emitir, quantas notas ainda não foram por e-mail
+// (o envio automático só sai para cliente com "enviar por e-mail" ligado).
+async function atualizarEmailPendentesNotaMensal() {
+    const caixa = document.getElementById('nm-email-pendentes');
+    if (!caixa || nmNfseIdsEmitidas.length === 0) return;
+    try {
+        const previa = await apiFetch('/api/nfse/enviar-email/lote/previa', { method: 'POST', body: JSON.stringify({ nfseIds: nmNfseIdsEmitidas }) });
+        const pendentes = previa.enviaveis - previa.jaEnviadas;
+        caixa.classList.toggle('d-none', pendentes <= 0 && previa.semEmail === 0);
+        document.getElementById('btn-nm-enviar-email').classList.toggle('d-none', pendentes <= 0);
+        document.getElementById('nm-email-pendentes-texto').textContent = pendentes > 0
+            ? `${plural(pendentes, 'nota emitida ainda não foi', 'notas emitidas ainda não foram')} por e-mail ao cliente` +
+              (previa.semEmail ? ` (${previa.semEmail} sem e-mail no cadastro).` : '.')
+            : `${plural(previa.semEmail, 'cliente', 'clientes')} sem e-mail no cadastro: a nota não foi por e-mail.`;
+    } catch {
+        caixa.classList.add('d-none');
+    }
+}
+
+async function enviarEmailPendentesNotaMensal() {
+    try {
+        const r = await apiFetch('/api/nfse/enviar-email/lote', {
+            method: 'POST', body: JSON.stringify({ nfseIds: nmNfseIdsEmitidas, pularJaEnviadas: true })
+        });
+        mostrarToast(`${plural(r.enfileiradas, 'e-mail na fila de envio', 'e-mails na fila de envio')}.`);
+        await atualizarEmailPendentesNotaMensal();
+        await carregarNfse();
+    } catch (err) {
+        mostrarErroFormulario('erro-nota-mensal', err.message);
     }
 }
 

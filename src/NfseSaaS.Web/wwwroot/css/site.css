@@ -176,6 +176,55 @@ a:hover {
     max-width: 720px;
 }
 
+/* E-mail da nota: texto + prévia lado a lado, precisa de mais largura. */
+.config-conta-secao.config-conta-larga {
+    max-width: 1140px;
+}
+
+/* Prévia do e-mail: "papel" branco mesmo no tema escuro, como o cliente vê. */
+.email-nota-previa {
+    background: #fff;
+    color: #1e293b;
+    font-size: .875rem;
+    overflow: hidden;
+}
+
+.email-nota-previa-assunto {
+    padding: .6rem .9rem;
+    font-weight: 600;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    word-break: break-word;
+}
+
+.email-nota-previa-corpo {
+    padding: .9rem;
+    word-break: break-word;
+}
+
+.email-nota-previa-corpo p {
+    margin-bottom: .75rem;
+}
+
+.email-nota-previa-corpo table td {
+    padding: 2px 8px 2px 0;
+}
+
+.email-nota-previa-corpo .email-nota-fixo {
+    border-top: 1px dashed #cbd5e1;
+    margin-top: .75rem;
+    padding-top: .5rem;
+}
+
+.email-nota-previa-corpo .email-nota-rodape {
+    color: #64748b;
+    font-size: .75rem;
+}
+
+.email-nota-campo {
+    font-size: .75rem;
+}
+
 .logo-previa img {
     max-width: 100%;
     max-height: 56px;

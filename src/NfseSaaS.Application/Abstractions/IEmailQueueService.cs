@@ -20,7 +20,8 @@ public sealed record EmailParaEnfileirar(
     string? ResponderPara = null,
     IReadOnlyCollection<string>? Segredos = null,
     IReadOnlyCollection<string>? Copias = null,
-    bool CopiasOcultas = false);
+    bool CopiasOcultas = false,
+    string? CopiaOcultaFixa = null);
 
 /// <summary>
 /// Ponto único que os controllers usam pra "enviar" um e-mail — na

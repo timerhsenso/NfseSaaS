@@ -74,22 +74,22 @@ public class EnvioNfseCopiasTests
             db.TenantIdOverrideDeSistema = null;
 
             var fila = new FilaFalsa();
-            var enviar = new EnviarNfsePorEmailUseCase(db, new EmailQueueService(db, fila), sp.GetRequiredService<IAuditLogWriter>());
+            var enviar = new EnviarNfsePorEmailUseCase(db, new EmailQueueService(db, fila), sp.GetRequiredService<IAuditLogWriter>(), sp.GetRequiredService<NfseSaaS.Application.UseCases.EmailNota.IModeloEmailNotaUseCase>());
 
             // Padrão (envio desligado): o automático não manda nada.
             Assert.False(cliente.EnviarNfsePorEmail);
-            var desligado = await enviar.ExecutarAsync(nota.Id, automatico: true, CancellationToken.None);
+            var desligado = await enviar.ExecutarAsync(nota.Id, automatico: true, texto: null, CancellationToken.None);
             Assert.False(desligado.Enfileirado);
             Assert.Empty(fila.Itens);
 
             // Botão da tela: manda mesmo desligado, com as cópias.
-            var manual = await enviar.ExecutarAsync(nota.Id, automatico: false, CancellationToken.None);
+            var manual = await enviar.ExecutarAsync(nota.Id, automatico: false, texto: null, CancellationToken.None);
             Assert.True(manual.Enfileirado);
             Assert.Equal(new[] { "financeiro@teste.com", "contador@teste.com" }, manual.Copias);
 
             // Ligado: o automático manda.
             await db.Clientes.Where(c => c.Id == cliente.Id).ExecuteUpdateAsync(u => u.SetProperty(c => c.EnviarNfsePorEmail, true));
-            var ligado = await enviar.ExecutarAsync(nota.Id, automatico: true, CancellationToken.None);
+            var ligado = await enviar.ExecutarAsync(nota.Id, automatico: true, texto: null, CancellationToken.None);
             Assert.True(ligado.Enfileirado);
             Assert.Equal(2, fila.Itens.Count);
 

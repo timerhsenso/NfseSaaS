@@ -99,17 +99,27 @@ public sealed class SmtpEmailSender : IEmailSender
     /// </summary>
     public static void AdicionarCopias(MimeMessage mensagem, MensagemEmail email, ILogger logger)
     {
-        if (email.Copias is not { Count: > 0 } copias)
-            return;
-
         var lista = email.CopiasOcultas ? mensagem.Bcc : mensagem.Cc;
-        foreach (var copia in copias)
+        foreach (var copia in email.Copias ?? Array.Empty<string>())
         {
             // TryParse aceita "fulano" sem domínio: exige o "@" também.
             if (MailboxAddress.TryParse(copia, out var endereco) && endereco.Address.Contains('@'))
                 lista.Add(endereco);
             else
                 logger.LogWarning("Cópia com endereço inválido ignorada: {Copia}.", copia);
+        }
+
+        // Cópia oculta fixa (modelo do e-mail da nota): sempre Cco, sem repetir quem já recebe.
+        if (email.CopiaOcultaFixa is { } fixa && !string.IsNullOrWhiteSpace(fixa))
+        {
+            var jaRecebe = new[] { email.Destinatario }.Concat(email.Copias ?? Array.Empty<string>())
+                .Any(e => string.Equals(e.Trim(), fixa.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (jaRecebe)
+                return;
+            if (MailboxAddress.TryParse(fixa.Trim(), out var endereco) && endereco.Address.Contains('@'))
+                mensagem.Bcc.Add(endereco);
+            else
+                logger.LogWarning("Cópia oculta fixa com endereço inválido ignorada: {Copia}.", fixa);
         }
     }
 }

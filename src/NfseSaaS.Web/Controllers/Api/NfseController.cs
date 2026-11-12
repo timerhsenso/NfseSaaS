@@ -144,15 +144,33 @@ public sealed class NfseController : ControllerBase
     /// <summary>
     /// Manda (de novo) a nota autorizada, com PDF e XML, para o e-mail do
     /// tomador — mesmo com o envio automático desligado no cliente. Entra
-    /// na fila; o resultado aparece na tela de E-mails.
+    /// na fila; o resultado aparece na tela de E-mails. Corpo opcional:
+    /// assunto e mensagem escritos no modal, só para este envio (sem corpo
+    /// = o modelo da empresa/conta).
     /// </summary>
     [RequerPermissao(TelaCatalogo.Nfse, AcaoPermissao.Incluir)]
     [HttpPost("{id:guid}/enviar-email")]
-    public async Task<IActionResult> EnviarPorEmail(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> EnviarPorEmail(Guid id, [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] TextoEmailNota? texto, CancellationToken cancellationToken)
     {
-        var resultado = await _enviarNfsePorEmail.ExecutarAsync(id, automatico: false, cancellationToken);
+        var resultado = await _enviarNfsePorEmail.ExecutarAsync(id, automatico: false, texto, cancellationToken);
         return Ok(resultado);
     }
+
+    /// <summary>Modal de envio: destinatário, cópias e o texto já preenchido pelo modelo.</summary>
+    [HttpGet("{id:guid}/email-previa")]
+    public async Task<IActionResult> PreviaEmail(Guid id, [FromServices] IEnvioEmailNfseUseCase envioEmail, CancellationToken cancellationToken)
+        => Ok(await envioEmail.PreviaAsync(id, cancellationToken));
+
+    /// <summary>Resumo antes de enviar várias notas (quantas vão, já enviadas, sem e-mail, não autorizadas).</summary>
+    [HttpPost("enviar-email/lote/previa")]
+    public async Task<IActionResult> PreviaEnvioEmailLote([FromBody] EnvioEmailLoteRequest request, [FromServices] IEnvioEmailNfseUseCase envioEmail, CancellationToken cancellationToken)
+        => Ok(await envioEmail.PreviaLoteAsync(request, cancellationToken));
+
+    /// <summary>Envia por e-mail as notas selecionadas: um e-mail por nota, com o modelo de cada empresa.</summary>
+    [RequerPermissao(TelaCatalogo.Nfse, AcaoPermissao.Incluir)]
+    [HttpPost("enviar-email/lote")]
+    public async Task<IActionResult> EnviarEmailLote([FromBody] EnvioEmailLoteRequest request, [FromServices] IEnvioEmailNfseUseCase envioEmail, CancellationToken cancellationToken)
+        => Ok(await envioEmail.EnviarLoteAsync(request, cancellationToken));
 
     /// <summary>
     /// XML do mês: ZIP com o XML de todas as notas autorizadas e canceladas da

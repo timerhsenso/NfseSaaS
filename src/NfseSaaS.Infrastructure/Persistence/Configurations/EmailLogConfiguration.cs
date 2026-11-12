@@ -40,6 +40,9 @@ public sealed class EmailLogConfiguration : IEntityTypeConfiguration<EmailLog>
         builder.Property(e => e.Copias)
             .HasMaxLength(600);
 
+        builder.Property(e => e.CopiaOcultaFixa)
+            .HasMaxLength(256);
+
         builder.HasIndex(e => new { e.TenantId, e.Status, e.CreatedAt });
 
         builder.HasIndex(e => new { e.TenantId, e.ChaveDeduplicacao })

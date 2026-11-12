@@ -72,4 +72,10 @@ public sealed class EmailLog : BaseEntity, ITenantEntity
 
     /// <summary>true = Copias vão em Cco (ocultas); false = Cc.</summary>
     public bool CopiasOcultas { get; set; }
+
+    /// <summary>
+    /// Cópia oculta fixa, sempre em Cco, além das Copias (ex.: o escritório
+    /// que guarda toda nota enviada — modelo do e-mail da nota). Nulo = sem.
+    /// </summary>
+    public string? CopiaOcultaFixa { get; set; }
 }

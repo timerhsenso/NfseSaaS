@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NfseSaaS.Application.Authorization;
 using NfseSaaS.Application.Common;
 using NfseSaaS.Application.UseCases.Nfse;
 using NfseSaaS.Domain.Enums;
@@ -106,7 +107,12 @@ public sealed class ListarNfseUseCase : IListarNfseUseCase
                 // Substituta em andamento ou autorizada (tentativas rejeitadas não contam).
                 _db.NotasFiscais.Where(s => s.SubstituiNfseId == n.Id && (s.Status == NfseStatus.Processando || s.Status == NfseStatus.Autorizada))
                     .Select(s => (int?)s.NumeroDps).FirstOrDefault(),
-                n.MotivoSubstituicao, n.DescricaoMotivoSubstituicao))
+                n.MotivoSubstituicao, n.DescricaoMotivoSubstituicao,
+                null,
+                _db.EmailLogs.Where(e => e.NfseId == n.Id && e.Tipo == TipoEmailCatalogo.NfseTomador)
+                    .OrderByDescending(e => e.CreatedAt).Select(e => (DateTimeOffset?)(e.EnviadoEm ?? e.CreatedAt)).FirstOrDefault(),
+                _db.EmailLogs.Where(e => e.NfseId == n.Id && e.Tipo == TipoEmailCatalogo.NfseTomador)
+                    .OrderByDescending(e => e.CreatedAt).Select(e => (StatusEmailLog?)e.Status).FirstOrDefault()))
             .ToListAsync(cancellationToken);
 
         return new PagedResult<NfseResponse>

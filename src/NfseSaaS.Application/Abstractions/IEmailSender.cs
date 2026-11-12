@@ -14,7 +14,8 @@ public sealed record MensagemEmail(
     IReadOnlyCollection<AnexoEmail>? Anexos = null,
     string? ResponderPara = null,
     IReadOnlyCollection<string>? Copias = null,
-    bool CopiasOcultas = false);
+    bool CopiasOcultas = false,
+    string? CopiaOcultaFixa = null);
 
 /// <summary>
 /// Abstração de envio de e-mail. Implementação real via SMTP em

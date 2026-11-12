@@ -5,6 +5,44 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (e-mail da nota: texto próprio e envio em lote)
+- **Configurações da conta › E-mail da nota** (nova seção): assunto e mensagem
+  do e-mail que leva a nota (PDF e XML) ao cliente, com **botões que inserem
+  os campos** onde está o cursor — [Cliente], [Número da nota], [Mês por
+  extenso] ("novembro de 2026"), [Competência], [Valor], [Data de emissão],
+  [Serviço], [Nº do contrato] e [Empresa] — e **prévia ao vivo** ao lado.
+  Campo escrito à mão que não existe é avisado. "Mandar um teste para mim"
+  (dados de exemplo, sem anexos) e "Voltar ao texto padrão".
+- **Modelo da conta ou por empresa**: com mais de uma empresa, escolhe-se
+  "Modelo de" e liga "Personalizar para esta empresa"; desligado, a empresa
+  usa o da conta. Só o administrador grava.
+- **Respostas do cliente** vão para o e-mail da empresa emitente (ou outro
+  informado). Saiu o "não responda". **Cópia oculta de todo envio**
+  (opcional), por exemplo o escritório que guarda as notas.
+- Plano Escritório (contador) pode **tirar o convite do micoempresa** do rodapé.
+- O que dá validade à nota continua fixo embaixo da mensagem: quadro com
+  número, emissão, competência, valor, emitente e chave, consulta pública e
+  os anexos. Mensagem é texto simples (escapado, sem HTML).
+- **Notas › Enviar por e-mail** (uma nota): abre com para quem vai (cópias,
+  cópia oculta, respostas), o assunto e a mensagem já preenchidos, ajustáveis
+  só para aquele envio, e avisa se a nota já foi enviada.
+- **Envio em lote**: na barra de seleção da lista, "Enviar por e-mail" mostra
+  o resumo (quantas notas e clientes, sem e-mail, não autorizadas, já
+  enviadas com "Pular as que já foram enviadas" marcado) e o resultado. Um
+  e-mail por nota, com o modelo da empresa de cada nota. Até 200 por vez.
+- **Envelope na lista**: ao lado do cliente, enviado (verde), na fila (cinza)
+  ou falhou (vermelho), com a data na dica.
+- **Nota Mensal**: depois de emitir, aviso "N notas emitidas ainda não foram
+  por e-mail" com "Enviar por e-mail agora" (o envio automático continua só
+  para cliente com "enviar por e-mail" ligado).
+- API: `GET/PUT /api/conta/email-nota`, `POST /api/conta/email-nota/teste`,
+  `GET /api/nfse/{id}/email-previa`, `POST /api/nfse/enviar-email/lote/previa`,
+  `POST /api/nfse/enviar-email/lote`; `POST /api/nfse/{id}/enviar-email`
+  aceita `{ assunto, mensagem }` opcional.
+- Banco: tabela nova `modelos_email_nota` (um da conta e no máximo um por
+  empresa; sai com a empresa e na exclusão/encerramento da conta) e coluna
+  `CopiaOcultaFixa` em `email_logs`.
+
 ### Adicionado (desfazer e substituir reajuste)
 - **Contratos › Histórico de valores › Desfazer**: o último reajuste do
   contrato pode ser desfeito com motivo obrigatório (mínimo 10 caracteres).

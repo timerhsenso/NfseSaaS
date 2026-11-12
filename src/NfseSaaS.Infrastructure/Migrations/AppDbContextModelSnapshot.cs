@@ -830,6 +830,10 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
 
+                    b.Property<string>("CopiaOcultaFixa")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
                     b.Property<string>("Copias")
                         .HasMaxLength(600)
                         .HasColumnType("character varying(600)");
@@ -1294,6 +1298,60 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("logos_conta", (string)null);
+                });
+
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.ModeloEmailNota", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Assunto")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("CopiaOcultaPara")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("EmpresaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Mensagem")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<bool>("OcultarDivulgacao")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("ResponderPara")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmpresaId");
+
+                    b.HasIndex("TenantId")
+                        .IsUnique()
+                        .HasFilter("\"EmpresaId\" IS NULL");
+
+                    b.HasIndex("TenantId", "EmpresaId")
+                        .IsUnique()
+                        .HasFilter("\"EmpresaId\" IS NOT NULL");
+
+                    b.ToTable("modelos_email_nota", (string)null);
                 });
 
             modelBuilder.Entity("NfseSaaS.Domain.Entities.MovimentacaoValorContrato", b =>
@@ -2371,6 +2429,20 @@ namespace NfseSaaS.Infrastructure.Migrations
 
             modelBuilder.Entity("NfseSaaS.Domain.Entities.LogoConta", b =>
                 {
+                    b.HasOne("NfseSaaS.Domain.Entities.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.ModeloEmailNota", b =>
+                {
+                    b.HasOne("NfseSaaS.Domain.Entities.Empresa", null)
+                        .WithMany()
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("NfseSaaS.Domain.Entities.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")
