@@ -154,6 +154,21 @@ public sealed class ContratosController : ControllerBase
     }
 
     /// <summary>
+    /// Desfaz o último reajuste (registrado por engano, ou antes de sair o
+    /// índice), se ainda não saiu nota de produção com o valor novo. O
+    /// evento fica no histórico como desfeito, com o motivo.
+    /// </summary>
+    [RequerPermissao(TelaCatalogo.Contratos, AcaoPermissao.Alterar)]
+    [HttpPost("{id:guid}/reajustes/{movimentacaoId:guid}/desfazer")]
+    public async Task<IActionResult> DesfazerReajuste(
+        Guid id, Guid movimentacaoId, [FromBody] DesfazerReajusteRequest request,
+        [FromServices] IDesfazerReajusteUseCase desfazerReajuste, CancellationToken cancellationToken)
+    {
+        await desfazerReajuste.ExecutarAsync(id, movimentacaoId, request, cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
     /// Roda agora, para a Empresa, o mesmo cálculo do job diário dos
     /// reajustes de aniversário (10:10) — para não esperar o dia seguinte.
     /// </summary>

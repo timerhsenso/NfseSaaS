@@ -5,6 +5,32 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (desfazer e substituir reajuste)
+- **Contratos › Histórico de valores › Desfazer**: o último reajuste do
+  contrato pode ser desfeito com motivo obrigatório (mínimo 10 caracteres).
+  Valor, serviços e data do último reajuste (aniversário) voltam ao que eram.
+  O evento continua no histórico, riscado, com "Desfeito em … por …: motivo",
+  e a operação vai para a Auditoria ("DesfazerReajusteContrato").
+- Quando **não** pode desfazer, o clique explica o motivo: já saiu nota de
+  **produção** com o valor novo (homologação não conta), veio outro evento
+  depois (só o último pode ser desfeito), há reajuste aguardando aprovação ou
+  o valor do contrato mudou. Alteração de escopo não se desfaz (corrige-se
+  editando os serviços).
+- **Aviso de dois reajustes no mesmo ciclo**: ao registrar um reajuste com
+  outro aplicado há menos de uma periodicidade (12 meses, no comum), a tela
+  pergunta antes de gravar:
+  - **Substituir o reajuste de dd/mm** (só se ele puder ser desfeito): desfaz
+    o anterior e aplica o mesmo % sobre o valor de antes dele, na mesma data,
+    tudo numa gravação só. Ex.: R$ 328,98 × 4,6284% = R$ 344,21.
+  - **Somar mais um reajuste**: aplica sobre o valor atual, como antes.
+  - O servidor também exige a escolha (`SubstituirReajusteId` ou
+    `ConfirmarReajusteRecente`), para nenhum caminho somar sem querer.
+- Exportação de dados leva `DesfeitoEm` e `MotivoDesfazer` do histórico de valores.
+- API: `POST /api/contratos/{id}/reajustes/{movimentacaoId}/desfazer` (`{ motivo }`).
+- Banco: `StatusMovimentacaoValor.Desfeito = 4` e 4 colunas novas em
+  `movimentacoes_valor_contrato` (`DataUltimoReajusteAnterior`, `DesfeitoEm`,
+  `DesfeitoPorUsuarioId`, `MotivoDesfazer`), todas opcionais, sem índice.
+
 ### Adicionado (WhatsApp da conta)
 - **Cadastro**: campo **WhatsApp (opcional)** na etapa 3, com máscara
   "(71) 99999-8888". Preenchido, aparece a caixinha "Aceito receber contato e

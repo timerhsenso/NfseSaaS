@@ -36,6 +36,7 @@ public sealed class MovimentacaoValorContratoConfiguration : IEntityTypeConfigur
         builder.Property(m => m.PercentualAplicado).HasColumnType("numeric(9,4)");
         builder.Property(m => m.Indice).HasConversion<int?>();
         builder.Property(m => m.Motivo).HasMaxLength(MovimentacaoValorContrato.TamanhoMaximoMotivo);
+        builder.Property(m => m.MotivoDesfazer).HasMaxLength(MovimentacaoValorContrato.TamanhoMaximoMotivo);
         builder.Property(m => m.ComposicaoJson).HasColumnType("jsonb");
         builder.Property(m => m.Automatico).HasDefaultValue(false);
 

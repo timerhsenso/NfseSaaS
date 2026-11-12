@@ -109,7 +109,7 @@ public class SimulacaoReajusteContratoTests
             Assert.NotNull(parado.Mensagem);
 
             // Registrar o valor sugerido: só a linha fixa sobe, o % é sobre a parte fixa.
-            await new RegistrarReajusteUseCase(db, audit).ExecutarAsync(contratoId,
+            await new RegistrarReajusteUseCase(db, audit, sp.GetRequiredService<ICurrentUser>()).ExecutarAsync(contratoId,
                 new RegistrarReajusteRequest(r.DataReajuste, r.ValorNovo!.Value, IndiceReajusteContrato.Incc, "teste"), CancellationToken.None);
             db.ChangeTracker.Clear();
             var linhas = await db.ContratoServicos.AsNoTracking().Where(l => l.ContratoId == contratoId).ToListAsync();
@@ -127,7 +127,7 @@ public class SimulacaoReajusteContratoTests
                 new[] { new ContratoServicoRequest(manutencao.Id, 1, 1m) },
                 new DateOnly(2026, 1, 1), 12, null, null, null, StatusContrato.Ativo, null,
                 TipoCobrancaContrato.Mensal, PermitirAlterarValorNaEmissao: false), CancellationToken.None);
-            await new RegistrarReajusteUseCase(db, audit).ExecutarAsync(marcadorId,
+            await new RegistrarReajusteUseCase(db, audit, sp.GetRequiredService<ICurrentUser>()).ExecutarAsync(marcadorId,
                 new RegistrarReajusteRequest(new DateOnly(2026, 11, 1), 2000m, null, null), CancellationToken.None);
             db.ChangeTracker.Clear();
             var correcao = await db.MovimentacoesValorContrato.AsNoTracking()

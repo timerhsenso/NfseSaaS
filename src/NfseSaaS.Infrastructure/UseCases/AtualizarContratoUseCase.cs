@@ -148,6 +148,7 @@ public sealed class AtualizarContratoUseCase : IAtualizarContratoUseCase
         }
 
         contrato.ValorAtual = servicos.Sum(s => s.Quantidade * s.ValorUnitario);
+        var dataUltimoReajusteAnterior = contrato.DataUltimoReajuste;
 
         // Reajuste feito pelas linhas conta como reajuste do Contrato (move
         // a data do próximo); alteração de escopo não mexe no ciclo.
@@ -165,6 +166,7 @@ public sealed class AtualizarContratoUseCase : IAtualizarContratoUseCase
             PercentualAplicado = PercentualVariacao.Calcular(valorAnterior, contrato.ValorAtual),
             Indice = request.TipoAlteracaoServicos == TipoMovimentacaoValor.Reajuste ? contrato.IndiceReajuste : null,
             Motivo = string.IsNullOrEmpty(motivo) ? null : motivo,
+            DataUltimoReajusteAnterior = dataUltimoReajusteAnterior,
             ComposicaoJson = await ComposicaoContrato.SerializarAsync(
                 _db, servicos.Select(s => (s.ServicoId, s.Quantidade, s.ValorUnitario)), cancellationToken)
         });

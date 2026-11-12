@@ -389,10 +389,28 @@
                             </div>
                         </div>
                         <div class="form-text mb-2 d-none" id="reajuste-dica-variavel"></div>
-                        <div class="text-end">
+                        @* Dois reajustes no mesmo ciclo: substituir o anterior ou somar (contratos.js › mostrarAvisoReajusteRecente). *@
+                        <div id="aviso-reajuste-recente" class="alert alert-warning d-none" role="alert" aria-live="polite"></div>
+                        <div class="text-end" id="acoes-registrar-reajuste">
                             <button type="submit" class="btn btn-primary btn-sm">Registrar reajuste</button>
                         </div>
                     </form>
+
+                    @* Desfazer o último reajuste (contratos.js › abrirPainelDesfazer). *@
+                    <div id="painel-desfazer-reajuste" class="border border-danger-subtle rounded p-3 mb-4 d-none">
+                        <h6 class="mb-2"><i class="bi bi-arrow-counterclockwise"></i> Desfazer reajuste</h6>
+                        <div id="desfazer-resumo" class="mb-2"></div>
+                        <div id="erro-desfazer-reajuste" class="alert alert-danger d-none"></div>
+                        <div id="desfazer-campos">
+                            <label class="form-label small mb-1" for="desfazer-motivo">Motivo <span class="text-danger">*</span></label>
+                            <input type="text" maxlength="500" class="form-control form-control-sm mb-2" id="desfazer-motivo"
+                                   placeholder="ex.: registrado antes de sair o índice de outubro" />
+                        </div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-danger btn-sm" id="btn-confirmar-desfazer">Desfazer reajuste</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-cancelar-desfazer">Cancelar</button>
+                        </div>
+                    </div>
 
                     <h6 class="text-muted">Histórico de valores</h6>
                     <div class="form-text mb-2">Valor inicial, reajustes e alterações de escopo do contrato, do mais recente para o mais antigo. Abaixo de cada evento, os serviços cobrados a partir dele.</div>

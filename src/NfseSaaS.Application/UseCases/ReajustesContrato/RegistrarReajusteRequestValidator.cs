@@ -11,6 +11,11 @@ public sealed class RegistrarReajusteRequestValidator : AbstractValidator<Regist
         RuleFor(x => x.ValorNovo).GreaterThan(0);
         RuleFor(x => x.IndiceUsado).IsInEnum().When(x => x.IndiceUsado.HasValue);
         RuleFor(x => x.Observacao).MaximumLength(500);
+        RuleFor(x => x.MotivoSubstituicao)
+            .Must(m => (m?.Trim().Length ?? 0) >= RegrasDesfazerReajuste.TamanhoMinimoMotivo)
+            .WithMessage($"Explique por que o reajuste anterior está sendo substituído (mínimo {RegrasDesfazerReajuste.TamanhoMinimoMotivo} caracteres).")
+            .When(x => x.SubstituirReajusteId.HasValue);
+        RuleFor(x => x.MotivoSubstituicao).MaximumLength(500);
 
         // O valor novo passa a valer na hora (ValorAtual do Contrato muda já)
         // — vigência futura (agendada) chega com o reajuste automático.

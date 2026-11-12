@@ -158,11 +158,11 @@ public sealed class MontadorExportacaoDados
         var tMovimentacoes = new TabelaExportacao("contratos_historico_valores",
             "ContratoId", "Tipo", "Status", "DataVigencia", "ValorAnterior", "ValorNovo", "PercentualCalculado",
             "PercentualAplicado", "Indice", "CompetenciaIndiceInicio", "CompetenciaIndiceFim", "Motivo", "Automatico",
-            "DecididoEm", "CriadoEm");
+            "DecididoEm", "CriadoEm", "DesfeitoEm", "MotivoDesfazer");
         foreach (var m in movimentacoes)
             tMovimentacoes.Adicionar(m.ContratoId, m.Tipo, m.Status, m.DataVigencia, m.ValorAnterior, m.ValorNovo,
                 m.PercentualCalculado, m.PercentualAplicado, m.Indice, m.CompetenciaIndiceInicio, m.CompetenciaIndiceFim,
-                m.Motivo, m.Automatico, m.DecididoEm, m.CreatedAt);
+                m.Motivo, m.Automatico, m.DecididoEm, m.CreatedAt, m.DesfeitoEm, m.MotivoDesfazer);
         Tabela(zip, tMovimentacoes);
 
         // ----- Documentos dos contratos (arquivo + lista) -----

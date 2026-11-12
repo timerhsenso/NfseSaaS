@@ -237,6 +237,7 @@ public static class DependencyInjection
         services.AddScoped<IListarHistoricoValoresContratoUseCase, ListarHistoricoValoresContratoUseCase>();
         services.AddScoped<IGerarReajustesAniversarioUseCase, GerarReajustesAniversarioUseCase>();
         services.AddScoped<IDecidirReajusteUseCase, DecidirReajusteUseCase>();
+        services.AddScoped<IDesfazerReajusteUseCase, DesfazerReajusteUseCase>();
         services.AddScoped<IGerarReajustesAniversarioJob, GerarReajustesAniversarioJob>();
         // Aviso diário de certificado digital vencendo (30/15/7 dias e vencido).
         services.AddScoped<IAvisarCertificadosVencendoJob, AvisarCertificadosVencendoJob>();

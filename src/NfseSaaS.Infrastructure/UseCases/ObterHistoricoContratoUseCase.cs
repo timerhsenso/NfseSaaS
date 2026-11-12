@@ -33,7 +33,8 @@ public sealed class ObterHistoricoContratoUseCase : IObterHistoricoContratoUseCa
     private static readonly HashSet<string> OperacoesCobertasPeloHistoricoDeValores = new()
     {
         "RegistrarReajusteContrato",
-        "AlterarServicosContrato"
+        "AlterarServicosContrato",
+        "DesfazerReajusteContrato"
     };
 
     private static readonly CultureInfo PtBr = CultureInfo.GetCultureInfo("pt-BR");
@@ -81,6 +82,7 @@ public sealed class ObterHistoricoContratoUseCase : IObterHistoricoContratoUseCa
         {
             StatusMovimentacaoValor.Pendente => " — aguardando aprovação",
             StatusMovimentacaoValor.Recusado => " — não aplicado",
+            StatusMovimentacaoValor.Desfeito => " — desfeito" + (m.MotivoDesfazer is null ? string.Empty : $": {m.MotivoDesfazer}"),
             _ => string.Empty
         };
         var vigencia = $" (vigência {m.DataVigencia.ToString("dd/MM/yyyy", PtBr)})";

@@ -1322,6 +1322,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateOnly?>("DataUltimoReajusteAnterior")
+                        .HasColumnType("date");
+
                     b.Property<DateOnly>("DataVigencia")
                         .HasColumnType("date");
 
@@ -1331,10 +1334,20 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<Guid?>("DecididoPorUsuarioId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("DesfeitoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DesfeitoPorUsuarioId")
+                        .HasColumnType("uuid");
+
                     b.Property<int?>("Indice")
                         .HasColumnType("integer");
 
                     b.Property<string>("Motivo")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("MotivoDesfazer")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 

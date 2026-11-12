@@ -106,6 +106,7 @@ public static class ReajusteContrato
                 linha.ValorUnitario = Math.Round(linha.ValorUnitario * fator, 2, MidpointRounding.AwayFromZero);
         }
 
+        evento.DataUltimoReajusteAnterior = contrato.DataUltimoReajuste;
         contrato.ValorAtual = valorNovo;
         contrato.DataUltimoReajuste = evento.DataVigencia;
 

@@ -3,7 +3,11 @@ using NfseSaaS.Domain.Snapshots;
 
 namespace NfseSaaS.Application.UseCases.HistoricoValoresContrato;
 
-/// <summary>Um evento do Histórico de valores do Contrato, como a tela mostra.</summary>
+/// <summary>
+/// Um evento do Histórico de valores do Contrato, como a tela mostra.
+/// PodeDesfazer/BloqueioDesfazer: só o último reajuste aplicado tem o botão
+/// "Desfazer" (ou o motivo de não poder, para a dica da tela).
+/// </summary>
 public sealed record MovimentacaoValorContratoResponse(
     Guid Id,
     Guid ContratoId,
@@ -20,4 +24,9 @@ public sealed record MovimentacaoValorContratoResponse(
     string? Motivo,
     IReadOnlyList<ComposicaoContratoLinha> Composicao,
     bool Automatico,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? DesfeitoEm = null,
+    string? DesfeitoPor = null,
+    string? MotivoDesfazer = null,
+    bool PodeDesfazer = false,
+    string? BloqueioDesfazer = null);

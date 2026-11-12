@@ -43,6 +43,13 @@ let contratoAtualParaHistorico;
 let reajustePendenteAtual = null;
 // Simulação do reajuste pelo índice (modal Histórico de valores).
 let simulacaoReajuste = null;          // última resposta da simulação
+// Histórico de valores carregado no modal (aviso de reajuste recente e "Desfazer").
+let eventosHistoricoAtual = [];
+// Último campo mexido no form de reajuste ('valor', 'percentual' ou 'sugestao'):
+// define de onde vem o % ao substituir um reajuste recente.
+let ultimoCampoReajuste = null;
+// Escolha feita no aviso de reajuste recente, usada no envio seguinte.
+let decisaoReajusteRecente = null;
 let aplicarNegativoEscolhido = null;   // null = regra do contrato; true/false = escolha na tela
 let sequenciaSimulacao = 0;            // descarta resposta atrasada
 let catalogoServicosContratos = []; // cache do combo, reaproveitado nas linhas dinâmicas
@@ -113,6 +120,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('btn-novo-contrato').addEventListener('click', abrirModalNovoContrato);
         document.getElementById('form-contrato').addEventListener('submit', salvarContrato);
         document.getElementById('form-reajuste').addEventListener('submit', registrarReajuste);
+        configurarDesfazerReajuste();
         document.getElementById('btn-verificar-reajustes').addEventListener('click', verificarReajustes);
         configurarPainelReajustePendente();
         document.getElementById('btn-add-linha-servico').addEventListener('click', () => adicionarLinhaServico());
@@ -814,18 +822,25 @@ async function abrirModalHistorico(contratoId, descricao) {
         const campoValorNovo = document.getElementById('reajuste-valorNovo');
         const campoPercentual = document.getElementById('reajuste-percentual');
         campoValorNovo.oninput = function () {
+            ultimoCampoReajuste = 'valor';
+            esconderAvisoReajusteRecente();
             marcarSugestaoComoNaoUsada();
             const { atual, fixa } = partesReajuste();
             if (!campoValorNovo.value || !fixa) return;
             campoPercentual.value = ((parseFloat(campoValorNovo.value) - atual) / fixa * 100).toFixed(2);
         };
         campoPercentual.oninput = function () {
+            ultimoCampoReajuste = 'percentual';
+            esconderAvisoReajusteRecente();
             marcarSugestaoComoNaoUsada();
             if (!campoPercentual.value) return;
             campoValorNovo.value = valorNovoComPercentual(parseFloat(campoPercentual.value)).toFixed(2);
         };
 
-        document.getElementById('reajuste-dataReajuste').onchange = () => simularReajuste();
+        document.getElementById('reajuste-dataReajuste').onchange = () => {
+            esconderAvisoReajusteRecente();
+            simularReajuste();
+        };
         document.getElementById('reajuste-indiceUsado').onchange = () => {
             aplicarNegativoEscolhido = null;
             simularReajuste();
@@ -850,6 +865,9 @@ function limparFormularioReajuste(contratoId) {
     document.getElementById('reajuste-sugestao').innerHTML = '';
     document.getElementById('reajuste-dica-data').innerHTML = '';
     document.getElementById('reajuste-dica-variavel').classList.add('d-none');
+    ultimoCampoReajuste = null;
+    esconderAvisoReajusteRecente();
+    fecharPainelDesfazer();
     const observacao = document.getElementById('reajuste-observacao');
     delete observacao.dataset.automatica;
     // Texto digitado pela pessoa não é sobrescrito por "Usar este reajuste".
@@ -1014,6 +1032,8 @@ function renderizarSugestaoReajuste(r) {
 function usarSugestaoReajuste(r, nomeIndice) {
     document.getElementById('reajuste-valorNovo').value = Number(r.valorNovo).toFixed(2);
     document.getElementById('reajuste-percentual').value = Number(r.percentualAplicado);
+    ultimoCampoReajuste = 'sugestao';
+    esconderAvisoReajusteRecente();
 
     const observacao = document.getElementById('reajuste-observacao');
     if (!observacao.value.trim() || observacao.dataset.automatica === 'true') {
@@ -1039,6 +1059,9 @@ const ROTULOS_TIPO_MOVIMENTACAO = {
     3: { texto: 'Alteração de escopo', classe: 'text-bg-info' }
 };
 const ROTULOS_STATUS_MOVIMENTACAO = { 2: 'Aguardando aprovação', 3: 'Não aplicado' };
+const STATUS_APLICADO = 1;
+const STATUS_DESFEITO = 4;
+const TIPO_REAJUSTE = 2;
 
 function formatarReais(valor) {
     return valor == null ? '—' : Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -1052,6 +1075,7 @@ async function carregarHistorico(contratoId) {
 
     try {
         const eventos = await apiFetch(`/api/contratos/${contratoId}/historico-valores`);
+        eventosHistoricoAtual = eventos;
         renderizarPainelReajustePendente(eventos.find(e => e.status === 2) ?? null);
 
         if (eventos.length === 0) {
@@ -1062,19 +1086,39 @@ async function carregarHistorico(contratoId) {
         corpo.innerHTML = eventos.map(e => {
             const tipo = ROTULOS_TIPO_MOVIMENTACAO[e.tipo] ?? { texto: 'Evento', classe: 'text-bg-light' };
             const status = ROTULOS_STATUS_MOVIMENTACAO[e.status];
-            const composicao = (e.composicao ?? [])
+            const desfeito = e.status === STATUS_DESFEITO;
+            // Evento desfeito: os serviços dele não valem mais — sem a linha da composição.
+            const composicao = desfeito ? '' : (e.composicao ?? [])
                 .map(l => `${escaparHtml(l.servicoDescricao)}: ${Number(l.quantidade).toLocaleString('pt-BR')} × ${formatarReais(l.valorUnitario)}`)
                 .join(' · ');
+            const riscar = valor => desfeito ? `<s>${valor}</s>` : valor;
+            const percentual = (e.percentualAplicado ?? e.percentualCalculado) != null
+                ? Number(e.percentualAplicado ?? e.percentualCalculado).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%'
+                : '—';
+
+            // Só o último reajuste aplicado tem "Desfazer"; se não puder, o
+            // clique explica o porquê (no celular não há dica ao passar o mouse).
+            const podeMostrarDesfazer = e.podeDesfazer || e.bloqueioDesfazer;
+            const botaoDesfazer = podeMostrarDesfazer
+                ? `<div><button type="button" class="btn btn-link btn-sm p-0 text-danger btn-desfazer-reajuste" data-id="${e.id}">` +
+                  `<i class="bi bi-arrow-counterclockwise"></i> Desfazer</button></div>`
+                : '';
+            const detalheDesfeito = desfeito
+                ? `<div class="small text-danger">Desfeito em ${e.desfeitoEm ? new Date(e.desfeitoEm).toLocaleDateString('pt-BR') : '—'}` +
+                  `${e.desfeitoPor ? ` por ${escaparHtml(e.desfeitoPor)}` : ''}${e.motivoDesfazer ? `: ${escaparHtml(e.motivoDesfazer)}` : ''}</div>`
+                : '';
 
             return `
-                <tr>
-                    <td>${new Date(e.dataVigencia + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
-                    <td><span class="badge ${tipo.classe}">${tipo.texto}</span>${status ? `<div class="small text-warning">${status}</div>` : ''}</td>
-                    <td class="text-end">${formatarReais(e.valorAnterior)}</td>
-                    <td class="text-end">${formatarReais(e.valorNovo)}</td>
-                    <td class="text-end">${(e.percentualAplicado ?? e.percentualCalculado) != null ? Number(e.percentualAplicado ?? e.percentualCalculado).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%' : '—'}${e.automatico ? '<div class="small text-muted">automático</div>' : ''}</td>
+                <tr class="${desfeito ? 'text-muted linha-desfeita' : ''}">
+                    <td>${riscar(new Date(e.dataVigencia + 'T00:00:00').toLocaleDateString('pt-BR'))}</td>
+                    <td><span class="badge ${desfeito ? 'text-bg-light border' : tipo.classe}">${tipo.texto}</span>` +
+                    `${desfeito ? '<div class="small text-danger fw-semibold">Desfeito</div>' : ''}` +
+                    `${status ? `<div class="small text-warning">${status}</div>` : ''}${botaoDesfazer}</td>
+                    <td class="text-end">${riscar(formatarReais(e.valorAnterior))}</td>
+                    <td class="text-end">${riscar(formatarReais(e.valorNovo))}</td>
+                    <td class="text-end">${riscar(percentual)}${e.automatico ? '<div class="small text-muted">automático</div>' : ''}</td>
                     <td>${e.indice != null ? (ROTULOS_INDICE_REAJUSTE[e.indice] ?? '—') : '—'}</td>
-                    <td>${e.motivo ? escaparHtml(e.motivo) : '—'}</td>
+                    <td>${e.motivo ? escaparHtml(e.motivo) : '—'}${detalheDesfeito}</td>
                 </tr>
                 ${composicao ? `<tr class="table-light"><td></td><td colspan="6" class="small text-muted pt-0">${composicao}</td></tr>` : ''}`;
         }).join('');
@@ -1096,21 +1140,222 @@ async function registrarReajuste(e) {
         observacao: document.getElementById('reajuste-observacao').value.trim() || null
     };
 
+    // Já houve reajuste neste ciclo: antes de gravar, a pessoa escolhe
+    // entre substituir o anterior e somar mais um (o servidor exige a escolha).
+    const recente = reajusteRecente(payload.dataReajuste);
+    if (recente && !decisaoReajusteRecente) {
+        mostrarAvisoReajusteRecente(recente, payload);
+        return;
+    }
+    await enviarReajuste(contratoId, payload);
+}
+
+async function enviarReajuste(contratoId, payload) {
+    const decisao = decisaoReajusteRecente;
+    // Cópia: se der erro, a outra opção do aviso ainda usa o valor original.
+    const corpo = { ...payload };
+    if (decisao?.modo === 'substituir') {
+        corpo.valorNovo = decisao.valorNovo;
+        // Substituir = o mesmo reajuste, corrigido: fica na data do anterior (o aniversário).
+        corpo.dataReajuste = decisao.dataReajuste;
+        corpo.substituirReajusteId = decisao.reajusteId;
+        corpo.motivoSubstituicao = decisao.motivo;
+    } else if (decisao?.modo === 'somar') {
+        corpo.confirmarReajusteRecente = true;
+    }
+
     try {
-        await apiFetch(`/api/contratos/${contratoId}/reajustes`, { method: 'POST', body: JSON.stringify(payload) });
-
-        // Valor e aniversário mudaram: recarrega o contrato e a simulação.
-        contratoAtualParaHistorico = await apiFetch(`/api/contratos/${contratoId}`);
-        aplicarNegativoEscolhido = null;
-        limparFormularioReajuste(contratoId);
-        document.getElementById('reajuste-indiceUsado').value = contratoAtualParaHistorico.indiceReajuste ?? '';
-        await simularReajuste({ inicial: true });
-
-        await carregarHistorico(contratoId);
-        await carregarContratos(); // valorAtual/situação mudaram na tabela principal também
-        mostrarToast('Reajuste registrado com sucesso.');
+        await apiFetch(`/api/contratos/${contratoId}/reajustes`, { method: 'POST', body: JSON.stringify(corpo) });
+        await recarregarAposMudancaDeValor(contratoId);
+        mostrarToast(decisao?.modo === 'substituir' ? 'Reajuste anterior desfeito e o novo registrado.' : 'Reajuste registrado com sucesso.');
     } catch (err) {
         mostrarErroFormulario('erro-reajuste', err.message);
+        document.getElementById('erro-reajuste').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } finally {
+        decisaoReajusteRecente = null;
+    }
+}
+
+// Valor e aniversário mudaram (reajuste registrado ou desfeito): recarrega
+// o contrato, a simulação, o histórico e a lista de contratos.
+async function recarregarAposMudancaDeValor(contratoId) {
+    contratoAtualParaHistorico = await apiFetch(`/api/contratos/${contratoId}`);
+    aplicarNegativoEscolhido = null;
+    limparFormularioReajuste(contratoId);
+    document.getElementById('reajuste-indiceUsado').value = contratoAtualParaHistorico.indiceReajuste ?? '';
+    await simularReajuste({ inicial: true });
+
+    await carregarHistorico(contratoId);
+    await carregarContratos(); // valorAtual/situação mudaram na tabela principal também
+}
+
+// ---------------------------------------------------------------------
+// Dois reajustes no mesmo ciclo e "Desfazer" (RegrasDesfazerReajuste no
+// servidor). Reajuste de contrato é anual: um segundo dentro do ciclo
+// quase sempre é engano (ex.: registrado antes de sair o índice do mês).
+// ---------------------------------------------------------------------
+
+function somarMesesIso(iso, meses) {
+    const [ano, mes, dia] = iso.split('-').map(Number);
+    const data = new Date(ano, mes - 1 + meses, 1);
+    const ultimoDia = new Date(data.getFullYear(), data.getMonth() + 1, 0).getDate();
+    data.setDate(Math.min(dia, ultimoDia));
+    return dataLocalIso(data);
+}
+
+// Mesma regra do servidor (RegrasDesfazerReajuste.ReajusteRecente).
+function reajusteRecente(dataNovoIso) {
+    if (!dataNovoIso) return null;
+    const periodicidade = Number(contratoAtualParaHistorico?.periodicidadeReajusteMeses) > 0
+        ? Number(contratoAtualParaHistorico.periodicidadeReajusteMeses) : 12;
+    const limite = somarMesesIso(dataNovoIso, -periodicidade);
+    return eventosHistoricoAtual
+        .filter(e => e.tipo === TIPO_REAJUSTE && e.status === STATUS_APLICADO && e.dataVigencia > limite)
+        .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))[0] ?? null;
+}
+
+// % do reajuste que está sendo registrado: o digitado/sugerido, ou o que o
+// valor novo dá sobre a parte fixa atual (se a pessoa digitou o valor).
+function percentualDoFormularioReajuste() {
+    const campoPercentual = document.getElementById('reajuste-percentual');
+    const valorNovo = parseFloat(document.getElementById('reajuste-valorNovo').value);
+    if (ultimoCampoReajuste !== 'valor' && campoPercentual.value !== '') return parseFloat(campoPercentual.value);
+    const { atual, fixa } = partesReajuste();
+    return fixa && !Number.isNaN(valorNovo) ? (valorNovo - atual) / fixa * 100 : null;
+}
+
+function esconderAvisoReajusteRecente() {
+    const aviso = document.getElementById('aviso-reajuste-recente');
+    if (!aviso) return;
+    aviso.classList.add('d-none');
+    aviso.innerHTML = '';
+    document.getElementById('acoes-registrar-reajuste')?.classList.remove('d-none');
+    decisaoReajusteRecente = null;
+}
+
+function mostrarAvisoReajusteRecente(recente, payload) {
+    const aviso = document.getElementById('aviso-reajuste-recente');
+    const dias = Math.round((new Date(payload.dataReajuste + 'T00:00:00') - new Date(recente.dataVigencia + 'T00:00:00')) / 86400000);
+    const quando = dias <= 0 ? 'na mesma data' : dias === 1 ? 'há 1 dia' : `há ${dias} dias`;
+    const nomeIndice = recente.indice != null ? (ROTULOS_INDICE_REAJUSTE[recente.indice] ?? '') : '';
+    const pctAnterior = recente.percentualAplicado != null ? ` ${formatarPercentualContrato(recente.percentualAplicado)}` : '';
+
+    // Substituir: o mesmo % sobre o valor de ANTES do reajuste anterior
+    // (a parte variável não entra no reajuste — mesma conta do servidor).
+    const percentual = percentualDoFormularioReajuste();
+    const variavel = Number(simulacaoReajuste?.parteVariavel ?? 0);
+    const base = Number(recente.valorAnterior);
+    const valorSubstituto = percentual == null || recente.valorAnterior == null
+        ? null
+        : variavel + Math.round((base - variavel) * (1 + percentual / 100) * 100) / 100;
+
+    const dataAnterior = formatarDataContrato(recente.dataVigencia);
+    const opcaoSubstituir = recente.podeDesfazer && valorSubstituto != null && valorSubstituto > 0
+        ? `<div class="border rounded bg-body p-2 mb-2">
+                <button type="button" class="btn btn-primary btn-sm" id="btn-substituir-reajuste">
+                    <i class="bi bi-arrow-repeat me-1"></i>Substituir o reajuste de ${dataAnterior}
+                </button>
+                <div class="small mt-1">Desfaz o anterior e aplica ${formatarPercentualContrato(percentual)} sobre ${formatarReais(base)} =
+                    <strong>${formatarReais(valorSubstituto)}</strong>, na mesma data (${dataAnterior}).</div>
+                <label class="form-label small mb-1 mt-2" for="substituir-motivo">Por que substituir? <span class="text-danger">*</span></label>
+                <input type="text" maxlength="500" class="form-control form-control-sm" id="substituir-motivo"
+                       value="Reajuste refeito com o índice atualizado" />
+           </div>`
+        : `<div class="small text-muted mb-2"><i class="bi bi-lock me-1"></i>${escaparHtml(recente.bloqueioDesfazer ?? 'O reajuste anterior não pode mais ser substituído.')}</div>`;
+
+    aviso.innerHTML = `
+        <div class="mb-2"><i class="bi bi-exclamation-triangle-fill me-1"></i>
+            Este contrato já teve reajuste em <strong>${dataAnterior}</strong> (${quando})${nomeIndice || pctAnterior ? `: ${escaparHtml(nomeIndice)}${pctAnterior}` : ''},
+            ${formatarReais(recente.valorAnterior)} → ${formatarReais(recente.valorNovo)}. Vai fazer dois reajustes no mesmo ciclo?</div>
+        ${opcaoSubstituir}
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <button type="button" class="btn btn-outline-warning btn-sm text-body" id="btn-somar-reajuste">Somar mais um reajuste</button>
+            <span class="small">aplica sobre ${formatarReais(contratoAtualParaHistorico?.valorAtual)} = ${formatarReais(payload.valorNovo)}</span>
+            <button type="button" class="btn btn-link btn-sm ms-auto" id="btn-cancelar-aviso-reajuste">Cancelar</button>
+        </div>`;
+    aviso.classList.remove('d-none');
+    document.getElementById('acoes-registrar-reajuste').classList.add('d-none');
+
+    const contratoId = document.getElementById('reajuste-contratoId').value;
+    document.getElementById('btn-substituir-reajuste')?.addEventListener('click', ev =>
+        executarComBotaoDesabilitado(ev.currentTarget, async () => {
+            const motivo = document.getElementById('substituir-motivo').value.trim();
+            if (motivo.length < 10) {
+                mostrarErroFormulario('erro-reajuste', 'Explique por que o reajuste anterior está sendo substituído (mínimo 10 caracteres).');
+                document.getElementById('erro-reajuste').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+            decisaoReajusteRecente = { modo: 'substituir', reajusteId: recente.id, valorNovo: valorSubstituto, dataReajuste: recente.dataVigencia, motivo };
+            await enviarReajuste(contratoId, payload);
+        }));
+    document.getElementById('btn-somar-reajuste').addEventListener('click', ev =>
+        executarComBotaoDesabilitado(ev.currentTarget, async () => {
+            decisaoReajusteRecente = { modo: 'somar' };
+            await enviarReajuste(contratoId, payload);
+        }));
+    document.getElementById('btn-cancelar-aviso-reajuste').addEventListener('click', esconderAvisoReajusteRecente);
+}
+
+let reajusteParaDesfazer = null;
+
+function configurarDesfazerReajuste() {
+    document.querySelector('#tabela-historico-reajuste tbody').addEventListener('click', e => {
+        const botao = e.target.closest('.btn-desfazer-reajuste');
+        if (botao) abrirPainelDesfazer(botao.dataset.id);
+    });
+    document.getElementById('btn-cancelar-desfazer').addEventListener('click', fecharPainelDesfazer);
+    document.getElementById('btn-confirmar-desfazer').addEventListener('click', e =>
+        executarComBotaoDesabilitado(e.currentTarget, desfazerReajuste));
+}
+
+function abrirPainelDesfazer(id) {
+    const evento = eventosHistoricoAtual.find(e => e.id === id);
+    if (!evento) return;
+    reajusteParaDesfazer = evento;
+    ocultarErroFormulario('erro-desfazer-reajuste');
+
+    const painel = document.getElementById('painel-desfazer-reajuste');
+    const pode = !!evento.podeDesfazer;
+    document.getElementById('desfazer-resumo').innerHTML = pode
+        ? `Reajuste de <strong>${formatarDataContrato(evento.dataVigencia)}</strong> (${formatarReais(evento.valorAnterior)} → ${formatarReais(evento.valorNovo)}). ` +
+          `O contrato volta para <strong>${formatarReais(evento.valorAnterior)}</strong>, com os serviços de antes, e o próximo reajuste volta a contar como antes dele. ` +
+          `<span class="text-muted">O reajuste fica no histórico como desfeito, com o motivo.</span>`
+        : `<i class="bi bi-lock me-1"></i>${escaparHtml(evento.bloqueioDesfazer ?? 'Este reajuste não pode ser desfeito.')}`;
+    document.getElementById('desfazer-campos').classList.toggle('d-none', !pode);
+    document.getElementById('btn-confirmar-desfazer').classList.toggle('d-none', !pode);
+    document.getElementById('btn-cancelar-desfazer').textContent = pode ? 'Cancelar' : 'Fechar';
+    document.getElementById('desfazer-motivo').value = '';
+
+    painel.classList.remove('d-none');
+    painel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (pode) document.getElementById('desfazer-motivo').focus({ preventScroll: true });
+}
+
+function fecharPainelDesfazer() {
+    reajusteParaDesfazer = null;
+    document.getElementById('painel-desfazer-reajuste')?.classList.add('d-none');
+}
+
+async function desfazerReajuste() {
+    if (!reajusteParaDesfazer || !contratoAtualParaHistorico) return;
+    ocultarErroFormulario('erro-desfazer-reajuste');
+
+    const motivo = document.getElementById('desfazer-motivo').value.trim();
+    if (motivo.length < 10) {
+        mostrarErroFormulario('erro-desfazer-reajuste', 'Explique por que o reajuste está sendo desfeito (mínimo 10 caracteres).');
+        return;
+    }
+
+    const contratoId = contratoAtualParaHistorico.id;
+    try {
+        await apiFetch(`/api/contratos/${contratoId}/reajustes/${reajusteParaDesfazer.id}/desfazer`, {
+            method: 'POST',
+            body: JSON.stringify({ motivo })
+        });
+        await recarregarAposMudancaDeValor(contratoId);
+        mostrarToast('Reajuste desfeito. O valor anterior voltou a valer.');
+    } catch (err) {
+        mostrarErroFormulario('erro-desfazer-reajuste', err.message);
     }
 }
 

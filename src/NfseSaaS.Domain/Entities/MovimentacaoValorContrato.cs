@@ -7,7 +7,9 @@ namespace NfseSaaS.Domain.Entities;
 /// Um evento do Histórico de valores do Contrato: valor inicial, reajuste
 /// ou alteração de escopo. Responde "quanto este Contrato valia em cada
 /// momento, e por quê". Append-only — um evento não é editado nem apagado
-/// depois de Aplicado (correção = novo evento).
+/// depois de Aplicado (correção = novo evento). A única volta permitida é
+/// desfazer o ÚLTIMO reajuste, sem nota de produção emitida com o valor
+/// novo: o evento fica como Desfeito, com quem, quando e por quê.
 ///
 /// Evolução da antiga ReajusteContrato (tabela reajustes_contrato,
 /// renomeada pela migration HistoricoValoresContrato): os reajustes já
@@ -61,6 +63,20 @@ public sealed class MovimentacaoValorContrato : BaseEntity, ITenantEntity
     public Guid? DecididoPorUsuarioId { get; set; }
 
     public DateTimeOffset? DecididoEm { get; set; }
+
+    /// <summary>
+    /// Data do último reajuste do Contrato ANTES deste evento — é para onde
+    /// ela volta se o reajuste for desfeito. Nula nos eventos anteriores a
+    /// este campo e quando o Contrato nunca tinha sido reajustado.
+    /// </summary>
+    public DateOnly? DataUltimoReajusteAnterior { get; set; }
+
+    /// <summary>Reajuste desfeito (Status = Desfeito): quando, por quem e por quê.</summary>
+    public DateTimeOffset? DesfeitoEm { get; set; }
+
+    public Guid? DesfeitoPorUsuarioId { get; set; }
+
+    public string? MotivoDesfazer { get; set; }
 
     public const int TamanhoMaximoMotivo = 500;
 }
