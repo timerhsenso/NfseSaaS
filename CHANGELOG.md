@@ -5,6 +5,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Alterado (cores de volta ao painel Aparência; Configurações da conta só com a Logomarca)
+- Pedido do Carlos: as **cores da conta voltaram ao painel Aparência**, como
+  antes (clique muda a tela na hora, "Salvar" grava). O painel volta a ser o
+  que era antes do B9.
+- **Configurações da conta** ficou só com a seção **Logomarca** (enviar e
+  remover). Mensagens passaram de "logo" para "logomarca".
+
 ### Adicionado (B9 — logo do escritório e Configurações da conta)
 - **Configurações da conta** (menu do usuário, administrador): página do
   que vale para a conta inteira. Primeira seção, **Identidade visual**:

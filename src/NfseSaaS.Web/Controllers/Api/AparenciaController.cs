@@ -61,9 +61,9 @@ public sealed class AparenciaController : ControllerBase
     public async Task<IActionResult> SalvarLogo(IFormFile arquivo, CancellationToken cancellationToken)
     {
         if (arquivo is null || arquivo.Length == 0)
-            return BadRequest(new { erro = "Escolha a imagem do logo." });
+            return BadRequest(new { erro = "Escolha a imagem da logomarca." });
         if (arquivo.Length > RegrasLogoConta.TamanhoMaximoBytes)
-            return BadRequest(new { erro = $"O logo pode ter até {RegrasLogoConta.TamanhoMaximoBytes / 1024} KB. Reduza a imagem e envie de novo." });
+            return BadRequest(new { erro = $"A logomarca pode ter até {RegrasLogoConta.TamanhoMaximoBytes / 1024} KB. Reduza a imagem e envie de novo." });
 
         using var memoria = new MemoryStream();
         await arquivo.CopyToAsync(memoria, cancellationToken);

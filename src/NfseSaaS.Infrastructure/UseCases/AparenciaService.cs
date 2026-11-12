@@ -126,7 +126,7 @@ public sealed class AparenciaService : IAparenciaUseCase
     {
         var (tenantId, usuarioId) = Identificar();
         if (!(await UsuarioAsync(tenantId, usuarioId, cancellationToken)).EhAdministrador)
-            throw new RegraNegocioException("Só o administrador da conta muda o logo.");
+            throw new RegraNegocioException("Só o administrador da conta muda a logomarca.");
         if (!await LogoDisponivelAsync(tenantId, usuarioId, cancellationToken))
             throw new RegraNegocioException(RegrasLogoConta.MensagemIndisponivel);
 
@@ -154,7 +154,7 @@ public sealed class AparenciaService : IAparenciaUseCase
     {
         var (tenantId, usuarioId) = Identificar();
         if (!(await UsuarioAsync(tenantId, usuarioId, cancellationToken)).EhAdministrador)
-            throw new RegraNegocioException("Só o administrador da conta muda o logo.");
+            throw new RegraNegocioException("Só o administrador da conta muda a logomarca.");
 
         var removidos = await _db.LogosConta.Where(l => l.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
         if (removidos > 0)

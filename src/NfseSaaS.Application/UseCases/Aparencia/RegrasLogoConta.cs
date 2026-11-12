@@ -22,7 +22,7 @@ public static class RegrasLogoConta
         perfil == PerfilConta.Contador || operadorPlataforma;
 
     public const string MensagemIndisponivel =
-        "O logo próprio faz parte do plano Escritório (contas de contador).";
+        "A logomarca própria faz parte do plano Escritório (contas de contador).";
 
     /// <summary>Tipo da imagem pelo conteúdo; null se não for PNG, JPEG ou WebP.</summary>
     public static string? DetectarTipo(ReadOnlySpan<byte> conteudo)
@@ -42,11 +42,11 @@ public static class RegrasLogoConta
     public static string Validar(byte[]? conteudo)
     {
         if (conteudo is null || conteudo.Length == 0)
-            throw new RegraNegocioException("Escolha a imagem do logo.");
+            throw new RegraNegocioException("Escolha a imagem da logomarca.");
         if (conteudo.Length > TamanhoMaximoBytes)
-            throw new RegraNegocioException($"O logo pode ter até {TamanhoMaximoBytes / 1024} KB. Reduza a imagem e envie de novo.");
+            throw new RegraNegocioException($"A logomarca pode ter até {TamanhoMaximoBytes / 1024} KB. Reduza a imagem e envie de novo.");
         return DetectarTipo(conteudo)
-            ?? throw new RegraNegocioException("Envie o logo em PNG, JPG ou WebP.");
+            ?? throw new RegraNegocioException("Envie a logomarca em PNG, JPG ou WebP.");
     }
 
     /// <summary>Versão do conteúdo (16 primeiros dígitos do SHA-256) — vai na URL da imagem.</summary>
