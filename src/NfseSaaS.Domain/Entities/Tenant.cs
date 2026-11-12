@@ -61,6 +61,24 @@ public sealed class Tenant : BaseEntity
     public string? PaletaCores { get; set; }
 
     /// <summary>
+    /// WhatsApp do dono da conta, para o micoempresa falar com ele (suporte,
+    /// cobrança) e, mais adiante, mandar avisos (notas, reajustes, código da
+    /// verificação em duas etapas). Celular do Brasil no formato
+    /// internacional sem "+": 55 + DDD + 9 dígitos (13 caracteres). Opcional.
+    /// </summary>
+    public string? WhatsApp { get; set; }
+
+    /// <summary>
+    /// Quando o dono autorizou contato e avisos por WhatsApp (LGPD: só manda
+    /// mensagem quem autorizou). Nulo = não autorizou (o número pode existir,
+    /// ex.: informado para suporte, mas sem aviso automático).
+    /// </summary>
+    public DateTimeOffset? WhatsAppAutorizadoEm { get; set; }
+
+    /// <summary>"Agora não" na faixa que pede o WhatsApp: não mostra até esta data.</summary>
+    public DateTimeOffset? LembreteWhatsAppAdiadoAte { get; set; }
+
+    /// <summary>
     /// Encerramento da conta (D2): a pedido do cliente, pela plataforma ou
     /// automático. Encerrada também fica com Ativo=false (ninguém entra), mas,
     /// diferente da suspensão, tem data para os dados serem apagados.

@@ -5,6 +5,31 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (WhatsApp da conta)
+- **Cadastro**: campo **WhatsApp (opcional)** na etapa 3, com máscara
+  "(71) 99999-8888". Preenchido, aparece a caixinha "Aceito receber contato e
+  avisos do micoempresa por WhatsApp" (desmarcada; LGPD). Número inválido é
+  recusado com mensagem clara; em branco, o cadastro segue igual.
+- **Configurações da conta › Dados da conta** (nova seção, acima da
+  Logomarca): titular, CPF/CNPJ e e-mail do responsável (só leitura) e o
+  **WhatsApp do responsável** com a autorização. Só o administrador muda; os
+  demais veem só para leitura.
+- **Painel**: lembrete para o administrador enquanto a conta não tem
+  WhatsApp ("Informar agora" / "Agora não"); "Agora não" adia 30 dias, no
+  servidor (vale em qualquer navegador).
+- **Plataforma › Contas**: WhatsApp na coluna Responsável, com link que abre
+  a conversa (wa.me) já com "Olá, aqui é do micoempresa…"; "(só contato)"
+  quando a conta não autorizou avisos.
+- Exportação de dados da conta leva WhatsApp e data da autorização; o
+  expurgo da conta encerrada apaga os dois.
+- Regras: celular do Brasil (DDD válido, 9 dígitos começando por 9),
+  guardado como 55+DDD+número (13 dígitos) — o formato que links e APIs de
+  envio usam. A data da autorização é guardada e mantida ao trocar o número;
+  apagar o número apaga a autorização. Alteração vai para a Auditoria
+  ("AlterarContatoConta").
+- Banco: 3 colunas novas em `tenants` (`WhatsApp`, `WhatsAppAutorizadoEm`,
+  `LembreteWhatsAppAdiadoAte`), todas opcionais.
+
 ### Alterado (cores de volta ao painel Aparência; Configurações da conta só com a Logomarca)
 - Pedido do Carlos: as **cores da conta voltaram ao painel Aparência**, como
   antes (clique muda a tela na hora, "Salvar" grava). O painel volta a ser o

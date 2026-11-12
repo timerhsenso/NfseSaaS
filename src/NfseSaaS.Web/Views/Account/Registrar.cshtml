@@ -68,6 +68,15 @@
             <div class="form-text">Por ele você entra e recebe as notas e os avisos. Vamos pedir para confirmar.</div>
         </div>
         <div class="mb-3">
+            <label class="form-label" for="whatsapp">WhatsApp <span class="text-muted fw-normal">(opcional)</span></label>
+            <input type="tel" class="form-control" id="whatsapp" inputmode="numeric" autocomplete="tel-national" placeholder="(71) 99999-8888" />
+            <div class="form-text">Para falarmos com você mais rápido.</div>
+            <div class="form-check mt-2 d-none" id="grupo-autoriza-whatsapp">
+                <input class="form-check-input" type="checkbox" id="autorizaWhatsApp" />
+                <label class="form-check-label small" for="autorizaWhatsApp">Aceito receber contato e avisos do micoempresa por WhatsApp.</label>
+            </div>
+        </div>
+        <div class="mb-3">
             <label class="form-label" for="senha">Senha</label>
             <div class="input-group">
                 <input type="password" class="form-control" id="senha" required minlength="8" autocomplete="new-password" />

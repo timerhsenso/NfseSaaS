@@ -398,7 +398,10 @@ public sealed class EncerramentoContaService : IEncerrarContaUseCase, IExpurgarC
             await _db.Tenants.Where(t => t.Id == tenantId)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(t => t.DadosExpurgadosEm, agora)
-                    .SetProperty(t => t.PaletaCores, (string?)null), cancellationToken);
+                    .SetProperty(t => t.PaletaCores, (string?)null)
+                    .SetProperty(t => t.WhatsApp, (string?)null)
+                    .SetProperty(t => t.WhatsAppAutorizadoEm, (DateTimeOffset?)null)
+                    .SetProperty(t => t.LembreteWhatsAppAdiadoAte, (DateTimeOffset?)null), cancellationToken);
 
             // Único registro que sobra no Histórico: quando e o que foi apagado.
             _db.TenantIdOverrideDeSistema = tenantId;

@@ -2042,6 +2042,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<Guid?>("IndicadoPorTenantId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("LembreteWhatsAppAdiadoAte")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("MotivoBloqueio")
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
@@ -2069,6 +2072,13 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasColumnType("character varying(200)");
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("WhatsApp")
+                        .HasMaxLength(13)
+                        .HasColumnType("character varying(13)");
+
+                    b.Property<DateTimeOffset?>("WhatsAppAutorizadoEm")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");

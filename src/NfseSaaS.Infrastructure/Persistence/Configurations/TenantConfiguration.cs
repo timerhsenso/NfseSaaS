@@ -36,6 +36,9 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.Property(t => t.PaletaCores)
             .HasMaxLength(30);
 
+        builder.Property(t => t.WhatsApp)
+            .HasMaxLength(NfseSaaS.Application.UseCases.Conta.RegrasWhatsApp.TamanhoGuardado);
+
         // Encerramento (D2): enum como inteiro, sem valor padrão no banco.
         builder.Property(t => t.EncerramentoOrigem);
 

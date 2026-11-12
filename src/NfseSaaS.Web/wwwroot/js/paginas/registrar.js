@@ -192,6 +192,16 @@ function aoDigitarDocumento() {
 
 // ---------- Criar a conta ----------
 
+// WhatsApp opcional: máscara e a caixinha de autorização só com número.
+document.addEventListener('DOMContentLoaded', function () {
+    const campo = document.getElementById('whatsapp');
+    if (!campo) return;
+    aplicarMascaraWhatsApp(campo);
+    campo.addEventListener('input', function () {
+        document.getElementById('grupo-autoriza-whatsapp').classList.toggle('d-none', campo.value.trim() === '');
+    });
+});
+
 async function criarConta(e) {
     e.preventDefault();
     esconderErro();
@@ -202,6 +212,8 @@ async function criarConta(e) {
     if (!/^\S+@\S+\.\S+$/.test(email)) return mostrarErroCadastro('Digite um e-mail válido.');
     if (senha.length < 8) return mostrarErroCadastro('A senha precisa ter pelo menos 8 caracteres.');
     if (senha !== confirmar) return mostrarErroCadastro('As duas senhas não estão iguais.');
+    const whatsapp = document.getElementById('whatsapp').value.replace(/\D/g, '');
+    if (whatsapp && whatsapp.length !== 11) return mostrarErroCadastro('Informe o WhatsApp com DDD, ex.: (71) 99999-8888, ou deixe em branco.');
     if (!document.getElementById('aceitouTermos').checked)
         return mostrarErroCadastro('Para criar a conta, marque que leu e aceita os Termos de uso e a Política de privacidade.');
 
@@ -222,6 +234,9 @@ async function criarConta(e) {
                 email,
                 senha,
                 aceitouTermos: true,
+                // Opcional; a autorização (LGPD) só vale com número.
+                whatsApp: document.getElementById('whatsapp').value.trim() || null,
+                autorizaWhatsApp: document.getElementById('autorizaWhatsApp').checked,
                 // Link de indicação (?ref=) e canal (?origem=) que trouxeram a pessoa — ver LinkCadastroExtensions.
                 codigoIndicacao: parametros.get('ref'),
                 origem: parametros.get('origem')

@@ -3438,3 +3438,11 @@ html[data-theme="dark"] .painel-aparencia .btn-close { filter: invert(1) graysca
 @media (max-width: 576px) {
     .painel-aparencia { --bs-offcanvas-width: 100%; }
 }
+
+/* Lembrete do WhatsApp da conta no painel (display sem !important: d-none ainda esconde). */
+.lembrete-whatsapp {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem;
+}

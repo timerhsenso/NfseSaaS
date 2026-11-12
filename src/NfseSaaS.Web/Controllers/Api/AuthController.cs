@@ -36,7 +36,11 @@ public sealed record RegistrarRequest(
     PerfilConta Perfil = PerfilConta.Empresa,
     bool AceitouTermos = false,
     string? CodigoIndicacao = null,
-    string? Origem = null);
+    string? Origem = null,
+    // Opcional: WhatsApp do dono (para o micoempresa falar com ele) e a
+    // autorização de contato/avisos por WhatsApp (LGPD; só vale com número).
+    string? WhatsApp = null,
+    bool AutorizaWhatsApp = false);
 
 public sealed record LoginRequest(string Email, string Senha);
 
@@ -175,6 +179,9 @@ public sealed class AuthController : ControllerBase
             erros.Add("E-mail é obrigatório.");
         if (!request.AceitouTermos)
             erros.Add("Para criar a conta, é preciso aceitar os Termos de uso e a Política de privacidade.");
+        var whatsApp = NfseSaaS.Application.UseCases.Conta.RegrasWhatsApp.Normalizar(request.WhatsApp);
+        if (!string.IsNullOrWhiteSpace(request.WhatsApp) && whatsApp is null)
+            erros.Add(NfseSaaS.Application.UseCases.Conta.RegrasWhatsApp.MensagemInvalido);
         if (erros.Count > 0)
             return BadRequest(erros);
 
@@ -225,7 +232,9 @@ public sealed class AuthController : ControllerBase
             RazaoSocial = nome.Length <= 200 ? nome : nome[..200],
             CodigoIndicacao = NfseSaaS.Application.UseCases.Indicacao.CodigoIndicacao.Gerar(),
             IndicadoPorTenantId = indicadoPorTenantId,
-            OrigemCadastro = origem
+            OrigemCadastro = origem,
+            WhatsApp = whatsApp,
+            WhatsAppAutorizadoEm = whatsApp is not null && request.AutorizaWhatsApp ? DateTimeOffset.UtcNow : null
         };
 
         _db.Tenants.Add(tenant);

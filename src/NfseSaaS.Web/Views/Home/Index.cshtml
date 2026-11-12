@@ -2,6 +2,13 @@
     ViewData["Title"] = "Dashboard";
 }
 
+<div class="alert alert-info d-none lembrete-whatsapp" id="lembrete-whatsapp" role="status">
+    <i class="bi bi-whatsapp" aria-hidden="true"></i>
+    <span class="me-auto">Informe o WhatsApp da conta para falarmos com você mais rápido (suporte e avisos).</span>
+    <a href="/ConfiguracoesConta#dados" class="btn btn-sm btn-primary">Informar agora</a>
+    <button type="button" class="btn btn-sm btn-link" id="btn-adiar-lembrete-whatsapp">Agora não</button>
+</div>
+
 <div class="card onboarding d-none" id="card-onboarding">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="bi bi-flag" aria-hidden="true"></i> Primeiros passos <small class="text-muted ms-1" id="onboarding-contagem"></small></span>

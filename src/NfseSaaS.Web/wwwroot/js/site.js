@@ -554,6 +554,20 @@ function rotuloContrato(c) {
     return descricao || 'Contrato';
 }
 
+// WhatsApp (celular do Brasil): máscara "(71) 99999-8888" enquanto digita.
+// A conferência de verdade é no servidor (RegrasWhatsApp).
+function aplicarMascaraWhatsApp(campo) {
+    if (!campo) return;
+    campo.addEventListener('input', function () {
+        let d = campo.value.replace(/\D/g, '');
+        if (d.length > 11 && d.startsWith('55')) d = d.slice(2);
+        d = d.slice(0, 11);
+        campo.value = d.length <= 2 ? (d ? `(${d}` : '')
+            : d.length <= 7 ? `(${d.slice(0, 2)}) ${d.slice(2)}`
+            : `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+    });
+}
+
 function escaparHtml(texto) {
     return String(texto ?? '')
         .replace(/&/g, '&amp;')

@@ -198,6 +198,50 @@ public class CadastroEmEtapasTests
     }
 
     [Fact]
+    public async Task WhatsApp_no_cadastro_e_opcional_validado_e_guarda_a_autorizacao()
+    {
+        var cpfSem = GerarCpf();
+        var cpfCom = GerarCpf();
+        var cpfInvalido = GerarCpf();
+        try
+        {
+            // Sem WhatsApp: entra normal.
+            Assert.Equal(HttpStatusCode.OK, (await RegistrarAsync(await ClienteAsync(), 2, cpfSem, "Sem Zap", $"semzap{cpfSem}@teste.com")).StatusCode);
+
+            // Inválido: recusa com a mensagem do campo.
+            var invalido = await (await ClienteAsync()).PostAsJsonAsync("/api/auth/registrar", new
+            {
+                perfil = 2, documento = cpfInvalido, nome = "Zap Errado", email = $"zaperrado{cpfInvalido}@teste.com",
+                senha = "Senha@Forte123", aceitouTermos = true, whatsApp = "(71) 3333-4444", autorizaWhatsApp = true
+            });
+            Assert.NotEqual(HttpStatusCode.OK, invalido.StatusCode);
+            Assert.Contains("WhatsApp", await invalido.Content.ReadAsStringAsync());
+
+            // Com WhatsApp e autorização.
+            var com = await (await ClienteAsync()).PostAsJsonAsync("/api/auth/registrar", new
+            {
+                perfil = 2, documento = cpfCom, nome = "Com Zap", email = $"comzap{cpfCom}@teste.com",
+                senha = "Senha@Forte123", aceitouTermos = true, whatsApp = "(71) 99999-8888", autorizaWhatsApp = true
+            });
+            Assert.Equal(HttpStatusCode.OK, com.StatusCode);
+
+            using var escopo = _factory.Services.CreateScope();
+            var db = escopo.ServiceProvider.GetRequiredService<AppDbContext>();
+            var sem = await db.Tenants.AsNoTracking().SingleAsync(t => t.Documento == cpfSem);
+            Assert.Null(sem.WhatsApp);
+            Assert.Null(sem.WhatsAppAutorizadoEm);
+            var comZap = await db.Tenants.AsNoTracking().SingleAsync(t => t.Documento == cpfCom);
+            Assert.Equal("5571999998888", comZap.WhatsApp);
+            Assert.NotNull(comZap.WhatsAppAutorizadoEm);
+            Assert.False(await db.Tenants.AnyAsync(t => t.Documento == cpfInvalido));
+        }
+        finally
+        {
+            await LimparAsync(cpfSem, cpfCom, cpfInvalido);
+        }
+    }
+
+    [Fact]
     public async Task Contador_com_cpf_nao_ganha_empresa_e_ve_o_passo_de_cadastrar_cliente()
     {
         var cpf = GerarCpf();

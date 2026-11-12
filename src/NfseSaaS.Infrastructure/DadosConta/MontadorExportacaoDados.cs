@@ -68,10 +68,12 @@ public sealed class MontadorExportacaoDados
 
         var tContas = new TabelaExportacao("conta",
             "Documento", "Perfil", "RazaoSocial", "NomeFantasia", "Ativa", "CriadaEm", "CodigoIndicacao",
-            "Plano", "SituacaoAssinatura", "PrecoMensal", "Fundador", "AssinadaEm", "CanceladaEm");
+            "Plano", "SituacaoAssinatura", "PrecoMensal", "Fundador", "AssinadaEm", "CanceladaEm",
+            "WhatsApp", "WhatsAppAutorizadoEm");
         tContas.Adicionar(conta.Documento, conta.Perfil, conta.RazaoSocial, conta.NomeFantasia, conta.Ativo, conta.CreatedAt,
             conta.CodigoIndicacao, nomePlano, assinatura?.Status, assinatura?.PrecoMensal, assinatura?.Fundador,
-            assinatura?.AssinadaEm, assinatura?.CanceladaEm);
+            assinatura?.AssinadaEm, assinatura?.CanceladaEm,
+            conta.WhatsApp is { } zap ? NfseSaaS.Application.UseCases.Conta.RegrasWhatsApp.Formatar(zap) : null, conta.WhatsAppAutorizadoEm);
         Tabela(zip, tContas);
 
         // ----- Usuários (AspNetUsers não tem filtro de conta: filtro manual) -----

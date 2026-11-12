@@ -99,7 +99,13 @@ public sealed class ListarTenantsPlataformaUseCase : IListarTenantsPlataformaUse
                 Cobranca(t.Id, a, agora, hoje),
                 t.EncerradaEm,
                 t.ExpurgoPrevistoEm,
-                t.DadosExpurgadosEm);
+                t.DadosExpurgadosEm,
+                t.WhatsApp is { } zap ? NfseSaaS.Application.UseCases.Conta.RegrasWhatsApp.Formatar(zap) : null,
+                t.WhatsApp is { } zapLink
+                    ? NfseSaaS.Application.UseCases.Conta.RegrasWhatsApp.LinkConversa(zapLink,
+                        $"Olá, aqui é do micoempresa, sobre a conta {t.NomeFantasia ?? t.RazaoSocial}.")
+                    : null,
+                t.WhatsAppAutorizadoEm is not null);
         }).ToList();
     }
 

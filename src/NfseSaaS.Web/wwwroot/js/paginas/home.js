@@ -219,5 +219,28 @@ async function carregarOnboarding() {
     card.classList.remove('d-none');
 }
 
+// Lembrete do WhatsApp da conta: só para o administrador, enquanto a conta
+// não tem número. "Agora não" adia 30 dias (no servidor, vale em qualquer
+// navegador).
+async function carregarLembreteWhatsApp() {
+    const aviso = document.getElementById('lembrete-whatsapp');
+    let dados;
+    try {
+        dados = await apiFetch('/api/conta/dados');
+    } catch {
+        return; // o painel continua funcionando sem o lembrete
+    }
+    if (!dados?.mostrarLembreteWhatsApp) return;
+
+    document.getElementById('btn-adiar-lembrete-whatsapp').onclick = async function () {
+        aviso.classList.add('d-none');
+        try {
+            await apiFetch('/api/conta/lembrete-whatsapp/adiar', { method: 'POST' });
+        } catch { /* volta a aparecer na próxima visita */ }
+    };
+    aviso.classList.remove('d-none');
+}
+
 carregarDashboard();
 carregarOnboarding();
+carregarLembreteWhatsApp();

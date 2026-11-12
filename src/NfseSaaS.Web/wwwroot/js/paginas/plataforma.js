@@ -130,7 +130,16 @@ document.addEventListener('DOMContentLoaded', function () {
                           ].filter(Boolean).join(' · ')}</div>`
                         : '')
             },
-            { data: 'emailResponsavel', render: v => v ? escaparHtml(v) : '—' },
+            {
+                data: 'emailResponsavel',
+                render: (v, type, t) => type !== 'display' ? `${v ?? ''} ${t.whatsApp ?? ''}` :
+                    (v ? escaparHtml(v) : '—') +
+                    (t.whatsApp
+                        ? `<div class="small"><a href="${escaparHtml(t.linkWhatsApp)}" target="_blank" rel="noopener" title="Conversar no WhatsApp">` +
+                          `<i class="bi bi-whatsapp" aria-hidden="true"></i> ${escaparHtml(t.whatsApp)}</a>` +
+                          (t.whatsAppAutorizado ? '' : ' <span class="text-muted" title="Não autorizou receber avisos por WhatsApp">(só contato)</span>') + '</div>'
+                        : '')
+            },
             { data: 'criadoEm', className: 'col-curta', render: (v, type) => type === 'display' ? dataCurta(v) : v },
             { data: 'usuarios', className: 'text-end col-valor' },
             {
