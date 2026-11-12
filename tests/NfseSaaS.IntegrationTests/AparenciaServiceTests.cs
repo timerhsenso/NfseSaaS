@@ -2,10 +2,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.Aparencia;
 using NfseSaaS.Domain.Entities;
+using NfseSaaS.Domain.Enums;
 using NfseSaaS.Infrastructure.Identity;
 using NfseSaaS.Infrastructure.Persistence;
 using NfseSaaS.Infrastructure.UseCases;
@@ -31,13 +33,89 @@ public class AparenciaServiceTests
         public string? IpAddress => "127.0.0.1";
     }
 
-    private static AparenciaService Servico(IServiceProvider sp, Guid? usuarioId) => new(
+    private static AparenciaService Servico(IServiceProvider sp, Guid? usuarioId, params Guid[] operadores) => new(
         sp.GetRequiredService<AppDbContext>(),
         sp.GetRequiredService<ICurrentTenant>(),
         new UsuarioFalso(usuarioId),
         sp.GetRequiredService<IMemoryCache>(),
         sp.GetRequiredService<IAuditLogWriter>(),
-        NullLogger<AparenciaService>.Instance);
+        NullLogger<AparenciaService>.Instance,
+        Options.Create(new PlataformaOptions { UsuariosOperadoresIds = operadores.ToList() }));
+
+    private static readonly byte[] Png = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3, 4 };
+    private static readonly byte[] Jpeg = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 9, 9, 9 };
+
+    [Fact]
+    public async Task Logo_da_conta_so_admin_no_plano_escritorio_vale_para_todos()
+    {
+        using var escopo = _factory.Services.CreateScope();
+        var sp = escopo.ServiceProvider;
+        var db = sp.GetRequiredService<AppDbContext>();
+        var s = Guid.NewGuid().ToString("N");
+
+        var conta = new Tenant { Documento = s[..14], RazaoSocial = "Escritório " + s, Perfil = PerfilConta.Contador };
+        db.Tenants.Add(conta);
+        await db.SaveChangesAsync();
+        db.TenantIdOverrideDeSistema = conta.Id;
+        var grupoAdmin = new Grupo { Nome = "Admin " + s, EhAdministrador = true };
+        var grupoComum = new Grupo { Nome = "Comum " + s };
+        db.Grupos.AddRange(grupoAdmin, grupoComum);
+        await db.SaveChangesAsync();
+        var admin = new ApplicationUser { TenantId = conta.Id, UserName = $"adm{s}@t.com", Email = $"adm{s}@t.com", GrupoId = grupoAdmin.Id };
+        var comum = new ApplicationUser { TenantId = conta.Id, UserName = $"com{s}@t.com", Email = $"com{s}@t.com", GrupoId = grupoComum.Id };
+        db.Users.AddRange(admin, comum);
+        await db.SaveChangesAsync();
+        db.TenantIdOverrideDeSistema = null;
+        sp.GetRequiredService<ICurrentTenant>().DefinirTenantIdDeSistema(conta.Id);
+
+        try
+        {
+            var servicoAdmin = Servico(sp, admin.Id);
+            var servicoComum = Servico(sp, comum.Id);
+            Assert.Null((await servicoComum.AtualAsync(CancellationToken.None)).LogoVersao);
+            Assert.True((await servicoAdmin.ObterAsync(CancellationToken.None)).LogoDisponivel);
+
+            // Só o administrador; só imagem de verdade (pelo conteúdo).
+            Assert.Contains("administrador", (await Assert.ThrowsAsync<RegraNegocioException>(() =>
+                servicoComum.SalvarLogoAsync(Png, CancellationToken.None))).Message);
+            Assert.Contains("PNG", (await Assert.ThrowsAsync<RegraNegocioException>(() =>
+                servicoAdmin.SalvarLogoAsync("<svg onload=alert(1)>"u8.ToArray(), CancellationToken.None))).Message);
+
+            // Enviou: todos da conta veem (cache da conta limpo).
+            var versao = await servicoAdmin.SalvarLogoAsync(Png, CancellationToken.None);
+            Assert.Equal(versao, (await servicoComum.AtualAsync(CancellationToken.None)).LogoVersao);
+            var arquivo = await servicoComum.ObterLogoAsync(CancellationToken.None);
+            Assert.Equal("image/png", arquivo!.TipoConteudo);
+            Assert.Equal(Png, arquivo.Conteudo);
+
+            // Trocar: continua um só, versão nova.
+            var versao2 = await servicoAdmin.SalvarLogoAsync(Jpeg, CancellationToken.None);
+            Assert.NotEqual(versao, versao2);
+            Assert.Equal(1, await db.LogosConta.CountAsync(l => l.TenantId == conta.Id));
+            Assert.Equal("image/jpeg", (await servicoComum.ObterLogoAsync(CancellationToken.None))!.TipoConteudo);
+
+            // Remover: volta a marca do micoempresa.
+            await servicoAdmin.RemoverLogoAsync(CancellationToken.None);
+            Assert.Null((await servicoComum.AtualAsync(CancellationToken.None)).LogoVersao);
+            Assert.Null(await servicoComum.ObterLogoAsync(CancellationToken.None));
+            Assert.True(await db.AuditLogs.AnyAsync(l => l.Operacao == "AlterarLogoConta"));
+
+            // Conta de empresa: fora do plano Escritório (o operador da plataforma pode, para conferir).
+            await db.Tenants.Where(t => t.Id == conta.Id).ExecuteUpdateAsync(x => x.SetProperty(t => t.Perfil, PerfilConta.Empresa));
+            Assert.False((await servicoAdmin.ObterAsync(CancellationToken.None)).LogoDisponivel);
+            await Assert.ThrowsAsync<RegraNegocioException>(() => servicoAdmin.SalvarLogoAsync(Png, CancellationToken.None));
+            Assert.NotNull(await Servico(sp, admin.Id, admin.Id).SalvarLogoAsync(Png, CancellationToken.None));
+        }
+        finally
+        {
+            db.ChangeTracker.Clear();
+            await db.LogosConta.IgnoreQueryFilters().Where(x => x.TenantId == conta.Id).ExecuteDeleteAsync();
+            await db.AuditLogs.IgnoreQueryFilters().Where(x => x.TenantId == conta.Id).ExecuteDeleteAsync();
+            await db.Users.Where(x => x.TenantId == conta.Id).ExecuteDeleteAsync();
+            await db.Grupos.IgnoreQueryFilters().Where(x => x.TenantId == conta.Id).ExecuteDeleteAsync();
+            await db.Tenants.Where(x => x.Id == conta.Id).ExecuteDeleteAsync();
+        }
+    }
 
     [Fact]
     public async Task Admin_muda_as_cores_da_conta_os_demais_so_as_proprias_preferencias()

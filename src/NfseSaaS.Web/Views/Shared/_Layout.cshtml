@@ -78,16 +78,29 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.2.5/css/buttons.bootstrap5.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
-<body data-usuario-atual="@nomeUsuario" data-suporte="@SuporteOpcoes.Value.TextoContato">
+<body data-usuario-atual="@nomeUsuario" data-suporte="@SuporteOpcoes.Value.TextoContato"
+      data-logo-conta="@(aparencia.LogoVersao is { } versaoLogo ? $"/api/aparencia/logo?v={versaoLogo}" : null)">
     <div class="app">
         <aside class="sidebar" id="sidebar">
-            <a href="/" class="brand" aria-label="micoempresa — início">
-                <div class="brand-mark" aria-hidden="true">m</div>
-                <div>
-                    <strong>micoempresa<small>.com.br</small></strong>
-                    <span>Gestão simplificada</span>
-                </div>
-            </a>
+            @if (aparencia.LogoVersao is { } logoVersao)
+            {
+                @* B9: logo da conta (plano Escritório) sobre uma placa clara — logo escuro
+                   some no menu escuro. "com micoempresa" fica pequeno embaixo. *@
+                <a href="/" class="brand brand-conta" aria-label="Início">
+                    <span class="brand-logo-placa"><img src="/api/aparencia/logo?v=@logoVersao" alt="Logo da conta" class="brand-logo" id="logo-conta-menu" /></span>
+                    <span class="brand-por">com micoempresa</span>
+                </a>
+            }
+            else
+            {
+                <a href="/" class="brand" aria-label="micoempresa — início">
+                    <div class="brand-mark" aria-hidden="true">m</div>
+                    <div>
+                        <strong>micoempresa<small>.com.br</small></strong>
+                        <span>Gestão simplificada</span>
+                    </div>
+                </a>
+            }
 
             <nav class="sidebar-nav" aria-label="Início">
                 <a href="/" class="@Ativo("")"><span class="nav-icon bi bi-grid-1x2"></span>Dashboard</a>
@@ -218,6 +231,11 @@
                             <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalAlterarSenha">Alterar senha</a></li>
                             <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalDuploFator">Verificação em duas etapas</a></li>
                             <li><a class="dropdown-item" href="/MeusDados">Meus dados</a></li>
+                            @if (aparencia.PodeAlterarPaleta)
+                            {
+                                @* Logo e cores: valem para a conta inteira (só o administrador). *@
+                                <li><a class="dropdown-item" href="/ConfiguracoesConta">Configurações da conta</a></li>
+                            }
                             <li><a class="dropdown-item" href="/termos" target="_blank" rel="noopener">Termos de uso</a></li>
                             <li><a class="dropdown-item" href="/privacidade" target="_blank" rel="noopener">Política de privacidade</a></li>
                             <li><hr class="dropdown-divider"></li>

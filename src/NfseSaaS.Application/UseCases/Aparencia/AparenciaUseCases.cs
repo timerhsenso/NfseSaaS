@@ -115,7 +115,8 @@ public sealed record PreferenciasAparencia(string Fonte, string Densidade, strin
 
 /// <summary>O que o layout precisa para montar a página (atributos do &lt;html&gt;).</summary>
 /// <param name="Salvo">O usuário já salvou preferências (senão o navegador migra o que tinha guardado).</param>
-public sealed record AparenciaAtual(string Paleta, PreferenciasAparencia Preferencias, bool Salvo, bool PodeAlterarPaleta);
+/// <param name="LogoVersao">Versão do logo da conta (vai na URL da imagem); nulo = sem logo.</param>
+public sealed record AparenciaAtual(string Paleta, PreferenciasAparencia Preferencias, bool Salvo, bool PodeAlterarPaleta, string? LogoVersao = null);
 
 /// <summary>Dados do painel "Aparência".</summary>
 public sealed record AparenciaResponse(
@@ -125,7 +126,13 @@ public sealed record AparenciaResponse(
     IReadOnlyList<PaletaCores> Paletas,
     IReadOnlyList<OpcaoAparencia> Fontes,
     IReadOnlyList<OpcaoAparencia> Densidades,
-    IReadOnlyList<OpcaoAparencia> Modos);
+    IReadOnlyList<OpcaoAparencia> Modos,
+    // B9: logo da conta. Disponível = o plano permite (Escritório); Versao nula = sem logo.
+    bool LogoDisponivel = false,
+    string? LogoVersao = null);
+
+/// <summary>A imagem do logo, para servir no navegador.</summary>
+public sealed record LogoContaArquivo(byte[] Conteudo, string TipoConteudo, string Versao);
 
 public sealed record SalvarPaletaRequest(string Paleta);
 
@@ -141,4 +148,13 @@ public interface IAparenciaUseCase
 
     /// <summary>Só administrador da conta (grupo administrador).</summary>
     Task SalvarPaletaAsync(SalvarPaletaRequest request, CancellationToken cancellationToken);
+
+    /// <summary>B9 — só administrador, em conta com o plano Escritório. Devolve a versão nova.</summary>
+    Task<string> SalvarLogoAsync(byte[] conteudo, CancellationToken cancellationToken);
+
+    /// <summary>B9 — só administrador. Volta para a marca do micoempresa.</summary>
+    Task RemoverLogoAsync(CancellationToken cancellationToken);
+
+    /// <summary>Logo da conta do usuário logado (qualquer usuário da conta vê); null sem logo.</summary>
+    Task<LogoContaArquivo?> ObterLogoAsync(CancellationToken cancellationToken);
 }

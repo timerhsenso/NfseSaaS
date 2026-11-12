@@ -109,6 +109,11 @@ function configurarExportacao(tabela, nomeTela, opcoes = {}) {
                 extend: 'print',
                 title: nomeTela,
                 customize: function (win) {
+                    // B9: logo da conta no alto da impressão (quando houver).
+                    const logo = document.body.dataset.logoConta;
+                    if (logo) {
+                        $(win.document.body).prepend(`<img src="${new URL(logo, location.href).href}" alt="" style="max-height:56px;max-width:240px;margin-bottom:8px">`);
+                    }
                     $(win.document.body).append(`<div class="rodape-exportacao">${linhaRodape()}</div>`);
                 }
             }

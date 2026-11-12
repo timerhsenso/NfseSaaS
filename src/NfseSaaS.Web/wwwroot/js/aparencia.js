@@ -4,8 +4,9 @@
 //   data-fonte, data-densidade, data-modo e a classe menu-recolhido).
 // - Cada clique no painel aplica na hora (pré-visualização). "Salvar"
 //   grava; fechar sem salvar volta ao estado salvo.
-// - Cores da conta: só o administrador (os botões vêm desabilitados para
-//   os demais e o servidor confere de novo).
+// - Cores e logo da conta NÃO ficam aqui: são da conta, não da pessoa —
+//   vão em "Configurações da conta" (menu do usuário, só administrador;
+//   paginas/configuracoes-conta.js). Aqui a paleta salva só é mantida.
 // - Atalhos do topo (sol/lua e o ☰ do menu) gravam pela mesma função,
 //   window.salvarPreferenciasAparencia.
 // - Quem nunca salvou (data-aparencia-salva="0"): grava uma vez o que este
@@ -79,16 +80,10 @@
     var painel = document.getElementById('painelAparencia');
     if (!painel) return;
 
-    var podeAlterarPaleta = !painel.querySelector('.aparencia-paleta[disabled]');
     var atual = Object.assign({}, salvo);
     var salvando = false;
 
     function marcar() {
-        painel.querySelectorAll('.aparencia-paleta').forEach(function (b) {
-            var sel = b.dataset.paleta === atual.paleta;
-            b.classList.toggle('selecionada', sel);
-            b.setAttribute('aria-checked', sel ? 'true' : 'false');
-        });
         painel.querySelectorAll('.aparencia-opcoes').forEach(function (grupo) {
             var campo = grupo.dataset.campo;
             grupo.querySelectorAll('button').forEach(function (b) {
@@ -107,9 +102,6 @@
     }
 
     painel.addEventListener('click', function (e) {
-        var paleta = e.target.closest('.aparencia-paleta');
-        if (paleta && !paleta.disabled) { mudar({ paleta: paleta.dataset.paleta }); return; }
-
         var opcao = e.target.closest('.aparencia-opcoes button');
         if (opcao) {
             var parcial = {};
@@ -124,7 +116,7 @@
 
     document.getElementById('aparencia-restaurar').addEventListener('click', function () {
         mudar({
-            paleta: podeAlterarPaleta ? 'mico' : atual.paleta,
+            paleta: atual.paleta,
             fonte: 'm', densidade: 'padrao', modo: 'claro', menuRecolhido: false
         });
     });
@@ -134,9 +126,6 @@
         await executarComBotaoDesabilitado(botao, async function () {
             try {
                 await apiFetch('/api/aparencia/preferencias', { method: 'PUT', body: JSON.stringify(soPreferencias(atual)) });
-                if (podeAlterarPaleta && atual.paleta !== salvo.paleta) {
-                    await apiFetch('/api/aparencia/paleta', { method: 'PUT', body: JSON.stringify({ paleta: atual.paleta }) });
-                }
                 salvo = Object.assign({}, atual);
                 raiz.dataset.aparenciaSalva = '1';
                 guardarNoNavegador(salvo);

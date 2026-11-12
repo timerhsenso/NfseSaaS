@@ -2,7 +2,9 @@
 @using NfseSaaS.Application.UseCases.Aparencia
 @*
     Painel lateral (offcanvas) "Aparência", aberto pelo botão do topo.
-    Model = o usuário pode mudar as cores da conta (administrador).
+    Model = o usuário é administrador da conta (vê o atalho para
+    Configurações da conta, onde ficam as cores e o logo da conta).
+    Aqui ficam só as preferências DESTE usuário.
     Cada clique já mostra o resultado na tela (pré-visualização);
     "Salvar" grava, fechar sem salvar volta ao que estava (aparencia.js).
 *@
@@ -15,33 +17,15 @@
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
     </div>
     <div class="offcanvas-body">
-        <section class="aparencia-secao">
-            <h6>Cores da conta</h6>
-            @if (Model)
-            {
-                <p class="aparencia-ajuda">Vale para todos os usuários desta conta.</p>
-            }
-            else
-            {
-                <p class="aparencia-ajuda">Definidas pelo administrador da conta.</p>
-            }
-            <div class="aparencia-paletas" role="radiogroup" aria-label="Cores da conta">
-                @foreach (var p in AparenciaCatalogo.Paletas)
-                {
-                    <button type="button" class="aparencia-paleta" role="radio" data-paleta="@p.Codigo" aria-checked="false"
-                            title="@p.Descricao" @(Model ? null : "disabled")>
-                        <span class="amostra" aria-hidden="true">
-                            <span class="amostra-menu" style="background:@p.CorMenu"></span>
-                            <span class="amostra-tela">
-                                <span class="amostra-linha"></span>
-                                <span class="amostra-botao" style="background:@p.CorPrincipal"></span>
-                            </span>
-                        </span>
-                        <span class="nome">@p.Nome</span>
-                    </button>
-                }
-            </div>
-        </section>
+        @if (Model)
+        {
+            @* Cores e logo são da CONTA (valem para todos): ficam em Configurações da conta. *@
+            <a href="/ConfiguracoesConta" class="aparencia-link-conta">
+                <i class="bi bi-palette" aria-hidden="true"></i>
+                <span><strong>Cores e logo da conta</strong><small>Em Configurações da conta (vale para todos os usuários)</small></span>
+                <i class="bi bi-chevron-right" aria-hidden="true"></i>
+            </a>
+        }
 
         <section class="aparencia-secao">
             <h6>Minhas preferências</h6>

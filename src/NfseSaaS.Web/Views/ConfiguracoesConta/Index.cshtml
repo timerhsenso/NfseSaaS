@@ -1,0 +1,63 @@
+@using NfseSaaS.Application.UseCases.Aparencia
+@{
+    ViewData["Title"] = "Configurações da conta";
+}
+
+@* O que vale para a CONTA inteira (todos os usuários). Preferências de
+   cada pessoa (modo escuro, tamanho do texto) ficam no painel Aparência. *@
+<p class="text-muted mb-3" id="config-conta-intro">Vale para todos os usuários desta conta.</p>
+
+<div class="card">
+    <div class="card-header"><i class="bi bi-palette" aria-hidden="true"></i> Identidade visual</div>
+    <div class="card-body">
+        <div class="row g-4">
+            <div class="col-lg-5">
+                <h6 class="mb-1">Logo</h6>
+                <p class="small text-muted mb-2" id="logo-ajuda">Aparece no topo do menu e no alto das impressões.</p>
+                <div class="logo-previa logo-previa-grande" id="logo-previa">
+                    <span class="text-muted small">Sem logo: usando a marca do micoempresa.</span>
+                </div>
+                <div class="d-flex flex-wrap gap-2 mt-2" id="logo-acoes">
+                    <label class="btn btn-outline-primary btn-sm mb-0" for="arquivo-logo">
+                        <i class="bi bi-upload" aria-hidden="true"></i> Enviar logo
+                    </label>
+                    <input type="file" id="arquivo-logo" accept="image/png,image/jpeg,image/webp" class="visually-hidden" />
+                    <button type="button" class="btn btn-outline-danger btn-sm d-none" id="btn-remover-logo">
+                        <i class="bi bi-trash" aria-hidden="true"></i> Remover
+                    </button>
+                </div>
+                <small class="text-muted d-block mt-1" id="logo-formato">PNG, JPG ou WebP até @(RegrasLogoConta.TamanhoMaximoBytes / 1024) KB. Prefira formato horizontal e fundo transparente.</small>
+            </div>
+
+            <div class="col-lg-7">
+                <h6 class="mb-1">Cores</h6>
+                <p class="small text-muted mb-2">Clique para ver como fica; salve para valer para todos.</p>
+                <div class="aparencia-paletas config-paletas" role="radiogroup" aria-label="Cores da conta">
+                    @foreach (var p in AparenciaCatalogo.Paletas)
+                    {
+                        <button type="button" class="aparencia-paleta" role="radio" data-paleta="@p.Codigo" aria-checked="false" title="@p.Descricao" disabled>
+                            <span class="amostra" aria-hidden="true">
+                                <span class="amostra-menu" style="background:@p.CorMenu"></span>
+                                <span class="amostra-tela">
+                                    <span class="amostra-linha"></span>
+                                    <span class="amostra-botao" style="background:@p.CorPrincipal"></span>
+                                </span>
+                            </span>
+                            <span class="nome">@p.Nome</span>
+                        </button>
+                    }
+                </div>
+                <div class="d-flex gap-2 mt-3" id="cores-acoes">
+                    <button type="button" class="btn btn-primary btn-sm" id="btn-salvar-cores" disabled>
+                        <i class="bi bi-check2" aria-hidden="true"></i> Salvar cores
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm d-none" id="btn-desfazer-cores">Desfazer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/paginas/configuracoes-conta.js" asp-append-version="true"></script>
+}

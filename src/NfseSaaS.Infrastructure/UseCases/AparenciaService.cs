@@ -1,9 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.Aparencia;
+using NfseSaaS.Domain.Entities;
+using NfseSaaS.Infrastructure.Identity;
 using NfseSaaS.Infrastructure.Persistence;
 
 namespace NfseSaaS.Infrastructure.UseCases;
@@ -25,6 +28,7 @@ public sealed class AparenciaService : IAparenciaUseCase
     private readonly IMemoryCache _cache;
     private readonly IAuditLogWriter _auditLogWriter;
     private readonly ILogger<AparenciaService> _logger;
+    private readonly PlataformaOptions _plataforma;
 
     public AparenciaService(
         AppDbContext db,
@@ -32,8 +36,10 @@ public sealed class AparenciaService : IAparenciaUseCase
         ICurrentUser currentUser,
         IMemoryCache cache,
         IAuditLogWriter auditLogWriter,
-        ILogger<AparenciaService> logger)
+        ILogger<AparenciaService> logger,
+        IOptions<PlataformaOptions> plataforma)
     {
+        _plataforma = plataforma.Value;
         _db = db;
         _currentTenant = currentTenant;
         _currentUser = currentUser;
@@ -43,6 +49,9 @@ public sealed class AparenciaService : IAparenciaUseCase
     }
 
     private sealed record DadosUsuario(string? PreferenciasJson, bool EhAdministrador);
+
+    /// <summary>O que o layout precisa da conta (em cache): paleta e versão do logo.</summary>
+    private sealed record DadosConta(string Paleta, string? LogoVersao);
 
     internal static string ChaveConta(Guid tenantId) => $"aparencia:conta:{tenantId:N}";
     internal static string ChaveUsuario(Guid usuarioId) => $"aparencia:usuario:{usuarioId:N}";
@@ -54,10 +63,10 @@ public sealed class AparenciaService : IAparenciaUseCase
 
         try
         {
-            var paleta = await PaletaAsync(tenantId, cancellationToken);
+            var conta = await ContaAsync(tenantId, cancellationToken);
             var usuario = await UsuarioAsync(tenantId, usuarioId, cancellationToken);
-            return new AparenciaAtual(paleta, PreferenciasAparencia.Ler(usuario.PreferenciasJson),
-                usuario.PreferenciasJson is not null, usuario.EhAdministrador);
+            return new AparenciaAtual(conta.Paleta, PreferenciasAparencia.Ler(usuario.PreferenciasJson),
+                usuario.PreferenciasJson is not null, usuario.EhAdministrador, conta.LogoVersao);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -71,11 +80,14 @@ public sealed class AparenciaService : IAparenciaUseCase
     {
         var (tenantId, usuarioId) = Identificar();
         var usuario = await UsuarioAsync(tenantId, usuarioId, cancellationToken);
+        var conta = await ContaAsync(tenantId, cancellationToken);
         return new AparenciaResponse(
-            await PaletaAsync(tenantId, cancellationToken),
+            conta.Paleta,
             usuario.EhAdministrador,
             PreferenciasAparencia.Ler(usuario.PreferenciasJson),
-            AparenciaCatalogo.Paletas, AparenciaCatalogo.Fontes, AparenciaCatalogo.Densidades, AparenciaCatalogo.Modos);
+            AparenciaCatalogo.Paletas, AparenciaCatalogo.Fontes, AparenciaCatalogo.Densidades, AparenciaCatalogo.Modos,
+            await LogoDisponivelAsync(tenantId, usuarioId, cancellationToken),
+            conta.LogoVersao);
     }
 
     public async Task<PreferenciasAparencia> SalvarPreferenciasAsync(PreferenciasAparencia preferencias, CancellationToken cancellationToken)
@@ -110,17 +122,81 @@ public sealed class AparenciaService : IAparenciaUseCase
         _cache.Remove(ChaveConta(tenantId));
     }
 
+    public async Task<string> SalvarLogoAsync(byte[] conteudo, CancellationToken cancellationToken)
+    {
+        var (tenantId, usuarioId) = Identificar();
+        if (!(await UsuarioAsync(tenantId, usuarioId, cancellationToken)).EhAdministrador)
+            throw new RegraNegocioException("Só o administrador da conta muda o logo.");
+        if (!await LogoDisponivelAsync(tenantId, usuarioId, cancellationToken))
+            throw new RegraNegocioException(RegrasLogoConta.MensagemIndisponivel);
+
+        var tipo = RegrasLogoConta.Validar(conteudo);
+        var versao = RegrasLogoConta.Versao(conteudo);
+
+        var logo = await _db.LogosConta.FirstOrDefaultAsync(l => l.TenantId == tenantId, cancellationToken);
+        if (logo is null)
+        {
+            logo = new LogoConta { TenantId = tenantId };
+            _db.LogosConta.Add(logo);
+        }
+        logo.Conteudo = conteudo;
+        logo.TipoConteudo = tipo;
+        logo.Versao = versao;
+        logo.TamanhoBytes = conteudo.LongLength;
+        _auditLogWriter.Registrar("AlterarLogoConta", "Tenant", tenantId, new { tipo, bytes = conteudo.Length, versao });
+        await _db.SaveChangesAsync(cancellationToken);
+
+        _cache.Remove(ChaveConta(tenantId));
+        return versao;
+    }
+
+    public async Task RemoverLogoAsync(CancellationToken cancellationToken)
+    {
+        var (tenantId, usuarioId) = Identificar();
+        if (!(await UsuarioAsync(tenantId, usuarioId, cancellationToken)).EhAdministrador)
+            throw new RegraNegocioException("Só o administrador da conta muda o logo.");
+
+        var removidos = await _db.LogosConta.Where(l => l.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
+        if (removidos > 0)
+        {
+            _auditLogWriter.Registrar("RemoverLogoConta", "Tenant", tenantId, null);
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+
+        _cache.Remove(ChaveConta(tenantId));
+    }
+
+    public async Task<LogoContaArquivo?> ObterLogoAsync(CancellationToken cancellationToken)
+    {
+        if (_currentTenant.TenantId is not { } tenantId)
+            return null;
+
+        return await _db.LogosConta.AsNoTracking()
+            .Where(l => l.TenantId == tenantId)
+            .Select(l => new LogoContaArquivo(l.Conteudo, l.TipoConteudo, l.Versao))
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary>Plano Escritório (conta de contador) ou operador da plataforma.</summary>
+    private async Task<bool> LogoDisponivelAsync(Guid tenantId, Guid usuarioId, CancellationToken cancellationToken)
+    {
+        var perfil = await _db.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.Perfil).FirstAsync(cancellationToken);
+        return RegrasLogoConta.Disponivel(perfil, _plataforma.UsuariosOperadoresIds.Contains(usuarioId));
+    }
+
     private (Guid TenantId, Guid UsuarioId) Identificar() =>
         _currentTenant.TenantId is { } t && _currentUser.UserId is { } u
             ? (t, u)
             : throw new InvalidOperationException("Conta ou usuário não identificado.");
 
-    private async Task<string> PaletaAsync(Guid tenantId, CancellationToken cancellationToken) =>
+    private async Task<DadosConta> ContaAsync(Guid tenantId, CancellationToken cancellationToken) =>
         (await _cache.GetOrCreateAsync(ChaveConta(tenantId), async entrada =>
         {
             entrada.AbsoluteExpirationRelativeToNow = DuracaoCache;
             var gravada = await _db.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.PaletaCores).FirstOrDefaultAsync(cancellationToken);
-            return AparenciaCatalogo.PaletaOuPadrao(gravada);
+            var logoVersao = await _db.LogosConta.IgnoreQueryFilters().AsNoTracking()
+                .Where(l => l.TenantId == tenantId).Select(l => l.Versao).FirstOrDefaultAsync(cancellationToken);
+            return new DadosConta(AparenciaCatalogo.PaletaOuPadrao(gravada), logoVersao);
         }))!;
 
     private async Task<DadosUsuario> UsuarioAsync(Guid tenantId, Guid usuarioId, CancellationToken cancellationToken) =>

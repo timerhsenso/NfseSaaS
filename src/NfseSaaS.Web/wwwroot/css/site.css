@@ -123,6 +123,90 @@ a:hover {
     padding: 2px 8px 20px;
 }
 
+/* B9: logo da conta no topo do menu, sobre placa clara (logo escuro some no
+   menu escuro); "com micoempresa" pequeno embaixo. */
+.sidebar .brand.brand-conta {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+}
+
+.sidebar .brand-logo-placa {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    border-radius: 10px;
+    padding: 8px 10px;
+    min-height: 52px;
+}
+
+.sidebar .brand-logo {
+    max-width: 100%;
+    max-height: 44px;
+    object-fit: contain;
+}
+
+.sidebar .brand.brand-conta .brand-por {
+    font-size: calc(11px * var(--escala-fonte));
+    text-align: center;
+    opacity: .7;
+}
+
+.logo-previa {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 72px;
+    padding: 10px;
+    border: 1px dashed var(--line);
+    border-radius: 10px;
+    background: #fff;
+}
+
+.logo-previa-grande {
+    min-height: 120px;
+}
+
+.logo-previa-grande img {
+    max-height: 90px;
+}
+
+/* Painel Aparência: atalho do administrador para Configurações da conta. */
+.aparencia-link-conta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    margin-bottom: 18px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    color: var(--text);
+    text-decoration: none;
+}
+
+.aparencia-link-conta:hover {
+    border-color: var(--primary);
+    color: var(--text);
+}
+
+.aparencia-link-conta span {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.aparencia-link-conta small {
+    color: var(--muted);
+    font-size: calc(12px * var(--escala-fonte));
+}
+
+.logo-previa img {
+    max-width: 100%;
+    max-height: 56px;
+    object-fit: contain;
+}
+
 .sidebar .brand-mark {
     width: 34px;
     height: 34px;
@@ -472,6 +556,20 @@ a:hover {
     html.menu-recolhido .sidebar .brand > div:not(.brand-mark),
     html.menu-recolhido .sidebar-footer {
         display: none;
+    }
+
+    /* Logo da conta no menu recolhido: só a placa, pequena. */
+    html.menu-recolhido .sidebar .brand.brand-conta .brand-por {
+        display: none;
+    }
+
+    html.menu-recolhido .sidebar .brand-logo-placa {
+        min-height: 40px;
+        padding: 4px;
+    }
+
+    html.menu-recolhido .sidebar .brand-logo {
+        max-height: 30px;
     }
 
     /* Rótulo de grupo vira uma linha divisória. */

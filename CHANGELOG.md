@@ -5,6 +5,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (B9 — logo do escritório e Configurações da conta)
+- **Configurações da conta** (menu do usuário, administrador): página do
+  que vale para a conta inteira. Primeira seção, **Identidade visual**:
+  - **Logo da conta** (plano Escritório = contas de contador; o operador da
+    plataforma também pode, para conferir): topo do menu, sobre uma placa
+    clara, com "com micoempresa" pequeno embaixo, para todos os usuários da
+    conta, e no alto das impressões das listas. Enviar e remover valem na hora.
+  - **Cores da conta** (saíram do painel Aparência): clique pré-visualiza,
+    "Salvar cores" grava para todos.
+- O painel **Aparência** ficou só com as preferências de cada pessoa (modo,
+  texto, botões, menu), com um atalho do administrador para as Configurações.
+- Logo: PNG, JPG ou WebP até 512 KB, reconhecido pelo conteúdo (SVG recusado:
+  pode levar script). Guardado no banco (tabela `logos_conta`, migration
+  `LogoConta`), um por conta; a URL leva a versão (hash), o navegador guarda
+  em cache e nunca mostra o antigo. Auditoria AlterarLogoConta/RemoverLogoConta.
+  Some na exclusão e no expurgo da conta.
+
 ### Alterado (largura das colunas nas listas)
 - Colunas com valor curto (códigos, CPF/CNPJ, valores, datas, status,
   ações) ficam do tamanho do conteúdo e não quebram; a sobra vai para os
