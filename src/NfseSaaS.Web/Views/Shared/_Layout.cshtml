@@ -133,6 +133,7 @@
                 @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Empresas))
                 {
                     <a href="/Empresas" class="@Ativo("/Empresas")"><span class="nav-icon bi bi-building"></span>Empresas</a>
+                    <a href="/Documentos" class="@Ativo("/Documentos")"><span class="nav-icon bi bi-folder-check"></span>Documentos da empresa</a>
                 }
                 @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Empresas) || User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Clientes))
                 {

@@ -3569,10 +3569,42 @@ html[data-theme="dark"] .painel-aparencia .btn-close { filter: invert(1) graysca
     .painel-aparencia { --bs-offcanvas-width: 100%; }
 }
 
-/* Lembrete do WhatsApp da conta no painel (display sem !important: d-none ainda esconde). */
-.lembrete-whatsapp {
+/* Lembrete do WhatsApp da conta e aviso de documentos no painel (display sem !important: d-none ainda esconde). */
+.lembrete-whatsapp,
+.aviso-documentos {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: .5rem;
+}
+
+/* DOC1: Documentos da empresa — uma linha por documento, ações à direita (embaixo no celular). */
+.documento-linha {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem 1rem;
+}
+
+.documento-linha .documento-info {
+    flex: 1 1 18rem;
+    min-width: 0;
+}
+
+.documento-linha .documento-acoes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .375rem;
+}
+
+.documento-pendente .documento-info > div:first-child .fw-semibold {
+    color: var(--bs-secondary-color);
+}
+
+.documentos-chip {
+    font-weight: 500;
+    font-size: .8125rem;
+    padding: .4em .8em;
 }

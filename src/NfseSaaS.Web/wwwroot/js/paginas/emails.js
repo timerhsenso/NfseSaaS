@@ -77,6 +77,7 @@ function rotuloTipo(tipo) {
         case 'AvisoDuploFator': return 'Aviso de verificação em duas etapas';
         case 'NfseTomador': return 'Nota ao cliente';
         case 'CertificadoVencendo': return 'Certificado vencendo';
+        case 'DocumentoVencendo': return 'Documento vencendo';
         case 'ConfirmacaoEmail': return 'Confirmação de e-mail';
         case 'ReajustesAniversario': return 'Reajustes de contrato';
         case 'AlertaOperador': return 'Alerta do sistema';

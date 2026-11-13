@@ -1,0 +1,118 @@
+@{
+    ViewData["Title"] = "Documentos da empresa";
+    // Mesma permissão da tela Empresas (a API confere de novo): Alterar envia e exclui.
+    var podeEditar = User.PodeAlterar(NfseSaaS.Application.Authorization.TelaCatalogo.Empresas);
+}
+
+@* DOC1: certidões e documentos da Empresa selecionada no topo. Cada envio é
+   uma versão nova; vale a mais recente. Aviso por e-mail e no painel quando
+   vence em até 15 dias e quando vence. Dados via api/documentos-empresa. *@
+@section AcoesPagina {
+    @if (podeEditar)
+    {
+        <button type="button" class="btn btn-primary btn-sm d-none" id="btn-novo-documento" data-requer-empresa>
+            <i class="bi bi-plus-lg"></i> Outro documento
+        </button>
+    }
+}
+
+<div id="documentos-pagina" data-pode-editar="@(podeEditar ? "true" : "false")">
+    <p class="text-muted small mb-3">
+        Guarde aqui as certidões e documentos da empresa (PDF). Avisamos por e-mail e no painel quando um documento
+        vence em até 15 dias e quando vence. Ao enviar a versão nova, a anterior fica no histórico.
+    </p>
+
+    <div class="alert alert-warning d-none" id="documentos-bloqueio" role="status">
+        <i class="bi bi-lock" aria-hidden="true"></i> <span id="documentos-bloqueio-texto"></span>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mb-3" id="documentos-resumo" aria-live="polite"></div>
+
+    <div class="card">
+        <div class="list-group list-group-flush documentos-lista" id="lista-documentos" aria-label="Documentos da empresa">
+            <div class="list-group-item text-center text-muted py-4">Carregando...</div>
+        </div>
+    </div>
+</div>
+
+@if (podeEditar)
+{
+    <div class="modal fade" id="modal-documento" tabindex="-1" aria-labelledby="titulo-modal-documento">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="form-documento" novalidate>
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="titulo-modal-documento">Enviar documento</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="erro-documento" class="alert alert-danger d-none"></div>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="documento-tipo">Documento</label>
+                            <select class="form-select" id="documento-tipo"></select>
+                        </div>
+                        <div class="mb-3 d-none" id="grupo-documento-nome">
+                            <label class="form-label" for="documento-nome">Nome do documento</label>
+                            <input type="text" class="form-control" id="documento-nome" maxlength="80" placeholder="ex.: Alvará de funcionamento" />
+                        </div>
+                        <div class="small mb-3 d-none" id="documento-link">
+                            <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+                            <a href="#" target="_blank" rel="noopener" id="documento-link-a">Tirar no site oficial</a>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-sm-6">
+                                <label class="form-label" for="documento-emissao">Emitido em</label>
+                                <input type="date" class="form-control" id="documento-emissao" />
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label" for="documento-validade">Válido até</label>
+                                <input type="date" class="form-control" id="documento-validade" />
+                            </div>
+                        </div>
+                        <div class="form-text mt-n2 mb-3" id="documento-dica-validade"></div>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="documento-arquivo">Arquivo (PDF, até 5 MB)</label>
+                            <input type="file" class="form-control" id="documento-arquivo" accept="application/pdf,.pdf" />
+                        </div>
+                        <div class="alert alert-warning d-none mb-3" id="aviso-documento-vencido" role="alert">
+                            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                            Esse documento já está vencido pela data informada. Confira a data ou clique em <strong>Guardar assim mesmo</strong>.
+                        </div>
+                        <div class="mb-1">
+                            <label class="form-label" for="documento-observacao">Observação <span class="text-muted">(opcional)</span></label>
+                            <input type="text" class="form-control" id="documento-observacao" maxlength="300" />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btn-salvar-documento">Enviar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="modal fade" id="modal-historico-documento" tabindex="-1" aria-labelledby="titulo-historico-documento">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="titulo-historico-documento">Histórico</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="list-group list-group-flush" id="lista-historico-documento"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/paginas/documentos.js" asp-append-version="true"></script>
+}

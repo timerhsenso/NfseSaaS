@@ -59,6 +59,7 @@ public static class CatalogoRecursos
     public const string EmailSemDivulgacao = "email-sem-divulgacao";
     public const string Usuarios = "usuarios";
     public const string ClientesPorEmpresa = "clientes-por-empresa";
+    public const string DocumentosEmpresa = "documentos-empresa";
 
     private static bool SoContador(PerfilConta perfil) => perfil == PerfilConta.Contador;
 
@@ -75,7 +76,10 @@ public static class CatalogoRecursos
             TipoRecurso.Limite, Unidade: "usuários"),
         new RecursoPlano(ClientesPorEmpresa, "Clientes por empresa",
             "Quantos clientes ativos cada empresa pode ter. Passou do limite: não cadastra mais; a emissão nunca para.",
-            TipoRecurso.Limite, Unidade: "clientes por empresa")
+            TipoRecurso.Limite, Unidade: "clientes por empresa"),
+        new RecursoPlano(DocumentosEmpresa, "Documentos da empresa",
+            "Guardar certidões e documentos da empresa com aviso de vencimento. Bloqueado: só vê e baixa o que já foi enviado.",
+            TipoRecurso.LigaDesliga)
     };
 
     public const int LimiteMaximo = 1_000_000;

@@ -16,6 +16,7 @@ using NfseSaaS.Application.UseCases.Certificados;
 using NfseSaaS.Application.UseCases.Clientes;
 using NfseSaaS.Application.UseCases.Contratos;
 using NfseSaaS.Application.UseCases.DocumentosContrato;
+using NfseSaaS.Application.UseCases.DocumentosEmpresa;
 using NfseSaaS.Application.UseCases.HistoricoContrato;
 using NfseSaaS.Application.UseCases.HistoricoValoresContrato;
 using NfseSaaS.Application.UseCases.IndicesEconomicos;
@@ -244,6 +245,10 @@ public static class DependencyInjection
         // Aviso diário de certificado digital vencendo (30/15/7 dias e vencido).
         services.AddScoped<IAvisarCertificadosVencendoJob, AvisarCertificadosVencendoJob>();
         services.AddScoped<IAvisarCertificadoVencendoUseCase, AvisarCertificadoVencendoUseCase>();
+        // DOC1: documentos da Empresa (certidões) e o aviso diário de vencimento.
+        services.AddScoped<IDocumentosEmpresaUseCase, DocumentosEmpresaService>();
+        services.AddScoped<IAvisarDocumentosEmpresaVencendoUseCase, AvisarDocumentosEmpresaVencendoUseCase>();
+        services.AddScoped<IAvisarDocumentosEmpresaVencendoJob, AvisarDocumentosEmpresaVencendoJob>();
 
         services.AddScoped<IUploadDocumentoContratoUseCase, UploadDocumentoContratoUseCase>();
         services.AddScoped<IListarDocumentosContratoUseCase, ListarDocumentosContratoUseCase>();
@@ -481,5 +486,6 @@ public static class DependencyInjection
     {
         services.Configure<DocumentStorageOptions>(configuration.GetSection(DocumentStorageOptions.SectionName));
         services.AddScoped<ContratoDocumentoFileStore>();
+        services.AddScoped<DocumentoEmpresaFileStore>();
     }
 }

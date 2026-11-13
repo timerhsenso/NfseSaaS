@@ -5,6 +5,31 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (DOC1 — documentos da empresa)
+- **Nova tela "Documentos da empresa"** (menu Cadastros): guarda em PDF as
+  certidões e documentos da empresa selecionada no topo — certidão federal,
+  estadual, municipal, FGTS (CRF), trabalhista (CNDT), Simples Nacional,
+  contrato social, cartão CNPJ e **outros com nome livre** (ex.: alvará).
+- Cada envio é uma **versão nova**: vale a mais recente, as anteriores ficam no
+  **histórico** (baixar e excluir versão; excluindo a que vale, a anterior volta).
+- **Validade**: obrigatória nas certidões; FGTS (30 dias), federal e CNDT (180
+  dias) já vêm preenchidas pela data de emissão. Link do **site oficial** de
+  cada órgão para tirar a certidão.
+- Documento já vencido no envio: a tela avisa e pede "Guardar assim mesmo".
+- **Avisos**: no **painel inicial** (vencidos e vencendo em até 15 dias, em
+  todas as empresas) e por **e-mail** diário 08:25 (aos administradores e ao
+  e-mail da empresa), uma vez quando faltam até 15 dias e outra quando vence.
+  Enviou a versão nova, os avisos param. Novo tipo "Documento vencendo" em
+  E-mails enviados.
+- Permissão: a mesma de Empresas (Consultar vê e baixa; Alterar envia e exclui).
+- Planos (PL1): novo recurso **"Documentos da empresa"** (padrão: liberado).
+  Bloqueado: só vê e baixa o que já foi enviado.
+- Arquivos em disco na mesma raiz dos documentos de contrato
+  (`DocumentStorage:BasePath/{conta}/{empresa}/documentos/`); entram na
+  **exportação dos dados** (`empresas_documentos`) e somem na exclusão da
+  empresa, no encerramento e na exclusão da conta.
+- Migration **DocumentosEmpresa**: tabela `documentos_empresa`.
+
 ### Adicionado (PL1 — planos flexíveis)
 - **Plataforma › Planos › "Recursos e limites"**: o operador monta cada plano
   pela tela, sem código e sem deploy. Cada recurso fica em **Padrão** (como o

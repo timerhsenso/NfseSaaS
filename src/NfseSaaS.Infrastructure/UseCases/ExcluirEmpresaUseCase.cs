@@ -3,6 +3,7 @@ using Npgsql;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.Empresas;
+using NfseSaaS.Infrastructure.Documents;
 using NfseSaaS.Infrastructure.Persistence;
 
 namespace NfseSaaS.Infrastructure.UseCases;
@@ -28,11 +29,13 @@ public sealed class ExcluirEmpresaUseCase : IExcluirEmpresaUseCase
 {
     private readonly AppDbContext _db;
     private readonly IAuditLogWriter _auditLogWriter;
+    private readonly DocumentoEmpresaFileStore _documentos;
 
-    public ExcluirEmpresaUseCase(AppDbContext db, IAuditLogWriter auditLogWriter)
+    public ExcluirEmpresaUseCase(AppDbContext db, IAuditLogWriter auditLogWriter, DocumentoEmpresaFileStore documentos)
     {
         _db = db;
         _auditLogWriter = auditLogWriter;
+        _documentos = documentos;
     }
 
     public async Task ExecutarAsync(Guid id, CancellationToken cancellationToken)
@@ -64,6 +67,18 @@ public sealed class ExcluirEmpresaUseCase : IExcluirEmpresaUseCase
         {
             throw new RegraNegocioException(
                 "Não é possível excluir a Empresa: um registro passou a referenciá-la entre a checagem e a exclusão. Tente novamente.");
+        }
+
+        // DOC1: as linhas de documentos_empresa saem pelo CASCADE; aqui some a pasta em disco.
+        try
+        {
+            _documentos.ExcluirPastaEmpresa(empresa.TenantId, empresa.Id);
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
         }
     }
 }

@@ -1,0 +1,347 @@
+// DOC1: tela "Documentos da empresa" (Empresa selecionada no topo).
+// Cada envio é uma versão nova; a lista mostra a que vale de cada documento.
+// Situação (SituacaoDocumentoEmpresa no servidor): 1 sem validade, 2 válido,
+// 3 vence em breve (até 15 dias), 4 vencido.
+
+const TIPO_OUTRO = 99;
+const SITUACAO_DOCUMENTO = {
+    1: { cor: 'secondary', icone: 'bi-file-earmark-check' },
+    2: { cor: 'success', icone: 'bi-check-circle' },
+    3: { cor: 'warning', icone: 'bi-exclamation-triangle' },
+    4: { cor: 'danger', icone: 'bi-x-octagon' }
+};
+
+const paginaDocumentos = document.getElementById('documentos-pagina');
+const podeEditarDocumentos = paginaDocumentos?.dataset.podeEditar === 'true';
+let empresaDocumentosId = null;
+let dadosDocumentos = null;
+
+function dataBr(iso) {
+    if (!iso) return '';
+    const [ano, mes, dia] = String(iso).substring(0, 10).split('-');
+    return `${dia}/${mes}/${ano}`;
+}
+
+function dataHoraBr(iso) {
+    if (!iso) return '';
+    return new Date(iso).toLocaleDateString('pt-BR');
+}
+
+function tamanhoLegivel(bytes) {
+    if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1).replace('.', ',') + ' MB';
+    return Math.max(1, Math.round(bytes / 1024)) + ' KB';
+}
+
+function badgeSituacao(versao) {
+    if (!versao) return '<span class="badge text-bg-light border">Não enviado</span>';
+    const s = SITUACAO_DOCUMENTO[versao.situacao] || SITUACAO_DOCUMENTO[1];
+    const textoEscuro = s.cor === 'warning' ? ' text-dark' : '';
+    return `<span class="badge text-bg-${s.cor}${textoEscuro}"><i class="bi ${s.icone}" aria-hidden="true"></i> ${escaparHtml(versao.situacaoTexto)}</span>`;
+}
+
+async function carregarDocumentos() {
+    const lista = document.getElementById('lista-documentos');
+    empresaDocumentosId = obterEmpresaAtualId();
+    if (!empresaDocumentosId) {
+        lista.innerHTML = '<div class="list-group-item text-center text-muted py-4">Selecione ou cadastre uma empresa.</div>';
+        return;
+    }
+
+    try {
+        dadosDocumentos = await apiFetch(`/api/documentos-empresa?empresaId=${encodeURIComponent(empresaDocumentosId)}`);
+    } catch (err) {
+        lista.innerHTML = `<div class="list-group-item text-center text-danger py-4">${escaparHtml(err.message)}</div>`;
+        return;
+    }
+
+    const bloqueio = document.getElementById('documentos-bloqueio');
+    bloqueio.classList.toggle('d-none', dadosDocumentos.envioLiberado);
+    document.getElementById('documentos-bloqueio-texto').textContent = dadosDocumentos.mensagemBloqueio || '';
+
+    const botaoNovo = document.getElementById('btn-novo-documento');
+    if (botaoNovo) botaoNovo.classList.toggle('d-none', !dadosDocumentos.envioLiberado);
+
+    renderizarResumo(dadosDocumentos.itens);
+    renderizarLista(dadosDocumentos.itens);
+}
+
+function renderizarResumo(itens) {
+    const conta = s => itens.filter(i => i.atual?.situacao === s).length;
+    const naoEnviados = itens.filter(i => !i.atual).length;
+    const chips = [
+        { n: conta(4), texto: conta(4) === 1 ? 'vencido' : 'vencidos', cor: 'danger' },
+        { n: conta(3), texto: 'vencendo em até 15 dias', cor: 'warning' },
+        { n: conta(2) + conta(1), texto: 'em dia', cor: 'success' },
+        { n: naoEnviados, texto: naoEnviados === 1 ? 'não enviado' : 'não enviados', cor: 'secondary' }
+    ].filter(c => c.n > 0);
+
+    document.getElementById('documentos-resumo').innerHTML = chips
+        .map(c => `<span class="badge rounded-pill text-bg-${c.cor}${c.cor === 'warning' ? ' text-dark' : ''} documentos-chip">${c.n} ${c.texto}</span>`)
+        .join('');
+}
+
+function renderizarLista(itens) {
+    const lista = document.getElementById('lista-documentos');
+    const liberado = dadosDocumentos.envioLiberado && podeEditarDocumentos;
+
+    lista.innerHTML = itens.map((item, indice) => {
+        const v = item.atual;
+        const detalhes = v
+            ? `<div class="small text-muted">
+                   ${v.validaAte ? `Válido até <strong>${dataBr(v.validaAte)}</strong> · ` : ''}${v.dataEmissao ? `emitido em ${dataBr(v.dataEmissao)} · ` : ''}enviado em ${dataHoraBr(v.enviadoEm)}${v.enviadoPor ? ` por ${escaparHtml(v.enviadoPor)}` : ''}
+               </div>
+               ${v.observacao ? `<div class="small text-muted fst-italic">${escaparHtml(v.observacao)}</div>` : ''}`
+            : `<div class="small text-muted">${escaparHtml(item.orgao)}</div>`;
+
+        const botoes = [];
+        if (v) {
+            botoes.push(`<a class="btn btn-sm btn-outline-secondary" href="/api/documentos-empresa/${v.id}/download" title="Baixar ${escaparHtml(v.nomeArquivo)}" aria-label="Baixar"><i class="bi bi-download"></i></a>`);
+        }
+        if (item.totalVersoes > 0) {
+            botoes.push(`<button type="button" class="btn btn-sm btn-outline-secondary" data-acao="historico" data-indice="${indice}" title="Histórico">
+                <i class="bi bi-clock-history"></i> ${item.totalVersoes}</button>`);
+        }
+        if (item.linkEmissao) {
+            botoes.push(`<a class="btn btn-sm btn-outline-secondary" href="${escaparHtml(item.linkEmissao)}" target="_blank" rel="noopener" title="Tirar no site oficial (${escaparHtml(item.orgao)})" aria-label="Site oficial"><i class="bi bi-box-arrow-up-right"></i></a>`);
+        }
+        if (liberado) {
+            botoes.push(`<button type="button" class="btn btn-sm ${v ? 'btn-outline-primary' : 'btn-primary'}" data-acao="enviar" data-indice="${indice}">
+                <i class="bi bi-upload"></i> ${v ? 'Nova versão' : 'Enviar'}</button>`);
+        }
+
+        return `<div class="list-group-item documento-linha${v ? '' : ' documento-pendente'}">
+            <div class="documento-info">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="fw-semibold">${escaparHtml(item.titulo)}</span>
+                    ${badgeSituacao(v)}
+                </div>
+                ${detalhes}
+            </div>
+            <div class="documento-acoes">${botoes.join('')}</div>
+        </div>`;
+    }).join('');
+}
+
+// ---------- Envio ----------
+
+function preencherTipos() {
+    const select = document.getElementById('documento-tipo');
+    if (!select || select.options.length) return;
+    select.innerHTML = dadosDocumentos.tipos
+        .map(t => `<option value="${t.tipo}">${escaparHtml(t.nome)}</option>`)
+        .join('');
+}
+
+function tipoInfo(tipo) {
+    return dadosDocumentos.tipos.find(t => t.tipo === Number(tipo));
+}
+
+function atualizarCamposTipo() {
+    const info = tipoInfo(document.getElementById('documento-tipo').value);
+    document.getElementById('grupo-documento-nome').classList.toggle('d-none', info.tipo !== TIPO_OUTRO);
+
+    const link = document.getElementById('documento-link');
+    link.classList.toggle('d-none', !info.linkEmissao);
+    if (info.linkEmissao) {
+        const a = document.getElementById('documento-link-a');
+        a.href = info.linkEmissao;
+        a.textContent = `Tirar no site oficial (${info.orgao})`;
+    }
+
+    const dica = document.getElementById('documento-dica-validade');
+    if (info.validadeSugeridaDias) {
+        dica.textContent = `Costuma valer ${info.validadeSugeridaDias} dias: preenchemos a validade pela data de emissão (confira na certidão).`;
+    } else if (info.exigeValidade) {
+        dica.textContent = 'A validade vem escrita na certidão.';
+    } else {
+        dica.textContent = 'Deixe "Válido até" em branco se o documento não vence.';
+    }
+    sugerirValidade();
+}
+
+function sugerirValidade() {
+    const info = tipoInfo(document.getElementById('documento-tipo').value);
+    const emissao = document.getElementById('documento-emissao').value;
+    const validade = document.getElementById('documento-validade');
+    if (!info?.validadeSugeridaDias || !emissao || validade.dataset.editadoAMao === 'true') return;
+    const [ano, mes, dia] = emissao.split('-').map(Number);
+    validade.value = dataLocalIso(new Date(ano, mes - 1, dia + info.validadeSugeridaDias));
+}
+
+function limparAvisoVencido() {
+    document.getElementById('aviso-documento-vencido').classList.add('d-none');
+    const botao = document.getElementById('btn-salvar-documento');
+    delete botao.dataset.confirmouVencido;
+    botao.textContent = 'Enviar';
+}
+
+function abrirEnvio(item) {
+    preencherTipos();
+    const form = document.getElementById('form-documento');
+    form.reset();
+    ocultarErroFormulario('erro-documento');
+    const validade = document.getElementById('documento-validade');
+    delete validade.dataset.editadoAMao;
+    limparAvisoVencido();
+
+    const select = document.getElementById('documento-tipo');
+    select.value = String(item ? item.tipo : TIPO_OUTRO);
+    // Nova versão: o documento já está escolhido (não muda de "lugar").
+    select.disabled = !!item;
+    const nome = document.getElementById('documento-nome');
+    nome.value = item?.nomePersonalizado || '';
+    nome.readOnly = !!item?.nomePersonalizado;
+
+    document.getElementById('titulo-modal-documento').textContent = item
+        ? (item.atual ? `Nova versão — ${item.titulo}` : `Enviar — ${item.titulo}`)
+        : 'Outro documento';
+    document.getElementById('documento-emissao').max = dataLocalIso();
+    atualizarCamposTipo();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-documento')).show();
+}
+
+async function salvarDocumento(e) {
+    e.preventDefault();
+    ocultarErroFormulario('erro-documento');
+
+    const arquivo = document.getElementById('documento-arquivo').files[0];
+    if (!arquivo) {
+        mostrarErroFormulario('erro-documento', 'Escolha o arquivo do documento (PDF).');
+        return;
+    }
+    if (arquivo.size > 5 * 1024 * 1024) {
+        mostrarErroFormulario('erro-documento', 'O arquivo pode ter até 5 MB.');
+        return;
+    }
+
+    // Vencido pela data informada: avisa dentro do próprio modal e pede o
+    // segundo clique (sem abrir outra janela por cima desta).
+    const validade = document.getElementById('documento-validade').value;
+    const botaoSalvar = document.getElementById('btn-salvar-documento');
+    const avisoVencido = document.getElementById('aviso-documento-vencido');
+    if (validade && validade < dataLocalIso() && botaoSalvar.dataset.confirmouVencido !== validade) {
+        avisoVencido.classList.remove('d-none');
+        botaoSalvar.dataset.confirmouVencido = validade;
+        botaoSalvar.textContent = 'Guardar assim mesmo';
+        return;
+    }
+
+    const dados = new FormData();
+    dados.append('empresaId', empresaDocumentosId);
+    dados.append('tipo', document.getElementById('documento-tipo').value);
+    dados.append('nomePersonalizado', document.getElementById('documento-nome').value);
+    dados.append('dataEmissao', document.getElementById('documento-emissao').value);
+    dados.append('validaAte', validade);
+    dados.append('observacao', document.getElementById('documento-observacao').value);
+    dados.append('arquivo', arquivo);
+
+    await executarComBotaoDesabilitado(botaoSalvar, async () => {
+        try {
+            // Multipart: não usa apiFetch (que manda Content-Type JSON).
+            const resposta = await fetch('/api/documentos-empresa', {
+                method: 'POST', credentials: 'same-origin', headers: obterCsrfHeader(), body: dados
+            });
+            if (!resposta.ok) {
+                const corpo = await resposta.json().catch(() => null);
+                throw new Error(extrairMensagemDeErro(corpo) ?? (resposta.status === 413 ? 'O arquivo pode ter até 5 MB.' : `Erro ${resposta.status} ao enviar.`));
+            }
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-documento')).hide();
+            mostrarToast('Documento guardado.');
+            await carregarDocumentos();
+        } catch (err) {
+            mostrarErroFormulario('erro-documento', err.message);
+        }
+    });
+}
+
+// ---------- Histórico ----------
+
+async function abrirHistorico(item) {
+    document.getElementById('titulo-historico-documento').textContent = `Histórico — ${item.titulo}`;
+    const lista = document.getElementById('lista-historico-documento');
+    lista.innerHTML = '<div class="list-group-item text-center text-muted py-4">Carregando...</div>';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-historico-documento')).show();
+    await renderizarHistorico(item);
+}
+
+async function renderizarHistorico(item) {
+    const lista = document.getElementById('lista-historico-documento');
+    let versoes;
+    try {
+        const nome = item.nomePersonalizado ? `&nome=${encodeURIComponent(item.nomePersonalizado)}` : '';
+        versoes = await apiFetch(`/api/documentos-empresa/historico?empresaId=${encodeURIComponent(empresaDocumentosId)}&tipo=${item.tipo}${nome}`);
+    } catch (err) {
+        lista.innerHTML = `<div class="list-group-item text-danger">${escaparHtml(err.message)}</div>`;
+        return;
+    }
+    if (!versoes.length) {
+        lista.innerHTML = '<div class="list-group-item text-center text-muted py-4">Nenhuma versão.</div>';
+        return;
+    }
+
+    lista.innerHTML = versoes.map((v, i) => `
+        <div class="list-group-item documento-linha">
+            <div class="documento-info">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="fw-semibold">${escaparHtml(v.nomeArquivo)}</span>
+                    ${i === 0 ? '<span class="badge text-bg-primary">Vale esta</span>' : ''}
+                    ${badgeSituacao(v)}
+                </div>
+                <div class="small text-muted">
+                    ${v.validaAte ? `Válido até ${dataBr(v.validaAte)} · ` : ''}${v.dataEmissao ? `emitido em ${dataBr(v.dataEmissao)} · ` : ''}${tamanhoLegivel(v.tamanhoBytes)} · enviado em ${dataHoraBr(v.enviadoEm)}${v.enviadoPor ? ` por ${escaparHtml(v.enviadoPor)}` : ''}
+                </div>
+                ${v.observacao ? `<div class="small text-muted fst-italic">${escaparHtml(v.observacao)}</div>` : ''}
+            </div>
+            <div class="documento-acoes">
+                <a class="btn btn-sm btn-outline-secondary" href="/api/documentos-empresa/${v.id}/download" aria-label="Baixar"><i class="bi bi-download"></i></a>
+                ${podeEditarDocumentos ? `<button type="button" class="btn btn-sm btn-outline-danger" data-excluir-versao="${v.id}" aria-label="Excluir esta versão"><i class="bi bi-trash"></i></button>` : ''}
+            </div>
+        </div>`).join('');
+
+    // Excluir com confirmação na própria linha (sem abrir outra janela por cima do histórico).
+    lista.querySelectorAll('[data-excluir-versao]').forEach(botao => {
+        botao.onclick = () => {
+            const acoes = botao.closest('.documento-acoes');
+            acoes.innerHTML = `<span class="small text-danger me-1">Excluir esta versão?</span>
+                <button type="button" class="btn btn-sm btn-danger" data-confirmar>Excluir</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-cancelar>Não</button>`;
+            acoes.querySelector('[data-cancelar]').onclick = () => renderizarHistorico(item);
+            const confirmar = acoes.querySelector('[data-confirmar]');
+            confirmar.onclick = () => executarComBotaoDesabilitado(confirmar, async () => {
+                try {
+                    await apiFetch(`/api/documentos-empresa/${botao.dataset.excluirVersao}`, { method: 'DELETE' });
+                    mostrarToast('Versão excluída.');
+                    await carregarDocumentos();
+                    const atualizado = dadosDocumentos.itens.find(x => x.tipo === item.tipo && (x.nomePersonalizado || '') === (item.nomePersonalizado || ''));
+                    if (atualizado && atualizado.totalVersoes > 0) await renderizarHistorico(atualizado);
+                    else bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-historico-documento')).hide();
+                } catch (err) {
+                    mostrarErro(err.message);
+                }
+            });
+        };
+    });
+}
+
+// ---------- Eventos ----------
+
+document.getElementById('lista-documentos').addEventListener('click', e => {
+    const botao = e.target.closest('button[data-acao]');
+    if (!botao || !dadosDocumentos) return;
+    const item = dadosDocumentos.itens[Number(botao.dataset.indice)];
+    if (botao.dataset.acao === 'enviar') abrirEnvio(item);
+    else if (botao.dataset.acao === 'historico') abrirHistorico(item);
+});
+
+if (podeEditarDocumentos) {
+    document.getElementById('btn-novo-documento').addEventListener('click', () => dadosDocumentos && abrirEnvio(null));
+    document.getElementById('form-documento').addEventListener('submit', salvarDocumento);
+    document.getElementById('documento-tipo').addEventListener('change', () => {
+        delete document.getElementById('documento-validade').dataset.editadoAMao;
+        atualizarCamposTipo();
+    });
+    document.getElementById('documento-emissao').addEventListener('change', () => { sugerirValidade(); limparAvisoVencido(); });
+    document.getElementById('documento-validade').addEventListener('input', e => { e.target.dataset.editadoAMao = 'true'; limparAvisoVencido(); });
+}
+
+carregarDocumentos();

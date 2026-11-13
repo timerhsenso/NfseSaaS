@@ -241,6 +241,32 @@ async function carregarLembreteWhatsApp() {
     aviso.classList.remove('d-none');
 }
 
+// DOC1: documentos da empresa vencidos ou vencendo em até 15 dias (todas as
+// empresas da conta). Sem permissão de Empresas ou sem nada a avisar: nada aparece.
+async function carregarAvisoDocumentos() {
+    const aviso = document.getElementById('aviso-documentos');
+    let resumo;
+    try {
+        resumo = await apiFetch('/api/documentos-empresa/resumo');
+    } catch {
+        return;
+    }
+    if (!resumo || (resumo.vencidos === 0 && resumo.venceEmBreve === 0)) return;
+
+    const partes = [];
+    if (resumo.vencidos > 0) partes.push(resumo.vencidos === 1 ? '1 documento vencido' : `${resumo.vencidos} documentos vencidos`);
+    if (resumo.venceEmBreve > 0) partes.push(`${resumo.venceEmBreve} ${resumo.vencidos > 0 ? '' : (resumo.venceEmBreve === 1 ? 'documento ' : 'documentos ')}vencendo em até 15 dias`);
+    const empresas = new Set(resumo.itens.map(i => i.empresaId)).size;
+    const primeiro = resumo.itens[0];
+    let texto = partes.join(' e ') + (empresas > 1 ? ` em ${empresas} empresas` : '') + '.';
+    if (primeiro) texto += ` Mais urgente: ${primeiro.titulo}${empresas > 1 ? ` (${primeiro.empresa})` : ''} — ${primeiro.situacaoTexto.toLowerCase()}.`;
+
+    document.getElementById('aviso-documentos-texto').textContent = texto;
+    aviso.classList.add(resumo.vencidos > 0 ? 'alert-danger' : 'alert-warning');
+    aviso.classList.remove('d-none');
+}
+
 carregarDashboard();
 carregarOnboarding();
 carregarLembreteWhatsApp();
+carregarAvisoDocumentos();

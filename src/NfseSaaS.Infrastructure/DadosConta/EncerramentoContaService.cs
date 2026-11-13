@@ -363,6 +363,7 @@ public sealed class EncerramentoContaService : IEncerrarContaUseCase, IExpurgarC
             await _db.MovimentacoesValorContrato.IgnoreQueryFilters().Where(x => x.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
             await _db.ContratoServicos.IgnoreQueryFilters().Where(x => x.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
             await _db.ContratoDocumentos.IgnoreQueryFilters().Where(x => x.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
+            await _db.DocumentosEmpresa.IgnoreQueryFilters().Where(x => x.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
             await _db.Contratos.IgnoreQueryFilters().Where(x => x.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
             await _db.Servicos.IgnoreQueryFilters().Where(x => x.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
             await _db.ConfiguracoesAutomacaoNotaMensal.IgnoreQueryFilters().Where(x => x.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);

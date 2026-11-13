@@ -40,13 +40,20 @@ public sealed class MontadorExportacaoDados
 
     private readonly AppDbContext _db;
     private readonly ContratoDocumentoFileStore _documentos;
+    private readonly DocumentoEmpresaFileStore _documentosEmpresa;
     private readonly IWebHostEnvironment _ambiente;
     private readonly ILogger<MontadorExportacaoDados> _logger;
 
-    public MontadorExportacaoDados(AppDbContext db, ContratoDocumentoFileStore documentos, IWebHostEnvironment ambiente, ILogger<MontadorExportacaoDados> logger)
+    public MontadorExportacaoDados(
+        AppDbContext db,
+        ContratoDocumentoFileStore documentos,
+        DocumentoEmpresaFileStore documentosEmpresa,
+        IWebHostEnvironment ambiente,
+        ILogger<MontadorExportacaoDados> logger)
     {
         _db = db;
         _documentos = documentos;
+        _documentosEmpresa = documentosEmpresa;
         _ambiente = ambiente;
         _logger = logger;
     }
@@ -190,6 +197,33 @@ public sealed class MontadorExportacaoDados
         }
         Tabela(zip, tDocumentos);
 
+        // ----- Documentos da empresa (DOC1: certidões etc., todas as versões) -----
+        var documentosEmpresa = await _db.DocumentosEmpresa.AsNoTracking()
+            .OrderBy(d => d.EmpresaId).ThenBy(d => d.Tipo).ThenBy(d => d.NomeChave).ThenBy(d => d.CreatedAt)
+            .ToListAsync(cancellationToken);
+        var tDocumentosEmpresa = new TabelaExportacao("empresas_documentos",
+            "EmpresaCnpj", "Documento", "DataEmissao", "ValidaAte", "NomeArquivo", "TamanhoBytes", "Observacao", "EnviadoEm", "ArquivoNoZip");
+        foreach (var d in documentosEmpresa)
+        {
+            var titulo = NfseSaaS.Application.UseCases.DocumentosEmpresa.RegrasDocumentoEmpresa.Titulo(d.Tipo, d.NomePersonalizado);
+            var caminho = Unico(nomesUsados, $"documentos-empresa/{Cnpj(d.EmpresaId)}",
+                NomeSeguro($"{titulo} {d.CreatedAt:yyyy-MM-dd}", 80), ".pdf");
+            string? noZip = null;
+            try
+            {
+                var bytes = await _documentosEmpresa.LerAsync(tenantId, d.EmpresaId, d.Id, cancellationToken);
+                await GravarAsync(zip, caminho, bytes, CompressionLevel.Fastest, cancellationToken);
+                noZip = caminho;
+            }
+            catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+            {
+                pendencias.Add($"Documento \"{titulo}\" da empresa {Cnpj(d.EmpresaId)}: arquivo não encontrado no servidor.");
+                _logger.LogWarning("Exportação: documento da empresa {DocumentoId} da conta {TenantId} não encontrado no disco.", d.Id, tenantId);
+            }
+            tDocumentosEmpresa.Adicionar(Cnpj(d.EmpresaId), titulo, d.DataEmissao, d.ValidaAte, d.NomeArquivo, d.TamanhoBytes, d.Observacao, d.CreatedAt, noZip);
+        }
+        Tabela(zip, tDocumentosEmpresa);
+
         // ----- Notas (em lotes) -----
         var tNotas = new TabelaExportacao("notas",
             "Id", "EmpresaCnpj", "Ambiente", "Status", "NumeroNfse", "SerieDps", "NumeroDps", "ChaveAcesso",
@@ -272,11 +306,12 @@ public sealed class MontadorExportacaoDados
         sb.AppendLine("  .csv (abre no Excel; separador ponto e vírgula, datas no horário de Brasília) e");
         sb.AppendLine("  .json (para levar a outro sistema; datas no padrão ISO 8601).");
         sb.AppendLine("  conta, usuarios, empresas, clientes, servicos, contratos, contratos_servicos,");
-        sb.AppendLine("  contratos_historico_valores, contratos_documentos, notas, notas_eventos.");
+        sb.AppendLine("  contratos_historico_valores, contratos_documentos, empresas_documentos, notas, notas_eventos.");
         sb.AppendLine("- notas/{CNPJ}/{producao|homologacao}/{AAAA-MM}/: o XML oficial e o PDF (DANFSe) de cada nota");
         sb.AppendLine("  autorizada ou cancelada. O XML é o documento fiscal válido; guarde pelo prazo legal.");
         sb.AppendLine("  Notas de homologação são de teste e não têm valor fiscal.");
         sb.AppendLine("- contratos/{CNPJ}/: os documentos anexados aos contratos.");
+        sb.AppendLine("- documentos-empresa/{CNPJ}/: as certidões e documentos das empresas (todas as versões enviadas).");
         sb.AppendLine("As tabelas se ligam pelos campos Id (ex.: notas.ClienteId = clientes.Id).");
         sb.AppendLine();
         sb.AppendLine("O QUE FICOU DE FORA, DE PROPÓSITO");

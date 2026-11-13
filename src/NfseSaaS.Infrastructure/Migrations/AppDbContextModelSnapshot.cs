@@ -840,6 +840,66 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.ToTable("convites_indicacao", (string)null);
                 });
 
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.DocumentoEmpresa", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("DataEmissao")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("EmpresaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("EnviadoPorUsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("NomeArquivo")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("NomeChave")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("NomePersonalizado")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("Observacao")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<long>("TamanhoBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("ValidaAte")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmpresaId");
+
+                    b.HasIndex("TenantId", "EmpresaId", "Tipo", "NomeChave", "CreatedAt");
+
+                    b.ToTable("documentos_empresa", (string)null);
+                });
+
             modelBuilder.Entity("NfseSaaS.Domain.Entities.EmailLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2537,6 +2597,15 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("ServicoId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.DocumentoEmpresa", b =>
+                {
+                    b.HasOne("NfseSaaS.Domain.Entities.Empresa", null)
+                        .WithMany()
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

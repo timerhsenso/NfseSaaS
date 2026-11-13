@@ -73,7 +73,7 @@ public class ExportacaoDadosTests
             jobs,
             sp.GetRequiredService<IAuditLogWriter>(),
             new EmailQueueService(db, new FilaFalsa()),
-            new MontadorExportacaoDados(db, sp.GetRequiredService<ContratoDocumentoFileStore>(), sp.GetRequiredService<IWebHostEnvironment>(), NullLogger<MontadorExportacaoDados>.Instance),
+            new MontadorExportacaoDados(db, sp.GetRequiredService<ContratoDocumentoFileStore>(), sp.GetRequiredService<DocumentoEmpresaFileStore>(), sp.GetRequiredService<IWebHostEnvironment>(), NullLogger<MontadorExportacaoDados>.Instance),
             Options.Create(new ExportacaoDadosOptions { BasePath = pasta }),
             Options.Create(new EmailOptions { AppBaseUrl = "https://app.teste" }),
             NullLogger<ExportacaoDadosService>.Instance);
@@ -185,7 +185,7 @@ public class ExportacaoDadosTests
 
                 var nomes = zip.Entries.Select(e => e.FullName).ToList();
                 foreach (var tabela in new[] { "conta", "usuarios", "empresas", "clientes", "servicos", "contratos", "contratos_servicos",
-                                               "contratos_historico_valores", "contratos_documentos", "notas", "notas_eventos" })
+                                               "contratos_historico_valores", "contratos_documentos", "empresas_documentos", "notas", "notas_eventos" })
                 {
                     Assert.Contains($"dados/{tabela}.csv", nomes);
                     Assert.Contains($"dados/{tabela}.json", nomes);

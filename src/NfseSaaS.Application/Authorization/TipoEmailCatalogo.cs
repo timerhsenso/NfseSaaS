@@ -20,6 +20,9 @@ public static class TipoEmailCatalogo
     /// <summary>Certificado digital da Empresa vencendo (30/15/7 dias) ou vencido.</summary>
     public const string CertificadoVencendo = "CertificadoVencendo";
 
+    /// <summary>DOC1: documento da Empresa (certidão etc.) vencendo em até 15 dias ou vencido.</summary>
+    public const string DocumentoVencendo = "DocumentoVencendo";
+
     /// <summary>Reajustes de aniversário gerados pelo job: aguardando aprovação e/ou aplicados automaticamente.</summary>
     public const string ReajustesAniversario = "ReajustesAniversario";
 
