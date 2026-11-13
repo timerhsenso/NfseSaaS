@@ -109,9 +109,9 @@ public class DocumentosEmpresaTests
                 new ArquivoDocumentoEmpresa("crf novo.pdf", Pdf), CancellationToken.None);
 
             // "Outro": mesmo nome com outra grafia cai no mesmo histórico.
-            await servico.EnviarAsync(Pedido(c.Empresa.Id, TipoDocumentoEmpresa.Outro, null, nome: "Alvará de funcionamento"),
+            await servico.EnviarAsync(Pedido(c.Empresa.Id, TipoDocumentoEmpresa.Outro, hoje, nome: "Alvará de funcionamento"),
                 new ArquivoDocumentoEmpresa("alvara.pdf", Pdf), CancellationToken.None);
-            await servico.EnviarAsync(Pedido(c.Empresa.Id, TipoDocumentoEmpresa.Outro, null, nome: "  alvará DE funcionamento "),
+            await servico.EnviarAsync(Pedido(c.Empresa.Id, TipoDocumentoEmpresa.Outro, hoje, nome: "  alvará DE funcionamento "),
                 new ArquivoDocumentoEmpresa("alvara2.pdf", Pdf), CancellationToken.None);
 
             var lista = await servico.ListarAsync(c.Empresa.Id, CancellationToken.None);
@@ -163,7 +163,7 @@ public class DocumentosEmpresaTests
             var hoje = DataBrasilia.Hoje();
 
             var naoPdf = await Assert.ThrowsAsync<RegraNegocioException>(() => servico.EnviarAsync(
-                Pedido(c.Empresa.Id, TipoDocumentoEmpresa.CartaoCnpj, null), new ArquivoDocumentoEmpresa("foto.pdf", Encoding.ASCII.GetBytes("GIF89a")), CancellationToken.None));
+                Pedido(c.Empresa.Id, TipoDocumentoEmpresa.CartaoCnpj, hoje), new ArquivoDocumentoEmpresa("foto.pdf", Encoding.ASCII.GetBytes("GIF89a")), CancellationToken.None));
             Assert.Contains("PDF", naoPdf.Message);
 
             var cartao = await servico.EnviarAsync(Pedido(c.Empresa.Id, TipoDocumentoEmpresa.CartaoCnpj, hoje),
@@ -209,7 +209,7 @@ public class DocumentosEmpresaTests
             var cndt = await servico.EnviarAsync(Pedido(c.Empresa.Id, TipoDocumentoEmpresa.Cndt, hoje.AddDays(-10), hoje.AddDays(5)),
                 new ArquivoDocumentoEmpresa("cndt.pdf", Pdf), CancellationToken.None);
             // Sem validade: nunca avisa.
-            await servico.EnviarAsync(Pedido(c.Empresa.Id, TipoDocumentoEmpresa.ContratoSocial, null),
+            await servico.EnviarAsync(Pedido(c.Empresa.Id, TipoDocumentoEmpresa.ContratoSocial, hoje),
                 new ArquivoDocumentoEmpresa("contrato.pdf", Pdf), CancellationToken.None);
 
             var primeiro = await aviso.ExecutarAsync(c.Empresa.Id, hoje, CancellationToken.None);

@@ -5,6 +5,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Melhorado (DOC3 — envio de documentos)
+- **Data de emissão obrigatória** em todo documento novo (tela e servidor). Os já
+  guardados sem data continuam valendo.
+- **Validade por dias ou por data**: "Vale por (dias)" e "Válido até" andam
+  juntos a partir da emissão — digitou os dias, a data final aparece; digitou a
+  data, os dias aparecem; os dois em branco = documento sem validade (certidão
+  sempre exige). Tipos com prazo usual já vêm com os dias (FGTS 30, federal e
+  trabalhista 180). Resumo na hora: "Vale 30 dias, até 10/12/2026: faltam 27 dias".
+- **"Outro documento" sugere os nomes já usados** na empresa, para não criar
+  dois documentos iguais com grafias diferentes.
+- **Envio com andamento visível** em todos os envios de arquivo (documentos da
+  empresa, anexos do contrato, certificado A1 e logomarca): o botão mostra
+  "Enviando 45%" com spinner e depois "Processando…"; nos documentos, também uma
+  barra de progresso.
+- **Mensagem certa quando o servidor recusa pelo tamanho** (ex.: limite do
+  Nginx): antes dizia "até 5 MB" mesmo para arquivo menor.
+
 ### Adicionado (DB1 — painel financeiro)
 - **"Seu negócio" no início**: o dono abre o sistema e vê o negócio, não só as
   notas. Conta só nota de **produção autorizada**, pela **competência**

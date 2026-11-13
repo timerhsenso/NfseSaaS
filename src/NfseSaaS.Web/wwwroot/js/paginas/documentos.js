@@ -150,22 +150,89 @@ function atualizarCamposTipo() {
 
     const dica = document.getElementById('documento-dica-validade');
     if (info.validadeSugeridaDias) {
-        dica.textContent = `Costuma valer ${info.validadeSugeridaDias} dias: preenchemos a validade pela data de emissão (confira na certidão).`;
+        dica.textContent = `Costuma valer ${info.validadeSugeridaDias} dias: já preenchemos, confira no documento.`;
     } else if (info.exigeValidade) {
-        dica.textContent = 'A validade vem escrita na certidão.';
+        dica.textContent = 'Certidão sempre vence: informe os dias ou a data que vêm escritos nela.';
     } else {
-        dica.textContent = 'Deixe "Válido até" em branco se o documento não vence.';
+        dica.textContent = 'Informe os dias ou a data final. Deixe os dois em branco se o documento não vence.';
     }
-    sugerirValidade();
+    // Tipo com prazo usual: sugere os dias se a pessoa ainda não informou validade.
+    const dias = document.getElementById('documento-dias');
+    const validade = document.getElementById('documento-validade');
+    if (info.validadeSugeridaDias && !dias.value && !validade.value)
+        dias.value = String(info.validadeSugeridaDias);
+    sincronizarValidade('dias');
 }
 
-function sugerirValidade() {
-    const info = tipoInfo(document.getElementById('documento-tipo').value);
+// ---- Validade: "vale por N dias" e "válido até" andam juntos, a partir da emissão ----
+const VALIDADE_MAXIMA_DIAS = 3650;
+
+function dataDeIsoDocumento(iso) {
+    const [ano, mes, dia] = iso.split('-').map(Number);
+    return new Date(ano, mes - 1, dia);
+}
+
+function diasEntre(inicioIso, fimIso) {
+    return Math.round((dataDeIsoDocumento(fimIso) - dataDeIsoDocumento(inicioIso)) / 86_400_000);
+}
+
+/** origem: 'dias' (vale a contagem de dias) ou 'data' (vale a data final). */
+function sincronizarValidade(origem) {
     const emissao = document.getElementById('documento-emissao').value;
+    const dias = document.getElementById('documento-dias');
     const validade = document.getElementById('documento-validade');
-    if (!info?.validadeSugeridaDias || !emissao || validade.dataset.editadoAMao === 'true') return;
-    const [ano, mes, dia] = emissao.split('-').map(Number);
-    validade.value = dataLocalIso(new Date(ano, mes - 1, dia + info.validadeSugeridaDias));
+
+    if (emissao) {
+        const n = parseInt(dias.value, 10);
+        if (origem === 'dias') {
+            if (n >= 1 && n <= VALIDADE_MAXIMA_DIAS) {
+                const fim = dataDeIsoDocumento(emissao);
+                fim.setDate(fim.getDate() + n);
+                validade.value = dataLocalIso(fim);
+            } else if (!dias.value) {
+                validade.value = '';
+            }
+        } else if (validade.value) {
+            const calculado = diasEntre(emissao, validade.value);
+            dias.value = calculado >= 1 ? String(calculado) : '';
+        } else {
+            dias.value = '';
+        }
+    }
+    atualizarResumoValidade();
+}
+
+function atualizarResumoValidade() {
+    const emissao = document.getElementById('documento-emissao').value;
+    const dias = document.getElementById('documento-dias').value;
+    const validade = document.getElementById('documento-validade').value;
+    const resumo = document.getElementById('documento-resumo-validade');
+    const info = tipoInfo(document.getElementById('documento-tipo').value);
+    resumo.classList.remove('text-danger', 'text-success');
+
+    if (!validade) {
+        resumo.textContent = info?.exigeValidade ? '' : (dias ? '' : 'Sem validade: o documento não vence.');
+        return;
+    }
+    const hoje = dataLocalIso();
+    const fim = dataDeIsoDocumento(validade).toLocaleDateString('pt-BR');
+    const restantes = diasEntre(hoje, validade);
+    const prazo = emissao && dias ? `Vale ${dias} ${Number(dias) === 1 ? 'dia' : 'dias'}, até ${fim}` : `Vale até ${fim}`;
+    if (restantes < 0) {
+        resumo.textContent = `${prazo}: já venceu há ${-restantes} ${restantes === -1 ? 'dia' : 'dias'}.`;
+        resumo.classList.add('text-danger');
+    } else {
+        resumo.textContent = `${prazo}: ${restantes === 0 ? 'vence hoje' : restantes === 1 ? 'vence amanhã' : `faltam ${restantes} dias`}.`;
+        resumo.classList.add('text-success');
+    }
+}
+
+/** Nomes já usados em "Outro documento" nesta empresa: sugeridos ao digitar, para não criar dois iguais. */
+function preencherNomesUsados() {
+    const nomes = [...new Set((dadosDocumentos?.itens ?? [])
+        .map(i => i.nomePersonalizado)
+        .filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    document.getElementById('documento-nomes-usados').innerHTML = nomes.map(n => `<option value="${escaparHtml(n)}"></option>`).join('');
 }
 
 function limparAvisoVencido() {
@@ -180,9 +247,10 @@ function abrirEnvio(item) {
     const form = document.getElementById('form-documento');
     form.reset();
     ocultarErroFormulario('erro-documento');
-    const validade = document.getElementById('documento-validade');
-    delete validade.dataset.editadoAMao;
+    document.getElementById('documento-dias').value = '';
+    document.getElementById('documento-progresso').hidden = true;
     limparAvisoVencido();
+    preencherNomesUsados();
 
     const select = document.getElementById('documento-tipo');
     select.value = String(item ? item.tipo : TIPO_OUTRO);
@@ -210,7 +278,26 @@ async function salvarDocumento(e) {
         return;
     }
     if (arquivo.size > 5 * 1024 * 1024) {
-        mostrarErroFormulario('erro-documento', 'O arquivo pode ter até 5 MB.');
+        mostrarErroFormulario('erro-documento', `O arquivo tem ${(arquivo.size / 1024 / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} MB e o limite é 5 MB.`);
+        return;
+    }
+    const campoEmissao = document.getElementById('documento-emissao');
+    if (!campoEmissao.value) {
+        mostrarErroFormulario('erro-documento', 'Informe a data de emissão do documento (vem escrita nele).');
+        campoEmissao.focus();
+        return;
+    }
+    const campoDias = document.getElementById('documento-dias');
+    if (campoDias.value && !(parseInt(campoDias.value, 10) >= 1 && parseInt(campoDias.value, 10) <= VALIDADE_MAXIMA_DIAS)) {
+        mostrarErroFormulario('erro-documento', `Os dias de validade vão de 1 a ${VALIDADE_MAXIMA_DIAS}.`);
+        campoDias.focus();
+        return;
+    }
+
+    const info = tipoInfo(document.getElementById('documento-tipo').value);
+    if (info?.exigeValidade && !document.getElementById('documento-validade').value) {
+        mostrarErroFormulario('erro-documento', 'Certidão sempre vence: informe os dias ou a data de validade que vêm escritos nela.');
+        campoDias.focus();
         return;
     }
 
@@ -235,23 +322,18 @@ async function salvarDocumento(e) {
     dados.append('observacao', document.getElementById('documento-observacao').value);
     dados.append('arquivo', arquivo);
 
-    await executarComBotaoDesabilitado(botaoSalvar, async () => {
-        try {
-            // Multipart: não usa apiFetch (que manda Content-Type JSON).
-            const resposta = await fetch('/api/documentos-empresa', {
-                method: 'POST', credentials: 'same-origin', headers: obterCsrfHeader(), body: dados
-            });
-            if (!resposta.ok) {
-                const corpo = await resposta.json().catch(() => null);
-                throw new Error(extrairMensagemDeErro(corpo) ?? (resposta.status === 413 ? 'O arquivo pode ter até 5 MB.' : `Erro ${resposta.status} ao enviar.`));
-            }
-            bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-documento')).hide();
-            mostrarToast('Documento guardado.');
-            await carregarDocumentos();
-        } catch (err) {
-            mostrarErroFormulario('erro-documento', err.message);
-        }
-    });
+    if (botaoSalvar.disabled) return;
+    try {
+        // Multipart com progresso (botão "Enviando 45%" e barra).
+        await enviarArquivoComProgresso('/api/documentos-empresa', dados, {
+            botao: botaoSalvar, barra: document.getElementById('documento-progresso')
+        });
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-documento')).hide();
+        mostrarToast('Documento guardado.');
+        await carregarDocumentos();
+    } catch (err) {
+        mostrarErroFormulario('erro-documento', err.message);
+    }
 }
 
 // ---------- Histórico ----------
@@ -337,11 +419,18 @@ if (podeEditarDocumentos) {
     document.getElementById('btn-novo-documento').addEventListener('click', () => dadosDocumentos && abrirEnvio(null));
     document.getElementById('form-documento').addEventListener('submit', salvarDocumento);
     document.getElementById('documento-tipo').addEventListener('change', () => {
-        delete document.getElementById('documento-validade').dataset.editadoAMao;
+        // Outro tipo: recomeça a validade (o prazo usual muda).
+        document.getElementById('documento-dias').value = '';
+        document.getElementById('documento-validade').value = '';
         atualizarCamposTipo();
     });
-    document.getElementById('documento-emissao').addEventListener('change', () => { sugerirValidade(); limparAvisoVencido(); });
-    document.getElementById('documento-validade').addEventListener('input', e => { e.target.dataset.editadoAMao = 'true'; limparAvisoVencido(); });
+    // Emissão mudou: os dias informados valem; sem dias, recalcula pela data final.
+    document.getElementById('documento-emissao').addEventListener('change', () => {
+        sincronizarValidade(document.getElementById('documento-dias').value ? 'dias' : 'data');
+        limparAvisoVencido();
+    });
+    document.getElementById('documento-dias').addEventListener('input', () => { sincronizarValidade('dias'); limparAvisoVencido(); });
+    document.getElementById('documento-validade').addEventListener('input', () => { sincronizarValidade('data'); limparAvisoVencido(); });
 }
 
 carregarDocumentos();

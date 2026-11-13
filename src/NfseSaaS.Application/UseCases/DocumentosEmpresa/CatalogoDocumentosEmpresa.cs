@@ -116,8 +116,22 @@ public static partial class RegrasDocumentoEmpresa
     /// <summary>Validade usual a partir da emissão (ex.: FGTS = emissão + 30 dias). Nulo quando o tipo não tem prazo fixo.</summary>
     public static DateOnly? ValidadeSugerida(TipoDocumentoEmpresa tipo, DateOnly? dataEmissao) =>
         dataEmissao is { } d && CatalogoDocumentosEmpresa.Obter(tipo).ValidadeSugeridaDias is { } dias
-            ? d.AddDays(dias)
+            ? ValidadePorDias(d, dias)
             : null;
+
+    /// <summary>Maior prazo aceito em "vale por N dias" (10 anos).</summary>
+    public const int ValidadeMaximaDias = 3650;
+
+    /// <summary>
+    /// "Vale por N dias" a partir da emissão → data final (mesma conta da tela:
+    /// emissão + N dias). Fora de 1 a <see cref="ValidadeMaximaDias"/> = nulo.
+    /// </summary>
+    public static DateOnly? ValidadePorDias(DateOnly emissao, int? dias) =>
+        dias is >= 1 and <= ValidadeMaximaDias ? emissao.AddDays(dias.Value) : null;
+
+    /// <summary>Data final → quantos dias de validade (o inverso de <see cref="ValidadePorDias"/>).</summary>
+    public static int? DiasDeValidade(DateOnly emissao, DateOnly? validaAte) =>
+        validaAte is { } v && v >= emissao ? v.DayNumber - emissao.DayNumber : null;
 
     /// <summary>Chave do "lugar" do documento (ver DocumentoEmpresa.NomeChave).</summary>
     public static string NomeChave(TipoDocumentoEmpresa tipo, string? nomePersonalizado) =>
@@ -147,7 +161,10 @@ public static partial class RegrasDocumentoEmpresa
                 throw new RegraNegocioException($"Dê um nome ao documento ({NomeMinimo} a {NomeMaximo} letras), ex.: \"Alvará de funcionamento\".");
         }
 
-        if (dataEmissao is { } emissao && emissao > hoje)
+        // Todo documento tem data de emissão: é dela que sai a validade em dias e o histórico de versões.
+        if (dataEmissao is not { } emissao)
+            throw new RegraNegocioException("Informe a data de emissão do documento (vem escrita nele).");
+        if (emissao > hoje)
             throw new RegraNegocioException("A data de emissão não pode ser depois de hoje.");
 
         var validade = validaAte ?? ValidadeSugerida(tipo, dataEmissao);

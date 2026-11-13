@@ -624,22 +624,11 @@ async function enviarDocumentoContrato() {
     const formData = new FormData();
     formData.append('arquivo', campoArquivo.files[0]);
 
+    const botao = document.getElementById('btn-upload-documento');
+    if (botao.disabled) return;
     try {
-        // Upload multipart — não usa apiFetch (que sempre manda
-        // Content-Type: application/json); o navegador define o
-        // boundary do multipart/form-data automaticamente. Mesmo padrão
-        // já usado em empresas.js pro upload de certificado.
-        const resposta = await fetch(`/api/contratos/${contratoId}/documentos`, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: obterCsrfHeader(),
-            body: formData
-        });
-
-        if (!resposta.ok) {
-            const corpo = await resposta.json().catch(() => null);
-            throw new Error(extrairMensagemDeErro(corpo) ?? `Erro ${resposta.status} ao anexar o documento.`);
-        }
+        // Multipart com progresso no botão "Anexar" (não usa apiFetch, que manda JSON).
+        await enviarArquivoComProgresso(`/api/contratos/${contratoId}/documentos`, formData, { botao });
 
         campoArquivo.value = '';
         await carregarDocumentosContrato(contratoId);

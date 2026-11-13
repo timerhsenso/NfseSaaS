@@ -485,31 +485,17 @@ async function enviarCertificado(e) {
     formData.append('senha', senha);
 
     const botaoEnviar = e.target.querySelector('button[type="submit"]');
-    botaoEnviar.disabled = true;
+    if (botaoEnviar.disabled) return;
 
     try {
-        // Upload multipart — não usa apiFetch (que sempre manda
-        // Content-Type: application/json); o navegador define o
-        // boundary do multipart/form-data automaticamente.
-        const resposta = await fetch(`/api/empresas/${empresaCertificadoAtualId}/certificado`, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: obterCsrfHeader(),
-            body: formData
-        });
-
-        if (!resposta.ok) {
-            const corpo = await resposta.json().catch(() => null);
-            throw new Error(extrairMensagemDeErro(corpo) ?? `Erro ${resposta.status} ao enviar o certificado.`);
-        }
+        // Multipart com progresso no botão (não usa apiFetch, que manda JSON).
+        await enviarArquivoComProgresso(`/api/empresas/${empresaCertificadoAtualId}/certificado`, formData, { botao: botaoEnviar });
 
         document.getElementById('form-certificado').reset();
         await carregarStatusCertificado();
         mostrarToast('Certificado enviado com sucesso.');
     } catch (err) {
         mostrarErroFormulario('erro-certificado', err.message);
-    } finally {
-        botaoEnviar.disabled = false;
     }
 }
 

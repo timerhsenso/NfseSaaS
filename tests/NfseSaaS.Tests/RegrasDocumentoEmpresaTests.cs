@@ -72,7 +72,7 @@ public class RegrasDocumentoEmpresaTests
         Assert.Contains("vale", municipal.Message);
 
         // Cartão CNPJ não vence: validade em branco é aceita.
-        Assert.Null(RegrasDocumentoEmpresa.Validar(TipoDocumentoEmpresa.CartaoCnpj, null, null, null, null, Hoje).ValidaAte);
+        Assert.Null(RegrasDocumentoEmpresa.Validar(TipoDocumentoEmpresa.CartaoCnpj, null, Hoje, null, null, Hoje).ValidaAte);
     }
 
     [Fact]
@@ -83,10 +83,10 @@ public class RegrasDocumentoEmpresaTests
         Assert.Throws<RegraNegocioException>(() =>
             RegrasDocumentoEmpresa.Validar(TipoDocumentoEmpresa.CndEstadual, null, Hoje, Hoje.AddDays(-1), null, Hoje));
         Assert.Throws<RegraNegocioException>(() =>
-            RegrasDocumentoEmpresa.Validar(TipoDocumentoEmpresa.CartaoCnpj, null, null, null, new string('x', 301), Hoje));
+            RegrasDocumentoEmpresa.Validar(TipoDocumentoEmpresa.CartaoCnpj, null, Hoje, null, new string('x', 301), Hoje));
 
         // Vencida já no envio é aceita (a tela pergunta antes): quem decide é o usuário.
-        Assert.Equal(Hoje.AddDays(-5), RegrasDocumentoEmpresa.Validar(TipoDocumentoEmpresa.CndEstadual, null, null, Hoje.AddDays(-5), null, Hoje).ValidaAte);
+        Assert.Equal(Hoje.AddDays(-5), RegrasDocumentoEmpresa.Validar(TipoDocumentoEmpresa.CndEstadual, null, Hoje.AddDays(-30), Hoje.AddDays(-5), null, Hoje).ValidaAte);
     }
 
     [Fact]
@@ -95,7 +95,7 @@ public class RegrasDocumentoEmpresaTests
         Assert.Throws<RegraNegocioException>(() =>
             RegrasDocumentoEmpresa.Validar(TipoDocumentoEmpresa.Outro, "  ", null, null, null, Hoje));
 
-        var dados = RegrasDocumentoEmpresa.Validar(TipoDocumentoEmpresa.Outro, "  Alvará   de Funcionamento ", null, null, null, Hoje);
+        var dados = RegrasDocumentoEmpresa.Validar(TipoDocumentoEmpresa.Outro, "  Alvará   de Funcionamento ", Hoje, null, null, Hoje);
         Assert.Equal("Alvará de Funcionamento", dados.NomePersonalizado);
         Assert.Equal("alvará de funcionamento", dados.NomeChave);
         Assert.Equal(dados.NomeChave, RegrasDocumentoEmpresa.NomeChave(TipoDocumentoEmpresa.Outro, "alvará de funcionamento"));
@@ -131,5 +131,23 @@ public class RegrasDocumentoEmpresaTests
         Assert.Equal(TipoRecurso.LigaDesliga, recurso.Tipo);
         Assert.True(RegrasRecursos.Resolver(recurso, PerfilConta.Empresa, null, null).Ligado);
         Assert.True(RegrasRecursos.Resolver(recurso, PerfilConta.Contador, null, null).Ligado);
+    }
+
+    [Fact]
+    public void Emissao_obrigatoria_e_validade_por_dias()
+    {
+        var semEmissao = Assert.Throws<RegraNegocioException>(() =>
+            RegrasDocumentoEmpresa.Validar(TipoDocumentoEmpresa.ContratoSocial, null, null, null, null, Hoje));
+        Assert.Contains("data de emissão", semEmissao.Message);
+
+        // "Vale por 90 dias" e a data final andam juntos, nos dois sentidos.
+        var emissao = new DateOnly(2026, 11, 13);
+        Assert.Equal(new DateOnly(2027, 2, 11), RegrasDocumentoEmpresa.ValidadePorDias(emissao, 90));
+        Assert.Equal(90, RegrasDocumentoEmpresa.DiasDeValidade(emissao, new DateOnly(2027, 2, 11)));
+        Assert.Null(RegrasDocumentoEmpresa.ValidadePorDias(emissao, 0));
+        Assert.Null(RegrasDocumentoEmpresa.ValidadePorDias(emissao, null));
+        Assert.Null(RegrasDocumentoEmpresa.ValidadePorDias(emissao, RegrasDocumentoEmpresa.ValidadeMaximaDias + 1));
+        Assert.Null(RegrasDocumentoEmpresa.DiasDeValidade(emissao, emissao.AddDays(-1)));
+        Assert.Null(RegrasDocumentoEmpresa.DiasDeValidade(emissao, null));
     }
 }

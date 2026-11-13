@@ -106,6 +106,85 @@ async function executarComBotaoDesabilitado(botao, acaoAsync) {
 }
 
 /**
+ * Envio de arquivo (multipart) com andamento visível: o botão vira um
+ * spinner com "Enviando 45%" e, quando o arquivo termina de subir,
+ * "Processando…" até o servidor responder. `barra` (opcional) é um
+ * `.progress` com uma `.progress-bar` dentro. XMLHttpRequest em vez de
+ * fetch porque só ele informa o progresso do envio. Devolve o corpo JSON
+ * da resposta (ou null); erro vira Error com a mensagem da API.
+ */
+function enviarArquivoComProgresso(url, dados, opcoes) {
+    const { metodo = 'POST', botao = null, barra = null } = opcoes ?? {};
+    const preenchimento = barra?.querySelector('.progress-bar');
+    const ehRotulo = botao?.tagName === 'LABEL';
+    const htmlOriginal = botao?.innerHTML;
+
+    function mostrar(texto, percentual) {
+        if (botao) botao.innerHTML = `<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> ${texto}`;
+        if (!preenchimento) return;
+        const processando = percentual == null;
+        preenchimento.classList.toggle('progress-bar-striped', processando);
+        preenchimento.classList.toggle('progress-bar-animated', processando);
+        preenchimento.style.width = `${processando ? 100 : percentual}%`;
+        barra.setAttribute('aria-valuenow', String(processando ? 100 : percentual));
+    }
+
+    function restaurar() {
+        if (botao) {
+            botao.innerHTML = htmlOriginal;
+            botao.style.minWidth = '';
+            if (ehRotulo) { botao.classList.remove('disabled'); botao.removeAttribute('aria-disabled'); }
+            else botao.disabled = false;
+        }
+        if (barra) barra.hidden = true;
+    }
+
+    if (botao) {
+        botao.style.minWidth = `${botao.offsetWidth}px`; // o texto muda; o botão não "pula"
+        if (ehRotulo) { botao.classList.add('disabled'); botao.setAttribute('aria-disabled', 'true'); }
+        else botao.disabled = true;
+    }
+    if (barra) barra.hidden = false;
+    mostrar('Enviando…', 0);
+
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open(metodo, url);
+        xhr.withCredentials = true;
+        Object.entries(obterCsrfHeader()).forEach(([nome, valor]) => xhr.setRequestHeader(nome, valor));
+        xhr.setRequestHeader('Accept', 'application/json');
+
+        xhr.upload.addEventListener('progress', e => {
+            if (!e.lengthComputable) return;
+            const percentual = Math.round(e.loaded * 100 / e.total);
+            if (percentual < 100) mostrar(`Enviando ${percentual}%`, percentual);
+            else mostrar('Processando…', null);
+        });
+        xhr.upload.addEventListener('load', () => mostrar('Processando…', null));
+
+        xhr.addEventListener('load', () => {
+            restaurar();
+            let corpo = null;
+            try { corpo = xhr.responseText ? JSON.parse(xhr.responseText) : null; } catch { /* resposta sem JSON (ex.: erro do proxy) */ }
+            if (xhr.status >= 200 && xhr.status < 300) resolve(corpo);
+            else reject(new Error(extrairMensagemDeErro(corpo) ?? mensagemErroEnvioArquivo(xhr.status)));
+        });
+        xhr.addEventListener('error', () => { restaurar(); reject(new Error('Não foi possível falar com o servidor. Confira a internet e tente de novo.')); });
+        xhr.addEventListener('abort', () => { restaurar(); reject(new Error('O envio foi interrompido. Tente de novo.')); });
+        xhr.send(dados);
+    });
+}
+
+/** Mensagem para envio recusado sem explicação da API (ex.: o Nginx barra pelo tamanho antes do sistema). */
+function mensagemErroEnvioArquivo(status) {
+    if (status === 413)
+        return 'O servidor recusou o arquivo por ser grande demais para o limite dele. Se o arquivo está dentro do tamanho indicado na tela, avise o suporte.';
+    if (status === 401 || status === 403)
+        return 'Sua sessão expirou ou você não tem permissão para enviar este arquivo. Entre de novo e tente outra vez.';
+    return `Erro ${status} ao enviar o arquivo. Tente de novo.`;
+}
+
+/**
  * A API tem 2 formatos de erro possíveis (ver ExceptionHandlingMiddleware
  * e os poucos BadRequest/Conflict manuais em AuthController):
  * - { erro: "...", erros?: { campo: ["msg", ...] } } — formato padrão

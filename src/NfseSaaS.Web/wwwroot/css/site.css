@@ -4080,3 +4080,16 @@ html[data-theme="dark"] .painel-aparencia .btn-close { filter: invert(1) graysca
         width: 100%;
     }
 }
+
+/* =============== Envio de arquivo com progresso (enviarArquivoComProgresso) =============== */
+
+.envio-progresso {
+    height: 6px;
+}
+
+.btn .spinner-border-sm {
+    width: .9rem;
+    height: .9rem;
+    border-width: .15em;
+    vertical-align: -2px;
+}

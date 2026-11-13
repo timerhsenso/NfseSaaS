@@ -54,24 +54,32 @@
                         </div>
                         <div class="mb-3 d-none" id="grupo-documento-nome">
                             <label class="form-label" for="documento-nome">Nome do documento</label>
-                            <input type="text" class="form-control" id="documento-nome" maxlength="80" placeholder="ex.: Alvará de funcionamento" />
+                            <input type="text" class="form-control" id="documento-nome" maxlength="80" placeholder="ex.: Alvará de funcionamento" list="documento-nomes-usados" autocomplete="off" />
+                            <datalist id="documento-nomes-usados"></datalist>
                         </div>
                         <div class="small mb-3 d-none" id="documento-link">
                             <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
                             <a href="#" target="_blank" rel="noopener" id="documento-link-a">Tirar no site oficial</a>
                         </div>
 
+                        @* Validade por dias OU por data: um calcula o outro a partir da emissão.
+                           Os dois em branco = documento sem validade. *@
                         <div class="row g-3 mb-3">
-                            <div class="col-sm-6">
+                            <div class="col-sm-5">
                                 <label class="form-label" for="documento-emissao">Emitido em</label>
-                                <input type="date" class="form-control" id="documento-emissao" />
+                                <input type="date" class="form-control" id="documento-emissao" required />
                             </div>
-                            <div class="col-sm-6">
+                            <div class="col-5 col-sm-3">
+                                <label class="form-label" for="documento-dias">Vale por (dias)</label>
+                                <input type="number" class="form-control" id="documento-dias" min="1" max="3650" step="1" inputmode="numeric" placeholder="ex.: 90" />
+                            </div>
+                            <div class="col-7 col-sm-4">
                                 <label class="form-label" for="documento-validade">Válido até</label>
                                 <input type="date" class="form-control" id="documento-validade" />
                             </div>
                         </div>
-                        <div class="form-text mt-n2 mb-3" id="documento-dica-validade"></div>
+                        <div class="form-text mt-n2 mb-1" id="documento-resumo-validade" aria-live="polite"></div>
+                        <div class="form-text mb-3" id="documento-dica-validade"></div>
 
                         <div class="mb-3">
                             <label class="form-label" for="documento-arquivo">Arquivo (PDF, até 5 MB)</label>
@@ -84,6 +92,9 @@
                         <div class="mb-1">
                             <label class="form-label" for="documento-observacao">Observação <span class="text-muted">(opcional)</span></label>
                             <input type="text" class="form-control" id="documento-observacao" maxlength="300" />
+                        </div>
+                        <div class="progress envio-progresso mt-3" id="documento-progresso" role="progressbar" aria-label="Envio do arquivo" aria-valuemin="0" aria-valuemax="100" hidden>
+                            <div class="progress-bar"></div>
                         </div>
                     </div>
                     <div class="modal-footer">

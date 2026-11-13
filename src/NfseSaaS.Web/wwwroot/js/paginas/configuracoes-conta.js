@@ -138,13 +138,11 @@ document.addEventListener('DOMContentLoaded', async function () {
         const formulario = new FormData();
         formulario.append('arquivo', arquivo);
         try {
-            // Multipart: fetch direto (apiFetch manda JSON).
-            const resposta = await fetch('/api/aparencia/logo', {
-                method: 'PUT', credentials: 'same-origin', headers: obterCsrfHeader(), body: formulario
+            // Multipart com progresso no botão "Enviar logomarca" (um <label>).
+            const corpo = await enviarArquivoComProgresso('/api/aparencia/logo', formulario, {
+                metodo: 'PUT', botao: document.querySelector('label[for="arquivo-logo"]')
             });
-            const corpo = await resposta.json().catch(() => null);
-            if (!resposta.ok) throw new Error(extrairMensagemDeErro(corpo) ?? 'Não foi possível enviar a logomarca.');
-            aplicarLogo(corpo.versao);
+            aplicarLogo(corpo?.versao);
             mostrarToast('Logomarca atualizada.');
         } catch (err) {
             mostrarErro(err.message);
