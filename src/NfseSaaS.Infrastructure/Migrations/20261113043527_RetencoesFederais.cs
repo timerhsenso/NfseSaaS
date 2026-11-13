@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -165,7 +165,7 @@ namespace NfseSaaS.Infrastructure.Migrations
                 type: "character varying(1)",
                 maxLength: 1,
                 nullable: false,
-                defaultValue: "");
+                defaultValue: "0");
         }
     }
 }
