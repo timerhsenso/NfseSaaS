@@ -27,10 +27,6 @@ namespace NfseSaaS.Infrastructure.Migrations
                 name: "IX_modelos_email_nota_TenantId_EmpresaId",
                 table: "modelos_email_nota");
 
-            migrationBuilder.DropColumn(
-                name: "EmpresaId",
-                table: "modelos_email_nota");
-
             migrationBuilder.AddColumn<string>(
                 name: "Nome",
                 table: "modelos_email_nota",
@@ -57,6 +53,24 @@ namespace NfseSaaS.Infrastructure.Migrations
                 table: "clientes",
                 type: "uuid",
                 nullable: true);
+
+            // Converte os modelos do patch anterior (um da conta e um por
+            // empresa) em modelos reutilizáveis, sem perder texto: o da conta
+            // vira "Padrão"; o de cada empresa vira um modelo com o nome dela,
+            // já escolhido na própria empresa. Precisa vir ANTES de apagar
+            // a coluna EmpresaId (o EF gera na ordem errada para isto).
+            migrationBuilder.Sql("""
+                UPDATE modelos_email_nota SET "Nome" = 'Padrão', "Padrao" = TRUE WHERE "EmpresaId" IS NULL;
+                UPDATE modelos_email_nota m
+                   SET "Nome" = LEFT(COALESCE(NULLIF(e."NomeFantasia", ''), e."RazaoSocial"), 40) || ' (' || e."Cnpj" || ')'
+                  FROM empresas e WHERE m."EmpresaId" = e."Id";
+                UPDATE empresas e SET "ModeloEmailNotaId" = m."Id"
+                  FROM modelos_email_nota m WHERE m."EmpresaId" = e."Id";
+                """);
+
+            migrationBuilder.DropColumn(
+                name: "EmpresaId",
+                table: "modelos_email_nota");
 
             migrationBuilder.CreateIndex(
                 name: "IX_modelos_email_nota_TenantId",
