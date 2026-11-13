@@ -97,13 +97,13 @@ public sealed class MontadorExportacaoDados
             "Id", "Cnpj", "RazaoSocial", "NomeFantasia", "InscricaoMunicipal", "CodigoMunicipio", "Telefone", "Email",
             "Cep", "Logradouro", "Numero", "Complemento", "Bairro", "Uf",
             "OpcaoSimplesNacional", "RegimeApuracaoSimples", "RegimeEspecialTributacao", "TributacaoIssqn", "AliquotaIss",
-            "CstPisCofins", "TipoRetencaoPisCofins", "PercentualTributosSimplesNacional",
+            "CstPisCofins", "PercentualTributosSimplesNacional", "AvisoDispensaRetencaoNaDescricao",
             "Ativa", "Ambiente", "CriadaEm");
         foreach (var e in empresas)
             tEmpresas.Adicionar(e.Id, e.Cnpj, e.RazaoSocial, e.NomeFantasia, e.InscricaoMunicipal, e.CodigoMunicipio, e.Telefone, e.Email,
                 e.Cep, e.Logradouro, e.Numero, e.Complemento, e.Bairro, e.Uf,
                 e.OpSimpNac, e.RegApTribSN, e.RegEspTrib, e.TribIssqn, e.AliquotaIss,
-                e.CstPisCofins, e.TpRetPisCofins, e.PercentualTotalTributosSimplesNacional,
+                e.CstPisCofins, e.PercentualTotalTributosSimplesNacional, e.AvisoDispensaRetencaoNaDescricao,
                 e.Ativo, e.TipoAmbiente, e.CreatedAt);
         Tabela(zip, tEmpresas);
 

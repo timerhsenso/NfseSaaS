@@ -21,5 +21,6 @@ public sealed record CadastrarEmpresaRequest(
     string TribIssqn,
     decimal? AliquotaIss,
     string CstPisCofins,
-    string TpRetPisCofins,
-    string PercentualTotalTributosSimplesNacional);
+    string PercentualTotalTributosSimplesNacional,
+    // C6: frase de dispensa de retenção na descrição da nota (Simples).
+    bool AvisoDispensaRetencaoNaDescricao = false);

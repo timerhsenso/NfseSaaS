@@ -63,6 +63,12 @@ public sealed class NfseController : ControllerBase
         return Ok(resultado);
     }
 
+    /// <summary>C6: descontos, retenções e líquido que a emissão vai calcular (tela de emissão).</summary>
+    [RequerPermissao(TelaCatalogo.Nfse, AcaoPermissao.Incluir)]
+    [HttpPost("retencoes/simular")]
+    public async Task<IActionResult> SimularRetencoes([FromBody] SimularRetencoesRequest request, [FromServices] ISimularRetencoesUseCase simular, CancellationToken cancellationToken) =>
+        Ok(await simular.ExecutarAsync(request, cancellationToken));
+
     /// <summary>C7: motivos oficiais e campos que o regime da empresa não deixa mudar.</summary>
     [RequerPermissao(TelaCatalogo.Nfse, AcaoPermissao.Excluir)]
     [HttpGet("{id:guid}/substituicao")]

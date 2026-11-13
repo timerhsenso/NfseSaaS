@@ -1,3 +1,5 @@
+using NfseSaaS.Application.Fiscal.Retencoes;
+
 namespace NfseSaaS.Application.UseCases.Nfse;
 
 /// <summary>DTO de entrada para o caso de uso de emissão de NFS-e (implementação na Fase 2).</summary>
@@ -39,4 +41,13 @@ public sealed record EmitirNfseRequest(
     string? DescricaoMotivoSubstituicao = null,
     // Valor de cada serviço do Contrato que compõe esta nota (só gravado;
     // a soma tem que bater com ValorServico). Nulo = nota sem composição.
-    IReadOnlyList<ItemComposicaoNfse>? Composicao = null);
+    IReadOnlyList<ItemComposicaoNfse>? Composicao = null,
+    // C6: descontos (R$) NESTA nota. Nulo ou zero = sem desconto.
+    decimal? DescontoIncondicionado = null,
+    decimal? DescontoCondicionado = null,
+    // C6: retenções federais NESTA nota. Nulo = padrão do Cliente, sem o que
+    // o regime da empresa dispensa (Nota Mensal e automação); objeto vazio =
+    // nenhuma retenção. Ver RegrasRetencoesFederais.
+    PercentuaisRetencao? RetencoesFederais = null,
+    // C6: true = reter mesmo até R$ 10 (o tomador soma as notas do mês).
+    bool ReterAbaixoDoMinimo = false);

@@ -62,7 +62,7 @@ public sealed class EnviarNfsePorEmailUseCase : IEnviarNfsePorEmailUseCase
             where ids.Contains(n.Id)
             select new
             {
-                n.Id, n.TenantId, n.EmpresaId, n.ClienteId, n.Status, n.NumeroNfse, n.NumeroDps, n.ChaveAcesso, n.ValorServico,
+                n.Id, n.TenantId, n.EmpresaId, n.ClienteId, n.Status, n.NumeroNfse, n.NumeroDps, n.ChaveAcesso, n.ValorServico, n.ValorLiquido,
                 n.DataCompetencia, n.DataEmissao, n.DescricaoServico, n.TipoAmbiente,
                 NumeroContrato = db.Contratos.Where(k => k.Id == n.ContratoId).Select(k => k.Numero).FirstOrDefault(),
                 ClienteNome = c.Nome,
@@ -86,7 +86,7 @@ public sealed class EnviarNfsePorEmailUseCase : IEnviarNfsePorEmailUseCase
             var dados = new DadosEmailNota(
                 l.ClienteNome, l.EmpresaNome, l.EmpresaRazaoSocial, string.IsNullOrWhiteSpace(l.EmpresaEmail) ? null : l.EmpresaEmail,
                 numero, l.DataCompetencia, l.ValorServico, l.DataEmissao, l.DescricaoServico, l.NumeroContrato,
-                l.ChaveAcesso, l.TipoAmbiente == TipoAmbiente.Homologacao);
+                l.ChaveAcesso, l.TipoAmbiente == TipoAmbiente.Homologacao, l.ValorLiquido);
             return new NotaParaEmail(l.Id, l.TenantId, l.EmpresaId, l.ClienteId, l.Status, destinatario, l.EnviarNfsePorEmail, copias, l.CopiaOculta, dados);
         }).ToList();
     }

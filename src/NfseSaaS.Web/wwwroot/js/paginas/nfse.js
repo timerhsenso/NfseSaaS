@@ -35,6 +35,12 @@ let modalEmailLote = null;
 let nfseIdEmailAtual = null;
 let idsEmailLote = [];
 let nmNfseIdsEmitidas = [];
+// C6: descontos e retenções do modal de emissão — última simulação do
+// servidor (fonte única do cálculo) e controle de chamadas fora de ordem.
+let simulacaoRetencoes = null;
+let timerRetencoes = null;
+let sequenciaRetencoes = 0;
+const TRIBUTOS_RETENCAO = ['irrf', 'pis', 'cofins', 'csll', 'inss'];
 
 document.addEventListener('DOMContentLoaded', function () {
     tabelaNfse = new DataTable('#tabela-nfse', {
@@ -257,13 +263,30 @@ document.addEventListener('DOMContentLoaded', function () {
             const selecionado = $('#emitir-clienteId').select2('data')[0];
             definirIssRetido(selecionado?.retemIss === true);
             carregarContratosDoCliente(this.value);
+            carregarRetencoesPadraoCliente(this.value);
         });
 
         configurarSelectMunicipio({ select: 'emitir-localPrestacao', modal: 'modal-emitir-nfse' });
 
         document.getElementById('emitir-issRetido').addEventListener('change', function () {
             definirIssRetido(this.checked);
+            agendarRetencoesEmissao();
         });
+
+        // C6: descontos e retenções.
+        document.getElementById('btn-toggle-retencoes').addEventListener('click', function () {
+            abrirBlocoRetencoes(document.getElementById('corpo-retencoes').classList.contains('d-none'));
+        });
+        document.querySelectorAll('.check-retencao').forEach(check => check.addEventListener('change', function () {
+            const percentual = document.getElementById(`emitir-ret-${this.dataset.tributo}-percentual`);
+            percentual.disabled = !this.checked;
+            if (this.checked && percentual.value === '') percentual.value = percentual.dataset.padrao;
+            agendarRetencoesEmissao();
+        }));
+        ['emitir-descontoIncondicionado', 'emitir-descontoCondicionado', 'emitir-aliquotaIss', 'emitir-valorServico']
+            .forEach(id => document.getElementById(id).addEventListener('input', agendarRetencoesEmissao));
+        document.querySelectorAll('.percentual-retencao').forEach(campo => campo.addEventListener('input', agendarRetencoesEmissao));
+        document.getElementById('emitir-reterAbaixoMinimo').addEventListener('change', agendarRetencoesEmissao);
 
         // Digitou = é do usuário: o preenchimento automático não mexe mais.
         document.getElementById('emitir-descricaoServico').addEventListener('input', function () {
@@ -558,6 +581,9 @@ async function abrirModalReenvioNfse(id) {
         // Reenvio relê o cadastro atual (ver aviso acima): retenção pelo
         // padrão ATUAL do Cliente — corrigir o cadastro e reenviar funciona.
         definirIssRetido(clientesPorId[nfse.clienteId]?.retemIss === true);
+        // Retenções federais: também pelo padrão ATUAL do Cliente; descontos, os da tentativa.
+        definirDescontosNaTela(nfse.descontosRetencoes);
+        await carregarRetencoesPadraoCliente(nfse.clienteId);
         // Local da prestação: o da tentativa rejeitada (dá para trocar).
         await definirMunicipioNoSelect('emitir-localPrestacao', nfse.codigoMunicipioPrestacao);
 
@@ -589,6 +615,7 @@ async function prepararModalEmitirNfse() {
     document.getElementById('erro-emitir-nfse').classList.add('d-none');
     document.getElementById('emitir-dataCompetencia').value = dataLocalIso();
     definirIssRetido(false);
+    limparRetencoesEmissao();
     await definirMunicipioNoSelect('emitir-localPrestacao', null);
 
     // select2 não some sozinho no form.reset() — limpa manualmente,
@@ -675,6 +702,221 @@ function definirIssRetido(retido) {
     document.getElementById('campo-emitir-aliquotaIss').classList.toggle('d-none', !retido);
     if (!retido)
         document.getElementById('emitir-aliquotaIss').value = '';
+    agendarRetencoesEmissao();
+}
+
+// ---------- C6: descontos e retenções federais ----------
+
+const moedaRetencao = v => Number(v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+function abrirBlocoRetencoes(abrir) {
+    document.getElementById('corpo-retencoes').classList.toggle('d-none', !abrir);
+    document.getElementById('btn-toggle-retencoes').setAttribute('aria-expanded', String(abrir));
+    const icone = document.getElementById('icone-toggle-retencoes');
+    icone.classList.toggle('bi-chevron-down', !abrir);
+    icone.classList.toggle('bi-chevron-up', abrir);
+}
+
+function numeroDoCampo(id) {
+    const valor = document.getElementById(id).value;
+    return valor === '' ? null : parseFloat(valor);
+}
+
+/** Marca os tributos com percentual (nulo = não retém) e mostra o padrão nos desmarcados. */
+function definirRetencoesNaTela(percentuais) {
+    for (const tributo of TRIBUTOS_RETENCAO) {
+        const valor = percentuais?.[tributo];
+        const percentual = document.getElementById(`emitir-ret-${tributo}-percentual`);
+        document.getElementById(`emitir-ret-${tributo}`).checked = valor != null;
+        percentual.value = valor != null ? Number(valor).toFixed(2) : percentual.dataset.padrao;
+        percentual.disabled = valor == null;
+    }
+}
+
+function definirDescontosNaTela(descontos) {
+    document.getElementById('emitir-descontoIncondicionado').value = descontos?.descontoIncondicionado ?? '';
+    document.getElementById('emitir-descontoCondicionado').value = descontos?.descontoCondicionado ?? '';
+}
+
+function retencoesDaTela() {
+    const retencoes = {};
+    for (const tributo of TRIBUTOS_RETENCAO) {
+        const campo = document.getElementById(`emitir-ret-${tributo}-percentual`);
+        retencoes[tributo] = document.getElementById(`emitir-ret-${tributo}`).checked && campo.value !== '' ? parseFloat(campo.value) : null;
+    }
+    return retencoes;
+}
+
+const temAlgumaRetencao = p => !!p && TRIBUTOS_RETENCAO.some(t => p[t] != null);
+
+const temDescontoOuRetencao = d => !!d && [d.descontoIncondicionado, d.descontoCondicionado, d.irrf, d.pis, d.cofins, d.csll, d.inss].some(v => v > 0);
+
+/** Percentuais equivalentes aos valores retidos numa nota já emitida (base = valor − desconto incondicionado). */
+function percentuaisDaNota(nfse) {
+    const d = nfse.descontosRetencoes;
+    const base = Number(nfse.valorServico) - Number(d?.descontoIncondicionado ?? 0);
+    const percentual = v => v > 0 && base > 0 ? Math.round(v * 10000 / base) / 100 : null;
+    return { irrf: percentual(d?.irrf), pis: percentual(d?.pis), cofins: percentual(d?.cofins), csll: percentual(d?.csll), inss: percentual(d?.inss) };
+}
+
+function limparRetencoesEmissao() {
+    clearTimeout(timerRetencoes);
+    sequenciaRetencoes++;
+    simulacaoRetencoes = null;
+    definirDescontosNaTela(null);
+    definirRetencoesNaTela(null);
+    document.getElementById('emitir-reterAbaixoMinimo').checked = false;
+    abrirBlocoRetencoes(false);
+    renderizarRetencoesEmissao(null);
+}
+
+/** Cliente escolhido: marca as retenções que ele faz (sem o que o regime da empresa dispensa). */
+async function carregarRetencoesPadraoCliente(clienteId) {
+    if (!clienteId) {
+        definirRetencoesNaTela(null);
+        agendarRetencoesEmissao();
+        return;
+    }
+    const resposta = await simularRetencoes(clienteId, null);
+    if (!resposta) return;
+    definirRetencoesNaTela(resposta.percentuais);
+    if (temAlgumaRetencao(resposta.percentuais)) abrirBlocoRetencoes(true);
+    simulacaoRetencoes = resposta;
+    renderizarRetencoesEmissao(resposta);
+}
+
+function agendarRetencoesEmissao() {
+    clearTimeout(timerRetencoes);
+    timerRetencoes = setTimeout(atualizarRetencoesEmissao, 250);
+}
+
+async function atualizarRetencoesEmissao() {
+    const resposta = await simularRetencoes(document.getElementById('emitir-clienteId').value || null, retencoesDaTela());
+    if (!resposta) return;
+    simulacaoRetencoes = resposta;
+    renderizarRetencoesEmissao(resposta);
+}
+
+/** Chama o cálculo do servidor; null = resposta antiga (já chegou uma mais nova) ou erro de rede. */
+async function simularRetencoes(clienteId, retencoes) {
+    if (!empresaAtualIdNfse) return null;
+    const sequencia = ++sequenciaRetencoes;
+    const issRetido = document.getElementById('emitir-issRetido').checked;
+    try {
+        const resposta = await apiFetch('/api/nfse/retencoes/simular', {
+            method: 'POST',
+            body: JSON.stringify({
+                empresaId: empresaAtualIdNfse,
+                clienteId,
+                valorServico: numeroDoCampo('emitir-valorServico') ?? 0,
+                descontoIncondicionado: numeroDoCampo('emitir-descontoIncondicionado'),
+                descontoCondicionado: numeroDoCampo('emitir-descontoCondicionado'),
+                retencoesFederais: retencoes,
+                issRetido,
+                aliquotaIss: issRetido ? numeroDoCampo('emitir-aliquotaIss') : null,
+                reterAbaixoDoMinimo: document.getElementById('emitir-reterAbaixoMinimo').checked
+            })
+        });
+        return sequencia === sequenciaRetencoes ? resposta : null;
+    } catch (err) {
+        if (sequencia !== sequenciaRetencoes) return null;
+        const erro = document.getElementById('erro-retencoes');
+        erro.textContent = err.message;
+        erro.classList.remove('d-none');
+        return null;
+    }
+}
+
+function renderizarRetencoesEmissao(resposta) {
+    const resultado = resposta?.resultado;
+    const alertas = document.getElementById('alertas-retencoes');
+    const dispensas = document.getElementById('dispensas-retencoes');
+    const erro = document.getElementById('erro-retencoes');
+    const tabela = document.getElementById('tabela-retencoes');
+    const frase = document.getElementById('frase-dispensa-previa');
+
+    // MEI: sem retenção federal (só descontos).
+    const semFederais = resposta && resposta.retencaoFederalDisponivel === false;
+    document.getElementById('retencoes-federais-campos').classList.toggle('d-none', semFederais);
+    document.getElementById('aviso-mei-retencoes').classList.toggle('d-none', !semFederais);
+
+    alertas.replaceChildren(...(resultado?.alertas ?? []).map(texto => {
+        const linha = document.createElement('div');
+        linha.textContent = texto;
+        return linha;
+    }));
+    alertas.classList.toggle('d-none', !resultado?.alertas?.length);
+    dispensas.textContent = (resultado?.dispensas ?? []).join(' ');
+    dispensas.classList.toggle('d-none', !resultado?.dispensas?.length);
+    erro.textContent = resposta?.erro ?? '';
+    erro.classList.toggle('d-none', !resposta?.erro);
+    frase.textContent = resposta?.fraseDispensa ? `Vai no fim da descrição: "${resposta.fraseDispensa}"` : '';
+    frase.classList.toggle('d-none', !resposta?.fraseDispensa);
+
+    const descInc = numeroDoCampo('emitir-descontoIncondicionado') ?? 0;
+    const descCond = numeroDoCampo('emitir-descontoCondicionado') ?? 0;
+    const temAlgo = !!resultado && (descInc > 0 || descCond > 0 || resultado.totalRetencoes > 0);
+    document.getElementById('resumo-retencoes').textContent = resposta?.erro
+        ? 'Revise os valores'
+        : temAlgo ? `Líquido ${moedaRetencao(resultado.valorLiquido)}` : 'Nenhum';
+
+    if (!resultado) {
+        tabela.replaceChildren();
+        return;
+    }
+    const linhas = [['Valor do serviço', numeroDoCampo('emitir-valorServico') ?? 0, false]];
+    if (descInc > 0) linhas.push(['Desconto incondicionado', descInc, true]);
+    if (descCond > 0) linhas.push(['Desconto condicionado', descCond, true]);
+    if (resultado.issRetido > 0) linhas.push(['ISS retido', resultado.issRetido, true]);
+    if (resultado.irrf > 0) linhas.push(['IRRF', resultado.irrf, true]);
+    if (resultado.retidoCsllTotal > 0) linhas.push(['PIS/COFINS/CSLL', resultado.retidoCsllTotal, true]);
+    if (resultado.inss > 0) linhas.push(['INSS', resultado.inss, true]);
+    tabela.innerHTML = linhas.map(([rotulo, valor, menos]) =>
+        `<dt class="col-7">${menos ? '(−) ' : ''}${escaparHtml(rotulo)}</dt><dd class="col-5">${moedaRetencao(valor)}</dd>`).join('')
+        + `<dt class="col-7 linha-liquido">Valor líquido</dt><dd class="col-5 linha-liquido">${moedaRetencao(resultado.valorLiquido)}</dd>`;
+}
+
+/** Linhas do resumo (etapa 2): descontos, retenções federais e líquido. */
+function linhasResumoRetencoes(linha) {
+    const r = simulacaoRetencoes?.resultado;
+    if (!r) return '';
+    const descInc = numeroDoCampo('emitir-descontoIncondicionado') ?? 0;
+    const descCond = numeroDoCampo('emitir-descontoCondicionado') ?? 0;
+    const partes = [];
+    if (r.irrf > 0) partes.push(`IRRF ${moedaRetencao(r.irrf)}`);
+    if (r.retidoCsllTotal > 0) partes.push(`PIS/COFINS/CSLL ${moedaRetencao(r.retidoCsllTotal)}`);
+    if (r.inss > 0) partes.push(`INSS ${moedaRetencao(r.inss)}`);
+    const descontos = [];
+    if (descInc > 0) descontos.push(`incondicionado ${moedaRetencao(descInc)}`);
+    if (descCond > 0) descontos.push(`condicionado ${moedaRetencao(descCond)}`);
+    if (!partes.length && !descontos.length && !(r.issRetido > 0)) return '';
+    return (descontos.length ? linha('Descontos', escaparHtml(descontos.join(' · '))) : '')
+        + linha('Retenções federais', partes.length ? escaparHtml(partes.join(' · ')) : 'Nenhuma')
+        + linha('Valor líquido', `<strong>${moedaRetencao(r.valorLiquido)}</strong>`);
+}
+
+/** Avisos do regime no resumo: o usuário confirma sabendo (não bloqueia). */
+function alertasResumoRetencoes() {
+    const alertas = simulacaoRetencoes?.resultado?.alertas ?? [];
+    if (!alertas.length) return '';
+    return `<div class="alert alert-warning py-2 mt-3 mb-0">
+        <strong>Atenção às retenções:</strong>
+        <ul class="mb-1 ps-3">${alertas.map(a => `<li>${escaparHtml(a)}</li>`).join('')}</ul>
+        <div class="small">Confirme só se o tomador realmente faz essa retenção. Na dúvida, fale com o seu contador.</div>
+    </div>`;
+}
+
+/** Linhas do detalhe da nota emitida. */
+function linhasDetalheRetencoes(d, linha, moeda) {
+    if (!temDescontoOuRetencao(d)) return '';
+    const partes = [];
+    if (d.irrf > 0) partes.push(`IRRF ${moeda(d.irrf)}`);
+    const csrf = [d.pis, d.cofins, d.csll].map(v => Number(v ?? 0)).reduce((a, b) => a + b, 0);
+    if (csrf > 0) partes.push(`PIS/COFINS/CSLL ${moeda(csrf)}`);
+    if (d.inss > 0) partes.push(`INSS ${moeda(d.inss)}`);
+    return (d.descontoIncondicionado > 0 ? linha('Desconto incondicionado', moeda(d.descontoIncondicionado)) : '')
+        + (d.descontoCondicionado > 0 ? linha('Desconto condicionado', moeda(d.descontoCondicionado)) : '')
+        + (partes.length ? linha('Retenções federais', partes.join(' · ')) : '');
 }
 
 function contratoSelecionado() {
@@ -709,6 +951,7 @@ function aplicarSugestaoEmissao(descricao, valor) {
     }
 
     atualizarAvisoDescricaoEmissao();
+    agendarRetencoesEmissao();
 }
 
 /** Contador de caracteres e aviso "você editou — usar a do cadastro". */
@@ -735,7 +978,16 @@ function mostrarCamposEmissao() {
  * Etapa 2 do modal: resumo do que vai para a SEFIN, para conferir antes de
  * emitir (depois de autorizada, a nota só se desfaz cancelando).
  */
-function mostrarResumoEmissao() {
+async function mostrarResumoEmissao() {
+    // C6: o resumo usa o cálculo atualizado do servidor (sem esperar o atraso da digitação).
+    clearTimeout(timerRetencoes);
+    await atualizarRetencoesEmissao();
+    if (simulacaoRetencoes?.erro) {
+        abrirBlocoRetencoes(true);
+        mostrarErroFormulario('erro-emitir-nfse', simulacaoRetencoes.erro);
+        return;
+    }
+
     const textoSelecionado = id => document.getElementById(id).selectedOptions[0]?.text ?? '';
     const cliente = $('#emitir-clienteId').select2('data')[0]?.text || textoSelecionado('emitir-clienteId');
     const campoContratoVisivel = !document.getElementById('campo-emitir-contrato').classList.contains('d-none');
@@ -767,13 +1019,15 @@ function mostrarResumoEmissao() {
             ${linha('Competência', competencia ? `${competencia.slice(5, 7)}/${competencia.slice(0, 4)}` : '—')}
             ${linha('Valor do serviço', `<strong>${valor}</strong>`)}
             ${linha('ISS', issRetido ? `Retido pelo tomador${aliquota ? ` (alíquota ${escaparHtml(aliquota)}%)` : ' (alíquota da empresa)'}` : 'Não retido')}
+            ${linhasResumoRetencoes(linha)}
             ${linha('Local da prestação', escaparHtml(textoMunicipioSelecionado('emitir-localPrestacao', 'Município da empresa')))}
             ${nfseSubstituicaoAtual ? linha('Substitui', escaparHtml(`DPS nº ${nfseSubstituicaoAtual.numeroDps} — ${textoSelecionado('emitir-motivoSubstituicao')}`)) : ''}
         </dl>
         <div class="mt-2">
             <div class="form-label mb-1">Descrição que vai na nota</div>
-            <div class="descricao-nota">${escaparHtml(document.getElementById('emitir-descricaoServico').value)}</div>
-        </div>`;
+            <div class="descricao-nota">${escaparHtml(document.getElementById('emitir-descricaoServico').value)}${simulacaoRetencoes?.fraseDispensa ? `\n${escaparHtml(simulacaoRetencoes.fraseDispensa)}` : ''}</div>
+        </div>
+        ${alertasResumoRetencoes()}`;
 
     etapaResumoEmissao = true;
     document.getElementById('emitir-campos').classList.add('d-none');
@@ -845,7 +1099,7 @@ async function emitirNfse(e) {
     ocultarErroFormulario('erro-emitir-nfse');
 
     if (!etapaResumoEmissao) {
-        mostrarResumoEmissao();
+        await mostrarResumoEmissao();
         return;
     }
 
@@ -875,7 +1129,12 @@ async function emitirNfse(e) {
             ? parseFloat(document.getElementById('emitir-aliquotaIss').value)
             : null,
         // Sempre explícito: "" = município da empresa (mesmo com contrato que tenha outro padrão).
-        codigoMunicipioPrestacao: $('#emitir-localPrestacao').val() || ''
+        codigoMunicipioPrestacao: $('#emitir-localPrestacao').val() || '',
+        // C6: sempre explícito — o que está na tela é o que vale para esta nota.
+        descontoIncondicionado: numeroDoCampo('emitir-descontoIncondicionado'),
+        descontoCondicionado: numeroDoCampo('emitir-descontoCondicionado'),
+        retencoesFederais: retencoesDaTela(),
+        reterAbaixoDoMinimo: document.getElementById('emitir-reterAbaixoMinimo').checked
     };
 
     // C7: substituição vai pela rota própria, com o motivo oficial.
@@ -1732,6 +1991,7 @@ function htmlDetalheNfse(nfse, snapshot) {
                     ? linha('Composição', nfse.composicao.map(i => `${escaparHtml(i.descricao)}: ${Number(i.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`).join('<br>'))
                     : ''}
                 ${linha('ISS', iss)}
+                ${linhasDetalheRetencoes(nfse.descontosRetencoes, linha, moeda)}
                 ${linha('Local da prestação', nfse.codigoMunicipioPrestacao
                     ? `<span data-municipio-codigo="${escaparHtml(nfse.codigoMunicipioPrestacao)}">${escaparHtml(nfse.codigoMunicipioPrestacao)}</span>`
                     : 'Município da empresa')}
@@ -1878,6 +2138,11 @@ async function abrirModalSubstituicaoNfse(id) {
         document.getElementById('emitir-dataCompetencia').value = nfse.dataCompetencia;
         definirIssRetido(nfse.issRetido === true);
         if (nfse.issRetido && nfse.aliquotaIss != null) document.getElementById('emitir-aliquotaIss').value = nfse.aliquotaIss;
+        // C6: descontos e retenções da original (percentual = valor retido / base).
+        definirDescontosNaTela(nfse.descontosRetencoes);
+        definirRetencoesNaTela(percentuaisDaNota(nfse));
+        if (temDescontoOuRetencao(nfse.descontosRetencoes)) abrirBlocoRetencoes(true);
+        await atualizarRetencoesEmissao();
         await definirMunicipioNoSelect('emitir-localPrestacao', nfse.codigoMunicipioPrestacao);
 
         // CampoTravadoSubstituicao: 1 Cliente, 2 Competência, 3 Valor, 4 Serviço, 5 Local.

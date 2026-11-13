@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Exceptions;
+using NfseSaaS.Application.Fiscal.Retencoes;
 using NfseSaaS.Application.UseCases.Clientes;
 using NfseSaaS.Domain.Entities;
 using NfseSaaS.Infrastructure.Persistence;
@@ -78,6 +79,11 @@ public sealed class CadastrarClienteUseCase : ICadastrarClienteUseCase
             EmailsCopia = EmailsCopiaCliente.Juntar(request.EmailsCopia),
             CopiaOculta = request.CopiaOculta
         };
+        if (request.RetencoesFederais is { } retencoes)
+        {
+            RegrasRetencoesFederais.ValidarPercentuais(retencoes);
+            RetencoesCliente.Aplicar(cliente, retencoes);
+        }
 
         _db.Clientes.Add(cliente);
 

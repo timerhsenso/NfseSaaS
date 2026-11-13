@@ -51,10 +51,6 @@ public sealed class CadastrarEmpresaRequestValidator : AbstractValidator<Cadastr
             .NotEmpty()
             .Must(v => CodigosFiscaisEmpresa.CstsPisCofins.Contains(v))
             .WithMessage("CstPisCofins deve ser um CST de saída válido: 00 a 09, 49 ou 99.");
-        RuleFor(x => x.TpRetPisCofins)
-            .NotEmpty()
-            .Must(v => CodigosFiscaisEmpresa.RetencoesPisCofins.Contains(v))
-            .WithMessage("TpRetPisCofins deve ser de 0 a 9 (XSD da SEFIN).");
 
         // Mesma regra do DpsValidator (módulo Nacional): pTotTribSN é
         // exigido pela SEFIN tanto pra MEI ("2") quanto pra ME/EPP ("3"),

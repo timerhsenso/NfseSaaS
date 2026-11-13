@@ -221,6 +221,15 @@ public sealed class DpsBuilder : IDpsBuilder
         var vServPrest = AddNode(doc, valores, "vServPrest");
         Add(doc, vServPrest, "vServ", request.Valor.ToString("0.00", CultureInfo.InvariantCulture));
 
+        // C6: descontos entre vServPrest e trib (TCInfoValores). Cada valor
+        // só vai quando maior que zero; sem nenhum, o grupo não vai.
+        if (request.Descontos is { TemAlgum: true } descontos)
+        {
+            var vDesc = AddNode(doc, valores, "vDescCondIncond");
+            AddValorOpcional(doc, vDesc, "vDescIncond", descontos.Incondicionado);
+            AddValorOpcional(doc, vDesc, "vDescCond", descontos.Condicionado);
+        }
+
         var trib = AddNode(doc, valores, "trib");
         var tribMun = AddNode(doc, trib, "tribMun");
         Add(doc, tribMun, "tribISSQN", request.Tributacao.TribIssqn);
@@ -235,6 +244,14 @@ public sealed class DpsBuilder : IDpsBuilder
         var piscofins = AddNode(doc, tribFed, "piscofins");
         Add(doc, piscofins, "CST", request.Tributacao.CstPisCofins);
         Add(doc, piscofins, "tpRetPisCofins", request.Tributacao.TpRetPisCofins);
+
+        // C6: ordem do TCTribFederal: piscofins, vRetCP, vRetIRRF, vRetCSLL.
+        if (request.Tributacao.RetencoesFederais is { } retencoes)
+        {
+            AddValorOpcional(doc, tribFed, "vRetCP", retencoes.VRetCP);
+            AddValorOpcional(doc, tribFed, "vRetIRRF", retencoes.VRetIRRF);
+            AddValorOpcional(doc, tribFed, "vRetCSLL", retencoes.VRetCSLL);
+        }
 
         // <totTrib> é OBRIGATÓRIO no XSD (TCInfoTributacao), com um choice
         // de exatamente 1 filho: vTotTrib | pTotTrib | indTotTrib | pTotTribSN.
@@ -298,6 +315,13 @@ public sealed class DpsBuilder : IDpsBuilder
     {
         if (!string.IsNullOrWhiteSpace(valor))
             Add(doc, parent, nome, valor);
+    }
+
+    /// <summary>Valor monetário (TSDec15V2, "0.00"); nulo ou zero = o elemento não vai.</summary>
+    private static void AddValorOpcional(XmlDocument doc, XmlElement parent, string nome, decimal? valor)
+    {
+        if (valor is > 0)
+            Add(doc, parent, nome, valor.Value.ToString("0.00", CultureInfo.InvariantCulture));
     }
 
     private static XmlElement AddNode(XmlDocument doc, XmlElement parent, string nome)

@@ -39,8 +39,9 @@ public sealed class ListarEmpresasUseCase : IListarEmpresasUseCase
                 e.Id, e.Cnpj, e.RazaoSocial, e.NomeFantasia, e.InscricaoMunicipal, e.CodigoMunicipio,
                 e.Telefone, e.Email, e.Cep, e.Logradouro, e.Numero, e.Complemento, e.Bairro, e.Uf,
                 e.OpSimpNac, e.RegApTribSN, e.RegEspTrib, e.TribIssqn, e.AliquotaIss,
-                e.CstPisCofins, e.TpRetPisCofins, e.PercentualTotalTributosSimplesNacional,
-                e.DiasAlertaReajusteContratoPadrao, e.Ativo, e.TipoAmbiente, e.CreatedAt, e.UpdatedAt, e.AplicarReajusteAutomatico, e.ModeloEmailNotaId))
+                e.CstPisCofins, e.PercentualTotalTributosSimplesNacional,
+                e.DiasAlertaReajusteContratoPadrao, e.Ativo, e.TipoAmbiente, e.CreatedAt, e.UpdatedAt, e.AplicarReajusteAutomatico, e.ModeloEmailNotaId,
+                e.AvisoDispensaRetencaoNaDescricao))
             .ToListAsync(cancellationToken);
 
         return new PagedResult<EmpresaResponse>

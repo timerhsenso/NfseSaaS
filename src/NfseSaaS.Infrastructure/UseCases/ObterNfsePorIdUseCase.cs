@@ -54,6 +54,8 @@ public sealed class ObterNfsePorIdUseCase : IObterNfsePorIdUseCase
             nfse.RejeicaoPermiteReenvio() && reenviadaComo is null,
             nfse.CodigoTributacaoNacional, nfse.CodigoNbs, nfse.TpRetIssqn, nfse.AliquotaIss, nfse.CodigoMunicipioPrestacao,
             nfse.SubstituiNfseId, substituiNumeroDps, substituidaPor, nfse.MotivoSubstituicao, nfse.DescricaoMotivoSubstituicao,
-            NfseSaaS.Infrastructure.Contratos.ComposicaoValoresNfse.Desserializar(nfse.ComposicaoValoresJson));
+            NfseSaaS.Infrastructure.Contratos.ComposicaoValoresNfse.Desserializar(nfse.ComposicaoValoresJson),
+            DescontosRetencoes: new DescontosRetencoesNfse(nfse.DescontoIncondicionado, nfse.DescontoCondicionado,
+                nfse.ValorRetidoIrrf, nfse.ValorRetidoPis, nfse.ValorRetidoCofins, nfse.ValorRetidoCsll, nfse.ValorRetidoInss));
     }
 }

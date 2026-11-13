@@ -76,8 +76,9 @@ public sealed class EmpresaConfiguration : IEntityTypeConfiguration<Empresa>
         builder.Property(e => e.CstPisCofins)
             .HasMaxLength(2);
 
-        builder.Property(e => e.TpRetPisCofins)
-            .HasMaxLength(1);
+        // C6: frase de dispensa de retenção na descrição (Simples). Existentes: desligada.
+        builder.Property(e => e.AvisoDispensaRetencaoNaDescricao)
+            .HasDefaultValue(false);
 
         builder.Property(e => e.PercentualTotalTributosSimplesNacional)
             .HasMaxLength(10);

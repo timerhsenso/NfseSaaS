@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Exceptions;
+using NfseSaaS.Application.Fiscal.Retencoes;
 using NfseSaaS.Application.UseCases.Clientes;
 using NfseSaaS.Domain.Entities;
 using NfseSaaS.Infrastructure.Persistence;
@@ -31,6 +32,9 @@ public sealed class AtualizarClienteUseCase : IAtualizarClienteUseCase
             && EnderecoCliente.Vazio(request.CodigoMunicipio, request.Cep, request.Logradouro, request.Numero, request.Bairro, request.Uf, request.Complemento))
             throw new RegraNegocioException(motivo);
 
+        if (request.RetencoesFederais is { } retencoesInformadas)
+            RegrasRetencoesFederais.ValidarPercentuais(retencoesInformadas);
+
         var uf = await ConferenciaMunicipio.UfConferidaAsync(_db, EnderecoCliente.Normalizar(request.CodigoMunicipio), request.Uf, cancellationToken);
 
         // C10: "Disponível para" (nulo = não mexe).
@@ -56,6 +60,8 @@ public sealed class AtualizarClienteUseCase : IAtualizarClienteUseCase
         cliente.EnviarNfsePorEmail = request.EnviarNfsePorEmail;
         cliente.EmailsCopia = EmailsCopiaCliente.Juntar(request.EmailsCopia);
         cliente.CopiaOculta = request.CopiaOculta;
+        if (request.RetencoesFederais is { } retencoes)
+            RetencoesCliente.Aplicar(cliente, retencoes);
 
         if (empresaAnterior != novaEmpresa)
             _auditLogWriter.Registrar("AlterarDisponibilidadeCliente", "Cliente", cliente.Id,

@@ -91,6 +91,15 @@ public sealed class NfseConfiguration : IEntityTypeConfiguration<Nfse>
         builder.Property(n => n.ValorLiquido)
             .HasColumnType("numeric(18,2)");
 
+        // C6: descontos e retenções federais (R$; nulo = não houve).
+        builder.Property(n => n.DescontoIncondicionado).HasColumnType("numeric(18,2)");
+        builder.Property(n => n.DescontoCondicionado).HasColumnType("numeric(18,2)");
+        builder.Property(n => n.ValorRetidoIrrf).HasColumnType("numeric(18,2)");
+        builder.Property(n => n.ValorRetidoPis).HasColumnType("numeric(18,2)");
+        builder.Property(n => n.ValorRetidoCofins).HasColumnType("numeric(18,2)");
+        builder.Property(n => n.ValorRetidoCsll).HasColumnType("numeric(18,2)");
+        builder.Property(n => n.ValorRetidoInss).HasColumnType("numeric(18,2)");
+
         builder.Property(n => n.SnapshotFiscalJson)
             .HasColumnType("jsonb");
 

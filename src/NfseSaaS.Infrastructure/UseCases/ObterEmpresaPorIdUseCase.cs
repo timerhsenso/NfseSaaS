@@ -25,8 +25,9 @@ public sealed class ObterEmpresaPorIdUseCase : IObterEmpresaPorIdUseCase
             empresa.Id, empresa.Cnpj, empresa.RazaoSocial, empresa.NomeFantasia, empresa.InscricaoMunicipal,
             empresa.CodigoMunicipio, empresa.Telefone, empresa.Email, empresa.Cep, empresa.Logradouro,
             empresa.Numero, empresa.Complemento, empresa.Bairro, empresa.Uf, empresa.OpSimpNac, empresa.RegApTribSN,
-            empresa.RegEspTrib, empresa.TribIssqn, empresa.AliquotaIss, empresa.CstPisCofins, empresa.TpRetPisCofins,
+            empresa.RegEspTrib, empresa.TribIssqn, empresa.AliquotaIss, empresa.CstPisCofins,
             empresa.PercentualTotalTributosSimplesNacional, empresa.DiasAlertaReajusteContratoPadrao,
-            empresa.Ativo, empresa.TipoAmbiente, empresa.CreatedAt, empresa.UpdatedAt, empresa.AplicarReajusteAutomatico, empresa.ModeloEmailNotaId);
+            empresa.Ativo, empresa.TipoAmbiente, empresa.CreatedAt, empresa.UpdatedAt, empresa.AplicarReajusteAutomatico, empresa.ModeloEmailNotaId,
+            empresa.AvisoDispensaRetencaoNaDescricao);
     }
 }

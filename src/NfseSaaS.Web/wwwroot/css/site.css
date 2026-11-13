@@ -2233,6 +2233,92 @@ html[data-theme="dark"] .resumo-alerta {
     color: var(--text);
 }
 
+/* C6: descontos e retenções no modal de emissão */
+.bloco-retencoes {
+    background: var(--surface-2);
+}
+
+.bloco-retencoes-cabecalho {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font-weight: 600;
+    text-align: left;
+}
+
+.bloco-retencoes-cabecalho:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
+    border-radius: var(--radius-field);
+}
+
+.grade-retencoes {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.item-retencao .input-group-text {
+    padding-left: 6px;
+    padding-right: 6px;
+}
+
+.item-retencao input[type=number] {
+    padding-left: 6px;
+    padding-right: 4px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.item-retencao input[type=number]::-webkit-inner-spin-button,
+.item-retencao input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.resumo-retencoes dt {
+    font-weight: 400;
+    color: var(--muted);
+}
+
+.resumo-retencoes dd {
+    margin-bottom: 2px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.resumo-retencoes .linha-liquido {
+    border-top: 1px solid var(--line);
+    padding-top: 4px;
+    margin-top: 2px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+@media (max-width: 575.98px) {
+    .grade-retencoes {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .resumo-retencoes dt {
+        flex: 0 0 60%;
+        max-width: 60%;
+    }
+
+    .resumo-retencoes dd {
+        flex: 0 0 40%;
+        max-width: 40%;
+    }
+}
+
 /* Rejeição da SEFIN explicada (detalhe da nota) */
 .rejeicao-explicada {
     margin-top: 8px;

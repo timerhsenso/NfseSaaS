@@ -250,17 +250,11 @@
                                 </select>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label class="form-label" for="tpRetPisCofins">Retenção PIS/COFINS</label>
-                                <select class="form-select" id="tpRetPisCofins" required>
-                                    <option value="0">0 - PIS/COFINS/CSLL Não Retidos</option>
-                                    <option value="3">3 - PIS/COFINS/CSLL Retidos</option>
-                                    <option value="4">4 - PIS/COFINS Retidos, CSLL Não Retido</option>
-                                    <option value="5">5 - PIS Retido, COFINS/CSLL Não Retido</option>
-                                    <option value="6">6 - COFINS Retido, PIS/CSLL Não Retido</option>
-                                    <option value="7">7 - PIS Não Retido, COFINS/CSLL Retidos</option>
-                                    <option value="8">8 - PIS/COFINS Não Retidos, CSLL Retido</option>
-                                    <option value="9">9 - COFINS Não Retido, PIS/CSLL Retidos</option>
-                                </select>
+                                <div class="form-check form-switch mt-md-4">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="avisoDispensaRetencaoNaDescricao" />
+                                    <label class="form-check-label" for="avisoDispensaRetencaoNaDescricao">Avisar na nota que o Simples é dispensado de retenção</label>
+                                </div>
+                                <div class="form-text">Acrescenta no fim da descrição das notas sem retenção federal: "Empresa optante pelo Simples Nacional: dispensada a retenção de IRRF e de PIS/COFINS/CSLL". Evita que o cliente retenha por engano. O tipo de retenção de PIS/COFINS/CSLL agora é calculado em cada nota.</div>
                             </div>
                         </div>
                         </div>

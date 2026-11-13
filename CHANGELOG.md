@@ -5,6 +5,47 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (C6 — descontos e retenções federais)
+- **Emitir nota › "Descontos e retenções"** (fechado por padrão; abre sozinho
+  quando o cliente tem retenção): desconto **incondicionado** (reduz o valor e
+  a base) e **condicionado** (informativo, não reduz a base); retenções de
+  **IRRF, PIS, COFINS, CSLL e INSS**, cada uma com o percentual (padrões 1,5 /
+  0,65 / 3 / 1 / 11). O **valor líquido** aparece na hora, com a conta linha a
+  linha (cálculo no servidor, `POST /api/nfse/retencoes/simular`).
+- **Cliente › Fiscal › Retenções federais que este cliente faz**: quem retém é
+  o tomador. A Nota Mensal e a automação aplicam sozinhas, **sem o que o regime
+  da empresa dispensa** (Simples: só INSS; MEI: nada).
+- **Avisos por regime** (não bloqueiam): no Simples, marcar IRRF ou
+  PIS/COFINS/CSLL avisa da dispensa (IN RFB 765/2007 e IN SRF 459/2004); INSS
+  lembra "só Anexo IV com cessão de mão de obra"; MEI não mostra retenções. Os
+  avisos aparecem de novo no resumo antes de emitir: o usuário decide.
+- **Dispensa de R$ 10**: IRRF até R$ 10, PIS+COFINS+CSLL até R$ 10 e INSS
+  abaixo de R$ 10 saem zerados, com aviso; "Reter mesmo até R$ 10" para o
+  tomador que soma as notas do mês.
+- **Empresa › Regime tributário › "Avisar na nota que o Simples é dispensado de
+  retenção"**: acrescenta a frase da dispensa no fim da descrição das notas sem
+  retenção federal (não repete, não passa de 2.000 caracteres).
+- Líquido zero ou negativo é barrado antes de gastar o número da DPS.
+- Detalhe da nota mostra descontos e retenções; resumo da emissão mostra
+  descontos, retenções e líquido.
+- Modelos de e-mail: novo campo **[Valor líquido]**; o quadro fixo do e-mail
+  mostra o líquido quando é diferente do valor do serviço.
+
+### Alterado (C6)
+- **tpRetPisCofins passa a ser calculado em cada nota** pelo que foi retido
+  (tabela oficial 0, 3 a 9 — NT 007) e sai do cadastro da Empresa (o campo
+  "Retenção PIS/COFINS" foi removido; escolher "retido" ali sem valor gerava
+  rejeição E0724).
+- DPS: `vDescCondIncond` (vDescIncond, vDescCond) e, em `tribFed`, `vRetCP`
+  (INSS), `vRetIRRF` e `vRetCSLL` com **PIS + COFINS + CSLL somados**, como
+  manda a NT 007 (vPis/vCofins continuam sem uso: são débito próprio). Validação
+  local de E0720/E0724 antes de enviar.
+- Banco: `notas_fiscais` ganha DescontoIncondicionado, DescontoCondicionado,
+  ValorRetidoIrrf, ValorRetidoPis, ValorRetidoCofins, ValorRetidoCsll,
+  ValorRetidoInss; `clientes` ganha os 5 percentuais de retenção; `empresas`
+  ganha AvisoDispensaRetencaoNaDescricao e perde TpRetPisCofins (migration
+  `RetencoesFederais`). Exportação de dados acompanha.
+
 ### Alterado (modelos de e-mail reutilizáveis)
 - **Novo cadastro "Modelos de e-mail"** (menu Cadastros e referência): o texto
   do e-mail da nota deixa de ser uma configuração da conta e vira modelos com

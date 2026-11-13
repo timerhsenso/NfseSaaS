@@ -112,7 +112,9 @@ public sealed class ListarNfseUseCase : IListarNfseUseCase
                 _db.EmailLogs.Where(e => e.NfseId == n.Id && e.Tipo == TipoEmailCatalogo.NfseTomador)
                     .OrderByDescending(e => e.CreatedAt).Select(e => (DateTimeOffset?)(e.EnviadoEm ?? e.CreatedAt)).FirstOrDefault(),
                 _db.EmailLogs.Where(e => e.NfseId == n.Id && e.Tipo == TipoEmailCatalogo.NfseTomador)
-                    .OrderByDescending(e => e.CreatedAt).Select(e => (StatusEmailLog?)e.Status).FirstOrDefault()))
+                    .OrderByDescending(e => e.CreatedAt).Select(e => (StatusEmailLog?)e.Status).FirstOrDefault(),
+                new DescontosRetencoesNfse(n.DescontoIncondicionado, n.DescontoCondicionado,
+                    n.ValorRetidoIrrf, n.ValorRetidoPis, n.ValorRetidoCofins, n.ValorRetidoCsll, n.ValorRetidoInss)))
             .ToListAsync(cancellationToken);
 
         return new PagedResult<NfseResponse>

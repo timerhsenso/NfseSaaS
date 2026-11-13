@@ -67,7 +67,12 @@ public sealed class Empresa : BaseEntity, ITenantEntity
 
     public string CstPisCofins { get; set; } = string.Empty;
 
-    public string TpRetPisCofins { get; set; } = string.Empty;
+    /// <summary>
+    /// C6: no Simples, acrescenta à descrição da nota sem retenção federal a
+    /// frase de dispensa (IN RFB 765/2007 e IN SRF 459/2004). Muitos
+    /// tomadores pedem, para não reter por engano.
+    /// </summary>
+    public bool AvisoDispensaRetencaoNaDescricao { get; set; }
 
     /// <summary>Percentual total de tributos do Simples Nacional (campo pTotTribSN da DPS), ex.: "3.00".</summary>
     public string PercentualTotalTributosSimplesNacional { get; set; } = string.Empty;
@@ -130,7 +135,7 @@ public sealed class Empresa : BaseEntity, ITenantEntity
         if (string.IsNullOrWhiteSpace(Email))
             pendencias.Add("e-mail");
         if (string.IsNullOrWhiteSpace(OpSimpNac) || string.IsNullOrWhiteSpace(RegApTribSN) || string.IsNullOrWhiteSpace(RegEspTrib)
-            || string.IsNullOrWhiteSpace(TribIssqn) || string.IsNullOrWhiteSpace(CstPisCofins) || string.IsNullOrWhiteSpace(TpRetPisCofins)
+            || string.IsNullOrWhiteSpace(TribIssqn) || string.IsNullOrWhiteSpace(CstPisCofins)
             || (OpSimpNac is "2" or "3" && string.IsNullOrWhiteSpace(PercentualTotalTributosSimplesNacional)))
             pendencias.Add("dados fiscais (regime e tributação)");
         return pendencias;

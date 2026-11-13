@@ -41,6 +41,6 @@ internal static class CodigosFiscaisEmpresa
     /// </summary>
     public static readonly string[] CstsPisCofins = { "00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "49", "99" };
 
-    /// <summary>TSTipoRetPISCofins: 0–9.</summary>
-    public static readonly string[] RetencoesPisCofins = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
+    // tpRetPisCofins não é mais da Empresa: é calculado em cada nota pelo
+    // que o tomador retém (C6, RegrasRetencoesFederais.TpRetPisCofins).
 }

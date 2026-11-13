@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NfseSaaS.Application.Fiscal.IbsCbs;
+using NfseSaaS.Application.Fiscal.Retencoes;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.Clientes;
@@ -263,6 +264,24 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
         if (aliquotaIss is { } aliquotaInformada && (aliquotaInformada <= 0 || aliquotaInformada > 5.00m))
             throw new RegraNegocioException("Alíquota de ISS deve estar entre 0,01% e 5,00%.");
 
+        // C6: descontos e retenções federais. Sem escolha na nota (Nota
+        // Mensal, automação), vale o padrão do Cliente sem o que o regime da
+        // empresa dispensa. Calculado e validado antes de gastar o número da
+        // DPS (líquido zero ou negativo para aqui).
+        var percentuaisRetencao = request.RetencoesFederais
+            ?? RegrasRetencoesFederais.PadraoParaRegime(RetencoesCliente.De(cliente), empresa.OpSimpNac);
+        var retencoes = RegrasRetencoesFederais.CalcularValidado(new EntradaRetencoes(
+            request.ValorServico,
+            request.DescontoIncondicionado ?? 0m,
+            request.DescontoCondicionado ?? 0m,
+            percentuaisRetencao,
+            empresa.OpSimpNac,
+            issRetido,
+            aliquotaIss,
+            request.ReterAbaixoDoMinimo));
+        var descricaoServico = RegrasRetencoesFederais.DescricaoComFraseDispensa(
+            request.DescricaoServico, empresa.AvisoDispensaRetencaoNaDescricao, empresa.OpSimpNac, retencoes.TemRetencaoFederal);
+
         // IBS/CBS (F1): o grupo só existe no leiaute NT 009 e vai conforme o
         // regime e a competência (RegrasIbsCbs.DeveInformar). Sem
         // classificação possível para o serviço, para aqui, antes de gastar
@@ -345,7 +364,7 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
             SerieDps = SerieDps,
             DataCompetencia = request.DataCompetencia,
             ValorServico = request.ValorServico,
-            DescricaoServico = request.DescricaoServico,
+            DescricaoServico = descricaoServico,
             CodigoTributacaoNacional = servico.CodigoTributacaoNacional,
             CodigoNbs = servico.CodigoNbs,
             CIndOp = ibsCbs?.CIndOp,
@@ -366,7 +385,15 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
             MotivoSubstituicao = substituida is null ? null : motivoSubstituicao,
             DescricaoMotivoSubstituicao = substituida is null || string.IsNullOrWhiteSpace(descricaoMotivoSubstituicao) ? null : descricaoMotivoSubstituicao.Trim(),
             CstPisCofins = empresa.CstPisCofins,
-            TpRetPisCofins = empresa.TpRetPisCofins,
+            // C6: pelo que foi retido nesta nota (NT 007), não mais da Empresa.
+            TpRetPisCofins = retencoes.TpRetPisCofins,
+            DescontoIncondicionado = SeMaiorQueZero(request.DescontoIncondicionado),
+            DescontoCondicionado = SeMaiorQueZero(request.DescontoCondicionado),
+            ValorRetidoIrrf = SeMaiorQueZero(retencoes.Irrf),
+            ValorRetidoPis = SeMaiorQueZero(retencoes.Pis),
+            ValorRetidoCofins = SeMaiorQueZero(retencoes.Cofins),
+            ValorRetidoCsll = SeMaiorQueZero(retencoes.Csll),
+            ValorRetidoInss = SeMaiorQueZero(retencoes.Inss),
             PercentualTotalTributosSimplesNacional = empresa.PercentualTotalTributosSimplesNacional,
             IdempotencyKey = idempotencyKey,
             SnapshotFiscalJson = JsonSerializer.Serialize(snapshotFiscal),
@@ -413,14 +440,18 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
                 CstPisCofins: nfse.CstPisCofins,
                 TpRetPisCofins: nfse.TpRetPisCofins,
                 PercentualTotalTributosSimplesNacional: nfse.PercentualTotalTributosSimplesNacional,
-                AliquotaIss: nfse.AliquotaIss?.ToString("0.00", CultureInfo.InvariantCulture) ?? string.Empty),
+                AliquotaIss: nfse.AliquotaIss?.ToString("0.00", CultureInfo.InvariantCulture) ?? string.Empty,
+                RetencoesFederais: new RetencoesFederaisDps(
+                    VRetCP: nfse.ValorRetidoInss,
+                    VRetIRRF: nfse.ValorRetidoIrrf,
+                    VRetCSLL: SeMaiorQueZero((nfse.ValorRetidoPis ?? 0) + (nfse.ValorRetidoCofins ?? 0) + (nfse.ValorRetidoCsll ?? 0)))),
             NumeroDps: numeroDps,
             SerieDps: SerieDps,
             DataCompetencia: request.DataCompetencia,
             Valor: request.ValorServico,
             CodigoTributacaoNacional: nfse.CodigoTributacaoNacional,
             CodigoNbs: nfse.CodigoNbs,
-            DescricaoServico: request.DescricaoServico,
+            DescricaoServico: nfse.DescricaoServico,
             // Tradução Domain → Nacional acontece só aqui, no único lugar
             // que conhece os dois lados (ver comentário em DpsRequest.TpAmb
             // sobre por que o módulo Nacional não pode fazer essa tradução
@@ -432,7 +463,8 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
             CodigoMunicipioPrestacao: nfse.CodigoMunicipioPrestacao,
             Substituicao: substituida is null
                 ? null
-                : new SubstituicaoDps(substituida.ChaveAcesso!, nfse.MotivoSubstituicao!, nfse.DescricaoMotivoSubstituicao));
+                : new SubstituicaoDps(substituida.ChaveAcesso!, nfse.MotivoSubstituicao!, nfse.DescricaoMotivoSubstituicao),
+            Descontos: new DescontosDps(nfse.DescontoIncondicionado, nfse.DescontoCondicionado));
 
         try
         {
@@ -615,6 +647,8 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
             existente.CodigoErro,
             mensagem);
     }
+
+    private static decimal? SeMaiorQueZero(decimal? valor) => valor is > 0 ? valor : null;
 
     private static string Truncar(string texto) =>
         texto.Length <= TamanhoMaximoMensagem ? texto : texto[..TamanhoMaximoMensagem];

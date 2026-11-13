@@ -55,7 +55,7 @@ public class CadastroEmEtapasRegrasTests
     {
         Cnpj = CnpjValido, RazaoSocial = "X", InscricaoMunicipal = "123", CodigoMunicipio = "2927408", Uf = "BA",
         Cep = "40000000", Logradouro = "Rua", Numero = "1", Bairro = "Centro", Telefone = "7133445566", Email = "a@b.com",
-        OpSimpNac = "3", RegApTribSN = "1", RegEspTrib = "0", TribIssqn = "1", CstPisCofins = "08", TpRetPisCofins = "0",
+        OpSimpNac = "3", RegApTribSN = "1", RegEspTrib = "0", TribIssqn = "1", CstPisCofins = "08",
         PercentualTotalTributosSimplesNacional = "6.00"
     };
 

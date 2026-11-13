@@ -24,7 +24,9 @@ public sealed record DadosEmailNota(
     string Servico,
     string? NumeroContrato,
     string? ChaveAcesso,
-    bool Homologacao);
+    bool Homologacao,
+    // C6: líquido da NFS-e (depois de descontos e retenções). Nulo = o valor do serviço.
+    decimal? ValorLiquido = null);
 
 /// <summary>
 /// Modelo em vigor para uma nota (o do cliente, o da empresa, o padrão da
@@ -61,6 +63,7 @@ public static partial class RegrasModeloEmailNota
     public const string CampoEmissao = "[Data de emissão]";
     public const string CampoServico = "[Serviço]";
     public const string CampoContrato = "[Nº do contrato]";
+    public const string CampoValorLiquido = "[Valor líquido]";
 
     public static readonly IReadOnlyList<CampoModeloEmailNota> Campos = new[]
     {
@@ -69,6 +72,7 @@ public static partial class RegrasModeloEmailNota
         new CampoModeloEmailNota(CampoMesExtenso, "Mês da competência por extenso", "novembro de 2026"),
         new CampoModeloEmailNota(CampoCompetencia, "Competência em números", "11/2026"),
         new CampoModeloEmailNota(CampoValor, "Valor do serviço", "R$ 344,21"),
+        new CampoModeloEmailNota(CampoValorLiquido, "Valor líquido (depois de descontos e retenções)", "R$ 344,21"),
         new CampoModeloEmailNota(CampoEmissao, "Data de emissão", "12/11/2026"),
         new CampoModeloEmailNota(CampoServico, "Descrição do serviço (resumida)", "Manutenção do sistema"),
         new CampoModeloEmailNota(CampoContrato, "Número do contrato (vazio na nota avulsa)", "2026/0001"),
@@ -120,6 +124,7 @@ public static partial class RegrasModeloEmailNota
         [CampoMesExtenso] = MesPorExtenso(d.Competencia),
         [CampoCompetencia] = d.Competencia.ToString("MM/yyyy", PtBr),
         [CampoValor] = d.Valor.ToString("C", PtBr),
+        [CampoValorLiquido] = (d.ValorLiquido ?? d.Valor).ToString("C", PtBr),
         [CampoEmissao] = d.Emissao?.ToOffset(OffsetBrasilia).ToString("dd/MM/yyyy", PtBr) ?? "-",
         [CampoServico] = Resumir(d.Servico, 120),
         [CampoContrato] = d.NumeroContrato ?? string.Empty
@@ -168,6 +173,8 @@ public static partial class RegrasModeloEmailNota
         Linha(html, "Emissão", valores[CampoEmissao]);
         Linha(html, "Competência", valores[CampoCompetencia]);
         Linha(html, "Valor do serviço", valores[CampoValor]);
+        if (d.ValorLiquido is { } liquido && liquido != d.Valor)
+            Linha(html, "Valor líquido", valores[CampoValorLiquido]);
         Linha(html, "Emitente", WebUtility.HtmlEncode(d.EmpresaRazaoSocial));
         if (!string.IsNullOrWhiteSpace(d.ChaveAcesso))
             Linha(html, "Chave de acesso", WebUtility.HtmlEncode(d.ChaveAcesso));

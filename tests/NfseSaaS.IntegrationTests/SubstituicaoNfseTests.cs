@@ -86,7 +86,7 @@ public class SubstituicaoNfseTests
                 Cnpj = "04747304000178", RazaoSocial = "Empresa " + s, InscricaoMunicipal = "12345",
                 CodigoMunicipio = "2919207", Uf = "BA", Cep = "42700000", Logradouro = "Rua A", Numero = "1", Bairro = "Centro",
                 Telefone = "71999999999", Email = "empresa@teste.com",
-                OpSimpNac = "3", RegApTribSN = "1", RegEspTrib = "0", TribIssqn = "1", CstPisCofins = "08", TpRetPisCofins = "0",
+                OpSimpNac = "3", RegApTribSN = "1", RegEspTrib = "0", TribIssqn = "1", CstPisCofins = "08",
                 PercentualTotalTributosSimplesNacional = "6.00"
             };
             db.Empresas.Add(empresa);

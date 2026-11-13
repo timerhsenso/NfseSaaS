@@ -52,20 +52,12 @@ public class CadastrarEmpresaRequestValidatorCodigosTests
         Assert.Contains(resultado.Errors, e => e.PropertyName == nameof(CadastrarEmpresaRequest.RegEspTrib));
     }
 
-    [Theory]
-    [InlineData(nameof(CadastrarEmpresaRequest.TribIssqn), "5")]
-    [InlineData(nameof(CadastrarEmpresaRequest.TpRetPisCofins), "10")]
-    public void Deve_reprovar_codigos_de_tributacao_fora_do_XSD(string campo, string valor)
+    [Fact]
+    public void Deve_reprovar_tributacao_do_issqn_fora_do_XSD()
     {
-        var request = campo switch
-        {
-            nameof(CadastrarEmpresaRequest.TribIssqn) => RequestValido() with { TribIssqn = valor },
-            _ => RequestValido() with { TpRetPisCofins = valor }
-        };
+        var resultado = Validator.Validate(RequestValido() with { TribIssqn = "5" });
 
-        var resultado = Validator.Validate(request);
-
-        Assert.Contains(resultado.Errors, e => e.PropertyName == campo);
+        Assert.Contains(resultado.Errors, e => e.PropertyName == nameof(CadastrarEmpresaRequest.TribIssqn));
     }
 
     [Theory]
@@ -124,6 +116,5 @@ public class CadastrarEmpresaRequestValidatorCodigosTests
         TribIssqn: "1",
         AliquotaIss: 2.00m,
         CstPisCofins: "00",
-        TpRetPisCofins: "0",
         PercentualTotalTributosSimplesNacional: "3.00");
 }

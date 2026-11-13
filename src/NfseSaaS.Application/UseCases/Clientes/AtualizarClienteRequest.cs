@@ -1,3 +1,5 @@
+using NfseSaaS.Application.Fiscal.Retencoes;
+
 namespace NfseSaaS.Application.UseCases.Clientes;
 
 /// <summary>CpfCnpj não é editável — mesmo raciocínio do Cnpj da Empresa.</summary>
@@ -20,4 +22,6 @@ public sealed record AtualizarClienteRequest(
     // C10: nulo = não muda "Disponível para". false num compartilhado =
     // passa a ser só da EmpresaId (a empresa atual da tela).
     bool? Compartilhado = null,
-    Guid? EmpresaId = null) : IDadosEnvioEmailCliente;
+    Guid? EmpresaId = null,
+    // C6: retenções federais que este tomador faz. Nulo = não muda.
+    PercentuaisRetencao? RetencoesFederais = null) : IDadosEnvioEmailCliente;

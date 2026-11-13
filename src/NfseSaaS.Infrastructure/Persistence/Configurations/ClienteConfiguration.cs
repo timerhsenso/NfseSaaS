@@ -26,6 +26,13 @@ public sealed class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
         builder.Property(c => c.RetemIss)
             .HasDefaultValue(false);
 
+        // C6: percentuais de retenção federal (nulo = não retém).
+        builder.Property(c => c.RetencaoIrrfPercentual).HasPrecision(5, 2);
+        builder.Property(c => c.RetencaoPisPercentual).HasPrecision(5, 2);
+        builder.Property(c => c.RetencaoCofinsPercentual).HasPrecision(5, 2);
+        builder.Property(c => c.RetencaoCsllPercentual).HasPrecision(5, 2);
+        builder.Property(c => c.RetencaoInssPercentual).HasPrecision(5, 2);
+
         builder.Property(c => c.Apelido)
             .HasMaxLength(Cliente.TamanhoMaximoApelido)
             .IsRequired();

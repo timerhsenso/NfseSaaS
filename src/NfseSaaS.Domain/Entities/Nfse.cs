@@ -119,7 +119,29 @@ public sealed class Nfse : BaseEntity, ITenantEntity
 
     public string CstPisCofins { get; set; } = string.Empty;
 
+    /// <summary>tpRetPisCofins desta DPS: calculado na emissão pelo que foi retido (C6, NT 007).</summary>
     public string TpRetPisCofins { get; set; } = string.Empty;
+
+    /// <summary>C6: vDescIncond (R$) — reduz o valor e a base de cálculo. Nulo = sem desconto.</summary>
+    public decimal? DescontoIncondicionado { get; set; }
+
+    /// <summary>C6: vDescCond (R$) — informativo (ex.: pontualidade), não reduz a base. Nulo = sem desconto.</summary>
+    public decimal? DescontoCondicionado { get; set; }
+
+    /// <summary>C6: IRRF retido pelo tomador (vRetIRRF). Nulo = não retido.</summary>
+    public decimal? ValorRetidoIrrf { get; set; }
+
+    /// <summary>C6: PIS retido. Na DPS vai somado com COFINS e CSLL em vRetCSLL (NT 007).</summary>
+    public decimal? ValorRetidoPis { get; set; }
+
+    /// <summary>C6: COFINS retida (somada em vRetCSLL).</summary>
+    public decimal? ValorRetidoCofins { get; set; }
+
+    /// <summary>C6: CSLL retida (somada em vRetCSLL).</summary>
+    public decimal? ValorRetidoCsll { get; set; }
+
+    /// <summary>C6: contribuição previdenciária (INSS) retida (vRetCP).</summary>
+    public decimal? ValorRetidoInss { get; set; }
 
     public string PercentualTotalTributosSimplesNacional { get; set; } = string.Empty;
 

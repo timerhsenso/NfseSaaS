@@ -64,6 +64,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         document.getElementById('enviarNfsePorEmail').addEventListener('change', atualizarEnvioEmailCliente);
         document.getElementById('retemIss').addEventListener('change', atualizarObrigatoriedadeEndereco);
+        document.querySelectorAll('.check-retencao-cliente').forEach(check => check.addEventListener('change', function () {
+            const percentual = document.getElementById(`ret-${this.dataset.tributo}-percentual`);
+            percentual.disabled = !this.checked;
+            if (this.checked && percentual.value === '') percentual.value = percentual.dataset.padrao;
+        }));
         ['cpfCnpj', ...CAMPOS_ENDERECO_CLIENTE, 'complemento'].forEach(id =>
             document.getElementById(id).addEventListener('input', atualizarObrigatoriedadeEndereco));
 
@@ -126,8 +131,31 @@ function limparFormularioCliente() {
     document.getElementById('subtitulo-modal-cliente').textContent = 'O tomador do serviço — como sai na nota.';
     document.getElementById('clienteId').value = '';
     document.getElementById('erro-cliente').classList.add('d-none');
+    definirRetencoesCliente(null);
     atualizarEnvioEmailCliente();
     atualizarObrigatoriedadeEndereco();
+}
+
+// C6: retenções federais que o cliente faz (percentual; nulo = não retém).
+const TRIBUTOS_RETENCAO_CLIENTE = ['irrf', 'pis', 'cofins', 'csll', 'inss'];
+
+function definirRetencoesCliente(percentuais) {
+    for (const tributo of TRIBUTOS_RETENCAO_CLIENTE) {
+        const valor = percentuais?.[tributo];
+        const campo = document.getElementById(`ret-${tributo}-percentual`);
+        document.getElementById(`ret-${tributo}`).checked = valor != null;
+        campo.value = valor != null ? Number(valor).toFixed(2) : campo.dataset.padrao;
+        campo.disabled = valor == null;
+    }
+}
+
+function lerRetencoesCliente() {
+    const retencoes = {};
+    for (const tributo of TRIBUTOS_RETENCAO_CLIENTE) {
+        const campo = document.getElementById(`ret-${tributo}-percentual`);
+        retencoes[tributo] = document.getElementById(`ret-${tributo}`).checked && campo.value !== '' ? parseFloat(campo.value) : null;
+    }
+    return retencoes;
 }
 
 /**
@@ -198,6 +226,7 @@ async function abrirModalEditarCliente(id) {
         document.getElementById('bairro').value = cliente.bairro;
         document.getElementById('uf').value = cliente.uf;
         document.getElementById('retemIss').checked = cliente.retemIss === true;
+        definirRetencoesCliente(cliente.retencoesFederais);
         document.getElementById('enviarNfsePorEmail').checked = cliente.enviarNfsePorEmail === true;
         document.getElementById('emailsCopia').value = (cliente.emailsCopia || []).join(', ');
         document.getElementById(cliente.copiaOculta ? 'copiaCco' : 'copiaCc').checked = true;
@@ -242,7 +271,8 @@ function montarPayloadCliente() {
         enviarNfsePorEmail: document.getElementById('enviarNfsePorEmail').checked,
         emailsCopia: lerEmailsCopiaCliente(),
         copiaOculta: document.getElementById('copiaCco').checked,
-        compartilhado: lerDisponibilidadeCliente()
+        compartilhado: lerDisponibilidadeCliente(),
+        retencoesFederais: lerRetencoesCliente()
     };
 }
 

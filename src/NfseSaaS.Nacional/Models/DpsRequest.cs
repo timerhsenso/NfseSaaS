@@ -54,7 +54,23 @@ public sealed record TributacaoDps(
     string PercentualTotalTributosSimplesNacional,
     // pAliq (%) no formato "0.00" — obrigatório quando TpRetIssqn = "2"
     // (ISS retido pelo tomador). Vazio = elemento não enviado.
-    string AliquotaIss = "");
+    string AliquotaIss = "",
+    // C6: retenções federais (tribFed). Nulo = nenhuma.
+    RetencoesFederaisDps? RetencoesFederais = null);
+
+/// <summary>
+/// Retenções federais da DPS (TCTribFederal), em R$. Nulo ou zero = o
+/// elemento não vai. Desde a NT 007, PIS + COFINS + CSLL retidos vão
+/// SOMADOS em vRetCSLL e o tipo em tpRetPisCofins (vPis/vCofins são débito
+/// próprio, que este sistema não informa).
+/// </summary>
+public sealed record RetencoesFederaisDps(decimal? VRetCP, decimal? VRetIRRF, decimal? VRetCSLL);
+
+/// <summary>Descontos da DPS (TCVDescCondIncond), em R$. Nulo ou zero = o elemento não vai.</summary>
+public sealed record DescontosDps(decimal? Incondicionado, decimal? Condicionado)
+{
+    public bool TemAlgum => Incondicionado is > 0 || Condicionado is > 0;
+}
 
 /// <summary>
 /// Dados necessários para gerar uma DPS. Modelo próprio do módulo
@@ -93,7 +109,9 @@ public sealed record DpsRequest(
     // cLocPrestacao (IBGE). Nulo = município do prestador (comportamento de sempre).
     string? CodigoMunicipioPrestacao = null,
     // Grupo subst (substituição de NFS-e). Nulo = nota comum.
-    SubstituicaoDps? Substituicao = null);
+    SubstituicaoDps? Substituicao = null,
+    // C6: vDescCondIncond. Nulo = sem desconto.
+    DescontosDps? Descontos = null);
 
 /// <summary>Grupo subst da DPS: chave da NFS-e substituída, cMotivo e xMotivo opcional.</summary>
 public sealed record SubstituicaoDps(string ChaveSubstituida, string CodigoMotivo, string? DescricaoMotivo);

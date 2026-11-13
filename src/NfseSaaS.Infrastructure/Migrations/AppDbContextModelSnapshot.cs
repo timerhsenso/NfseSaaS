@@ -436,6 +436,26 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
+                    b.Property<decimal?>("RetencaoCofinsPercentual")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal?>("RetencaoCsllPercentual")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal?>("RetencaoInssPercentual")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal?>("RetencaoIrrfPercentual")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal?>("RetencaoPisPercentual")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
                     b.Property<string>("Telefone")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
@@ -918,6 +938,11 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<bool>("Ativo")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("AvisoDispensaRetencaoNaDescricao")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Bairro")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -1016,11 +1041,6 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(2);
-
-                    b.Property<string>("TpRetPisCofins")
-                        .IsRequired()
-                        .HasMaxLength(1)
-                        .HasColumnType("character varying(1)");
 
                     b.Property<string>("TribIssqn")
                         .IsRequired()
@@ -1551,6 +1571,12 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<DateTimeOffset?>("DataEmissao")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<decimal?>("DescontoCondicionado")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("DescontoIncondicionado")
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<string>("DescricaoMotivoSubstituicao")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
@@ -1636,6 +1662,21 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<decimal?>("ValorLiquido")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("ValorRetidoCofins")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("ValorRetidoCsll")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("ValorRetidoInss")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("ValorRetidoIrrf")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal?>("ValorRetidoPis")
                         .HasColumnType("numeric(18,2)");
 
                     b.Property<decimal>("ValorServico")

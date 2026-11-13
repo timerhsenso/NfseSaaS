@@ -253,6 +253,7 @@ public static class DependencyInjection
         services.AddScoped<IObterHistoricoContratoUseCase, ObterHistoricoContratoUseCase>();
 
         services.AddScoped<IEmitirNfseUseCase, EmitirNfseUseCase>();
+        services.AddScoped<ISimularRetencoesUseCase, SimularRetencoesUseCase>();
         services.AddScoped<IListarNfseUseCase, ListarNfseUseCase>();
         services.AddScoped<IObterNfsePorIdUseCase, ObterNfsePorIdUseCase>();
 

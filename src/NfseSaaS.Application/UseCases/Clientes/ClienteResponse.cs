@@ -1,3 +1,5 @@
+using NfseSaaS.Application.Fiscal.Retencoes;
+
 namespace NfseSaaS.Application.UseCases.Clientes;
 
 public sealed record ClienteResponse(
@@ -23,7 +25,9 @@ public sealed record ClienteResponse(
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt,
     // Modelo do e-mail da nota só deste cliente; nulo = o da empresa.
-    Guid? ModeloEmailNotaId = null)
+    Guid? ModeloEmailNotaId = null,
+    // C6: retenções federais que este tomador faz (nulo no item = não retém).
+    PercentuaisRetencao? RetencoesFederais = null)
 {
     /// <summary>C10: true = disponível para todas as empresas da conta (EmpresaId nulo).</summary>
     public bool Compartilhado => EmpresaId is null;

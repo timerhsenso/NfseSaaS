@@ -23,7 +23,6 @@ public sealed record EmpresaResponse(
     string TribIssqn,
     decimal? AliquotaIss,
     string CstPisCofins,
-    string TpRetPisCofins,
     string PercentualTotalTributosSimplesNacional,
     int DiasAlertaReajusteContratoPadrao,
     bool Ativo,
@@ -35,4 +34,6 @@ public sealed record EmpresaResponse(
     DateTimeOffset? UpdatedAt,
     bool AplicarReajusteAutomatico = false,
     // Modelo do e-mail da nota (cadastro Modelos de e-mail); nulo = o padrão da conta.
-    Guid? ModeloEmailNotaId = null);
+    Guid? ModeloEmailNotaId = null,
+    // C6: frase de dispensa de retenção na descrição da nota (Simples).
+    bool AvisoDispensaRetencaoNaDescricao = false);

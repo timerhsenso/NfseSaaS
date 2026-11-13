@@ -70,6 +70,21 @@ public sealed class Cliente : BaseEntity, ITenantEntity
     public bool RetemIss { get; set; }
 
     /// <summary>
+    /// C6: retenções federais que este tomador faz (percentual; nulo = não
+    /// retém). Padrão da nota emitida para ele: a Nota Mensal e a automação
+    /// usam (sem o que o regime da empresa dispensa); na tela dá para mudar.
+    /// </summary>
+    public decimal? RetencaoIrrfPercentual { get; set; }
+
+    public decimal? RetencaoPisPercentual { get; set; }
+
+    public decimal? RetencaoCofinsPercentual { get; set; }
+
+    public decimal? RetencaoCsllPercentual { get; set; }
+
+    public decimal? RetencaoInssPercentual { get; set; }
+
+    /// <summary>
     /// true = mandar a nota autorizada (PDF e XML) por e-mail a este tomador
     /// logo depois da autorização. Padrão: NÃO manda — quem liga precisa
     /// informar o e-mail (o validator exige). Substituiu o antigo

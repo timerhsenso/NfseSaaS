@@ -195,6 +195,29 @@
                                            title="Órgão público ou empresa que a prefeitura obriga a reter. As notas para este cliente já saem com ISS retido (dá para mudar na hora de emitir)."></i>
                                     </div>
                                 </div>
+                                @* C6: retenções federais que este tomador faz (clientes.js). *@
+                                <div class="col-12 mb-2">
+                                    <div class="form-label mb-1">Retenções federais que este cliente faz</div>
+                                    <div class="form-text mt-0 mb-2">
+                                        Marque só o que o cliente desconta do pagamento. A Nota Mensal e a automação já aplicam;
+                                        se a sua empresa é do Simples, IRRF e PIS/COFINS/CSLL não são aplicados automaticamente (dispensa legal).
+                                    </div>
+                                    <div class="grade-retencoes">
+                                        @foreach (var (id, nome, padrao) in new[] { ("irrf", "IRRF", "1.50"), ("pis", "PIS", "0.65"), ("cofins", "COFINS", "3.00"), ("csll", "CSLL", "1.00"), ("inss", "INSS", "11.00") })
+                                        {
+                                            <div class="item-retencao">
+                                                <div class="form-check mb-1">
+                                                    <input class="form-check-input check-retencao-cliente" type="checkbox" id="ret-@id" data-tributo="@id" />
+                                                    <label class="form-check-label small" for="ret-@id">@nome</label>
+                                                </div>
+                                                <div class="input-group input-group-sm">
+                                                    <input type="number" step="0.01" min="0.01" max="100" class="form-control" id="ret-@(id)-percentual" data-padrao="@padrao" value="@padrao" disabled aria-label="Percentual de @nome" />
+                                                    <span class="input-group-text">%</span>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
                             </div>
                         </section>
                     </div>

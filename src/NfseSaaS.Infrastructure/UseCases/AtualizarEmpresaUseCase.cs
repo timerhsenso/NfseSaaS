@@ -44,7 +44,7 @@ public sealed class AtualizarEmpresaUseCase : IAtualizarEmpresaUseCase
         empresa.TribIssqn = request.TribIssqn;
         empresa.AliquotaIss = request.AliquotaIss;
         empresa.CstPisCofins = request.CstPisCofins;
-        empresa.TpRetPisCofins = request.TpRetPisCofins;
+        empresa.AvisoDispensaRetencaoNaDescricao = request.AvisoDispensaRetencaoNaDescricao;
         empresa.PercentualTotalTributosSimplesNacional = request.PercentualTotalTributosSimplesNacional;
         empresa.DiasAlertaReajusteContratoPadrao = request.DiasAlertaReajusteContratoPadrao;
         empresa.AplicarReajusteAutomatico = request.AplicarReajusteAutomatico;

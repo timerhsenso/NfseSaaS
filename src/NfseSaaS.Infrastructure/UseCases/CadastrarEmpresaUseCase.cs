@@ -47,7 +47,7 @@ public sealed class CadastrarEmpresaUseCase : ICadastrarEmpresaUseCase
             TribIssqn = request.TribIssqn,
             AliquotaIss = request.AliquotaIss,
             CstPisCofins = request.CstPisCofins,
-            TpRetPisCofins = request.TpRetPisCofins,
+            AvisoDispensaRetencaoNaDescricao = request.AvisoDispensaRetencaoNaDescricao,
             PercentualTotalTributosSimplesNacional = request.PercentualTotalTributosSimplesNacional
         };
 

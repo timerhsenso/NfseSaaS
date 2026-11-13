@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using NfseSaaS.Application.Common;
 using NfseSaaS.Application.Exceptions;
+using NfseSaaS.Application.Fiscal.Retencoes;
 using NfseSaaS.Application.UseCases.Clientes;
 using NfseSaaS.Infrastructure.Persistence;
 
@@ -48,7 +49,9 @@ public sealed class ListarClientesUseCase : IListarClientesUseCase
                 c.Id, c.EmpresaId, c.CpfCnpj, c.Nome, c.Apelido, c.Email, c.Telefone, c.CodigoMunicipio,
                 c.Cep, c.Logradouro, c.Numero, c.Complemento, c.Bairro, c.Uf, c.Ativo, c.RetemIss, c.EnviarNfsePorEmail,
                 // Projeção final: o EF lê a coluna e separa na memória.
-                EmailsCopiaCliente.Separar(c.EmailsCopia), c.CopiaOculta, c.CreatedAt, c.UpdatedAt, c.ModeloEmailNotaId))
+                EmailsCopiaCliente.Separar(c.EmailsCopia), c.CopiaOculta, c.CreatedAt, c.UpdatedAt, c.ModeloEmailNotaId,
+                new PercentuaisRetencao(c.RetencaoIrrfPercentual, c.RetencaoPisPercentual, c.RetencaoCofinsPercentual,
+                    c.RetencaoCsllPercentual, c.RetencaoInssPercentual)))
             .ToListAsync(cancellationToken);
 
         return new PagedResult<ClienteResponse>

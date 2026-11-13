@@ -32,6 +32,7 @@ public sealed class DpsValidator : IDpsValidator
         ValidarTomador(request.Tomador, erros);
         ValidarTributacao(request.Prestador, request.Tributacao, erros);
         ValidarDadosDaDps(request, erros);
+        ValidarDescontosERetencoes(request, erros);
 
         return erros;
     }
@@ -155,6 +156,32 @@ public sealed class DpsValidator : IDpsValidator
         {
             erros.Add("PercentualTotalTributosSimplesNacional é obrigatório para Empresa optante pelo Simples Nacional (OpSimpNac '2' ou '3').");
         }
+    }
+
+    /// <summary>
+    /// C6: descontos menores que o valor do serviço e coerência entre
+    /// tpRetPisCofins e vRetCSLL (NT 007): "0" proíbe vRetCSLL (E0720) e os
+    /// demais o exigem (E0724).
+    /// </summary>
+    private static void ValidarDescontosERetencoes(DpsRequest request, List<string> erros)
+    {
+        if (request.Descontos is { } descontos)
+        {
+            if (descontos.Incondicionado < 0 || descontos.Condicionado < 0)
+                erros.Add("Desconto não pode ser negativo.");
+            if ((descontos.Incondicionado ?? 0) + (descontos.Condicionado ?? 0) >= request.Valor && descontos.TemAlgum)
+                erros.Add("Os descontos precisam ser menores que o valor do serviço.");
+        }
+
+        var retencoes = request.Tributacao.RetencoesFederais;
+        if (retencoes is not null && (retencoes.VRetCP < 0 || retencoes.VRetIRRF < 0 || retencoes.VRetCSLL < 0))
+            erros.Add("Valor retido não pode ser negativo.");
+
+        var temCsll = retencoes?.VRetCSLL is > 0;
+        if (request.Tributacao.TpRetPisCofins == "0" && temCsll)
+            erros.Add("Com tpRetPisCofins 0 (nada retido) não pode haver vRetCSLL (E0720).");
+        if (request.Tributacao.TpRetPisCofins is "3" or "4" or "5" or "6" or "7" or "8" or "9" && !temCsll)
+            erros.Add($"Com tpRetPisCofins {request.Tributacao.TpRetPisCofins} o valor retido de PIS/COFINS/CSLL (vRetCSLL) é obrigatório (E0724).");
     }
 
     private static void ValidarDadosDaDps(DpsRequest request, List<string> erros)

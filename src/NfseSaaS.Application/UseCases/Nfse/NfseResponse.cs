@@ -8,6 +8,19 @@ namespace NfseSaaS.Application.UseCases.Nfse;
 /// Se algum dia for necessário expor o XML, criar endpoint dedicado
 /// (ex.: GET /api/nfse/{id}/xml) em vez de carregar em toda listagem.
 /// </summary>
+/// <summary>C6: descontos e retenções federais de uma nota (R$; nulo = não houve).</summary>
+public sealed record DescontosRetencoesNfse(
+    decimal? DescontoIncondicionado,
+    decimal? DescontoCondicionado,
+    decimal? Irrf,
+    decimal? Pis,
+    decimal? Cofins,
+    decimal? Csll,
+    decimal? Inss)
+{
+    public decimal TotalFederal => (Irrf ?? 0) + (Pis ?? 0) + (Cofins ?? 0) + (Csll ?? 0) + (Inss ?? 0);
+}
+
 public sealed record NfseResponse(
     Guid Id,
     Guid EmpresaId,
@@ -59,7 +72,9 @@ public sealed record NfseResponse(
     IReadOnlyList<ItemComposicaoNfse>? Composicao = null,
     // Último e-mail da nota ao cliente (envelope da lista): quando e como ficou. Nulo = nunca enviada.
     DateTimeOffset? EmailUltimoEnvioEm = null,
-    StatusEmailLog? EmailUltimoStatus = null)
+    StatusEmailLog? EmailUltimoStatus = null,
+    // C6: descontos e retenções federais gravados na emissão (nulo = nenhum).
+    DescontosRetencoesNfse? DescontosRetencoes = null)
 {
     /// <summary>tpRetISSQN "2" = ISS retido pelo tomador.</summary>
     public bool IssRetido => TpRetIssqn == "2";

@@ -24,7 +24,8 @@ public sealed record AtualizarEmpresaRequest(
     string TribIssqn,
     decimal? AliquotaIss,
     string CstPisCofins,
-    string TpRetPisCofins,
     string PercentualTotalTributosSimplesNacional,
     int DiasAlertaReajusteContratoPadrao,
-    bool AplicarReajusteAutomatico = false);
+    bool AplicarReajusteAutomatico = false,
+    // C6: frase de dispensa de retenção na descrição da nota (Simples).
+    bool AvisoDispensaRetencaoNaDescricao = false);

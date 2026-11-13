@@ -219,7 +219,7 @@ async function abrirModalEditarEmpresa(id) {
         document.getElementById('tribIssqn').value = empresa.tribIssqn;
         document.getElementById('aliquotaIss').value = empresa.aliquotaIss ?? '';
         document.getElementById('cstPisCofins').value = empresa.cstPisCofins;
-        document.getElementById('tpRetPisCofins').value = empresa.tpRetPisCofins;
+        document.getElementById('avisoDispensaRetencaoNaDescricao').checked = empresa.avisoDispensaRetencaoNaDescricao === true;
         document.getElementById('percentualTotalTributosSimplesNacional').value = empresa.percentualTotalTributosSimplesNacional ?? '';
         document.getElementById('diasAlertaReajusteContratoPadrao').value = empresa.diasAlertaReajusteContratoPadrao;
         document.getElementById('aplicarReajusteAutomatico').checked = !!empresa.aplicarReajusteAutomatico;
@@ -270,7 +270,7 @@ function montarPayloadEmpresa() {
         tribIssqn: document.getElementById('tribIssqn').value,
         aliquotaIss: document.getElementById('aliquotaIss').value === '' ? null : parseFloat(document.getElementById('aliquotaIss').value),
         cstPisCofins: document.getElementById('cstPisCofins').value,
-        tpRetPisCofins: document.getElementById('tpRetPisCofins').value,
+        avisoDispensaRetencaoNaDescricao: document.getElementById('avisoDispensaRetencaoNaDescricao').checked,
         percentualTotalTributosSimplesNacional: document.getElementById('percentualTotalTributosSimplesNacional').value || '',
         diasAlertaReajusteContratoPadrao: parseInt(document.getElementById('diasAlertaReajusteContratoPadrao').value, 10),
         aplicarReajusteAutomatico: document.getElementById('aplicarReajusteAutomatico').checked
