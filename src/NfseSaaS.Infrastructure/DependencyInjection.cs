@@ -267,6 +267,7 @@ public static class DependencyInjection
         services.AddScoped<IObterNfsePorIdUseCase, ObterNfsePorIdUseCase>();
 
         services.AddScoped<IListarCandidatosNotaMensalUseCase, ListarCandidatosNotaMensalUseCase>();
+        services.AddScoped<NfseSaaS.Application.UseCases.PainelFinanceiro.IObterPainelFinanceiroUseCase, ObterPainelFinanceiroUseCase>();
         services.AddScoped<IEmitirNotaMensalLoteUseCase, EmitirNotaMensalLoteUseCase>();
         services.AddScoped<ICancelarNfseUseCase, CancelarNfseUseCase>();
         services.AddScoped<IListarEventosDaNfseUseCase, ListarEventosDaNfseUseCase>();

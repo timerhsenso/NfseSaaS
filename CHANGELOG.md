@@ -5,6 +5,32 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (DB1 — painel financeiro)
+- **"Seu negócio" no início**: o dono abre o sistema e vê o negócio, não só as
+  notas. Conta só nota de **produção autorizada**, pela **competência**
+  (cancelada, substituída, rejeitada e homologação ficam de fora).
+- **Quatro indicadores**: faturado no mês (com o mês anterior), **receita
+  recorrente** dos contratos mensais vigentes, **a emitir no mês** (contratos
+  mensais sem nota autorizada, com as rejeitadas destacadas) e acumulado no ano.
+- **Faturamento dos últimos 12 meses** em colunas, separando contratos de notas
+  avulsas; dica com os valores ao passar o mouse, tocar ou navegar pelo teclado;
+  "Ver em tabela" com todos os números.
+- **Maiores clientes** (12 meses) com a fatia de cada um e aviso quando um só
+  cliente responde por metade do faturamento.
+- **Limite do regime** quando o painel mostra uma empresa: MEI pelo ano
+  (R$ 81 mil, com os avisos de desenquadramento até 20% e retroativo) e faixa
+  do Simples pelos 12 meses fechados (aviso acima de R$ 3,6 milhões).
+- **Contratos sem nota no mês** com atalho que abre a Nota Mensal já na empresa
+  e na competência certas.
+- **Reajustes até o fim do mês que vem**, com atrasados e os que aguardam
+  aprovação, valor novo **estimado pelo índice** do contrato (pelo último índice
+  publicado quando o do mês ainda não saiu) e o impacto na receita recorrente.
+- **Todas as empresas x esta empresa**: perfil Empresa soma todas; perfil
+  Contador olha a empresa do topo. A escolha fica lembrada no navegador.
+- Permissão: quem consulta Notas vê o faturamento; a parte de contratos exige
+  também consultar Contratos. Sem nota de produção e sem contrato, o bloco não aparece.
+- Sem mudança no banco. API: `GET /api/painel-financeiro`.
+
 ### Melhorado (UX2 — celular e tablet)
 - Revisão de todas as telas em 390px (celular) e 768px (tablet), com conferência
   automática de "nada passa da largura da tela".

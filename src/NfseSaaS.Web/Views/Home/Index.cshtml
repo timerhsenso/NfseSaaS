@@ -29,6 +29,124 @@
     </div>
 </div>
 
+@* DB1: painel financeiro (home.js › carregarPainelFinanceiro). Só com permissão
+   de consultar Notas; a parte de contratos só com a de Contratos. Some quando
+   a conta ainda não tem nota de produção nem contrato. *@
+<section class="painel-financeiro d-none" id="painel-financeiro" aria-labelledby="pf-titulo">
+    <div class="pf-cabecalho">
+        <div>
+            <h2 id="pf-titulo">Seu negócio</h2>
+            <p id="pf-subtitulo">Notas de produção autorizadas, pela competência.</p>
+        </div>
+        <div class="btn-group btn-group-sm d-none" id="pf-escopo" role="group" aria-label="Quais empresas somar">
+            <button type="button" class="btn btn-outline-secondary" data-escopo="todas">Todas as empresas</button>
+            <button type="button" class="btn btn-outline-secondary" data-escopo="empresa" id="pf-escopo-empresa">Esta empresa</button>
+        </div>
+    </div>
+
+    <div class="stats pf-indicadores">
+        <a href="/Nfse" class="stat">
+            <div class="stat-top">
+                <span class="stat-label" id="pf-rotulo-mes">Faturado no mês</span>
+                <div class="stat-icon"><i class="bi bi-cash-coin" aria-hidden="true"></i></div>
+            </div>
+            <strong id="pf-faturado-mes">-</strong>
+            <small id="pf-faturado-mes-detalhe"></small>
+        </a>
+        <a href="/Contratos" class="stat pf-so-contratos">
+            <div class="stat-top">
+                <span class="stat-label">Receita recorrente</span>
+                <div class="stat-icon"><i class="bi bi-arrow-repeat" aria-hidden="true"></i></div>
+            </div>
+            <strong id="pf-recorrente">-</strong>
+            <small id="pf-recorrente-detalhe"></small>
+        </a>
+        <a href="/Nfse?abrirNotaMensal=1" class="stat pf-so-contratos" id="pf-link-a-emitir">
+            <div class="stat-top">
+                <span class="stat-label" id="pf-rotulo-a-emitir">A emitir no mês</span>
+                <div class="stat-icon"><i class="bi bi-hourglass-split" aria-hidden="true"></i></div>
+            </div>
+            <strong id="pf-a-emitir">-</strong>
+            <small id="pf-a-emitir-detalhe"></small>
+        </a>
+        <a href="/Nfse" class="stat">
+            <div class="stat-top">
+                <span class="stat-label" id="pf-rotulo-ano">Acumulado no ano</span>
+                <div class="stat-icon"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i></div>
+            </div>
+            <strong id="pf-ano">-</strong>
+            <small id="pf-ano-detalhe"></small>
+        </a>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-lg-8">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center gap-2 flex-wrap">
+                    <span>Faturamento por mês</span>
+                    <div class="pf-legenda" aria-hidden="true">
+                        <span><i class="pf-amostra pf-amostra-contratos"></i>Contratos</span>
+                        <span><i class="pf-amostra pf-amostra-avulsas"></i>Avulsas</span>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-link p-0" id="pf-alternar-tabela" aria-controls="pf-tabela-meses" aria-expanded="false">Ver em tabela</button>
+                </div>
+                <div class="card-body">
+                    <div class="pf-grafico" id="pf-grafico" role="img" aria-label="Faturamento dos últimos 12 meses"></div>
+                    <div class="pf-dica" id="pf-dica" role="status" hidden></div>
+                    <div class="table-responsive d-none" id="pf-tabela-meses">
+                        <table class="table table-sm mb-0 tabela-cartoes">
+                            <thead><tr><th>Mês</th><th class="text-end">Contratos</th><th class="text-end">Avulsas</th><th class="text-end">Total</th><th class="text-end">Notas</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header" id="pf-titulo-clientes">Maiores clientes <small class="text-muted">(12 meses)</small></div>
+                <div class="card-body">
+                    <div class="pf-limite d-none" id="pf-limite"></div>
+                    <div class="pf-subtitulo-clientes d-none" id="pf-subtitulo-clientes">Maiores clientes <span class="text-muted">(12 meses)</span></div>
+                    <ol class="pf-clientes" id="pf-clientes"></ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4 pf-so-contratos">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center gap-2">
+                    <span id="pf-titulo-a-emitir">Contratos sem nota no mês</span>
+                    <a href="/Nfse?abrirNotaMensal=1" class="btn btn-sm btn-primary" id="pf-botao-nota-mensal"><i class="bi bi-lightning-charge" aria-hidden="true"></i> Abrir Nota Mensal</a>
+                </div>
+                <div class="card-body p-0 table-responsive">
+                    <table class="table mb-0 tabela-cartoes" id="pf-tabela-a-emitir">
+                        <thead><tr><th>Cliente</th><th>Contrato</th><th class="text-end">Valor</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center gap-2">
+                    <span id="pf-titulo-reajustes">Reajustes chegando</span>
+                    <a href="/Contratos" class="btn btn-sm btn-outline-secondary">Ver contratos</a>
+                </div>
+                <div class="card-body p-0 table-responsive">
+                    <table class="table mb-0 tabela-cartoes" id="pf-tabela-reajustes">
+                        <thead><tr><th>Cliente</th><th>Quando</th><th class="text-end">Valor</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="card-footer small text-muted" id="pf-reajustes-rodape" hidden></div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <div class="stats">
     <a href="/Empresas" class="stat">
         <div class="stat-top">

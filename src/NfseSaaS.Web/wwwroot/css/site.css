@@ -30,6 +30,9 @@
     --line-2: #eef2f6;
     --field-line: #cbd5e1;
     --primary: #2563eb;
+    /* DB1: séries do gráfico (contratos, avulsas). Par validado para daltonismo, claro e escuro. */
+    --serie-1: #2a78d6;
+    --serie-2: #eb6834;
     --primary-2: #1d4ed8;
     --primary-ink: #1e40af;
     --primary-soft: #eef4ff;
@@ -2522,6 +2525,8 @@ html[data-theme="dark"] {
     --neutral-soft: rgba(148, 163, 184, .16);
     --neutral-ink: #cbd5e1;
     --sidebar: #070c17;
+    --serie-1: #3987e5;
+    --serie-2: #d95926;
     color-scheme: dark;
 }
 
@@ -3826,5 +3831,252 @@ html[data-theme="dark"] .painel-aparencia .btn-close { filter: invert(1) graysca
 @media (max-width: 575.98px) {
     .card-body.p-0:has(> table.tabela-cartoes) {
         padding: 12px !important;
+    }
+}
+
+/* =============== DB1: painel financeiro =============== */
+
+.painel-financeiro {
+    margin-bottom: 8px;
+}
+
+.pf-cabecalho {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.pf-cabecalho > div:first-child {
+    flex: 1 1 320px;
+    min-width: 0;
+}
+
+.pf-cabecalho h2 {
+    font-size: calc(18px * var(--escala-fonte));
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -.01em;
+}
+
+.pf-cabecalho p {
+    margin: 2px 0 0;
+    color: var(--muted);
+    font-size: calc(13px * var(--escala-fonte));
+}
+
+.pf-indicadores {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 991.98px) {
+    .pf-indicadores {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.pf-legenda {
+    display: flex;
+    gap: 14px;
+    margin-left: auto;
+    color: var(--muted);
+    font-size: calc(12px * var(--escala-fonte));
+    font-weight: 500;
+}
+
+.pf-amostra {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    margin-right: 6px;
+    vertical-align: -1px;
+}
+
+.pf-amostra-contratos { background: var(--serie-1); }
+.pf-amostra-avulsas { background: var(--serie-2); }
+
+.pf-grafico {
+    position: relative;
+    min-height: 220px;
+}
+
+.card-body:has(> .pf-grafico) {
+    position: relative;
+}
+
+.pf-grafico svg {
+    display: block;
+    overflow: visible;
+}
+
+.pf-grade { stroke: var(--line-2); stroke-width: 1; }
+.pf-eixo { stroke: var(--line); stroke-width: 1; }
+.pf-barra-contratos { fill: var(--serie-1); }
+.pf-barra-avulsas { fill: var(--serie-2); }
+
+.pf-texto-eixo {
+    fill: var(--subtle);
+    font-size: calc(11px * var(--escala-fonte));
+    font-variant-numeric: tabular-nums;
+}
+
+.pf-texto-atual {
+    fill: var(--text);
+    font-weight: 600;
+}
+
+.pf-alvo {
+    fill: transparent;
+    cursor: default;
+    outline: none;
+}
+
+.pf-alvo-ativo { fill: color-mix(in srgb, var(--text) 5%, transparent); }
+.pf-alvo:focus-visible { stroke: var(--primary); stroke-width: 2; }
+
+.pf-dica {
+    position: absolute;
+    z-index: 5;
+    min-width: 190px;
+    padding: 8px 10px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, .14);
+    font-size: calc(12px * var(--escala-fonte));
+    pointer-events: none;
+}
+
+.pf-dica > div {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.pf-dica > div > span {
+    margin-left: auto;
+    padding-left: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.pf-dica-total {
+    border-top: 1px solid var(--line-2);
+    margin-top: 4px;
+    padding-top: 4px;
+    font-weight: 600;
+}
+
+.pf-clientes {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    font-size: calc(13px * var(--escala-fonte));
+}
+
+.pf-clientes-valor {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+.pf-clientes-valor .text-muted {
+    font-weight: 400;
+    margin-left: 4px;
+}
+
+.pf-fatia {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--surface-3);
+    margin-top: 4px;
+    overflow: hidden;
+}
+
+.pf-fatia > span {
+    display: block;
+    height: 100%;
+    border-radius: 3px;
+    background: var(--serie-1);
+}
+
+.pf-concentracao {
+    color: var(--warning-ink);
+    background: var(--warning-soft);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: calc(12px * var(--escala-fonte));
+}
+
+.pf-limite {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 16px;
+    font-size: calc(13px * var(--escala-fonte));
+}
+
+.pf-subtitulo-clientes {
+    font-weight: 600;
+    font-size: calc(13px * var(--escala-fonte));
+    margin-bottom: 10px;
+}
+
+.pf-limite .progress {
+    height: 6px;
+    margin: 8px 0;
+}
+
+.pf-limite p {
+    margin: 0;
+    color: var(--muted);
+    font-size: calc(12px * var(--escala-fonte));
+}
+
+.pf-limite-valor {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.pf-limite-ok .progress-bar { background: var(--success); }
+.pf-limite-atencao { border-color: color-mix(in srgb, var(--warning) 45%, transparent); background: var(--warning-soft); }
+.pf-limite-atencao .progress-bar { background: var(--warning); }
+.pf-limite-alerta { border-color: color-mix(in srgb, var(--danger) 45%, transparent); background: var(--danger-soft); }
+.pf-limite-alerta .progress-bar { background: var(--danger); }
+.pf-limite-atencao p,
+.pf-limite-alerta p { color: var(--text-2); }
+
+#pf-escopo .btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+@media (max-width: 575.98px) {
+    .pf-cabecalho {
+        align-items: stretch;
+    }
+
+    #pf-escopo {
+        width: 100%;
+    }
+
+    #pf-escopo .btn {
+        flex: 1 1 50%;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .pf-legenda {
+        margin-left: 0;
+        order: 3;
+        width: 100%;
     }
 }
