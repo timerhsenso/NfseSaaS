@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using NfseSaaS.Application.Authorization;
 using NfseSaaS.Application.Exceptions;
+using NfseSaaS.Application.UseCases.DocumentosEmpresa;
 using NfseSaaS.Application.UseCases.EmailNota;
 using NfseSaaS.Application.UseCases.Nfse;
 using NfseSaaS.Domain.Enums;
@@ -40,6 +41,11 @@ public sealed class EnvioEmailNfseService : IEnvioEmailNfseUseCase
             .Select(e => new { e.CreatedAt, e.EnviadoEm, e.Status })
             .FirstOrDefaultAsync(cancellationToken);
 
+        var documentos = (await EnviarNfsePorEmailUseCase.AvaliarDocumentosAsync(_db, new[] { nota }, cancellationToken))[nota.Id]
+            .Select(d => new DocumentoEmailPrevia(d.Documento?.Id, d.Titulo, d.Situacao, RegrasDocumentosExigidos.TextoSituacao(d),
+                d.Documento?.NomeArquivo, d.Documento?.TamanhoBytes ?? 0))
+            .ToList();
+
         return new PreviaEmailNfseResponse(
             nfseId,
             modelo.ModeloId,
@@ -54,13 +60,15 @@ public sealed class EnvioEmailNfseService : IEnvioEmailNfseUseCase
             nota.Dados.Homologacao,
             ultimo is null ? null : ultimo.EnviadoEm ?? ultimo.CreatedAt,
             ultimo?.Status,
-            Impedimento(nota));
+            Impedimento(nota),
+            documentos);
     }
 
     public async Task<PreviaEnvioEmailLoteResponse> PreviaLoteAsync(EnvioEmailLoteRequest request, CancellationToken cancellationToken)
     {
         var (notas, jaEnviadas) = await CarregarLoteAsync(request, cancellationToken);
         var enviaveis = notas.Where(n => Impedimento(n) is null).ToList();
+        var documentos = await EnviarNfsePorEmailUseCase.AvaliarDocumentosAsync(_db, enviaveis, cancellationToken);
 
         return new PreviaEnvioEmailLoteResponse(
             notas.Count,
@@ -68,7 +76,9 @@ public sealed class EnvioEmailNfseService : IEnvioEmailNfseUseCase
             enviaveis.Count(n => jaEnviadas.Contains(n.Id)),
             notas.Count(n => n.Status == NfseStatus.Autorizada && n.Destinatario is null),
             notas.Count(n => n.Status != NfseStatus.Autorizada),
-            enviaveis.Select(n => n.ClienteId).Distinct().Count());
+            enviaveis.Select(n => n.ClienteId).Distinct().Count(),
+            enviaveis.Count(n => documentos[n.Id].Any(d => d.Situacao == SituacaoDocumentoExigido.Vencido)),
+            enviaveis.Count(n => documentos[n.Id].Any(d => d.Situacao == SituacaoDocumentoExigido.Faltando)));
     }
 
     public async Task<ResultadoEnvioEmailLoteResponse> EnviarLoteAsync(EnvioEmailLoteRequest request, CancellationToken cancellationToken)
@@ -96,7 +106,9 @@ public sealed class EnvioEmailNfseService : IEnvioEmailNfseUseCase
 
             try
             {
-                await _enviar.ExecutarAsync(nota.Id, automatico: false, texto: null, cancellationToken);
+                // Sem marcar documento um a um: os em dia vão; o vencido só com a resposta do lote.
+                await _enviar.ExecutarAsync(nota.Id, automatico: false,
+                    new TextoEmailNota(null, null, EnviarVencidos: request.EnviarDocumentosVencidos), cancellationToken);
                 enfileiradas++;
             }
             catch (RegraNegocioException ex)

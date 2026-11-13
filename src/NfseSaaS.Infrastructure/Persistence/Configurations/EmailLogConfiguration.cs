@@ -43,6 +43,13 @@ public sealed class EmailLogConfiguration : IEntityTypeConfiguration<EmailLog>
         builder.Property(e => e.CopiaOcultaFixa)
             .HasMaxLength(256);
 
+        // DOC2: JSON curto (até 20 documentos) e o alerta do envio.
+        builder.Property(e => e.DocumentosAnexos)
+            .HasMaxLength(8000);
+
+        builder.Property(e => e.AlertaDocumentos)
+            .HasMaxLength(1000);
+
         builder.HasIndex(e => new { e.TenantId, e.Status, e.CreatedAt });
 
         builder.HasIndex(e => new { e.TenantId, e.ChaveDeduplicacao })

@@ -35,7 +35,9 @@ public sealed class EmailQueueService : IEmailQueueService
             ResponderPara = email.ResponderPara,
             Copias = email.Copias is { Count: > 0 } ? string.Join(';', email.Copias) : null,
             CopiasOcultas = email.CopiasOcultas,
-            CopiaOcultaFixa = string.IsNullOrWhiteSpace(email.CopiaOcultaFixa) ? null : email.CopiaOcultaFixa.Trim()
+            CopiaOcultaFixa = string.IsNullOrWhiteSpace(email.CopiaOcultaFixa) ? null : email.CopiaOcultaFixa.Trim(),
+            DocumentosAnexos = email.DocumentosAnexos,
+            AlertaDocumentos = email.AlertaDocumentos
         };
 
         _db.EmailLogs.Add(log);

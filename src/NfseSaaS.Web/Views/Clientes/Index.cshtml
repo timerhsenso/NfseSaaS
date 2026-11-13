@@ -188,6 +188,22 @@
                                 </div>
                                 <div class="form-text">Separe por vírgula. <strong>Cc</strong>: todos veem quem recebeu. <strong>Cco</strong>: cópia oculta.</div>
                             </div>
+
+                            @* DOC2: documentos da empresa que vão junto com a nota (clientes.js › carregarDocumentosExigidosCliente). *@
+                            <div class="col-12 mb-2">
+                                <div class="form-label mb-1">Documentos que vão junto com a nota <span class="text-muted fw-normal">(opcional)</span></div>
+                                <div class="form-text mt-0 mb-2">Para o cliente que exige certidões a cada nota. Vai sempre a versão que vale em <a href="/Documentos">Documentos da empresa</a>.</div>
+                                <div class="documentos-exigidos" id="documentos-exigidos-cliente" aria-label="Documentos exigidos pelo cliente"></div>
+                            </div>
+                            <div class="col-md-8 mb-3 d-none" id="bloco-acao-pendente-cliente">
+                                <label class="form-label" for="acaoPendenteCliente">No envio automático, se um documento estiver vencido ou faltar</label>
+                                <select class="form-select" id="acaoPendenteCliente">
+                                    <option value="0">Mandar a nota sem ele (e avisar)</option>
+                                    <option value="1">Mandar o vencido assim mesmo (e avisar)</option>
+                                    <option value="2">Não mandar o e-mail (eu envio depois)</option>
+                                </select>
+                                <div class="form-text">A nota é emitida de qualquer jeito. O aviso fica registrado em E-mails enviados.</div>
+                            </div>
                         </div>
                         </div>
 

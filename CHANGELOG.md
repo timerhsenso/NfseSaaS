@@ -5,6 +5,29 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (DOC2 — documentos exigidos pelo cliente)
+- **Cliente › Envio da nota › "Documentos que vão junto com a nota"**: marque as
+  certidões e documentos que o cliente exige (federal, FGTS, CNDT, "Outros" da
+  empresa…). Cada um mostra como está na empresa (válido, vencido, não enviado).
+  Vai sempre a **versão que vale** em Documentos da empresa.
+- **Envio automático** (logo depois da autorização): escolha no cliente o que
+  fazer se um documento estiver vencido ou faltar — *mandar sem ele* (padrão),
+  *mandar o vencido assim mesmo* ou *não mandar o e-mail* (eu envio depois). A
+  nota é emitida de qualquer jeito; o aviso fica registrado.
+- **Modal "Enviar nota por e-mail"**: lista de anexos (nota + documentos) com
+  caixas para tirar um documento só naquele envio. Documento vencido marcado
+  pergunta **"mandar assim mesmo?"** antes de enviar (o servidor também exige a
+  resposta). Aviso quando os documentos passam de 10 MB.
+- **Envio em lote / Nota Mensal**: aviso de quantas notas têm documento vencido
+  ou faltando e a opção "Mandar os documentos vencidos assim mesmo" (sem marcar,
+  vai sem o vencido).
+- **E-mails enviados**: clipe com os documentos anexados e o alerta do envio. Os
+  documentos são lidos na hora do envio (inclusive no "Reenviar"), sempre a
+  versão escolhida ao enfileirar; arquivo sumido não derruba o e-mail da nota.
+- Migration **DocumentosExigidosCliente**: `clientes.DocumentosExigidos`,
+  `clientes.DocumentoPendenteEnvioAutomatico`, `email_logs.DocumentosAnexos`,
+  `email_logs.AlertaDocumentos`.
+
 ### Adicionado (DOC1 — documentos da empresa)
 - **Nova tela "Documentos da empresa"** (menu Cadastros): guarda em PDF as
   certidões e documentos da empresa selecionada no topo — certidão federal,

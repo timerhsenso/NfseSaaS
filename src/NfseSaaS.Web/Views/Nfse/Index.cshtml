@@ -432,6 +432,14 @@
                     <label class="form-label" for="email-nfse-mensagem">Mensagem</label>
                     <textarea class="form-control" id="email-nfse-mensagem" rows="8" maxlength="4000" required></textarea>
                     <div class="form-text">Vale só para este envio. Abaixo da mensagem seguem os dados da nota, a consulta pública e os anexos (PDF e XML). Os modelos ficam em <a href="/ModelosEmail">Modelos de e-mail</a>.</div>
+
+                    @* DOC2: documentos que o cliente exige (versão que vale na empresa); desmarcar vale só neste envio. *@
+                    <div class="mt-3 d-none" id="email-nfse-anexos">
+                        <div class="form-label mb-1">Anexos</div>
+                        <ul class="list-group small" id="email-nfse-anexos-lista"></ul>
+                        <div class="alert alert-warning small mt-2 mb-0 d-none" id="email-nfse-aviso-vencido" role="alert"></div>
+                        <div class="alert alert-info small mt-2 mb-0 d-none" id="email-nfse-aviso-tamanho" role="status"></div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -455,6 +463,14 @@
                     <div class="form-check mt-3" id="email-lote-opcao-pular">
                         <input class="form-check-input" type="checkbox" id="email-lote-pular" checked />
                         <label class="form-check-label" for="email-lote-pular">Pular as que já foram enviadas</label>
+                    </div>
+                    @* DOC2: notas cujo cliente exige documento vencido ou faltando. *@
+                    <div class="alert alert-warning small mt-3 mb-0 d-none" id="email-lote-documentos" role="alert">
+                        <div id="email-lote-documentos-texto"></div>
+                        <div class="form-check mt-2 mb-0 d-none" id="email-lote-opcao-vencidos">
+                            <input class="form-check-input" type="checkbox" id="email-lote-vencidos" />
+                            <label class="form-check-label" for="email-lote-vencidos">Mandar os documentos vencidos assim mesmo</label>
+                        </div>
                     </div>
                     <div class="form-text">Um e-mail por nota, com o modelo de cada cliente ou empresa (<a href="/ModelosEmail">Modelos de e-mail</a>).</div>
                     <div id="email-lote-resultado" class="mt-3 d-none"></div>

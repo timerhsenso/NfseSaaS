@@ -21,7 +21,9 @@ public sealed record EmailLogResponse(
     DateTimeOffset CreatedAt,
     DateTimeOffset? EnviadoEm,
     IReadOnlyList<string> Copias,
-    bool CopiasOcultas);
+    bool CopiasOcultas,
+    IReadOnlyList<string>? Documentos = null,
+    string? AlertaDocumentos = null);
 
 /// <summary>
 /// Consulta e reenvio dos e-mails que o sistema tenta mandar (convite,
@@ -69,14 +71,22 @@ public sealed class EmailLogsController : ControllerBase
 
         var totalCount = await query.CountAsync(cancellationToken);
 
-        var itens = await query
+        var linhas = await query
             .OrderByDescending(e => e.CreatedAt)
             .Skip((paginaNormalizada - 1) * tamanhoNormalizado)
             .Take(tamanhoNormalizado)
-            .Select(e => new EmailLogResponse(
-                e.Id, e.Tipo, e.Destinatario, e.Assunto, e.Status.ToString(), e.ErroDetalhe, e.Tentativas, e.CreatedAt, e.EnviadoEm,
-                EmailsCopiaCliente.Separar(e.Copias), e.CopiasOcultas))
+            .Select(e => new
+            {
+                e.Id, e.Tipo, e.Destinatario, e.Assunto, e.Status, e.ErroDetalhe, e.Tentativas, e.CreatedAt, e.EnviadoEm,
+                e.Copias, e.CopiasOcultas, e.DocumentosAnexos, e.AlertaDocumentos
+            })
             .ToListAsync(cancellationToken);
+        var itens = linhas.Select(e => new EmailLogResponse(
+                e.Id, e.Tipo, e.Destinatario, e.Assunto, e.Status.ToString(), e.ErroDetalhe, e.Tentativas, e.CreatedAt, e.EnviadoEm,
+                EmailsCopiaCliente.Separar(e.Copias), e.CopiasOcultas,
+                NfseSaaS.Application.UseCases.DocumentosEmpresa.RegrasDocumentosExigidos.Desserializar(e.DocumentosAnexos).Select(d => d.Titulo).ToList(),
+                e.AlertaDocumentos))
+            .ToList();
 
         return Ok(new PagedResult<EmailLogResponse>
         {

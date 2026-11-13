@@ -78,4 +78,15 @@ public sealed class EmailLog : BaseEntity, ITenantEntity
     /// que guarda toda nota enviada — modelo do e-mail da nota). Nulo = sem.
     /// </summary>
     public string? CopiaOcultaFixa { get; set; }
+
+    /// <summary>
+    /// DOC2: documentos da empresa anexados ao e-mail da nota (JSON com Id da
+    /// versão, título, arquivo e validade — ver AnexoDocumentoEmail). Como a
+    /// nota, o arquivo é lido na hora do envio (inclusive no "Reenviar"),
+    /// sempre a MESMA versão escolhida ao enfileirar. Nulo = sem documentos.
+    /// </summary>
+    public string? DocumentosAnexos { get; set; }
+
+    /// <summary>DOC2: alerta registrado no envio (documento vencido mandado, faltando, retirado). Nulo = sem alerta.</summary>
+    public string? AlertaDocumentos { get; set; }
 }

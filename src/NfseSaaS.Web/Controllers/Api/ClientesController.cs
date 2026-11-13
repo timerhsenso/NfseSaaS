@@ -96,6 +96,23 @@ public sealed class ClientesController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>DOC2: documentos que vão junto com a nota (opções da empresa atual). clienteId vazio = cliente novo.</summary>
+    [HttpGet("documentos-exigidos")]
+    public async Task<IActionResult> DocumentosExigidos(
+        [FromQuery] Guid? clienteId, [FromQuery] Guid? empresaId,
+        [FromServices] NfseSaaS.Application.UseCases.DocumentosEmpresa.IDocumentosExigidosClienteUseCase documentos, CancellationToken cancellationToken)
+        => Ok(await documentos.ObterAsync(clienteId, empresaId, cancellationToken));
+
+    [RequerPermissao(TelaCatalogo.Clientes, AcaoPermissao.Alterar)]
+    [HttpPut("{id:guid}/documentos-exigidos")]
+    public async Task<IActionResult> SalvarDocumentosExigidos(
+        Guid id, [FromBody] NfseSaaS.Application.UseCases.DocumentosEmpresa.SalvarDocumentosExigidosRequest request,
+        [FromServices] NfseSaaS.Application.UseCases.DocumentosEmpresa.IDocumentosExigidosClienteUseCase documentos, CancellationToken cancellationToken)
+    {
+        await documentos.SalvarAsync(id, request, cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>Soft delete (Ativo=false) — reversível via /reativar. Use quando o Cliente já tem histórico (Nfse).</summary>
     [RequerPermissao(TelaCatalogo.Clientes, AcaoPermissao.Alterar)]
     [HttpPost("{id:guid}/desativar")]

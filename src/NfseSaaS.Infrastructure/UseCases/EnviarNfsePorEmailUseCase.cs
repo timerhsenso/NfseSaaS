@@ -3,7 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Authorization;
 using NfseSaaS.Application.Exceptions;
+using NfseSaaS.Application.Common;
 using NfseSaaS.Application.UseCases.Clientes;
+using NfseSaaS.Application.UseCases.DocumentosEmpresa;
 using NfseSaaS.Application.UseCases.EmailNota;
 using NfseSaaS.Application.UseCases.Nfse;
 using NfseSaaS.Domain.Enums;
@@ -51,7 +53,9 @@ public sealed class EnviarNfsePorEmailUseCase : IEnviarNfsePorEmailUseCase
         bool EnvioAutomaticoLigado,
         IReadOnlyList<string> Copias,
         bool CopiasOcultas,
-        DadosEmailNota Dados);
+        DadosEmailNota Dados,
+        IReadOnlyList<NfseSaaS.Application.UseCases.DocumentosEmpresa.ChaveDocumento> DocumentosExigidos,
+        AcaoDocumentoPendente AcaoDocumentoPendente);
 
     internal static async Task<List<NotaParaEmail>> CarregarAsync(AppDbContext db, IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken)
     {
@@ -70,6 +74,8 @@ public sealed class EnviarNfsePorEmailUseCase : IEnviarNfsePorEmailUseCase
                 c.EnviarNfsePorEmail,
                 c.EmailsCopia,
                 c.CopiaOculta,
+                c.DocumentosExigidos,
+                c.DocumentoPendenteEnvioAutomatico,
                 EmpresaNome = e.NomeFantasia ?? e.RazaoSocial,
                 EmpresaRazaoSocial = e.RazaoSocial,
                 EmpresaEmail = e.Email
@@ -87,8 +93,21 @@ public sealed class EnviarNfsePorEmailUseCase : IEnviarNfsePorEmailUseCase
                 l.ClienteNome, l.EmpresaNome, l.EmpresaRazaoSocial, string.IsNullOrWhiteSpace(l.EmpresaEmail) ? null : l.EmpresaEmail,
                 numero, l.DataCompetencia, l.ValorServico, l.DataEmissao, l.DescricaoServico, l.NumeroContrato,
                 l.ChaveAcesso, l.TipoAmbiente == TipoAmbiente.Homologacao, l.ValorLiquido);
-            return new NotaParaEmail(l.Id, l.TenantId, l.EmpresaId, l.ClienteId, l.Status, destinatario, l.EnviarNfsePorEmail, copias, l.CopiaOculta, dados);
+            return new NotaParaEmail(l.Id, l.TenantId, l.EmpresaId, l.ClienteId, l.Status, destinatario, l.EnviarNfsePorEmail, copias, l.CopiaOculta, dados,
+                RegrasDocumentosExigidos.Ler(l.DocumentosExigidos), l.DocumentoPendenteEnvioAutomatico);
         }).ToList();
+    }
+
+    /// <summary>DOC2: os documentos exigidos pelo cliente, avaliados contra a versão que vale na empresa da nota.</summary>
+    internal static async Task<Dictionary<Guid, IReadOnlyList<DocumentoExigidoAvaliado>>> AvaliarDocumentosAsync(
+        AppDbContext db, IReadOnlyCollection<NotaParaEmail> notas, CancellationToken cancellationToken)
+    {
+        var comExigidos = notas.Where(n => n.DocumentosExigidos.Count > 0).ToList();
+        var atuais = await DocumentosEmpresaService.AtuaisParaEmailAsync(db, comExigidos.Select(n => n.EmpresaId).Distinct().ToList(), cancellationToken);
+        var hoje = DataBrasilia.Hoje();
+        return notas.ToDictionary(n => n.Id, n => n.DocumentosExigidos.Count == 0
+            ? (IReadOnlyList<DocumentoExigidoAvaliado>)Array.Empty<DocumentoExigidoAvaliado>()
+            : RegrasDocumentosExigidos.Avaliar(n.DocumentosExigidos, atuais.GetValueOrDefault(n.EmpresaId) ?? new List<DocumentoAtual>(), hoje));
     }
 
     public async Task<EnviarNfsePorEmailResult> ExecutarAsync(Guid nfseId, bool automatico, TextoEmailNota? texto, CancellationToken cancellationToken)
@@ -113,10 +132,23 @@ public sealed class EnviarNfsePorEmailUseCase : IEnviarNfsePorEmailUseCase
             throw new RegraNegocioException("O cliente desta nota não tem e-mail cadastrado. Inclua o e-mail no cadastro do cliente e tente de novo.");
         }
 
+        // DOC2: documentos exigidos pelo cliente. Automático: vale a escolha do
+        // cadastro (pode segurar o e-mail); pela tela: a escolha do usuário.
+        var documentos = (await AvaliarDocumentosAsync(_db, new[] { nota }, cancellationToken))[nota.Id];
+        var decisao = automatico
+            ? RegrasDocumentosExigidos.DecidirAutomatico(documentos, nota.AcaoDocumentoPendente)
+            : RegrasDocumentosExigidos.DecidirManual(documentos, texto?.DocumentosIds, texto?.EnviarVencidos ?? false);
+        if (decisao.SegurarEmail)
+        {
+            _auditLogWriter.Registrar("EmailNotaSeguradoPorDocumento", "Nfse", nfseId, new { destinatario, alerta = decisao.Alerta });
+            await _db.SaveChangesAsync(cancellationToken);
+            return new EnviarNfsePorEmailResult(false, destinatario, decisao.Alerta, AlertaDocumentos: decisao.Alerta);
+        }
+
         var modelo = await _modelos.ResolverAsync(nota.TenantId, nota.EmpresaId, nota.ClienteId, texto?.ModeloId, cancellationToken);
         var assuntoModelo = string.IsNullOrWhiteSpace(texto?.Assunto) ? modelo.Assunto : texto.Assunto;
         var mensagemModelo = string.IsNullOrWhiteSpace(texto?.Mensagem) ? modelo.Mensagem : texto.Mensagem;
-        if (texto is not null)
+        if (!string.IsNullOrWhiteSpace(texto?.Assunto) || !string.IsNullOrWhiteSpace(texto?.Mensagem))
         {
             var erros = RegrasModeloEmailNota.Validar(assuntoModelo, mensagemModelo, null, null);
             if (erros.Count > 0)
@@ -130,13 +162,17 @@ public sealed class EnviarNfsePorEmailUseCase : IEnviarNfsePorEmailUseCase
         var emailLogId = await _emailQueue.EnfileirarAsync(
             new EmailParaEnfileirar(TipoEmailCatalogo.NfseTomador, null, destinatario, assunto, corpoHtml, NfseId: nfseId,
                 ResponderPara: responderPara, Copias: nota.Copias, CopiasOcultas: nota.CopiasOcultas,
-                CopiaOcultaFixa: modelo.CopiaOcultaPara),
+                CopiaOcultaFixa: modelo.CopiaOcultaPara,
+                DocumentosAnexos: RegrasDocumentosExigidos.Serializar(decisao.Anexos),
+                AlertaDocumentos: decisao.Alerta),
             cancellationToken);
 
         _auditLogWriter.Registrar("EnviarNfsePorEmail", "Nfse", nfseId,
-            new { destinatario, copias = nota.Copias, copiasOcultas = nota.CopiasOcultas, copiaOcultaFixa = modelo.CopiaOcultaPara, modelo = modelo.Nome, automatico, textoProprio = texto is not null, emailLogId });
+            new { destinatario, copias = nota.Copias, copiasOcultas = nota.CopiasOcultas, copiaOcultaFixa = modelo.CopiaOcultaPara, modelo = modelo.Nome, automatico,
+                textoProprio = !string.IsNullOrWhiteSpace(texto?.Assunto) || !string.IsNullOrWhiteSpace(texto?.Mensagem),
+                documentos = decisao.Anexos.Select(a => a.Titulo).ToList(), alertaDocumentos = decisao.Alerta, emailLogId });
         await _db.SaveChangesAsync(cancellationToken);
 
-        return new EnviarNfsePorEmailResult(true, destinatario, null, nota.Copias);
+        return new EnviarNfsePorEmailResult(true, destinatario, null, nota.Copias, decisao.Alerta);
     }
 }

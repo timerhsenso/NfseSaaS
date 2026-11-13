@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', function () {
         columns: [
             { data: 'destinatario', render: (v, type, email) => renderDestinatarioEmail(email, type) },
             { data: 'tipo', render: v => rotuloTipo(v) },
-            { data: 'assunto' },
+            { data: 'assunto', render: (v, type, email) => renderAssuntoEmail(email, type) },
             { data: 'status', className: 'col-curta', render: v => rotuloStatus(v) },
             { data: 'tentativas', className: 'col-valor' },
             { data: 'createdAt', className: 'col-curta', render: v => new Date(v).toLocaleString('pt-BR') },
@@ -141,4 +141,21 @@ function renderDestinatarioEmail(email, type) {
     if (!copias.length) return escaparHtml(email.destinatario);
     return `${escaparHtml(email.destinatario)}
         <span class="badge text-bg-light border ms-1" title="${escaparHtml(rotulo + ': ' + copias.join(', '))}">+${copias.length} em ${rotulo}</span>`;
+}
+
+/** DOC2: assunto + clipe com os documentos anexados e o alerta registrado no envio. */
+function renderAssuntoEmail(email, type) {
+    const docs = email.documentos || [];
+    if (type !== 'display') {
+        return [email.assunto, docs.length ? `Documentos: ${docs.join(', ')}` : '', email.alertaDocumentos || ''].filter(Boolean).join(' — ');
+    }
+    let html = escaparHtml(email.assunto);
+    if (docs.length) {
+        html += ` <span class="badge text-bg-light border ms-1" title="${escaparHtml('Documentos anexados: ' + docs.join(', '))}">` +
+            `<i class="bi bi-paperclip" aria-hidden="true"></i> ${docs.length}</span>`;
+    }
+    if (email.alertaDocumentos) {
+        html += ` <i class="bi bi-exclamation-triangle text-warning ms-1" title="${escaparHtml(email.alertaDocumentos)}" aria-label="${escaparHtml(email.alertaDocumentos)}"></i>`;
+    }
+    return html;
 }

@@ -247,6 +247,7 @@ public static class DependencyInjection
         services.AddScoped<IAvisarCertificadoVencendoUseCase, AvisarCertificadoVencendoUseCase>();
         // DOC1: documentos da Empresa (certidões) e o aviso diário de vencimento.
         services.AddScoped<IDocumentosEmpresaUseCase, DocumentosEmpresaService>();
+        services.AddScoped<IDocumentosExigidosClienteUseCase, DocumentosExigidosClienteService>();
         services.AddScoped<IAvisarDocumentosEmpresaVencendoUseCase, AvisarDocumentosEmpresaVencendoUseCase>();
         services.AddScoped<IAvisarDocumentosEmpresaVencendoJob, AvisarDocumentosEmpresaVencendoJob>();
 

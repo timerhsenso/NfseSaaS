@@ -111,7 +111,7 @@ public sealed class EmailDispatchHostedService : BackgroundService
         try
         {
             servicos.GetRequiredService<ICurrentTenant>().DefinirTenantIdDeSistema(log.TenantId);
-            anexos = await servicos.GetRequiredService<AnexosNfseEmail>().MontarAsync(idNota, cancellationToken);
+            anexos = await servicos.GetRequiredService<AnexosNfseEmail>().MontarAsync(idNota, log.DocumentosAnexos, cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

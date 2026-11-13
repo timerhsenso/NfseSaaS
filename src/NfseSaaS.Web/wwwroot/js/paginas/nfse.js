@@ -1773,6 +1773,79 @@ function mostrarPreviaEmailNfse(previa) {
     document.getElementById('email-nfse-homologacao').classList.toggle('d-none', !previa.homologacao);
     document.getElementById('email-nfse-assunto').value = previa.assunto;
     document.getElementById('email-nfse-mensagem').value = previa.mensagem;
+    mostrarAnexosEmailNfse(previa.documentos || []);
+}
+
+// ===== DOC2: documentos exigidos pelo cliente no modal de envio =====
+// SituacaoDocumentoExigido: 1 em dia, 2 vencido, 3 faltando.
+const LIMITE_AVISO_ANEXOS = 10 * 1024 * 1024;
+let confirmouVencidosEmail = false;
+
+function tamanhoAnexo(bytes) {
+    if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1).replace('.', ',') + ' MB';
+    return Math.max(1, Math.round(bytes / 1024)) + ' KB';
+}
+
+function mostrarAnexosEmailNfse(documentos) {
+    confirmouVencidosEmail = false;
+    document.getElementById('btn-confirmar-email-nfse').innerHTML = '<i class="bi bi-send"></i> Enviar';
+    document.getElementById('email-nfse-aviso-vencido').classList.add('d-none');
+    const bloco = document.getElementById('email-nfse-anexos');
+    bloco.classList.toggle('d-none', documentos.length === 0);
+
+    const fixos = '<li class="list-group-item d-flex align-items-center gap-2 text-muted"><input class="form-check-input mt-0" type="checkbox" checked disabled aria-label="PDF e XML da nota" />' +
+        '<i class="bi bi-receipt" aria-hidden="true"></i> Nota (PDF e XML)</li>';
+    document.getElementById('email-nfse-anexos-lista').innerHTML = fixos + documentos.map(d => {
+        const cor = d.situacao === 1 ? 'success' : d.situacao === 2 ? 'danger' : 'secondary';
+        const id = d.id ? `anexo-doc-${d.id}` : '';
+        const caixa = d.id
+            ? `<input class="form-check-input mt-0" type="checkbox" id="${id}" data-doc-id="${d.id}" data-vencido="${d.situacao === 2}" data-tamanho="${d.tamanhoBytes}" checked />`
+            : '<input class="form-check-input mt-0" type="checkbox" disabled aria-label="Documento faltando" />';
+        const extra = d.situacao === 3
+            ? ' · <a href="/Documentos" target="_blank" rel="noopener">enviar em Documentos da empresa</a>'
+            : ` · ${tamanhoAnexo(d.tamanhoBytes)}`;
+        return `<li class="list-group-item d-flex flex-wrap align-items-center gap-2">
+            ${caixa}
+            <label class="me-auto mb-0" ${id ? `for="${id}"` : ''}>${escaparHtml(d.titulo)}</label>
+            <span class="small text-${cor}">${escaparHtml(d.situacaoTexto)}${extra}</span>
+        </li>`;
+    }).join('');
+
+    document.querySelectorAll('#email-nfse-anexos-lista [data-doc-id]').forEach(c => c.addEventListener('change', () => {
+        confirmouVencidosEmail = false;
+        document.getElementById('email-nfse-aviso-vencido').classList.add('d-none');
+        document.getElementById('btn-confirmar-email-nfse').innerHTML = '<i class="bi bi-send"></i> Enviar';
+        atualizarTamanhoAnexosEmail();
+    }));
+    atualizarTamanhoAnexosEmail();
+}
+
+function atualizarTamanhoAnexosEmail() {
+    const total = [...document.querySelectorAll('#email-nfse-anexos-lista [data-doc-id]:checked')]
+        .reduce((soma, c) => soma + Number(c.dataset.tamanho || 0), 0);
+    const aviso = document.getElementById('email-nfse-aviso-tamanho');
+    aviso.classList.toggle('d-none', total <= LIMITE_AVISO_ANEXOS);
+    aviso.textContent = `Os documentos somam ${tamanhoAnexo(total)}. E-mails acima de 10 MB podem ser recusados pelo provedor do cliente; se puder, desmarque algum.`;
+}
+
+/** Ids marcados; null quando a nota não tem documento exigido. */
+function documentosMarcadosEmail() {
+    if (document.getElementById('email-nfse-anexos').classList.contains('d-none')) return null;
+    return [...document.querySelectorAll('#email-nfse-anexos-lista [data-doc-id]:checked')].map(c => c.dataset.docId);
+}
+
+/** Vencido marcado: pergunta "mandar assim mesmo?" dentro do modal (segundo clique confirma). */
+function precisaConfirmarVencidosEmail() {
+    const vencidos = [...document.querySelectorAll('#email-nfse-anexos-lista [data-doc-id][data-vencido="true"]:checked')];
+    if (vencidos.length === 0 || confirmouVencidosEmail) return false;
+    const nomes = vencidos.map(c => document.querySelector(`label[for="${c.id}"]`)?.textContent).join(', ');
+    const aviso = document.getElementById('email-nfse-aviso-vencido');
+    aviso.innerHTML = `<i class="bi bi-exclamation-triangle" aria-hidden="true"></i> ${vencidos.length === 1 ? 'Documento vencido' : 'Documentos vencidos'}: <strong>${escaparHtml(nomes)}</strong>. ` +
+        'Mandar assim mesmo? Clique de novo para confirmar, ou desmarque o documento.';
+    aviso.classList.remove('d-none');
+    confirmouVencidosEmail = true;
+    document.getElementById('btn-confirmar-email-nfse').innerHTML = '<i class="bi bi-send"></i> Mandar assim mesmo';
+    return true;
 }
 
 async function enviarEmailNfse() {
@@ -1783,13 +1856,19 @@ async function enviarEmailNfse() {
         mostrarErroFormulario('erro-email-nfse', 'Preencha o assunto e a mensagem.');
         return;
     }
+    if (precisaConfirmarVencidosEmail()) return;
     try {
         const resultado = await apiFetch(`/api/nfse/${nfseIdEmailAtual}/enviar-email`, {
-            method: 'POST', body: JSON.stringify({ assunto, mensagem, modeloId: document.getElementById('email-nfse-modelo').value || null })
+            method: 'POST',
+            body: JSON.stringify({
+                assunto, mensagem, modeloId: document.getElementById('email-nfse-modelo').value || null,
+                documentosIds: documentosMarcadosEmail(), enviarVencidos: confirmouVencidosEmail
+            })
         });
         modalEmailNfse.hide();
         const copias = resultado.copias?.length ? ` (+${resultado.copias.length} em cópia)` : '';
         mostrarToast(`Nota enviada para ${resultado.destinatario}${copias}. Acompanhe a entrega na tela de E-mails.`);
+        if (resultado.alertaDocumentos) mostrarToast(`Atenção aos documentos: ${resultado.alertaDocumentos}`, 'erro');
         await carregarNfse();
     } catch (err) {
         mostrarErroFormulario('erro-email-nfse', err.message);
@@ -1827,8 +1906,24 @@ async function abrirModalEmailLote(ids) {
         (previa.jaEnviadas ? `<p class="mb-2 small">${plural(previa.jaEnviadas, 'já foi enviada', 'já foram enviadas')} antes.</p>` : '') +
         (fora.length ? `<p class="mb-0 small text-muted">Não vão: ${fora.join(', ')}.</p>` : '');
     document.getElementById('email-lote-opcao-pular').classList.toggle('d-none', previa.jaEnviadas === 0);
+    mostrarDocumentosEmailLote(previa);
     document.getElementById('btn-confirmar-email-lote').disabled = previa.enviaveis === 0;
     modalEmailLote.show();
+}
+
+// DOC2: aviso do lote quando cliente exige documento vencido ou faltando.
+function mostrarDocumentosEmailLote(previa) {
+    const vencidos = previa.comDocumentoVencido || 0;
+    const faltando = previa.comDocumentoFaltando || 0;
+    const caixa = document.getElementById('email-lote-documentos');
+    caixa.classList.toggle('d-none', vencidos === 0 && faltando === 0);
+    document.getElementById('email-lote-opcao-vencidos').classList.toggle('d-none', vencidos === 0);
+    document.getElementById('email-lote-vencidos').checked = false;
+    const partes = [];
+    if (vencidos) partes.push(`${plural(vencidos, 'nota tem', 'notas têm')} documento exigido pelo cliente <strong>vencido</strong> (sem marcar abaixo, vai sem ele)`);
+    if (faltando) partes.push(`${plural(faltando, 'nota tem', 'notas têm')} documento exigido que ainda não foi enviado em <a href="/Documentos">Documentos da empresa</a> (vai sem ele)`);
+    document.getElementById('email-lote-documentos-texto').innerHTML =
+        '<i class="bi bi-exclamation-triangle" aria-hidden="true"></i> ' + partes.join('; ') + '. O aviso fica registrado em cada e-mail.';
 }
 
 async function enviarEmailLote() {
@@ -1836,7 +1931,10 @@ async function enviarEmailLote() {
     try {
         const r = await apiFetch('/api/nfse/enviar-email/lote', {
             method: 'POST',
-            body: JSON.stringify({ nfseIds: idsEmailLote, pularJaEnviadas: document.getElementById('email-lote-pular').checked })
+            body: JSON.stringify({
+                nfseIds: idsEmailLote, pularJaEnviadas: document.getElementById('email-lote-pular').checked,
+                enviarDocumentosVencidos: document.getElementById('email-lote-vencidos').checked
+            })
         });
         const resultado = document.getElementById('email-lote-resultado');
         const falhas = (r.naoEnviadas ?? []).map(n =>

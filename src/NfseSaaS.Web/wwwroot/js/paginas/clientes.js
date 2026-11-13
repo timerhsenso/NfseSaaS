@@ -228,6 +228,7 @@ async function abrirModalNovoCliente() {
     document.getElementById('cpfCnpj').disabled = false;
     prepararDisponibilidadeCliente(null);
     await preencherSelectModeloEmail(document.getElementById('modeloEmailNotaCliente'), null, ROTULO_MODELO_CLIENTE);
+    await carregarDocumentosExigidosCliente(null);
     modalCliente.show();
 }
 
@@ -259,6 +260,7 @@ async function abrirModalEditarCliente(id) {
         document.getElementById(cliente.copiaOculta ? 'copiaCco' : 'copiaCc').checked = true;
         prepararDisponibilidadeCliente(cliente.compartilhado === true);
         await preencherSelectModeloEmail(document.getElementById('modeloEmailNotaCliente'), cliente.modeloEmailNotaId, ROTULO_MODELO_CLIENTE);
+        await carregarDocumentosExigidosCliente(cliente.id);
         atualizarEnvioEmailCliente();
         atualizarObrigatoriedadeEndereco();
         atualizarStatusSecoesCliente();
@@ -334,8 +336,10 @@ async function salvarCliente(e) {
             clienteId = (await apiFetch('/api/clientes', { method: 'POST', body: JSON.stringify(payload) }))?.clienteId;
         }
         // Modelo do e-mail da nota: sub-recurso próprio, só se mudou.
-        if (clienteId)
+        if (clienteId) {
             await salvarModeloEmailSeMudou(document.getElementById('modeloEmailNotaCliente'), `/api/clientes/${clienteId}/modelo-email-nota`);
+            await salvarDocumentosExigidosSeMudou(clienteId);
+        }
 
         modalCliente.hide();
         await carregarClientes();
@@ -417,4 +421,59 @@ async function consultarCnpjCliente() {
         botao.disabled = false;
         botao.innerHTML = iconeOriginal;
     }
+}
+
+// ===== DOC2: documentos que vão junto com a nota =====
+// SituacaoDocumentoExigido: 1 em dia, 2 vencido, 3 faltando (na empresa do topo).
+let documentosExigidosOriginal = '';
+
+async function carregarDocumentosExigidosCliente(clienteId) {
+    const caixa = document.getElementById('documentos-exigidos-cliente');
+    if (!caixa) return;
+    let dados;
+    try {
+        const params = new URLSearchParams();
+        if (clienteId) params.set('clienteId', clienteId);
+        if (empresaAtualId) params.set('empresaId', empresaAtualId);
+        dados = await apiFetch(`/api/clientes/documentos-exigidos?${params}`);
+    } catch {
+        caixa.innerHTML = '<span class="small text-muted">Não foi possível carregar os documentos.</span>';
+        documentosExigidosOriginal = null;
+        return;
+    }
+
+    caixa.innerHTML = dados.opcoes.map((o, i) => {
+        const cor = o.situacao === 1 ? 'success' : o.situacao === 2 ? 'danger' : 'muted';
+        const situacao = o.situacaoTexto ? `<span class="small text-${cor} d-block">${escaparHtml(o.situacaoTexto)}</span>` : '';
+        return `<div class="form-check documento-exigido">
+            <input class="form-check-input" type="checkbox" id="doc-exigido-${i}" data-tipo="${o.tipo}" data-chave="${escaparHtml(o.nomeChave)}" ${o.exigido ? 'checked' : ''} />
+            <label class="form-check-label" for="doc-exigido-${i}">${escaparHtml(o.titulo)}${situacao}</label>
+        </div>`;
+    }).join('');
+    document.getElementById('acaoPendenteCliente').value = String(dados.acaoPendente ?? 0);
+    caixa.querySelectorAll('input').forEach(c => c.addEventListener('change', atualizarAcaoPendenteCliente));
+    atualizarAcaoPendenteCliente();
+    documentosExigidosOriginal = JSON.stringify(lerDocumentosExigidosCliente());
+}
+
+function lerDocumentosExigidosCliente() {
+    return {
+        documentos: [...document.querySelectorAll('#documentos-exigidos-cliente input:checked')]
+            .map(c => ({ tipo: Number(c.dataset.tipo), nomeChave: c.dataset.chave || null })),
+        acaoPendente: Number(document.getElementById('acaoPendenteCliente').value)
+    };
+}
+
+function atualizarAcaoPendenteCliente() {
+    const algum = document.querySelectorAll('#documentos-exigidos-cliente input:checked').length > 0;
+    document.getElementById('bloco-acao-pendente-cliente').classList.toggle('d-none', !algum);
+}
+
+/** Sub-recurso próprio (como o modelo do e-mail): grava só se mudou. */
+async function salvarDocumentosExigidosSeMudou(clienteId) {
+    if (documentosExigidosOriginal === null || !document.getElementById('documentos-exigidos-cliente')) return;
+    const atual = lerDocumentosExigidosCliente();
+    if (JSON.stringify(atual) === documentosExigidosOriginal) return;
+    await apiFetch(`/api/clientes/${clienteId}/documentos-exigidos`, { method: 'PUT', body: JSON.stringify(atual) });
+    documentosExigidosOriginal = JSON.stringify(atual);
 }

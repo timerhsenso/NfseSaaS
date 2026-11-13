@@ -1,4 +1,5 @@
 using NfseSaaS.Domain.Common;
+using NfseSaaS.Domain.Enums;
 
 namespace NfseSaaS.Domain.Entities;
 
@@ -105,4 +106,14 @@ public sealed class Cliente : BaseEntity, ITenantEntity
 
     /// <summary>Modelo do e-mail da nota só deste cliente. Nulo = o da empresa (ou o padrão da conta).</summary>
     public Guid? ModeloEmailNotaId { get; set; }
+
+    /// <summary>
+    /// DOC2: documentos da empresa que este cliente exige junto com a nota
+    /// (certidões etc.), no formato de RegrasDocumentosExigidos ("1;4;99:alvará").
+    /// O envio usa sempre a versão que vale na empresa da nota. Nulo = nenhum.
+    /// </summary>
+    public string? DocumentosExigidos { get; set; }
+
+    /// <summary>DOC2: o que o envio automático faz com documento exigido vencido ou faltando.</summary>
+    public AcaoDocumentoPendente DocumentoPendenteEnvioAutomatico { get; set; }
 }

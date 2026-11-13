@@ -3608,3 +3608,14 @@ html[data-theme="dark"] .painel-aparencia .btn-close { filter: invert(1) graysca
     font-size: .8125rem;
     padding: .4em .8em;
 }
+
+/* DOC2: documentos exigidos no cadastro do cliente — em colunas, com a situação embaixo do nome. */
+.documentos-exigidos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: .5rem 1.5rem;
+}
+
+.documentos-exigidos .form-check-label {
+    line-height: 1.3;
+}

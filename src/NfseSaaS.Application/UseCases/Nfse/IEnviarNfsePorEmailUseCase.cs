@@ -5,7 +5,9 @@ namespace NfseSaaS.Application.UseCases.Nfse;
 /// acontece em segundo plano (fila de e-mails) — Enfileirado=true quer dizer
 /// que entrou na fila; o resultado final aparece na tela de E-mails.
 /// </summary>
-public sealed record EnviarNfsePorEmailResult(bool Enfileirado, string? Destinatario, string? Motivo, IReadOnlyList<string>? Copias = null);
+/// <param name="AlertaDocumentos">DOC2: documento exigido vencido, faltando ou retirado (registrado no e-mail).</param>
+public sealed record EnviarNfsePorEmailResult(
+    bool Enfileirado, string? Destinatario, string? Motivo, IReadOnlyList<string>? Copias = null, string? AlertaDocumentos = null);
 
 /// <summary>
 /// Envia a nota AUTORIZADA (PDF e XML anexos) para o e-mail do tomador
@@ -31,4 +33,11 @@ public interface IEnviarNfsePorEmailUseCase
 /// cópia oculta e rodapé vêm dele) e o assunto e a mensagem como ficaram.
 /// Assunto/mensagem vazios = os do modelo.
 /// </summary>
-public sealed record TextoEmailNota(string? Assunto, string? Mensagem, Guid? ModeloId = null);
+/// <param name="DocumentosIds">DOC2: documentos marcados no modal (versões que valem); nulo = o padrão (os em dia, e os vencidos com EnviarVencidos).</param>
+/// <param name="EnviarVencidos">DOC2: resposta "mandar assim mesmo" para documento exigido vencido.</param>
+public sealed record TextoEmailNota(
+    string? Assunto,
+    string? Mensagem,
+    Guid? ModeloId = null,
+    IReadOnlyList<Guid>? DocumentosIds = null,
+    bool EnviarVencidos = false);

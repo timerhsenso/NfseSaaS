@@ -2,7 +2,9 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NfseSaaS.Application.Abstractions;
+using NfseSaaS.Application.UseCases.DocumentosEmpresa;
 using NfseSaaS.Application.UseCases.Nfse;
+using NfseSaaS.Infrastructure.Documents;
 using NfseSaaS.Infrastructure.Persistence;
 
 namespace NfseSaaS.Infrastructure.Email;
@@ -22,15 +24,54 @@ public sealed class AnexosNfseEmail
     private readonly AppDbContext _db;
     private readonly IObterDanfsePdfUseCase _obterDanfsePdf;
     private readonly ILogger<AnexosNfseEmail> _logger;
+    private readonly DocumentoEmpresaFileStore _documentos;
 
-    public AnexosNfseEmail(AppDbContext db, IObterDanfsePdfUseCase obterDanfsePdf, ILogger<AnexosNfseEmail> logger)
+    public AnexosNfseEmail(AppDbContext db, IObterDanfsePdfUseCase obterDanfsePdf, ILogger<AnexosNfseEmail> logger, DocumentoEmpresaFileStore documentos)
     {
         _db = db;
         _obterDanfsePdf = obterDanfsePdf;
         _logger = logger;
+        _documentos = documentos;
     }
 
-    public async Task<IReadOnlyCollection<AnexoEmail>> MontarAsync(Guid nfseId, CancellationToken cancellationToken)
+    /// <param name="documentosAnexos">DOC2: EmailLog.DocumentosAnexos — documentos da empresa que o cliente exige (versões fixas).</param>
+    public async Task<IReadOnlyCollection<AnexoEmail>> MontarAsync(Guid nfseId, string? documentosAnexos, CancellationToken cancellationToken)
+    {
+        var anexos = (await MontarNotaAsync(nfseId, cancellationToken)).ToList();
+        var nomes = anexos.Select(a => a.NomeArquivo).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Documento que sumiu do disco (ou foi excluído) não derruba o e-mail da
+        // nota: vai sem ele e fica no log do servidor.
+        foreach (var doc in RegrasDocumentosExigidos.Desserializar(documentosAnexos))
+        {
+            var registro = await _db.DocumentosEmpresa.AsNoTracking()
+                .Where(d => d.Id == doc.Id)
+                .Select(d => new { d.TenantId, d.EmpresaId })
+                .FirstOrDefaultAsync(cancellationToken);
+            if (registro is null)
+            {
+                _logger.LogWarning("Documento {DocumentoId} ({Titulo}) não existe mais; e-mail da nota {NfseId} vai sem ele.", doc.Id, doc.Titulo, nfseId);
+                continue;
+            }
+
+            try
+            {
+                var bytes = await _documentos.LerAsync(registro.TenantId, registro.EmpresaId, doc.Id, cancellationToken);
+                var nome = RegrasDocumentoEmpresa.NomeArquivoSeguro(doc.Titulo);
+                for (var n = 2; !nomes.Add(nome); n++)
+                    nome = RegrasDocumentoEmpresa.NomeArquivoSeguro($"{doc.Titulo} {n}");
+                anexos.Add(new AnexoEmail(nome, "application/pdf", bytes));
+            }
+            catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException or IOException or UnauthorizedAccessException)
+            {
+                _logger.LogWarning(ex, "Arquivo do documento {DocumentoId} ({Titulo}) não pôde ser lido; e-mail da nota {NfseId} vai sem ele.", doc.Id, doc.Titulo, nfseId);
+            }
+        }
+
+        return anexos;
+    }
+
+    private async Task<IReadOnlyCollection<AnexoEmail>> MontarNotaAsync(Guid nfseId, CancellationToken cancellationToken)
     {
         var nfse = await _db.NotasFiscais.AsNoTracking()
             .Where(n => n.Id == nfseId)

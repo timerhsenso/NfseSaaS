@@ -264,6 +264,24 @@ public sealed class DocumentosEmpresaService : IDocumentosEmpresaUseCase
             itens.Take(20).ToList());
     }
 
+    /// <summary>DOC2: versões que valem por Empresa, no formato do envio do e-mail (conta atual).</summary>
+    internal static async Task<Dictionary<Guid, List<DocumentoAtual>>> AtuaisParaEmailAsync(
+        AppDbContext db, IReadOnlyCollection<Guid> empresaIds, CancellationToken cancellationToken)
+    {
+        if (empresaIds.Count == 0)
+            return new Dictionary<Guid, List<DocumentoAtual>>();
+
+        var todos = await db.DocumentosEmpresa.AsNoTracking()
+            .Where(d => empresaIds.Contains(d.EmpresaId))
+            .ToListAsync(cancellationToken);
+        return todos
+            .GroupBy(d => (d.EmpresaId, d.Tipo, d.NomeChave))
+            .Select(g => g.OrderByDescending(d => d.CreatedAt).First())
+            .GroupBy(d => d.EmpresaId)
+            .ToDictionary(g => g.Key, g => g.Select(d => new DocumentoAtual(d.Id, d.Tipo, d.NomeChave,
+                RegrasDocumentoEmpresa.Titulo(d.Tipo, d.NomePersonalizado), d.NomeArquivo, d.TamanhoBytes, d.ValidaAte)).ToList());
+    }
+
     /// <summary>A versão que vale de cada "lugar" (da conta atual; de uma Empresa só, se informada).</summary>
     internal static async Task<List<DocumentoEmpresa>> AtuaisAsync(AppDbContext db, Guid? empresaId, CancellationToken cancellationToken)
     {

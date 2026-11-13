@@ -22,15 +22,21 @@ public sealed record PreviaEmailNfseResponse(
     bool Homologacao,
     DateTimeOffset? UltimoEnvioEm,
     StatusEmailLog? UltimoStatus,
-    string? Impedimento);
+    string? Impedimento,
+    IReadOnlyList<NfseSaaS.Application.UseCases.DocumentosEmpresa.DocumentoEmailPrevia>? Documentos = null);
 
 /// <param name="PularJaEnviadas">Não reenvia nota que já tem e-mail enviado ou na fila.</param>
-public sealed record EnvioEmailLoteRequest(IReadOnlyList<Guid> NfseIds, bool PularJaEnviadas = true);
+/// <param name="EnviarDocumentosVencidos">DOC2: documento exigido vencido vai assim mesmo (padrão: não vai; o alerta fica registrado).</param>
+public sealed record EnvioEmailLoteRequest(IReadOnlyList<Guid> NfseIds, bool PularJaEnviadas = true, bool EnviarDocumentosVencidos = false);
 
 /// <summary>Resumo antes de enviar várias notas.</summary>
 /// <param name="Enviaveis">Autorizadas e com e-mail do cliente (inclui as já enviadas).</param>
 /// <param name="Clientes">Clientes diferentes entre as enviáveis.</param>
-public sealed record PreviaEnvioEmailLoteResponse(int Total, int Enviaveis, int JaEnviadas, int SemEmail, int NaoAutorizadas, int Clientes);
+/// <param name="ComDocumentoVencido">DOC2: enviáveis com algum documento exigido vencido.</param>
+/// <param name="ComDocumentoFaltando">DOC2: enviáveis com algum documento exigido que a empresa não enviou.</param>
+public sealed record PreviaEnvioEmailLoteResponse(
+    int Total, int Enviaveis, int JaEnviadas, int SemEmail, int NaoAutorizadas, int Clientes,
+    int ComDocumentoVencido = 0, int ComDocumentoFaltando = 0);
 
 public sealed record NotaNaoEnviadaPorEmail(Guid NfseId, string Numero, string Cliente, string Motivo);
 

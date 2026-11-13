@@ -43,6 +43,10 @@ public sealed class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
         builder.Property(c => c.EmailsCopia)
             .HasMaxLength(EmailsCopiaCliente.TamanhoMaximoColuna);
 
+        // DOC2: documentos exigidos pelo cliente ("1;4;99:alvará") e o que o envio automático faz com o pendente.
+        builder.Property(c => c.DocumentosExigidos)
+            .HasMaxLength(NfseSaaS.Application.UseCases.DocumentosEmpresa.RegrasDocumentosExigidos.TamanhoMaximoColuna);
+
         builder.Property(c => c.Telefone)
             .HasMaxLength(20);
 
