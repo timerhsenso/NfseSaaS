@@ -40,9 +40,9 @@
 @if (podeEditar)
 {
     <div class="modal fade" id="modal-cliente" tabindex="-1" aria-labelledby="titulo-modal-cliente">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-xl">
             <div class="modal-content">
-                <form id="form-cliente">
+                <form id="form-cliente" novalidate>
                     <div class="modal-header">
                         <div class="modal-cabecalho-entidade">
                             <div class="entidade-avatar entidade-avatar-redondo" id="avatar-modal-cliente" aria-hidden="true"><i class="bi bi-person"></i></div>
@@ -53,173 +53,183 @@
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                     </div>
-                    <div class="modal-body">
-                        <div id="erro-cliente" class="alert alert-danger d-none"></div>
+                    <div class="modal-body modal-body-secoes">
                         <input type="hidden" id="clienteId" />
 
-                        <section class="form-secao">
-                            <div class="form-secao-titulo">
-                                <h3>Identificação</h3>
-                                <p>CNPJ ou CPF e o nome que vai na nota.</p>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label" for="cpfCnpj">CPF ou CNPJ</label>
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" id="cpfCnpj" maxlength="14" required inputmode="numeric" placeholder="Somente números" />
-                                        <button type="button" class="btn btn-outline-primary" id="btn-consultar-cnpj-cliente" title="Buscar dados na Receita Federal (só CNPJ, 14 dígitos)">
-                                            <i class="bi bi-search"></i> Receita
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label" for="apelido">Apelido</label>
-                                    <input type="text" class="form-control" id="apelido" maxlength="40" required
-                                           title="Nome curto usado nas telas e no nome do PDF. Não aparece na nota fiscal." />
-                                </div>
-                                <div class="col-12 mb-3">
-                                    <label class="form-label" for="nome">Nome / razão social</label>
-                                    <input type="text" class="form-control" id="nome" maxlength="200" required />
-                                    <div class="form-text">A nota sai com este nome; o apelido aparece só nas telas e no nome do PDF.</div>
-                                </div>
-                                <div class="col-md-6 mb-3 d-none" id="bloco-disponibilidade-cliente">
-                                    <label class="form-label" for="disponivelPara">Disponível para</label>
-                                    <select class="form-select" id="disponivelPara">
-                                        <option value="esta">Só esta empresa</option>
-                                        <option value="todas">Todas as empresas da conta</option>
-                                    </select>
-                                    <div class="form-text" id="dica-disponibilidade-cliente">Com "Todas", o mesmo cadastro serve para as notas de qualquer empresa da conta: mudou o e-mail aqui, muda em todas.</div>
-                                </div>
-                            </div>
-                        </section>
+                        @* Mesmo layout do cadastro de Empresa: seções à esquerda, ✓/! pelo preenchimento (clientes.js). *@
+                        <nav class="modal-secoes" id="tabs-cliente" aria-label="Seções do cliente">
+                            <button type="button" class="nav-link active" data-tab-alvo="tab-dados-cliente"><i class="bi bi-person-vcard"></i><span>Dados gerais</span><span class="secao-status" aria-hidden="true"></span></button>
+                            <button type="button" class="nav-link" data-tab-alvo="tab-endereco-cliente"><i class="bi bi-geo-alt"></i><span>Endereço</span><span class="secao-status" aria-hidden="true"></span></button>
+                            <button type="button" class="nav-link" data-tab-alvo="tab-envio-cliente"><i class="bi bi-envelope"></i><span>Envio da nota</span><span class="secao-status" aria-hidden="true"></span></button>
+                            <button type="button" class="nav-link" data-tab-alvo="tab-fiscal-cliente"><i class="bi bi-receipt"></i><span>Retenções</span><span class="secao-status" aria-hidden="true"></span></button>
+                        </nav>
 
-                        <section class="form-secao">
-                            <div class="form-secao-titulo">
-                                <h3>Contato</h3>
-                                <p>E-mail e envio da nota.</p>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-7 mb-3">
-                                    <label class="form-label" for="email">E-mail</label>
-                                    <input type="email" class="form-control" id="email" maxlength="200" />
-                                </div>
-                                <div class="col-md-5 mb-3">
-                                    <label class="form-label" for="telefone">Telefone</label>
-                                    <input type="text" class="form-control" id="telefone" maxlength="20" inputmode="tel" />
-                                </div>
-                                <div class="col-12 mb-3">
-                                    <div class="form-check form-switch m-0">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="enviarNfsePorEmail" />
-                                        <label class="form-check-label" for="enviarNfsePorEmail">Enviar a nota por e-mail</label>
-                                        <i class="bi bi-info-circle text-muted ms-1" tabindex="0"
-                                           title="Assim que a nota é autorizada, o PDF e o XML vão para o e-mail acima (e para as cópias). Ao ligar, o e-mail passa a ser obrigatório."></i>
-                                    </div>
-                                </div>
-                                <div class="col-md-7 mb-3">
-                                    <label class="form-label" for="modeloEmailNotaCliente">Modelo do e-mail da nota <span class="text-muted fw-normal">(opcional)</span></label>
-                                    <select class="form-select" id="modeloEmailNotaCliente"></select>
-                                    <div class="form-text">Só se este cliente precisa de um texto diferente. Modelos em <a href="/ModelosEmail">Modelos de e-mail</a>.</div>
-                                </div>
-                                <div class="col-12 mb-3 d-none" id="bloco-copias-cliente">
-                                    <label class="form-label" for="emailsCopia">Com cópia para <span class="text-muted fw-normal">(opcional, até 5)</span></label>
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" id="emailsCopia" maxlength="510"
-                                               placeholder="financeiro@empresa.com, contador@escritorio.com" />
-                                        <input type="radio" class="btn-check" name="tipoCopiaCliente" id="copiaCc" value="cc" checked />
-                                        <label class="btn btn-outline-primary" for="copiaCc" title="Cópia: todos veem quem recebeu">Cc</label>
-                                        <input type="radio" class="btn-check" name="tipoCopiaCliente" id="copiaCco" value="cco" />
-                                        <label class="btn btn-outline-primary" for="copiaCco" title="Cópia oculta: cada um vê só o próprio endereço">Cco</label>
-                                    </div>
-                                    <div class="form-text">Separe por vírgula. <strong>Cc</strong>: todos veem quem recebeu. <strong>Cco</strong>: cópia oculta.</div>
-                                </div>
-                            </div>
-                        </section>
+                        <div class="modal-secoes-conteudo">
+                        <div id="erro-cliente" class="alert alert-danger d-none"></div>
 
-                        <section class="form-secao">
-                            <div class="form-secao-titulo">
-                                <h3>Endereço</h3>
-                                <p>Digite o CEP ou clique na lupa: rua, bairro, UF e município vêm sozinhos.</p>
-                                <p class="small text-muted mb-0" id="dica-endereco-cliente">Obrigatório para CNPJ e para quem retém o ISS. Pessoa física (CPF) sem retenção pode ficar sem endereço.</p>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-4 mb-3">
-                                    <label class="form-label" for="cep">CEP</label>
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" id="cep" maxlength="9" inputmode="numeric" placeholder="00000-000" />
-                                        <button type="button" class="btn btn-outline-primary" id="btn-buscar-cep-cliente" title="Buscar o endereço pelo CEP" aria-label="Buscar o endereço pelo CEP">
-                                            <i class="bi bi-search"></i>
-                                        </button>
-                                    </div>
-                                    <div class="form-text" id="status-cep-cliente"></div>
-                                </div>
-                                <div class="col-md-8 mb-3">
-                                    <label class="form-label" for="codigoMunicipio">Município (código IBGE)</label>
-                                    <input type="text" class="form-control" id="codigoMunicipio" maxlength="7" inputmode="numeric" />
-                                    <div class="form-text" id="nome-municipio-cliente">Preenchido pelo CEP.</div>
-                                    <select class="form-select form-select-sm mt-1" id="busca-municipio-cliente"><option></option></select>
-                                </div>
-                                <div class="col-md-9 mb-3">
-                                    <label class="form-label" for="logradouro">Logradouro</label>
-                                    <input type="text" class="form-control" id="logradouro" maxlength="200" />
-                                </div>
-                                <div class="col-md-3 mb-3">
-                                    <label class="form-label" for="numero">Número</label>
-                                    <input type="text" class="form-control" id="numero" maxlength="20" />
-                                </div>
-                                <div class="col-md-5 mb-3">
-                                    <label class="form-label" for="complemento">Complemento</label>
-                                    <input type="text" class="form-control" id="complemento" maxlength="100" placeholder="Sala, bloco, andar" />
-                                </div>
-                                <div class="col-md-5 mb-3">
-                                    <label class="form-label" for="bairro">Bairro</label>
-                                    <input type="text" class="form-control" id="bairro" maxlength="100" />
-                                </div>
-                                <div class="col-md-2 mb-3">
-                                    <label class="form-label" for="uf">UF</label>
-                                    <input type="text" class="form-control" id="uf" maxlength="2" placeholder="BA" />
+                        <div class="tab-conteudo-cliente" data-tab="tab-dados-cliente">
+                        <div class="secao-cabecalho">
+                            <h3>Dados gerais</h3>
+                            <p>CNPJ ou CPF e o nome que vai na nota.</p>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label" for="cpfCnpj">CPF ou CNPJ</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="cpfCnpj" maxlength="14" required inputmode="numeric" placeholder="Somente números" />
+                                    <button type="button" class="btn btn-outline-primary" id="btn-consultar-cnpj-cliente" title="Buscar dados na Receita Federal (só CNPJ, 14 dígitos)">
+                                        <i class="bi bi-search"></i> Receita
+                                    </button>
                                 </div>
                             </div>
-                        </section>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label" for="apelido">Apelido</label>
+                                <input type="text" class="form-control" id="apelido" maxlength="40" required
+                                       title="Nome curto usado nas telas e no nome do PDF. Não aparece na nota fiscal." />
+                            </div>
+                            <div class="col-md-8 mb-3">
+                                <label class="form-label" for="nome">Nome / razão social</label>
+                                <input type="text" class="form-control" id="nome" maxlength="200" required />
+                                <div class="form-text">A nota sai com este nome; o apelido aparece só nas telas e no nome do PDF.</div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label" for="telefone">Telefone</label>
+                                <input type="text" class="form-control" id="telefone" maxlength="20" inputmode="tel" />
+                            </div>
+                            <div class="col-md-6 mb-3 d-none" id="bloco-disponibilidade-cliente">
+                                <label class="form-label" for="disponivelPara">Disponível para</label>
+                                <select class="form-select" id="disponivelPara">
+                                    <option value="esta">Só esta empresa</option>
+                                    <option value="todas">Todas as empresas da conta</option>
+                                </select>
+                                <div class="form-text" id="dica-disponibilidade-cliente">Com "Todas", o mesmo cadastro serve para as notas de qualquer empresa da conta: mudou o e-mail aqui, muda em todas.</div>
+                            </div>
+                        </div>
+                        </div>
 
-                        <section class="form-secao">
-                            <div class="form-secao-titulo">
-                                <h3>Fiscal</h3>
-                                <p>Padrão das notas para este cliente.</p>
-                            </div>
-                            <div class="row">
-                                <div class="col-12 mb-3">
-                                    <div class="form-check form-switch m-0">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="retemIss" />
-                                        <label class="form-check-label" for="retemIss">Retém o ISS na fonte</label>
-                                        <i class="bi bi-info-circle text-muted ms-1" tabindex="0"
-                                           title="Órgão público ou empresa que a prefeitura obriga a reter. As notas para este cliente já saem com ISS retido (dá para mudar na hora de emitir)."></i>
-                                    </div>
+                        <div class="tab-conteudo-cliente d-none" data-tab="tab-endereco-cliente">
+                        <div class="secao-cabecalho">
+                            <h3>Endereço</h3>
+                            <p>Digite o CEP ou clique na lupa: rua, bairro, UF e município vêm sozinhos.</p>
+                            <p class="small text-muted mb-0" id="dica-endereco-cliente">Obrigatório para CNPJ e para quem retém o ISS. Pessoa física (CPF) sem retenção pode ficar sem endereço.</p>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label" for="cep">CEP</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="cep" maxlength="9" inputmode="numeric" placeholder="00000-000" />
+                                    <button type="button" class="btn btn-outline-primary" id="btn-buscar-cep-cliente" title="Buscar o endereço pelo CEP" aria-label="Buscar o endereço pelo CEP">
+                                        <i class="bi bi-search"></i>
+                                    </button>
                                 </div>
-                                @* C6: retenções federais que este tomador faz (clientes.js). *@
-                                <div class="col-12 mb-2">
-                                    <div class="form-label mb-1">Retenções federais que este cliente faz</div>
-                                    <div class="form-text mt-0 mb-2">
-                                        Marque só o que o cliente desconta do pagamento. A Nota Mensal e a automação já aplicam;
-                                        se a sua empresa é do Simples, IRRF e PIS/COFINS/CSLL não são aplicados automaticamente (dispensa legal).
-                                    </div>
-                                    <div class="grade-retencoes">
-                                        @foreach (var (id, nome, padrao) in new[] { ("irrf", "IRRF", "1.50"), ("pis", "PIS", "0.65"), ("cofins", "COFINS", "3.00"), ("csll", "CSLL", "1.00"), ("inss", "INSS", "11.00") })
-                                        {
-                                            <div class="item-retencao">
-                                                <div class="form-check mb-1">
-                                                    <input class="form-check-input check-retencao-cliente" type="checkbox" id="ret-@id" data-tributo="@id" />
-                                                    <label class="form-check-label small" for="ret-@id">@nome</label>
-                                                </div>
-                                                <div class="input-group input-group-sm">
-                                                    <input type="number" step="0.01" min="0.01" max="100" class="form-control" id="ret-@(id)-percentual" data-padrao="@padrao" value="@padrao" disabled aria-label="Percentual de @nome" />
-                                                    <span class="input-group-text">%</span>
-                                                </div>
+                                <div class="form-text" id="status-cep-cliente"></div>
+                            </div>
+                            <div class="col-md-8 mb-3">
+                                <label class="form-label" for="codigoMunicipio">Município (código IBGE)</label>
+                                <input type="text" class="form-control" id="codigoMunicipio" maxlength="7" inputmode="numeric" />
+                                <div class="form-text" id="nome-municipio-cliente">Preenchido pelo CEP.</div>
+                                <select class="form-select form-select-sm mt-1" id="busca-municipio-cliente"><option></option></select>
+                            </div>
+                            <div class="col-md-9 mb-3">
+                                <label class="form-label" for="logradouro">Logradouro</label>
+                                <input type="text" class="form-control" id="logradouro" maxlength="200" />
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label" for="numero">Número</label>
+                                <input type="text" class="form-control" id="numero" maxlength="20" />
+                            </div>
+                            <div class="col-md-5 mb-3">
+                                <label class="form-label" for="complemento">Complemento</label>
+                                <input type="text" class="form-control" id="complemento" maxlength="100" placeholder="Sala, bloco, andar" />
+                            </div>
+                            <div class="col-md-5 mb-3">
+                                <label class="form-label" for="bairro">Bairro</label>
+                                <input type="text" class="form-control" id="bairro" maxlength="100" />
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <label class="form-label" for="uf">UF</label>
+                                <input type="text" class="form-control" id="uf" maxlength="2" placeholder="BA" />
+                            </div>
+                        </div>
+                        </div>
+
+                        <div class="tab-conteudo-cliente d-none" data-tab="tab-envio-cliente">
+                        <div class="secao-cabecalho">
+                            <h3>Envio da nota</h3>
+                            <p>Para onde vai o PDF e o XML assim que a nota é autorizada, e com qual texto.</p>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label class="form-label" for="email">E-mail</label>
+                                <input type="email" class="form-control" id="email" maxlength="200" />
+                            </div>
+                            <div class="col-12 mb-3">
+                                <div class="form-check form-switch m-0">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="enviarNfsePorEmail" />
+                                    <label class="form-check-label" for="enviarNfsePorEmail">Enviar a nota por e-mail</label>
+                                    <i class="bi bi-info-circle text-muted ms-1" tabindex="0"
+                                       title="Assim que a nota é autorizada, o PDF e o XML vão para o e-mail acima (e para as cópias). Ao ligar, o e-mail passa a ser obrigatório."></i>
+                                </div>
+                            </div>
+                            <div class="col-md-7 mb-3">
+                                <label class="form-label" for="modeloEmailNotaCliente">Modelo do e-mail da nota <span class="text-muted fw-normal">(opcional)</span></label>
+                                <select class="form-select" id="modeloEmailNotaCliente"></select>
+                                <div class="form-text">Só se este cliente precisa de um texto diferente. Modelos em <a href="/ModelosEmail">Modelos de e-mail</a>.</div>
+                            </div>
+                            <div class="col-12 mb-3 d-none" id="bloco-copias-cliente">
+                                <label class="form-label" for="emailsCopia">Com cópia para <span class="text-muted fw-normal">(opcional, até 5)</span></label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="emailsCopia" maxlength="510"
+                                           placeholder="financeiro@empresa.com, contador@escritorio.com" />
+                                    <input type="radio" class="btn-check" name="tipoCopiaCliente" id="copiaCc" value="cc" checked />
+                                    <label class="btn btn-outline-primary" for="copiaCc" title="Cópia: todos veem quem recebeu">Cc</label>
+                                    <input type="radio" class="btn-check" name="tipoCopiaCliente" id="copiaCco" value="cco" />
+                                    <label class="btn btn-outline-primary" for="copiaCco" title="Cópia oculta: cada um vê só o próprio endereço">Cco</label>
+                                </div>
+                                <div class="form-text">Separe por vírgula. <strong>Cc</strong>: todos veem quem recebeu. <strong>Cco</strong>: cópia oculta.</div>
+                            </div>
+                        </div>
+                        </div>
+
+                        <div class="tab-conteudo-cliente d-none" data-tab="tab-fiscal-cliente">
+                        <div class="secao-cabecalho">
+                            <h3>Retenções</h3>
+                            <p>O que este cliente desconta do pagamento. As notas para ele já saem assim (dá para mudar na hora de emitir).</p>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-4">
+                                <div class="form-label mb-1">ISS</div>
+                                <div class="form-check form-switch m-0">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="retemIss" />
+                                    <label class="form-check-label" for="retemIss">Retém o ISS na fonte</label>
+                                </div>
+                                <div class="form-text">Órgão público ou empresa que a prefeitura obriga a reter.</div>
+                            </div>
+                            @* C6: retenções federais que este tomador faz (clientes.js). *@
+                            <div class="col-12 mb-2">
+                                <div class="form-label mb-1">Tributos federais</div>
+                                <div class="form-text mt-0 mb-2">
+                                    Se a sua empresa é do Simples, IRRF e PIS/COFINS/CSLL não entram sozinhos na Nota Mensal (dispensa legal).
+                                </div>
+                                <div class="grade-retencoes">
+                                    @foreach (var (id, nome, padrao) in new[] { ("irrf", "IRRF", "1.50"), ("pis", "PIS", "0.65"), ("cofins", "COFINS", "3.00"), ("csll", "CSLL", "1.00"), ("inss", "INSS", "11.00") })
+                                    {
+                                        <div class="item-retencao">
+                                            <div class="form-check mb-1">
+                                                <input class="form-check-input check-retencao-cliente" type="checkbox" id="ret-@id" data-tributo="@id" />
+                                                <label class="form-check-label small" for="ret-@id">@nome</label>
                                             </div>
-                                        }
-                                    </div>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" step="0.01" min="0.01" max="100" class="form-control" id="ret-@(id)-percentual" data-padrao="@padrao" value="@padrao" disabled aria-label="Percentual de @nome" />
+                                                <span class="input-group-text">%</span>
+                                            </div>
+                                        </div>
+                                    }
                                 </div>
                             </div>
-                        </section>
+                        </div>
+                        </div>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <span class="modal-rodape-info">Campos com <span class="text-danger">*</span> são obrigatórios</span>

@@ -52,11 +52,19 @@ document.addEventListener('DOMContentLoaded', function () {
         modalCliente = new bootstrap.Modal(document.getElementById('modal-cliente'));
         document.getElementById('btn-novo-cliente').addEventListener('click', abrirModalNovoCliente);
         document.getElementById('form-cliente').addEventListener('submit', salvarCliente);
+        // Seções à esquerda (mesmo layout da Empresa) e ✓ / ! pelo preenchimento.
+        document.getElementById('tabs-cliente').addEventListener('click', function (e) {
+            const botao = e.target.closest('button[data-tab-alvo]');
+            if (botao) trocarAbaCliente(botao.dataset.tabAlvo);
+        });
+        const formCliente = document.getElementById('form-cliente');
+        formCliente.addEventListener('input', atualizarStatusSecoesCliente);
+        formCliente.addEventListener('change', atualizarStatusSecoesCliente);
         document.getElementById('btn-consultar-cnpj-cliente').addEventListener('click', consultarCnpjCliente);
         buscaCepCliente = configurarBuscaCep({
             cep: 'cep', logradouro: 'logradouro', bairro: 'bairro', complemento: 'complemento', uf: 'uf',
             codigoMunicipio: 'codigoMunicipio', nomeMunicipio: 'nome-municipio-cliente', statusCep: 'status-cep-cliente',
-            numero: 'numero', botao: 'btn-buscar-cep-cliente'
+            numero: 'numero', botao: 'btn-buscar-cep-cliente', aoPreencher: atualizarStatusSecoesCliente
         });
         configurarBuscaMunicipio({
             busca: 'busca-municipio-cliente', codigoMunicipio: 'codigoMunicipio', uf: 'uf',
@@ -131,9 +139,28 @@ function limparFormularioCliente() {
     document.getElementById('subtitulo-modal-cliente').textContent = 'O tomador do serviço — como sai na nota.';
     document.getElementById('clienteId').value = '';
     document.getElementById('erro-cliente').classList.add('d-none');
+    document.querySelectorAll('#tabs-cliente .secao-status').forEach(s => { s.className = 'secao-status'; s.textContent = ''; });
+    trocarAbaCliente('tab-dados-cliente');
     definirRetencoesCliente(null);
     atualizarEnvioEmailCliente();
     atualizarObrigatoriedadeEndereco();
+}
+
+function trocarAbaCliente(alvo) {
+    document.querySelectorAll('#tabs-cliente .nav-link').forEach(b => b.classList.toggle('active', b.dataset.tabAlvo === alvo));
+    document.querySelectorAll('.tab-conteudo-cliente').forEach(p => p.classList.toggle('d-none', p.dataset.tab !== alvo));
+}
+
+function atualizarStatusSecoesCliente() {
+    atualizarStatusSecoes('form-cliente', '.tab-conteudo-cliente', '#tabs-cliente');
+}
+
+/** Erro do servidor: abre a seção do campo citado (a mensagem fica no topo de todas). */
+function abrirSecaoDoErroCliente(mensagem) {
+    const texto = (mensagem || '').toLowerCase();
+    if (/endere|cep|munic|logradouro|bairro/.test(texto)) trocarAbaCliente('tab-endereco-cliente');
+    else if (/e-mail|cópia|copia/.test(texto)) trocarAbaCliente('tab-envio-cliente');
+    else if (/reten|percentual|irrf|inss|csll|cofins|pis\b/.test(texto)) trocarAbaCliente('tab-fiscal-cliente');
 }
 
 // C6: retenções federais que o cliente faz (percentual; nulo = não retém).
@@ -234,6 +261,7 @@ async function abrirModalEditarCliente(id) {
         await preencherSelectModeloEmail(document.getElementById('modeloEmailNotaCliente'), cliente.modeloEmailNotaId, ROTULO_MODELO_CLIENTE);
         atualizarEnvioEmailCliente();
         atualizarObrigatoriedadeEndereco();
+        atualizarStatusSecoesCliente();
 
         const nomeExibicao = cliente.apelido || cliente.nome;
         document.getElementById('titulo-modal-cliente').textContent = nomeExibicao;
@@ -286,9 +314,13 @@ async function salvarCliente(e) {
     e.preventDefault();
     ocultarErroFormulario('erro-cliente');
 
+    if (!validarFormularioComAbas(document.getElementById('form-cliente'), '.tab-conteudo-cliente', trocarAbaCliente, 'erro-cliente'))
+        return;
+
     const id = document.getElementById('clienteId').value;
     const payload = montarPayloadCliente();
     if (payload.emailsCopia.length > 5) {
+        trocarAbaCliente('tab-envio-cliente');
         mostrarErroFormulario('erro-cliente', 'Informe no máximo 5 e-mails em cópia.');
         return;
     }
@@ -309,6 +341,7 @@ async function salvarCliente(e) {
         await carregarClientes();
         mostrarToast('Cliente salvo com sucesso.');
     } catch (err) {
+        abrirSecaoDoErroCliente(err.message);
         mostrarErroFormulario('erro-cliente', err.message);
     }
 }

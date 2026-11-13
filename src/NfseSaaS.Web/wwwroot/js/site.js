@@ -252,7 +252,9 @@ function validarFormularioComAbas(form, seletorPainel, trocarAba, idErroDiv) {
     const painel = primeiroInvalido.closest(seletorPainel);
     if (painel) trocarAba(painel.dataset.tab);
 
-    const rotulo = primeiroInvalido.closest('div')?.querySelector('label.form-label');
+    // Rótulo pelo "for" (campo dentro de input-group também acha); senão, o do bloco.
+    const rotulo = (primeiroInvalido.id && form.querySelector(`label.form-label[for="${primeiroInvalido.id}"]`))
+        || primeiroInvalido.closest('div')?.querySelector('label.form-label');
     const nomeCampo = rotulo ? rotulo.textContent.trim() : (primeiroInvalido.name || primeiroInvalido.id || 'um campo');
 
     mostrarErroFormulario(idErroDiv, `Preencha "${nomeCampo}" antes de salvar.`);

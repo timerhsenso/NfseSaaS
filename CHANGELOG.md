@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Alterado (cadastro de cliente em seções)
+- **Cliente** com o mesmo layout do cadastro de Empresa: seções à esquerda
+  (**Dados gerais**, **Endereço**, **Envio da nota**, **Retenções**) com ✓ / !
+  pelo preenchimento, em vez de uma tela comprida. Telefone foi para Dados
+  gerais; e-mail, envio, cópias e modelo do e-mail ficam juntos em Envio da
+  nota; ISS e tributos federais em Retenções.
+- Ao salvar com campo faltando, a tela abre a seção do campo e diz qual é;
+  erro do servidor sobre endereço, e-mail ou retenção abre a seção certa.
+- Mensagem "Preencha … antes de salvar" passa a usar o rótulo do campo
+  também em campos com botão ao lado (CEP, CNPJ) — vale para todas as telas.
+
 ### Adicionado (C6 — descontos e retenções federais)
 - **Emitir nota › "Descontos e retenções"** (fechado por padrão; abre sozinho
   quando o cliente tem retenção): desconto **incondicionado** (reduz o valor e
