@@ -54,7 +54,9 @@ public sealed class SmtpEmailSender : IEmailSender
             return new ResultadoEnvioEmail(false, $"Endereço de e-mail inválido: '{destinatarioEmail}'.");
 
         var mensagem = new MimeMessage();
-        mensagem.From.Add(new MailboxAddress(_options.RemetenteNome, _options.RemetenteEmail));
+        // Nota fiscal: "LFMS via MicoEmpresa" — o cliente reconhece o fornecedor; o endereço segue o do sistema.
+        var nomeRemetente = string.IsNullOrWhiteSpace(email.RemetenteNome) ? _options.RemetenteNome : email.RemetenteNome;
+        mensagem.From.Add(new MailboxAddress(nomeRemetente, _options.RemetenteEmail));
         mensagem.To.Add(destinatario);
         // Reply-To inválido não impede o envio: só fica sem ele.
         if (!string.IsNullOrWhiteSpace(email.ResponderPara) && MailboxAddress.TryParse(email.ResponderPara, out var responderPara))

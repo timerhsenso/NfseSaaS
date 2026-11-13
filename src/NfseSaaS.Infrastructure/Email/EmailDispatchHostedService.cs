@@ -108,10 +108,12 @@ public sealed class EmailDispatchHostedService : BackgroundService
                 : await emailSender.EnviarAsync(new MensagemEmail(item.Destinatario, item.Assunto, item.CorpoHtml, null, responderPara, copias, log.CopiasOcultas, log.CopiaOcultaFixa), cancellationToken);
 
         IReadOnlyCollection<AnexoEmail> anexos;
+        string? remetente;
         try
         {
             servicos.GetRequiredService<ICurrentTenant>().DefinirTenantIdDeSistema(log.TenantId);
             anexos = await servicos.GetRequiredService<AnexosNfseEmail>().MontarAsync(idNota, log.DocumentosAnexos, cancellationToken);
+            remetente = await NomeRemetenteAsync(servicos, log.TenantId, idNota, cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -119,6 +121,23 @@ public sealed class EmailDispatchHostedService : BackgroundService
             return new ResultadoEnvioEmail(false, $"Não foi possível anexar a nota: {ex.Message}");
         }
 
-        return await emailSender.EnviarAsync(new MensagemEmail(item.Destinatario, item.Assunto, item.CorpoHtml, anexos, responderPara, copias, log.CopiasOcultas, log.CopiaOcultaFixa), cancellationToken);
+        return await emailSender.EnviarAsync(new MensagemEmail(item.Destinatario, item.Assunto, item.CorpoHtml, anexos, responderPara, copias,
+            log.CopiasOcultas, log.CopiaOcultaFixa, remetente), cancellationToken);
+    }
+
+    /// <summary>"LFMS via MicoEmpresa": a empresa que emitiu a nota, lida na hora (vale também no "Reenviar").</summary>
+    private static async Task<string?> NomeRemetenteAsync(IServiceProvider servicos, Guid tenantId, Guid nfseId, CancellationToken cancellationToken)
+    {
+        var db = servicos.GetRequiredService<AppDbContext>();
+        var empresa = await (
+            from n in db.NotasFiscais.AsNoTracking().IgnoreQueryFilters()
+            join e in db.Empresas.AsNoTracking().IgnoreQueryFilters() on n.EmpresaId equals e.Id
+            where n.Id == nfseId && n.TenantId == tenantId
+            select new { e.NomeFantasia, e.RazaoSocial })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (empresa is null)
+            return null;
+        var plataforma = servicos.GetRequiredService<Microsoft.Extensions.Options.IOptions<EmailOptions>>().Value.RemetenteNome;
+        return RegrasRemetenteEmail.NomeExibicao(empresa.NomeFantasia, empresa.RazaoSocial, plataforma);
     }
 }

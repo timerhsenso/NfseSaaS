@@ -5,6 +5,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Melhorado (E-mail da nota com o nome da empresa)
+- O e-mail da nota chega como **"LFMS via MicoEmpresa"** (nome fantasia da
+  empresa que emitiu, ou a razão social), para o cliente reconhecer o
+  fornecedor de cara. O endereço continua o do sistema (exigência de SPF/DMARC)
+  e as respostas vão para o "Responder para" do modelo (ou o e-mail da empresa).
+  Vale também no "Reenviar". Os outros e-mails do sistema seguem como antes.
+
 ### Adicionado (DOC4 — catálogo de documentos)
 - **Catálogo geral de documentos no banco**, mantido só pelo dono da plataforma
   (Plataforma › Documentos): nome, categoria (fiscal, trabalhista, cadastro,
