@@ -5,6 +5,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (TR1 — tour guiado das telas)
+- **Tour guiado** (Driver.js 1.3.6, licença MIT): escurece a tela e destaca
+  cada parte com um balão "Próximo / Voltar". Abre sozinho na **primeira vez**
+  que o usuário entra em cada tela: Painel (boas-vindas, empresa, ambiente,
+  primeiros passos, menu, "Seu negócio"), Notas, Clientes, Contratos,
+  Serviços, Empresas, Documentos e Modelos de e-mail.
+- O "já visto" fica **no usuário** (vale em qualquer computador ou celular).
+  No menu do usuário: **"Ver o tour desta tela"** e **"Rever todos os tours"**.
+- Passo de algo que não aparece na tela (sem permissão, tela vazia) é pulado.
+  No celular, os itens do menu lateral viram um passo só, no botão do menu.
+  Conta sem empresa: o tour termina em "Comece por aqui: cadastre sua empresa".
+- Cores do sistema no balão, no modo claro e no escuro.
+- Migração `ToursVistos` (coluna `AspNetUsers.ToursVistos`).
+
 ### Adicionado (CR1 — confirmação de recebimento da nota)
 - Novo campo **[Confirmar recebimento]** nos modelos de e-mail: sozinho na
   linha vira um **botão** verde; no meio da frase vira um **link** ("Clique

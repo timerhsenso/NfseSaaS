@@ -43,4 +43,10 @@ public sealed class ApplicationUser : IdentityUser<Guid>
     /// ver PreferenciasAparencia. Nulo = nunca salvou (usa o padrão).
     /// </summary>
     public string? PreferenciasAparencia { get; set; }
+
+    /// <summary>
+    /// TR1: tours guiados que este usuário já viu ("painel;notas;…", ver
+    /// RegrasTour). Nulo = nenhum: o tour da tela abre sozinho na primeira vez.
+    /// </summary>
+    public string? ToursVistos { get; set; }
 }

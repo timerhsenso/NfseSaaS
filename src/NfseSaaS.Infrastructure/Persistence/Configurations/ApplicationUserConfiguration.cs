@@ -17,6 +17,10 @@ public sealed class ApplicationUserConfiguration : IEntityTypeConfiguration<Appl
         builder.Property(u => u.PreferenciasAparencia)
             .HasMaxLength(300);
 
+        // TR1: códigos curtos separados por ";" (RegrasTour.TamanhoMaximo).
+        builder.Property(u => u.ToursVistos)
+            .HasMaxLength(NfseSaaS.Application.UseCases.Tour.RegrasTour.TamanhoMaximo);
+
         // SetNull, não Restrict/Cascade: excluir um Grupo com usuário
         // vinculado não pode ser bloqueado só por isso (ver
         // ExcluirGrupoUseCase, que já valida isso explicitamente antes
