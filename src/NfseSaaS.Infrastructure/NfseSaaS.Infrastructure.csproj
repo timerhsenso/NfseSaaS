@@ -26,6 +26,8 @@
   <!-- DANFSe (DanfseXmlDados é internal) testado direto em NfseSaaS.Tests. -->
   <ItemGroup>
     <InternalsVisibleTo Include="NfseSaaS.Tests" />
+    <!-- Despacho de e-mail (ProcessarAsync) testado com o banco real. -->
+    <InternalsVisibleTo Include="NfseSaaS.IntegrationTests" />
   </ItemGroup>
 
   <!--

@@ -25,12 +25,18 @@ public sealed record MensagemEmail(
 /// <summary>Nome do remetente no e-mail da nota: a empresa emissora "via" a plataforma.</summary>
 public static class RegrasRemetenteEmail
 {
-    /// <summary>Tamanho máximo da parte da empresa (o resto do nome é da plataforma).</summary>
-    public const int TamanhoMaximoEmpresa = 50;
+    /// <summary>
+    /// Tamanho máximo da parte da empresa: o que cabe na caixa de entrada do
+    /// celular antes de "via MicoEmpresa". Mais longo = só o começo do nome.
+    /// </summary>
+    public const int TamanhoMaximoEmpresa = 30;
+
+    private static readonly string[] Separadores = { " - ", " – ", " — ", " | ", ", ", " / " };
 
     /// <summary>
-    /// "LFMS via MicoEmpresa": nome fantasia, senão a razão social. Tira o que
-    /// confunde o cabeçalho (aspas, &lt; &gt;, quebras de linha). Sem nome = só a plataforma.
+    /// "RHSENSO via MicoEmpresa": o nome fantasia do cadastro da empresa
+    /// (senão a razão social). Tira o que confunde o cabeçalho (aspas, &lt; &gt;,
+    /// @, quebras de linha). Sem nome = só a plataforma.
     /// </summary>
     public static string NomeExibicao(string? nomeFantasia, string? razaoSocial, string plataforma)
     {
@@ -40,9 +46,40 @@ public static class RegrasRemetenteEmail
 
         var limpo = new string(empresa.Where(c => !char.IsControl(c) && c is not ('"' or '<' or '>' or '@')).ToArray());
         limpo = string.Join(' ', limpo.Split(' ', StringSplitOptions.RemoveEmptyEntries));
-        if (limpo.Length > TamanhoMaximoEmpresa)
-            limpo = limpo[..TamanhoMaximoEmpresa].TrimEnd();
+        limpo = PrimeiraPorcao(limpo);
         return limpo.Length == 0 ? plataforma : $"{limpo} via {plataforma}";
+    }
+
+    /// <summary>
+    /// Nome longo: a primeira porção. "RHSENSO - SISTEMAS E CONSULTORIA EM RH" →
+    /// "RHSENSO"; sem separador, as palavras inteiras que cabem; uma palavra
+    /// só maior que o limite é cortada.
+    /// </summary>
+    public static string PrimeiraPorcao(string nome)
+    {
+        if (nome.Length <= TamanhoMaximoEmpresa)
+            return nome;
+
+        foreach (var separador in Separadores)
+        {
+            var posicao = nome.IndexOf(separador, StringComparison.Ordinal);
+            if (posicao > 0)
+            {
+                var antes = nome[..posicao].Trim();
+                if (antes.Length is > 0 and <= TamanhoMaximoEmpresa)
+                    return antes;
+            }
+        }
+
+        var resultado = string.Empty;
+        foreach (var palavra in nome.Split(' '))
+        {
+            var proximo = resultado.Length == 0 ? palavra : $"{resultado} {palavra}";
+            if (proximo.Length > TamanhoMaximoEmpresa)
+                break;
+            resultado = proximo;
+        }
+        return resultado.Length > 0 ? resultado.TrimEnd('-', '–', '—', ',', '/', '|', ' ') : nome[..TamanhoMaximoEmpresa].TrimEnd();
     }
 }
 

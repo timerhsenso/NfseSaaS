@@ -5,6 +5,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Corrigido (Remetente do e-mail da nota)
+- O **"Mandar um teste para mim"** do modelo de e-mail também chega como
+  "RHSENSO via MicoEmpresa" (antes saía só "MicoEmpresa").
+- O nome é sempre o **nome fantasia** do cadastro da empresa (razão social só
+  quando não há fantasia). Nome longo (mais de 30 letras) usa a primeira porção:
+  o que vem antes de " - ", " | ", "," ou "/", ou as palavras inteiras que cabem.
+  Ex.: "RHSENSO - SISTEMAS E CONSULTORIA" → "RHSENSO via MicoEmpresa".
+
 ### Adicionado (RC1 — quem recebe em cópia pode pedir para sair)
 - No rodapé do e-mail da nota que vai **com cópia** (Cc ou Cco) aparece "Recebeu
   este e-mail como cópia e não quer mais receber as notas de LFMS? Pedir para

@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NfseSaaS.Application.Abstractions;
+using NfseSaaS.Application.Authorization;
 using NfseSaaS.Application.UseCases.Clientes;
 using NfseSaaS.Domain.Entities;
 using NfseSaaS.Domain.Enums;
@@ -53,7 +54,7 @@ public sealed class EmailDispatchHostedService : BackgroundService
         }
     }
 
-    private async Task ProcessarAsync(ItemFilaEmail item, CancellationToken cancellationToken)
+    internal async Task ProcessarAsync(ItemFilaEmail item, CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -103,9 +104,16 @@ public sealed class EmailDispatchHostedService : BackgroundService
         var copias = EmailsCopiaCliente.Separar(log.Copias);
 
         if (log.NfseId is not { } idNota)
-            return responderPara is null && copias.Count == 0 && log.CopiaOcultaFixa is null
+        {
+            // "Mandar um teste para mim" do modelo: sai com o nome da empresa, como a nota de verdade.
+            var remetenteTeste = log.Tipo == TipoEmailCatalogo.NfseTomador
+                ? await NomeRemetenteDoTesteAsync(servicos, log.TenantId, cancellationToken)
+                : null;
+            return responderPara is null && copias.Count == 0 && log.CopiaOcultaFixa is null && remetenteTeste is null
                 ? await emailSender.EnviarAsync(item.Destinatario, item.Assunto, item.CorpoHtml, cancellationToken)
-                : await emailSender.EnviarAsync(new MensagemEmail(item.Destinatario, item.Assunto, item.CorpoHtml, null, responderPara, copias, log.CopiasOcultas, log.CopiaOcultaFixa), cancellationToken);
+                : await emailSender.EnviarAsync(new MensagemEmail(item.Destinatario, item.Assunto, item.CorpoHtml, null, responderPara, copias,
+                    log.CopiasOcultas, log.CopiaOcultaFixa, remetenteTeste), cancellationToken);
+        }
 
         IReadOnlyCollection<AnexoEmail> anexos;
         string? remetente;
@@ -125,7 +133,25 @@ public sealed class EmailDispatchHostedService : BackgroundService
             log.CopiasOcultas, log.CopiaOcultaFixa, remetente), cancellationToken);
     }
 
-    /// <summary>"LFMS via MicoEmpresa": a empresa que emitiu a nota, lida na hora (vale também no "Reenviar").</summary>
+    /// <summary>
+    /// Teste do modelo (sem nota): a mesma empresa que o teste usa nos dados
+    /// de exemplo (a primeira da conta). Ver ModeloEmailNotaService.EnviarTesteAsync.
+    /// </summary>
+    private static async Task<string?> NomeRemetenteDoTesteAsync(IServiceProvider servicos, Guid tenantId, CancellationToken cancellationToken)
+    {
+        var db = servicos.GetRequiredService<AppDbContext>();
+        var empresa = await db.Empresas.AsNoTracking().IgnoreQueryFilters()
+            .Where(e => e.TenantId == tenantId)
+            .OrderBy(e => e.CreatedAt)
+            .Select(e => new { e.NomeFantasia, e.RazaoSocial })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (empresa is null)
+            return null;
+        var plataforma = servicos.GetRequiredService<Microsoft.Extensions.Options.IOptions<EmailOptions>>().Value.RemetenteNome;
+        return RegrasRemetenteEmail.NomeExibicao(empresa.NomeFantasia, empresa.RazaoSocial, plataforma);
+    }
+
+    /// <summary>"RHSENSO via MicoEmpresa": a empresa que emitiu a nota, lida na hora (vale também no "Reenviar").</summary>
     private static async Task<string?> NomeRemetenteAsync(IServiceProvider servicos, Guid tenantId, Guid nfseId, CancellationToken cancellationToken)
     {
         var db = servicos.GetRequiredService<AppDbContext>();

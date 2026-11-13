@@ -71,6 +71,15 @@ public sealed class EmailSenderDosTestes : IEmailSender
 
     public Task<ResultadoEnvioEmail> EnviarAsync(string destinatarioEmail, string assunto, string corpoHtml, IReadOnlyCollection<AnexoEmail> anexos, CancellationToken cancellationToken) =>
         Task.FromResult(new ResultadoEnvioEmail(true, null));
+
+    /// <summary>Mensagens completas "enviadas" (remetente, cópias…), por destinatário — para conferir nos testes.</summary>
+    public static System.Collections.Concurrent.ConcurrentDictionary<string, MensagemEmail> Ultimas { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public Task<ResultadoEnvioEmail> EnviarAsync(MensagemEmail mensagem, CancellationToken cancellationToken)
+    {
+        Ultimas[mensagem.Destinatario] = mensagem;
+        return Task.FromResult(new ResultadoEnvioEmail(true, null));
+    }
 }
 
 /// <summary>
