@@ -1,17 +1,18 @@
 using System.Globalization;
 using System.Text.Json;
 using NfseSaaS.Application.Exceptions;
+using NfseSaaS.Domain.Entities;
 using NfseSaaS.Domain.Enums;
 
 namespace NfseSaaS.Application.UseCases.DocumentosEmpresa;
 
 /// <summary>Um "lugar" de documento (tipo + nome, no caso do Outro) — o mesmo de DocumentoEmpresa.NomeChave.</summary>
-public sealed record ChaveDocumento(TipoDocumentoEmpresa Tipo, string NomeChave);
+public sealed record ChaveDocumento(int Tipo, string NomeChave);
 
 /// <summary>A versão que vale de um documento da empresa (o que o envio precisa saber).</summary>
 public sealed record DocumentoAtual(
     Guid Id,
-    TipoDocumentoEmpresa Tipo,
+    int Tipo,
     string NomeChave,
     string Titulo,
     string NomeArquivo,
@@ -66,15 +67,15 @@ public static class RegrasDocumentosExigidos
         {
             var doisPontos = parte.IndexOf(':');
             var codigo = doisPontos < 0 ? parte : parte[..doisPontos];
-            if (!int.TryParse(codigo, NumberStyles.None, CultureInfo.InvariantCulture, out var numero)
-                || !Enum.IsDefined(typeof(TipoDocumentoEmpresa), numero))
-                continue; // valor estranho no banco: ignora, não derruba o envio
+            // Valor estranho no banco: ignora, não derruba o envio. Tipo que
+            // não existe mais no catálogo some na avaliação (quem lê confere).
+            if (!int.TryParse(codigo, NumberStyles.None, CultureInfo.InvariantCulture, out var tipo) || tipo <= 0)
+                continue;
 
-            var tipo = (TipoDocumentoEmpresa)numero;
-            var chave = tipo == TipoDocumentoEmpresa.Outro
+            var chave = tipo == TiposDocumentoSistema.Outro
                 ? RegrasDocumentoEmpresa.NomeChave(tipo, doisPontos < 0 ? null : parte[(doisPontos + 1)..])
                 : string.Empty;
-            if (tipo == TipoDocumentoEmpresa.Outro && chave.Length == 0)
+            if (tipo == TiposDocumentoSistema.Outro && chave.Length == 0)
                 continue;
 
             var item = new ChaveDocumento(tipo, chave);
@@ -84,18 +85,18 @@ public static class RegrasDocumentosExigidos
         return lista;
     }
 
-    /// <summary>Confere e grava (nulo = nenhum documento exigido).</summary>
-    public static string? Gravar(IEnumerable<ChaveDocumento>? chaves)
+    /// <summary>Confere e grava (nulo = nenhum documento exigido). Só tipos do catálogo.</summary>
+    public static string? Gravar(IEnumerable<ChaveDocumento>? chaves, CatalogoDocumentosEmpresa catalogo)
     {
         var lista = new List<ChaveDocumento>();
         foreach (var c in chaves ?? Enumerable.Empty<ChaveDocumento>())
         {
-            if (!Enum.IsDefined(c.Tipo))
+            if (catalogo.Buscar(c.Tipo) is null)
                 throw new RegraNegocioException("Tipo de documento desconhecido.");
-            var chave = c.Tipo == TipoDocumentoEmpresa.Outro
+            var chave = c.Tipo == TiposDocumentoSistema.Outro
                 ? RegrasDocumentoEmpresa.NomeChave(c.Tipo, c.NomeChave).Replace(";", ",")
                 : string.Empty;
-            if (c.Tipo == TipoDocumentoEmpresa.Outro && (chave.Length < RegrasDocumentoEmpresa.NomeMinimo || chave.Length > RegrasDocumentoEmpresa.NomeMaximo))
+            if (c.Tipo == TiposDocumentoSistema.Outro && (chave.Length < RegrasDocumentoEmpresa.NomeMinimo || chave.Length > RegrasDocumentoEmpresa.NomeMaximo))
                 throw new RegraNegocioException("Documento \"Outro\" sem nome válido.");
             var item = new ChaveDocumento(c.Tipo, chave);
             if (!lista.Contains(item))
@@ -107,9 +108,9 @@ public static class RegrasDocumentosExigidos
         if (lista.Count == 0)
             return null;
 
-        var texto = string.Join(';', lista.Select(c => c.Tipo == TipoDocumentoEmpresa.Outro
-            ? $"{(int)c.Tipo}:{c.NomeChave}"
-            : ((int)c.Tipo).ToString(CultureInfo.InvariantCulture)));
+        var texto = string.Join(';', lista.Select(c => c.Tipo == TiposDocumentoSistema.Outro
+            ? $"{c.Tipo.ToString(CultureInfo.InvariantCulture)}:{c.NomeChave}"
+            : c.Tipo.ToString(CultureInfo.InvariantCulture)));
         if (texto.Length > TamanhoMaximoColuna)
             throw new RegraNegocioException("Lista de documentos grande demais.");
         return texto;
@@ -117,24 +118,25 @@ public static class RegrasDocumentosExigidos
 
     // ---------- Avaliação ----------
 
+    /// <summary>Tipo que não existe mais no catálogo fica de fora (não vira "faltando" para sempre).</summary>
     public static IReadOnlyList<DocumentoExigidoAvaliado> Avaliar(
-        IEnumerable<ChaveDocumento> exigidos, IEnumerable<DocumentoAtual> atuais, DateOnly hoje)
+        IEnumerable<ChaveDocumento> exigidos, IEnumerable<DocumentoAtual> atuais, DateOnly hoje, CatalogoDocumentosEmpresa catalogo)
     {
         var porChave = atuais.GroupBy(a => new ChaveDocumento(a.Tipo, a.NomeChave)).ToDictionary(g => g.Key, g => g.First());
-        return exigidos.Select(c =>
+        return exigidos.Where(c => catalogo.Buscar(c.Tipo) is not null).Select(c =>
         {
             if (!porChave.TryGetValue(c, out var doc))
-                return new DocumentoExigidoAvaliado(c, TituloDaChave(c), SituacaoDocumentoExigido.Faltando, null);
+                return new DocumentoExigidoAvaliado(c, TituloDaChave(c, catalogo), SituacaoDocumentoExigido.Faltando, null);
             var vencido = RegrasDocumentoEmpresa.Situacao(doc.ValidaAte, hoje) == SituacaoDocumentoEmpresa.Vencido;
             return new DocumentoExigidoAvaliado(c, doc.Titulo, vencido ? SituacaoDocumentoExigido.Vencido : SituacaoDocumentoExigido.EmDia, doc);
         }).ToList();
     }
 
     /// <summary>Título sem documento enviado: o do tipo; no Outro, o nome guardado (minúsculo) com a primeira letra maiúscula.</summary>
-    public static string TituloDaChave(ChaveDocumento c) =>
-        c.Tipo == TipoDocumentoEmpresa.Outro && c.NomeChave.Length > 0
+    public static string TituloDaChave(ChaveDocumento c, CatalogoDocumentosEmpresa catalogo) =>
+        c.Tipo == TiposDocumentoSistema.Outro && c.NomeChave.Length > 0
             ? char.ToUpper(c.NomeChave[0], PtBr) + c.NomeChave[1..]
-            : CatalogoDocumentosEmpresa.Obter(c.Tipo).Nome;
+            : catalogo.Titulo(c.Tipo, null);
 
     public static string TextoSituacao(DocumentoExigidoAvaliado item) => item.Situacao switch
     {

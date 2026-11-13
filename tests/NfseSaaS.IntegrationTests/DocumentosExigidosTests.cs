@@ -91,12 +91,12 @@ public class DocumentosExigidosTests
             var store = new DocumentoEmpresaFileStore(Options.Create(new DocumentStorageOptions { BasePath = pasta }));
             var fgts = new DocumentoEmpresa
             {
-                EmpresaId = empresa.Id, Tipo = TipoDocumentoEmpresa.CrfFgts, NomeArquivo = "crf.pdf", TamanhoBytes = Pdf.Length,
+                EmpresaId = empresa.Id, Tipo = TiposDocumentoSistema.CrfFgts, NomeArquivo = "crf.pdf", TamanhoBytes = Pdf.Length,
                 DataEmissao = hoje.AddDays(-5), ValidaAte = hoje.AddDays(25)
             };
             var cndt = new DocumentoEmpresa
             {
-                EmpresaId = empresa.Id, Tipo = TipoDocumentoEmpresa.Cndt, NomeArquivo = "cndt.pdf", TamanhoBytes = Pdf.Length,
+                EmpresaId = empresa.Id, Tipo = TiposDocumentoSistema.Cndt, NomeArquivo = "cndt.pdf", TamanhoBytes = Pdf.Length,
                 DataEmissao = hoje.AddDays(-200), ValidaAte = hoje.AddDays(-20)
             };
             db.DocumentosEmpresa.AddRange(fgts, cndt);
@@ -120,17 +120,17 @@ public class DocumentosExigidosTests
             var exigidos = sp.GetRequiredService<IDocumentosExigidosClienteUseCase>();
             var opcoes = await exigidos.ObterAsync(cliente.Id, empresa.Id, CancellationToken.None);
             Assert.All(opcoes.Opcoes, o => Assert.False(o.Exigido));
-            Assert.Equal(SituacaoDocumentoExigido.Vencido, opcoes.Opcoes.Single(o => o.Tipo == TipoDocumentoEmpresa.Cndt).Situacao);
+            Assert.Equal(SituacaoDocumentoExigido.Vencido, opcoes.Opcoes.Single(o => o.Tipo == TiposDocumentoSistema.Cndt).Situacao);
 
             await exigidos.SalvarAsync(cliente.Id, new SalvarDocumentosExigidosRequest(new[]
             {
-                new ChaveDocumentoRequest(TipoDocumentoEmpresa.CrfFgts, null),
-                new ChaveDocumentoRequest(TipoDocumentoEmpresa.Cndt, null),
-                new ChaveDocumentoRequest(TipoDocumentoEmpresa.CndEstadual, null)
+                new ChaveDocumentoRequest(TiposDocumentoSistema.CrfFgts, null),
+                new ChaveDocumentoRequest(TiposDocumentoSistema.Cndt, null),
+                new ChaveDocumentoRequest(TiposDocumentoSistema.CndEstadual, null)
             }, AcaoDocumentoPendente.MandarSemOPendente), CancellationToken.None);
             var salvo = await exigidos.ObterAsync(cliente.Id, empresa.Id, CancellationToken.None);
             Assert.Equal(3, salvo.Opcoes.Count(o => o.Exigido));
-            Assert.Equal(SituacaoDocumentoExigido.Faltando, salvo.Opcoes.Single(o => o.Tipo == TipoDocumentoEmpresa.CndEstadual).Situacao);
+            Assert.Equal(SituacaoDocumentoExigido.Faltando, salvo.Opcoes.Single(o => o.Tipo == TiposDocumentoSistema.CndEstadual).Situacao);
 
             var fila = new FilaFalsa();
             var auditoria = sp.GetRequiredService<IAuditLogWriter>();
@@ -161,8 +161,8 @@ public class DocumentosExigidosTests
             // ----- Automático, "mandar o vencido assim mesmo" -----
             await exigidos.SalvarAsync(cliente.Id, new SalvarDocumentosExigidosRequest(new[]
             {
-                new ChaveDocumentoRequest(TipoDocumentoEmpresa.CrfFgts, null),
-                new ChaveDocumentoRequest(TipoDocumentoEmpresa.Cndt, null)
+                new ChaveDocumentoRequest(TiposDocumentoSistema.CrfFgts, null),
+                new ChaveDocumentoRequest(TiposDocumentoSistema.Cndt, null)
             }, AcaoDocumentoPendente.MandarMesmoVencido), CancellationToken.None);
             await enviar.ExecutarAsync(notas[1].Id, automatico: true, texto: null, CancellationToken.None);
             var log1 = await UltimoEmail(notas[1].Id);
@@ -172,7 +172,7 @@ public class DocumentosExigidosTests
             // ----- Automático, "não mandar o e-mail": segura e registra -----
             await exigidos.SalvarAsync(cliente.Id, new SalvarDocumentosExigidosRequest(new[]
             {
-                new ChaveDocumentoRequest(TipoDocumentoEmpresa.Cndt, null)
+                new ChaveDocumentoRequest(TiposDocumentoSistema.Cndt, null)
             }, AcaoDocumentoPendente.NaoMandarEmail), CancellationToken.None);
             var segurado = await enviar.ExecutarAsync(notas[2].Id, automatico: true, texto: null, CancellationToken.None);
             Assert.False(segurado.Enfileirado);

@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using NfseSaaS.Application.Exceptions;
+using NfseSaaS.Domain.Entities;
 using NfseSaaS.Domain.Enums;
 
 namespace NfseSaaS.Application.UseCases.DocumentosEmpresa;
@@ -19,55 +20,88 @@ public enum SituacaoDocumentoEmpresa
 }
 
 /// <summary>
-/// Um tipo de documento da Empresa.
+/// DOC4: um tipo de documento do catálogo (tabela tipos_documento), no
+/// formato que as regras e as telas usam. <see cref="Tipo"/> é o Id
+/// (mantém o nome do DOC1: a tela e a API já usavam "tipo").
 /// </summary>
-/// <param name="ExigeValidade">Certidões: a validade vem escrita no documento e é obrigatória.</param>
-/// <param name="ValidadeSugeridaDias">Dias contados da emissão quando o órgão usa prazo fixo (nulo = varia; o usuário digita).</param>
-/// <param name="LinkEmissao">Página oficial onde se tira o documento (nulo = depende do estado/município).</param>
+/// <param name="ExigeValidade">Certidões: a validade é obrigatória no envio.</param>
+/// <param name="ValidadeSugeridaDias">Dias contados da emissão (nulo = varia ou não vence).</param>
+/// <param name="LinkEmissao">Link oficial geral do catálogo (o da empresa sai de <see cref="RegrasLinkDocumento"/>).</param>
 public sealed record TipoDocumentoInfo(
-    TipoDocumentoEmpresa Tipo,
+    int Tipo,
+    string? Codigo,
     string Nome,
+    CategoriaDocumento Categoria,
+    AbrangenciaDocumento Abrangencia,
     string Orgao,
     bool ExigeValidade,
     int? ValidadeSugeridaDias,
-    string? LinkEmissao);
+    string? LinkEmissao,
+    bool Ativo,
+    bool PadraoNovasEmpresas,
+    int Ordem)
+{
+    public string CategoriaNome => CatalogoDocumentosEmpresa.NomeCategoria(Categoria);
+}
 
 /// <summary>
-/// DOC1: catálogo dos tipos de documento (fica no código: nome, órgão,
-/// prazo de validade usual e link oficial). Prazos usuais: certidão
-/// federal 180 dias, CRF do FGTS 30 dias, CNDT 180 dias; estadual e
-/// municipal variam (a data vem escrita na certidão).
+/// DOC4: o catálogo de tipos de documento lido do banco (global, pequeno).
+/// Quem precisa monta um por operação com ICatalogoDocumentos.
 /// </summary>
-public static class CatalogoDocumentosEmpresa
+public sealed class CatalogoDocumentosEmpresa
 {
-    public static readonly IReadOnlyList<TipoDocumentoInfo> Todos = new[]
+    private readonly Dictionary<int, TipoDocumentoInfo> _porId;
+
+    public CatalogoDocumentosEmpresa(IEnumerable<TipoDocumentoInfo> tipos)
     {
-        new TipoDocumentoInfo(TipoDocumentoEmpresa.CndFederal, "Certidão federal (Receita/PGFN)", "Receita Federal",
-            true, 180, "https://servicos.receitafederal.gov.br/servico/certidoes/#/home"),
-        new TipoDocumentoInfo(TipoDocumentoEmpresa.CndEstadual, "Certidão estadual", "SEFAZ do estado",
-            true, null, null),
-        new TipoDocumentoInfo(TipoDocumentoEmpresa.CndMunicipal, "Certidão municipal", "Prefeitura",
-            true, null, null),
-        new TipoDocumentoInfo(TipoDocumentoEmpresa.CrfFgts, "Regularidade do FGTS (CRF)", "Caixa",
-            true, 30, "https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf"),
-        new TipoDocumentoInfo(TipoDocumentoEmpresa.Cndt, "Certidão trabalhista (CNDT)", "TST",
-            true, 180, "https://cndt-certidao.tst.jus.br/"),
-        new TipoDocumentoInfo(TipoDocumentoEmpresa.SimplesNacional, "Opção pelo Simples Nacional", "Receita Federal",
-            false, null, "https://www8.receita.fazenda.gov.br/SimplesNacional/aplicacoes.aspx?id=21"),
-        new TipoDocumentoInfo(TipoDocumentoEmpresa.ContratoSocial, "Contrato social", "Junta Comercial",
-            false, null, null),
-        new TipoDocumentoInfo(TipoDocumentoEmpresa.CartaoCnpj, "Cartão CNPJ", "Receita Federal",
-            false, null, "https://solucoes.receita.fazenda.gov.br/Servicos/cnpjreva/Cnpjreva_Solicitacao.asp"),
-        new TipoDocumentoInfo(TipoDocumentoEmpresa.Outro, "Outro documento", "—",
-            false, null, null)
+        Todos = tipos.OrderBy(t => t.Ordem).ThenBy(t => t.Nome, StringComparer.CurrentCulture).ToList();
+        _porId = Todos.ToDictionary(t => t.Tipo);
+    }
+
+    /// <summary>Todos os tipos (ativos e inativos), na ordem do catálogo.</summary>
+    public IReadOnlyList<TipoDocumentoInfo> Todos { get; }
+
+    /// <summary>O que pode ser escolhido pela empresa: ativos, menos o "Outro documento".</summary>
+    public IEnumerable<TipoDocumentoInfo> Selecionaveis => Todos.Where(t => t.Ativo && t.Tipo != TiposDocumentoSistema.Outro);
+
+    public TipoDocumentoInfo? Buscar(int tipo) => _porId.GetValueOrDefault(tipo);
+
+    public TipoDocumentoInfo Obter(int tipo) =>
+        Buscar(tipo) ?? throw new RegraNegocioException("Tipo de documento desconhecido.");
+
+    /// <summary>Título para a tela e o e-mail: nome do tipo, ou o nome dado no "Outro".</summary>
+    public string Titulo(int tipo, string? nomePersonalizado) =>
+        tipo == TiposDocumentoSistema.Outro && !string.IsNullOrWhiteSpace(nomePersonalizado)
+            ? nomePersonalizado.Trim()
+            : Buscar(tipo)?.Nome ?? "Documento";
+
+    public static readonly IReadOnlyList<CategoriaDocumento> Categorias = new[]
+    {
+        CategoriaDocumento.Fiscal, CategoriaDocumento.Trabalhista, CategoriaDocumento.Cadastral,
+        CategoriaDocumento.FinanceiroContabil, CategoriaDocumento.SegurancaTrabalho, CategoriaDocumento.SaudeOcupacional,
+        CategoriaDocumento.Tecnico, CategoriaDocumento.AmbientalSanitario, CategoriaDocumento.Juridico, CategoriaDocumento.Outros
     };
 
-    public static TipoDocumentoInfo Obter(TipoDocumentoEmpresa tipo) =>
-        Todos.FirstOrDefault(t => t.Tipo == tipo)
-        ?? throw new RegraNegocioException("Tipo de documento desconhecido.");
+    public static string NomeCategoria(CategoriaDocumento categoria) => categoria switch
+    {
+        CategoriaDocumento.Fiscal => "Fiscal",
+        CategoriaDocumento.Trabalhista => "Trabalhista",
+        CategoriaDocumento.Cadastral => "Cadastro e sociedade",
+        CategoriaDocumento.FinanceiroContabil => "Financeiro e contábil",
+        CategoriaDocumento.SegurancaTrabalho => "Segurança do trabalho",
+        CategoriaDocumento.SaudeOcupacional => "Saúde ocupacional",
+        CategoriaDocumento.Tecnico => "Qualificação técnica",
+        CategoriaDocumento.AmbientalSanitario => "Ambiental e sanitário",
+        CategoriaDocumento.Juridico => "Jurídico",
+        _ => "Outros"
+    };
 
-    /// <summary>Tipos fixos (todos menos "Outro") — aparecem na tela mesmo sem arquivo, como lista do que guardar.</summary>
-    public static IEnumerable<TipoDocumentoInfo> Fixos => Todos.Where(t => t.Tipo != TipoDocumentoEmpresa.Outro);
+    public static string NomeAbrangencia(AbrangenciaDocumento abrangencia) => abrangencia switch
+    {
+        AbrangenciaDocumento.Estadual => "Estadual (link por estado)",
+        AbrangenciaDocumento.Municipal => "Municipal (link por município)",
+        _ => "Nacional (um link para todos)"
+    };
 }
 
 /// <summary>Regras puras do DOC1 (sem banco nem disco).</summary>
@@ -114,8 +148,8 @@ public static partial class RegrasDocumentoEmpresa
         };
 
     /// <summary>Validade usual a partir da emissão (ex.: FGTS = emissão + 30 dias). Nulo quando o tipo não tem prazo fixo.</summary>
-    public static DateOnly? ValidadeSugerida(TipoDocumentoEmpresa tipo, DateOnly? dataEmissao) =>
-        dataEmissao is { } d && CatalogoDocumentosEmpresa.Obter(tipo).ValidadeSugeridaDias is { } dias
+    public static DateOnly? ValidadeSugerida(TipoDocumentoInfo info, DateOnly? dataEmissao) =>
+        dataEmissao is { } d && info.ValidadeSugeridaDias is { } dias
             ? ValidadePorDias(d, dias)
             : null;
 
@@ -134,27 +168,20 @@ public static partial class RegrasDocumentoEmpresa
         validaAte is { } v && v >= emissao ? v.DayNumber - emissao.DayNumber : null;
 
     /// <summary>Chave do "lugar" do documento (ver DocumentoEmpresa.NomeChave).</summary>
-    public static string NomeChave(TipoDocumentoEmpresa tipo, string? nomePersonalizado) =>
-        tipo == TipoDocumentoEmpresa.Outro
+    public static string NomeChave(int tipo, string? nomePersonalizado) =>
+        tipo == TiposDocumentoSistema.Outro
             ? EspacosRepetidos().Replace((nomePersonalizado ?? string.Empty).Trim(), " ").ToLowerInvariant()
             : string.Empty;
-
-    /// <summary>Título para a tela e o e-mail: nome do tipo, ou o nome dado no "Outro".</summary>
-    public static string Titulo(TipoDocumentoEmpresa tipo, string? nomePersonalizado) =>
-        tipo == TipoDocumentoEmpresa.Outro && !string.IsNullOrWhiteSpace(nomePersonalizado)
-            ? nomePersonalizado.Trim()
-            : CatalogoDocumentosEmpresa.Obter(tipo).Nome;
 
     /// <summary>Dados do envio conferidos e completos (validade sugerida aplicada quando falta).</summary>
     public sealed record DadosValidados(string? NomePersonalizado, string NomeChave, DateOnly? DataEmissao, DateOnly? ValidaAte, string? Observacao);
 
     public static DadosValidados Validar(
-        TipoDocumentoEmpresa tipo, string? nomePersonalizado, DateOnly? dataEmissao, DateOnly? validaAte, string? observacao, DateOnly hoje)
+        TipoDocumentoInfo info, string? nomePersonalizado, DateOnly? dataEmissao, DateOnly? validaAte, string? observacao, DateOnly hoje)
     {
-        var info = CatalogoDocumentosEmpresa.Obter(tipo);
-
+        var tipo = info.Tipo;
         string? nome = null;
-        if (tipo == TipoDocumentoEmpresa.Outro)
+        if (tipo == TiposDocumentoSistema.Outro)
         {
             nome = EspacosRepetidos().Replace((nomePersonalizado ?? string.Empty).Trim(), " ");
             if (nome.Length < NomeMinimo || nome.Length > NomeMaximo)
@@ -167,7 +194,7 @@ public static partial class RegrasDocumentoEmpresa
         if (emissao > hoje)
             throw new RegraNegocioException("A data de emissão não pode ser depois de hoje.");
 
-        var validade = validaAte ?? ValidadeSugerida(tipo, dataEmissao);
+        var validade = validaAte ?? ValidadeSugerida(info, dataEmissao);
         if (info.ExigeValidade && validade is null)
             throw new RegraNegocioException($"Informe até quando a {info.Nome.ToLowerInvariant()} vale (a data vem escrita na certidão).");
 

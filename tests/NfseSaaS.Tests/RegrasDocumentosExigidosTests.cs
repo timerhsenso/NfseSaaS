@@ -1,5 +1,6 @@
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.DocumentosEmpresa;
+using NfseSaaS.Domain.Entities;
 using NfseSaaS.Domain.Enums;
 using Xunit;
 
@@ -10,39 +11,42 @@ public class RegrasDocumentosExigidosTests
 {
     private static readonly DateOnly Hoje = new(2026, 11, 13);
 
-    private static readonly DocumentoAtual Fgts = new(Guid.NewGuid(), TipoDocumentoEmpresa.CrfFgts, "", "Regularidade do FGTS (CRF)", "crf.pdf", 1000, Hoje.AddDays(10));
-    private static readonly DocumentoAtual Cndt = new(Guid.NewGuid(), TipoDocumentoEmpresa.Cndt, "", "Certidão trabalhista (CNDT)", "cndt.pdf", 2000, Hoje.AddDays(-3));
-    private static readonly DocumentoAtual Alvara = new(Guid.NewGuid(), TipoDocumentoEmpresa.Outro, "alvará de funcionamento", "Alvará de funcionamento", "alvara.pdf", 500, null);
+    private static readonly DocumentoAtual Fgts = new(Guid.NewGuid(), TiposDocumentoSistema.CrfFgts, "", "Regularidade do FGTS (CRF)", "crf.pdf", 1000, Hoje.AddDays(10));
+    private static readonly DocumentoAtual Cndt = new(Guid.NewGuid(), TiposDocumentoSistema.Cndt, "", "Certidão trabalhista (CNDT)", "cndt.pdf", 2000, Hoje.AddDays(-3));
+    private static readonly DocumentoAtual Alvara = new(Guid.NewGuid(), TiposDocumentoSistema.Outro, "alvará de funcionamento", "Alvará de funcionamento", "alvara.pdf", 500, null);
 
     private static IReadOnlyList<DocumentoExigidoAvaliado> Itens() => RegrasDocumentosExigidos.Avaliar(new[]
     {
-        new ChaveDocumento(TipoDocumentoEmpresa.CrfFgts, ""),
-        new ChaveDocumento(TipoDocumentoEmpresa.Cndt, ""),
-        new ChaveDocumento(TipoDocumentoEmpresa.CndEstadual, ""),
-        new ChaveDocumento(TipoDocumentoEmpresa.Outro, "alvará de funcionamento")
-    }, new[] { Fgts, Cndt, Alvara }, Hoje);
+        new ChaveDocumento(TiposDocumentoSistema.CrfFgts, ""),
+        new ChaveDocumento(TiposDocumentoSistema.Cndt, ""),
+        new ChaveDocumento(TiposDocumentoSistema.CndEstadual, ""),
+        new ChaveDocumento(TiposDocumentoSistema.Outro, "alvará de funcionamento")
+    }, new[] { Fgts, Cndt, Alvara }, Hoje, CatalogoDocumentosTeste.Sistema);
 
     [Fact]
     public void Gravar_e_ler_com_outro_normalizado_e_sem_repetir()
     {
         var texto = RegrasDocumentosExigidos.Gravar(new[]
         {
-            new ChaveDocumento(TipoDocumentoEmpresa.CrfFgts, "ignorado"),
-            new ChaveDocumento(TipoDocumentoEmpresa.CrfFgts, ""),
-            new ChaveDocumento(TipoDocumentoEmpresa.Outro, "  Alvará  de Funcionamento ")
-        });
+            new ChaveDocumento(TiposDocumentoSistema.CrfFgts, "ignorado"),
+            new ChaveDocumento(TiposDocumentoSistema.CrfFgts, ""),
+            new ChaveDocumento(TiposDocumentoSistema.Outro, "  Alvará  de Funcionamento ")
+        }, CatalogoDocumentosTeste.Sistema);
         Assert.Equal("4;99:alvará de funcionamento", texto);
         Assert.Equal(new[]
         {
-            new ChaveDocumento(TipoDocumentoEmpresa.CrfFgts, ""),
-            new ChaveDocumento(TipoDocumentoEmpresa.Outro, "alvará de funcionamento")
+            new ChaveDocumento(TiposDocumentoSistema.CrfFgts, ""),
+            new ChaveDocumento(TiposDocumentoSistema.Outro, "alvará de funcionamento")
         }, RegrasDocumentosExigidos.Ler(texto));
 
-        Assert.Null(RegrasDocumentosExigidos.Gravar(Array.Empty<ChaveDocumento>()));
+        Assert.Null(RegrasDocumentosExigidos.Gravar(Array.Empty<ChaveDocumento>(), CatalogoDocumentosTeste.Sistema));
         Assert.Empty(RegrasDocumentosExigidos.Ler(null));
         // Lixo no banco é ignorado (nunca derruba o envio).
-        Assert.Equal(new[] { new ChaveDocumento(TipoDocumentoEmpresa.Cndt, "") }, RegrasDocumentosExigidos.Ler("x;5;77;99:"));
-        Assert.Throws<RegraNegocioException>(() => RegrasDocumentosExigidos.Gravar(new[] { new ChaveDocumento(TipoDocumentoEmpresa.Outro, "a") }));
+        // Tipo que não está no catálogo (77) é lido, mas some na avaliação; "99:" sem nome é descartado.
+        Assert.Equal(new[] { new ChaveDocumento(TiposDocumentoSistema.Cndt, ""), new ChaveDocumento(77, "") }, RegrasDocumentosExigidos.Ler("x;5;77;99:"));
+        Assert.Single(RegrasDocumentosExigidos.Avaliar(RegrasDocumentosExigidos.Ler("5;77"), Array.Empty<DocumentoAtual>(), Hoje, CatalogoDocumentosTeste.Sistema));
+        Assert.Throws<RegraNegocioException>(() => RegrasDocumentosExigidos.Gravar(new[] { new ChaveDocumento(77, "") }, CatalogoDocumentosTeste.Sistema));
+        Assert.Throws<RegraNegocioException>(() => RegrasDocumentosExigidos.Gravar(new[] { new ChaveDocumento(TiposDocumentoSistema.Outro, "a") }, CatalogoDocumentosTeste.Sistema));
     }
 
     [Fact]
@@ -78,7 +82,7 @@ public class RegrasDocumentosExigidosTests
         Assert.Empty(segura.Anexos);
 
         // Tudo em dia: nada a avisar, nem segurar.
-        var emDia = RegrasDocumentosExigidos.Avaliar(new[] { new ChaveDocumento(TipoDocumentoEmpresa.CrfFgts, "") }, new[] { Fgts }, Hoje);
+        var emDia = RegrasDocumentosExigidos.Avaliar(new[] { new ChaveDocumento(TiposDocumentoSistema.CrfFgts, "") }, new[] { Fgts }, Hoje, CatalogoDocumentosTeste.Sistema);
         var ok = RegrasDocumentosExigidos.DecidirAutomatico(emDia, AcaoDocumentoPendente.NaoMandarEmail);
         Assert.False(ok.SegurarEmail);
         Assert.Null(ok.Alerta);

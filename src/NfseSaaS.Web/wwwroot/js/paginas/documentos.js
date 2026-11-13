@@ -60,6 +60,7 @@ async function carregarDocumentos() {
 
     const botaoNovo = document.getElementById('btn-novo-documento');
     if (botaoNovo) botaoNovo.classList.toggle('d-none', !dadosDocumentos.envioLiberado);
+    document.getElementById('documentos-convite').classList.toggle('d-none', dadosDocumentos.jaEscolheu);
 
     renderizarResumo(dadosDocumentos.itens);
     renderizarLista(dadosDocumentos.itens);
@@ -80,10 +81,51 @@ function renderizarResumo(itens) {
         .join('');
 }
 
+// DOC4: origem do link (OrigemLinkDocumento no servidor).
+const ORIGEM_LINK = { empresa: 1, municipio: 2, estado: 3, sugerido: 4, catalogo: 5 };
+const ABRANGENCIA_NACIONAL = 1;
+
+function botoesLink(item, indice, liberado) {
+    const link = item.link;
+    const botoes = [];
+    if (link) {
+        botoes.push(`<a class="btn btn-sm btn-outline-secondary" href="${escaparHtml(link.link)}" target="_blank" rel="noopener"
+            title="${escaparHtml(link.texto)} — ${escaparHtml(link.dominio)}" aria-label="Abrir o site oficial (${escaparHtml(link.dominio)})"><i class="bi bi-box-arrow-up-right"></i></a>`);
+    }
+    if (liberado && item.tipo !== TIPO_OUTRO) {
+        const novo = !link && item.abrangencia !== ABRANGENCIA_NACIONAL;
+        botoes.push(`<button type="button" class="btn btn-sm btn-outline-secondary" data-acao="link" data-indice="${indice}"
+            title="${novo ? 'Cadastrar o link do site onde você tira este documento' : 'Trocar o link oficial'}" aria-label="${novo ? 'Cadastrar link' : 'Editar link'}">
+            <i class="bi ${novo ? 'bi-link-45deg' : 'bi-pencil'}"></i>${novo ? ' Link' : ''}</button>`);
+    }
+    return botoes;
+}
+
+/** Linha de apoio do link: sugestão de outras empresas (com "Usar este link") ou de onde veio. */
+function textoLink(item, indice, liberado) {
+    const link = item.link;
+    if (!link) return '';
+    if (link.origem === ORIGEM_LINK.sugerido) {
+        return `<div class="small documento-link-sugerido">
+            <i class="bi bi-lightbulb" aria-hidden="true"></i> ${escaparHtml(link.texto)}: <span class="text-break">${escaparHtml(link.dominio)}</span>
+            ${liberado ? `<button type="button" class="btn btn-link btn-sm p-0 align-baseline" data-acao="usar-link" data-indice="${indice}">Usar este link</button>` : ''}
+        </div>`;
+    }
+    if (link.origem === ORIGEM_LINK.empresa)
+        return `<div class="small text-muted"><i class="bi bi-link-45deg" aria-hidden="true"></i> Seu link: <span class="text-break">${escaparHtml(link.dominio)}</span></div>`;
+    return '';
+}
+
 function renderizarLista(itens) {
     const lista = document.getElementById('lista-documentos');
     const liberado = dadosDocumentos.envioLiberado && podeEditarDocumentos;
 
+    if (itens.length === 0) {
+        lista.innerHTML = `<div class="list-group-item text-center text-muted py-4">Nenhum documento na lista desta empresa.${podeEditarDocumentos ? ' Use <strong>Escolher documentos</strong>.' : ''}</div>`;
+        return;
+    }
+
+    let categoriaAtual = null;
     lista.innerHTML = itens.map((item, indice) => {
         const v = item.atual;
         const detalhes = v
@@ -91,7 +133,7 @@ function renderizarLista(itens) {
                    ${v.validaAte ? `Válido até <strong>${dataBr(v.validaAte)}</strong> · ` : ''}${v.dataEmissao ? `emitido em ${dataBr(v.dataEmissao)} · ` : ''}enviado em ${dataHoraBr(v.enviadoEm)}${v.enviadoPor ? ` por ${escaparHtml(v.enviadoPor)}` : ''}
                </div>
                ${v.observacao ? `<div class="small text-muted fst-italic">${escaparHtml(v.observacao)}</div>` : ''}`
-            : `<div class="small text-muted">${escaparHtml(item.orgao)}</div>`;
+            : (item.orgao && item.orgao !== '—' ? `<div class="small text-muted">${escaparHtml(item.orgao)}</div>` : '');
 
         const botoes = [];
         if (v) {
@@ -101,25 +143,210 @@ function renderizarLista(itens) {
             botoes.push(`<button type="button" class="btn btn-sm btn-outline-secondary" data-acao="historico" data-indice="${indice}" title="Histórico">
                 <i class="bi bi-clock-history"></i> ${item.totalVersoes}</button>`);
         }
-        if (item.linkEmissao) {
-            botoes.push(`<a class="btn btn-sm btn-outline-secondary" href="${escaparHtml(item.linkEmissao)}" target="_blank" rel="noopener" title="Tirar no site oficial (${escaparHtml(item.orgao)})" aria-label="Site oficial"><i class="bi bi-box-arrow-up-right"></i></a>`);
-        }
+        botoes.push(...botoesLink(item, indice, liberado));
         if (liberado) {
             botoes.push(`<button type="button" class="btn btn-sm ${v ? 'btn-outline-primary' : 'btn-primary'}" data-acao="enviar" data-indice="${indice}">
                 <i class="bi bi-upload"></i> ${v ? 'Nova versão' : 'Enviar'}</button>`);
         }
 
-        return `<div class="list-group-item documento-linha${v ? '' : ' documento-pendente'}">
+        // Cabeçalho da categoria (Fiscal, Trabalhista...) quando muda.
+        let cabecalho = '';
+        const categoria = item.tipo === TIPO_OUTRO ? 'Outros documentos' : item.categoriaNome;
+        if (categoria !== categoriaAtual) {
+            categoriaAtual = categoria;
+            cabecalho = `<div class="list-group-item documentos-categoria">${escaparHtml(categoria)}</div>`;
+        }
+
+        return `${cabecalho}<div class="list-group-item documento-linha${v ? '' : ' documento-pendente'}">
             <div class="documento-info">
                 <div class="d-flex flex-wrap align-items-center gap-2">
                     <span class="fw-semibold">${escaparHtml(item.titulo)}</span>
                     ${badgeSituacao(v)}
                 </div>
                 ${detalhes}
+                ${textoLink(item, indice, liberado)}
             </div>
             <div class="documento-acoes">${botoes.join('')}</div>
         </div>`;
     }).join('');
+}
+
+// ---------- Link oficial (DOC4) ----------
+
+let itemLinkAtual = null;
+
+function abrirLink(item) {
+    itemLinkAtual = item;
+    ocultarErroFormulario('erro-link-documento');
+    document.getElementById('titulo-link-documento').textContent = `Link oficial — ${item.titulo}`;
+    const campo = document.getElementById('link-documento-url');
+    campo.value = item.linkProprio || '';
+    const atual = item.link;
+    document.getElementById('link-documento-atual').textContent = atual
+        ? (atual.origem === ORIGEM_LINK.empresa ? `Hoje vale o link que você cadastrou (${atual.dominio}).` : `Hoje vale: ${atual.texto} (${atual.dominio}).`)
+        : 'Este documento ainda não tem link. Cadastre o site da prefeitura, da SEFAZ ou do órgão que emite.';
+    document.getElementById('btn-remover-link-documento').classList.toggle('d-none', !item.linkProprio);
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-link-documento')).show();
+    setTimeout(() => campo.focus(), 300);
+}
+
+async function salvarLink(item, link, botao) {
+    await executarComBotaoDesabilitado(botao, async () => {
+        try {
+            await apiFetch('/api/documentos-empresa/link', {
+                method: 'PUT',
+                body: JSON.stringify({ empresaId: empresaDocumentosId, tipo: item.tipo, link: link || null })
+            });
+            bootstrap.Modal.getInstance(document.getElementById('modal-link-documento'))?.hide();
+            mostrarToast(link ? 'Link salvo para esta empresa.' : 'Seu link foi removido.');
+            await carregarDocumentos();
+        } catch (err) {
+            if (document.getElementById('modal-link-documento').classList.contains('show'))
+                mostrarErroFormulario('erro-link-documento', err.message);
+            else
+                mostrarErro(err.message);
+        }
+    });
+}
+
+// ---------- Escolher documentos (DOC4) ----------
+
+let escolha = null;
+let marcadosEscolha = new Set();
+
+async function abrirEscolha() {
+    if (!empresaDocumentosId) return;
+    ocultarErroFormulario('erro-escolha');
+    try {
+        escolha = await apiFetch(`/api/documentos-empresa/escolha?empresaId=${encodeURIComponent(empresaDocumentosId)}`);
+    } catch (err) {
+        mostrarErro(err.message);
+        return;
+    }
+    marcadosEscolha = new Set(escolha.categorias.flatMap(c => c.tipos.filter(t => t.marcado).map(t => t.tipo)));
+    document.getElementById('escolha-busca').value = '';
+    const copiar = document.getElementById('escolha-copiar');
+    copiar.checked = false;
+    document.getElementById('escolha-copiar-bloco').classList.toggle('d-none', escolha.outrasEmpresas === 0);
+    document.getElementById('escolha-copiar-texto').textContent = escolha.outrasEmpresas === 1
+        ? 'Usar a mesma lista na outra empresa da conta'
+        : `Usar a mesma lista nas outras ${escolha.outrasEmpresas} empresas da conta`;
+    renderizarPacotes();
+    renderizarEscolha();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-escolher-documentos')).show();
+}
+
+function nomesDoCatalogo() {
+    const nomes = {};
+    escolha.categorias.forEach(c => c.tipos.forEach(t => { nomes[t.tipo] = t.nome; }));
+    return nomes;
+}
+
+function renderizarPacotes() {
+    const bloco = document.getElementById('escolha-pacotes-bloco');
+    bloco.classList.toggle('d-none', escolha.pacotes.length === 0);
+    const nomes = nomesDoCatalogo();
+    document.getElementById('escolha-pacotes').innerHTML = escolha.pacotes.map((p, i) => {
+        const completo = p.tipos.every(t => marcadosEscolha.has(t));
+        return `<button type="button" class="escolha-pacote${completo ? ' aplicado' : ''}" data-pacote="${i}" aria-pressed="${completo}"
+                title="${escaparHtml(p.tipos.map(t => nomes[t]).filter(Boolean).join(', '))}">
+            <i class="bi ${completo ? 'bi-check-circle-fill' : 'bi-plus-circle'}" aria-hidden="true"></i>
+            <span><strong>${escaparHtml(p.nome)}</strong>${p.descricao ? `<small>${escaparHtml(p.descricao)}</small>` : ''}</span>
+            <span class="escolha-pacote-total">${p.tipos.length}</span>
+        </button>`;
+    }).join('');
+}
+
+function semAcento(texto) {
+    return (texto || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+const TEXTO_ABRANGENCIA = { 1: '', 2: 'link por estado', 3: 'link por município' };
+
+function renderizarEscolha() {
+    const busca = semAcento(document.getElementById('escolha-busca').value.trim());
+    let visiveis = 0;
+    const html = escolha.categorias.map(c => {
+        const tipos = c.tipos.filter(t => !busca || semAcento(`${t.nome} ${t.orgao}`).includes(busca));
+        if (tipos.length === 0) return '';
+        visiveis += tipos.length;
+        const marcadosCategoria = c.tipos.filter(t => marcadosEscolha.has(t.tipo)).length;
+        return `<fieldset class="escolha-categoria">
+            <legend><span>${escaparHtml(c.nome)}</span> <small class="text-muted">${marcadosCategoria} de ${c.tipos.length}</small></legend>
+            <div class="escolha-grade">
+                ${tipos.map(t => {
+                    const id = `escolha-tipo-${t.tipo}`;
+                    const extras = [];
+                    if (t.validadeDias) extras.push(`vale ${t.validadeDias} dias`);
+                    if (TEXTO_ABRANGENCIA[t.abrangencia]) extras.push(TEXTO_ABRANGENCIA[t.abrangencia]);
+                    const selos = [];
+                    if (t.temArquivo) selos.push('<span class="badge text-bg-light border"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> tem arquivo</span>');
+                    if (t.clientesExigem > 0) selos.push(`<span class="badge text-bg-light border"><i class="bi bi-people" aria-hidden="true"></i> ${t.clientesExigem} ${t.clientesExigem === 1 ? 'cliente exige' : 'clientes exigem'}</span>`);
+                    if (t.inativo) selos.push('<span class="badge text-bg-warning text-dark">saiu do catálogo</span>');
+                    return `<label class="escolha-item${marcadosEscolha.has(t.tipo) ? ' marcado' : ''}" for="${id}">
+                        <input class="form-check-input" type="checkbox" id="${id}" data-tipo="${t.tipo}" ${marcadosEscolha.has(t.tipo) ? 'checked' : ''} />
+                        <span class="escolha-item-texto">
+                            <span class="escolha-item-nome">${escaparHtml(t.nome)}</span>
+                            <small class="text-muted">${escaparHtml([t.orgao !== '—' ? t.orgao : null, ...extras].filter(Boolean).join(' · '))}</small>
+                            ${selos.length ? `<span class="escolha-item-selos">${selos.join(' ')}</span>` : ''}
+                        </span>
+                    </label>`;
+                }).join('')}
+            </div>
+        </fieldset>`;
+    }).join('');
+    document.getElementById('escolha-categorias').innerHTML = html;
+    document.getElementById('escolha-vazio').classList.toggle('d-none', visiveis > 0);
+    atualizarContagemEscolha();
+}
+
+function atualizarContagemEscolha() {
+    const n = marcadosEscolha.size;
+    document.getElementById('escolha-contagem').textContent = String(n);
+    document.getElementById('escolha-contagem-texto').textContent = n === 1 ? 'documento marcado' : 'documentos marcados';
+}
+
+async function salvarEscolha() {
+    const botao = document.getElementById('btn-salvar-escolha');
+    ocultarErroFormulario('erro-escolha');
+
+    // Desmarcar não apaga nada, mas some da lista: avisa o que tem arquivo ou é exigido por cliente.
+    const retirados = escolha.categorias.flatMap(c => c.tipos).filter(t => t.marcado && !marcadosEscolha.has(t.tipo));
+    const sensiveis = retirados.filter(t => t.temArquivo || t.clientesExigem > 0);
+    if (sensiveis.length > 0) {
+        const detalhes = sensiveis.map(t => {
+            const motivos = [];
+            if (t.temArquivo) motivos.push('tem arquivo guardado');
+            if (t.clientesExigem > 0) motivos.push(`${t.clientesExigem} ${t.clientesExigem === 1 ? 'cliente exige' : 'clientes exigem'} na nota`);
+            return `${t.nome} (${motivos.join(', ')})`;
+        }).join('; ');
+        const ok = await confirmarAcao(
+            `Vai sair da lista: ${detalhes}. Nada é apagado: os arquivos continuam guardados e voltam se você marcar de novo. Os clientes que exigem passam a receber o aviso de "faltando".`,
+            { titulo: 'Tirar da lista?', textoBotao: 'Tirar assim mesmo' });
+        if (!ok) return;
+    }
+
+    const copiar = document.getElementById('escolha-copiar').checked;
+    await executarComBotaoDesabilitado(botao, async () => {
+        try {
+            await apiFetch('/api/documentos-empresa/escolha', {
+                method: 'PUT',
+                body: JSON.stringify({ empresaId: empresaDocumentosId, tipos: [...marcadosEscolha] })
+            });
+            let mensagem = 'Lista de documentos salva.';
+            if (copiar) {
+                const r = await apiFetch('/api/documentos-empresa/escolha/copiar', {
+                    method: 'POST', body: JSON.stringify({ empresaOrigemId: empresaDocumentosId })
+                });
+                mensagem = `Lista salva aqui e em mais ${r.empresas} ${r.empresas === 1 ? 'empresa' : 'empresas'}.`;
+            }
+            bootstrap.Modal.getInstance(document.getElementById('modal-escolher-documentos'))?.hide();
+            mostrarToast(mensagem);
+            await carregarDocumentos();
+        } catch (err) {
+            mostrarErroFormulario('erro-escolha', err.message);
+        }
+    });
 }
 
 // ---------- Envio ----------
@@ -413,10 +640,64 @@ document.getElementById('lista-documentos').addEventListener('click', e => {
     const item = dadosDocumentos.itens[Number(botao.dataset.indice)];
     if (botao.dataset.acao === 'enviar') abrirEnvio(item);
     else if (botao.dataset.acao === 'historico') abrirHistorico(item);
+    else if (botao.dataset.acao === 'link') abrirLink(item);
+    else if (botao.dataset.acao === 'usar-link') salvarLink(item, item.link.link, botao);
 });
 
 if (podeEditarDocumentos) {
     document.getElementById('btn-novo-documento').addEventListener('click', () => dadosDocumentos && abrirEnvio(null));
+
+    // DOC4: escolher documentos e link oficial.
+    document.getElementById('btn-escolher-documentos').addEventListener('click', abrirEscolha);
+    document.querySelectorAll('[data-abrir-escolha]').forEach(b => b.addEventListener('click', abrirEscolha));
+    document.getElementById('escolha-busca').addEventListener('input', renderizarEscolha);
+    document.getElementById('escolha-categorias').addEventListener('change', e => {
+        const caixa = e.target.closest('input[data-tipo]');
+        if (!caixa) return;
+        const tipo = Number(caixa.dataset.tipo);
+        if (caixa.checked) marcadosEscolha.add(tipo); else marcadosEscolha.delete(tipo);
+        caixa.closest('.escolha-item').classList.toggle('marcado', caixa.checked);
+        renderizarPacotes();
+        // Atualiza o "N de M" da categoria sem redesenhar a lista (mantém o foco).
+        const fieldset = caixa.closest('fieldset');
+        const categoria = escolha.categorias.find(c => c.tipos.some(t => t.tipo === tipo));
+        fieldset.querySelector('legend small').textContent = `${categoria.tipos.filter(t => marcadosEscolha.has(t.tipo)).length} de ${categoria.tipos.length}`;
+        atualizarContagemEscolha();
+    });
+    document.getElementById('escolha-pacotes').addEventListener('click', e => {
+        const botao = e.target.closest('button[data-pacote]');
+        if (!botao) return;
+        const pacote = escolha.pacotes[Number(botao.dataset.pacote)];
+        const completo = pacote.tipos.every(t => marcadosEscolha.has(t));
+        if (!completo) {
+            pacote.tipos.forEach(t => marcadosEscolha.add(t));
+        } else {
+            // Desaplicar tira só o que é do pacote: os básicos (padrão) e o que outro
+            // pacote aplicado também traz continuam marcados.
+            const padrao = new Set(escolha.categorias.flatMap(c => c.tipos.filter(t => t.padrao).map(t => t.tipo)));
+            const outrosAplicados = escolha.pacotes.filter(p => p !== pacote && p.tipos.every(t => marcadosEscolha.has(t)));
+            pacote.tipos
+                .filter(t => !padrao.has(t) && !outrosAplicados.some(p => p.tipos.includes(t)))
+                .forEach(t => marcadosEscolha.delete(t));
+        }
+        renderizarPacotes();
+        renderizarEscolha();
+    });
+    document.getElementById('btn-salvar-escolha').addEventListener('click', salvarEscolha);
+
+    document.getElementById('form-link-documento').addEventListener('submit', e => {
+        e.preventDefault();
+        if (!itemLinkAtual) return;
+        const valor = document.getElementById('link-documento-url').value.trim();
+        if (valor && !/^https:\/\//i.test(valor) && /^[a-z]+:\/\//i.test(valor)) {
+            mostrarErroFormulario('erro-link-documento', 'Use um link que comece com https://');
+            return;
+        }
+        salvarLink(itemLinkAtual, valor, document.getElementById('btn-salvar-link-documento'));
+    });
+    document.getElementById('btn-remover-link-documento').addEventListener('click', function () {
+        if (itemLinkAtual) salvarLink(itemLinkAtual, '', this);
+    });
     document.getElementById('form-documento').addEventListener('submit', salvarDocumento);
     document.getElementById('documento-tipo').addEventListener('change', () => {
         // Outro tipo: recomeça a validade (o prazo usual muda).

@@ -1,5 +1,4 @@
 using NfseSaaS.Domain.Common;
-using NfseSaaS.Domain.Enums;
 
 namespace NfseSaaS.Domain.Entities;
 
@@ -19,7 +18,11 @@ public sealed class DocumentoEmpresa : BaseEntity, ITenantEntity
 
     public Guid EmpresaId { get; set; }
 
-    public TipoDocumentoEmpresa Tipo { get; set; }
+    /// <summary>
+    /// Tipo do catálogo (TipoDocumento.Id; coluna "Tipo", que já existia).
+    /// 99 = "Outro documento", com o nome em NomePersonalizado.
+    /// </summary>
+    public int Tipo { get; set; }
 
     /// <summary>Nome dado pelo usuário quando Tipo = Outro (ex.: "Alvará de funcionamento"); nulo nos demais.</summary>
     public string? NomePersonalizado { get; set; }

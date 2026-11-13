@@ -5,7 +5,6 @@ using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.DocumentosEmpresa;
 using NfseSaaS.Application.UseCases.Recursos;
 using NfseSaaS.Domain.Entities;
-using NfseSaaS.Domain.Enums;
 using NfseSaaS.Infrastructure.Documents;
 using NfseSaaS.Infrastructure.Persistence;
 
@@ -24,6 +23,7 @@ public sealed class DocumentosEmpresaService : IDocumentosEmpresaUseCase
     private readonly IRecursosConta _recursos;
     private readonly DocumentoEmpresaFileStore _store;
     private readonly IAuditLogWriter _auditLogWriter;
+    private readonly ICatalogoDocumentos _catalogo;
 
     public DocumentosEmpresaService(
         AppDbContext db,
@@ -31,7 +31,8 @@ public sealed class DocumentosEmpresaService : IDocumentosEmpresaUseCase
         ICurrentUser currentUser,
         IRecursosConta recursos,
         DocumentoEmpresaFileStore store,
-        IAuditLogWriter auditLogWriter)
+        IAuditLogWriter auditLogWriter,
+        ICatalogoDocumentos catalogo)
     {
         _db = db;
         _currentTenant = currentTenant;
@@ -39,6 +40,7 @@ public sealed class DocumentosEmpresaService : IDocumentosEmpresaUseCase
         _recursos = recursos;
         _store = store;
         _auditLogWriter = auditLogWriter;
+        _catalogo = catalogo;
     }
 
     private Guid TenantId => _currentTenant.TenantId
@@ -54,6 +56,8 @@ public sealed class DocumentosEmpresaService : IDocumentosEmpresaUseCase
     {
         await GarantirEmpresaAsync(empresaId, cancellationToken);
         var recurso = await _recursos.ObterAsync(TenantId, CatalogoRecursos.DocumentosEmpresa, cancellationToken);
+        var catalogo = await _catalogo.ObterAsync(cancellationToken);
+        var gerenciados = await GerenciadosEmpresa.ObterAsync(_db, empresaId, catalogo, cancellationToken);
 
         var documentos = await _db.DocumentosEmpresa.AsNoTracking()
             .Where(d => d.EmpresaId == empresaId)
@@ -66,31 +70,38 @@ public sealed class DocumentosEmpresaService : IDocumentosEmpresaUseCase
             .GroupBy(d => (d.Tipo, d.NomeChave))
             .ToDictionary(g => g.Key, g => g.ToList());
 
+        // DOC4: só os documentos que a empresa gerencia (desmarcar esconde, não apaga).
+        var tipos = GerenciadosEmpresa.Ordenar(gerenciados.Tipos.Select(catalogo.Obter)).ToList();
+        var links = await LinksDocumentoEmpresa.ResolverAsync(_db, empresaId, tipos, gerenciados.LinksProprios, cancellationToken);
+
         var itens = new List<ItemDocumentoEmpresaResponse>();
-        foreach (var info in CatalogoDocumentosEmpresa.Fixos)
+        foreach (var info in tipos)
         {
             grupos.TryGetValue((info.Tipo, string.Empty), out var versoes);
-            itens.Add(Item(info.Tipo, null, versoes, nomes, hoje));
+            itens.Add(Item(info, null, versoes, nomes, hoje, links.GetValueOrDefault(info.Tipo), gerenciados.LinksProprios.GetValueOrDefault(info.Tipo)));
         }
-        foreach (var grupo in grupos.Where(g => g.Key.Tipo == TipoDocumentoEmpresa.Outro)
+        var outro = catalogo.Obter(TiposDocumentoSistema.Outro);
+        foreach (var grupo in grupos.Where(g => g.Key.Tipo == TiposDocumentoSistema.Outro)
                      .OrderBy(g => g.Value[0].NomePersonalizado, StringComparer.CurrentCultureIgnoreCase))
-            itens.Add(Item(TipoDocumentoEmpresa.Outro, grupo.Value[0].NomePersonalizado, grupo.Value, nomes, hoje));
+            itens.Add(Item(outro, grupo.Value[0].NomePersonalizado, grupo.Value, nomes, hoje, null, null));
 
         return new ListaDocumentosEmpresaResponse(
             empresaId,
             recurso.Ligado,
             recurso.Ligado ? null : RegrasRecursos.MensagemBloqueado(recurso),
-            CatalogoDocumentosEmpresa.Todos,
-            itens);
+            tipos.Append(outro).ToList(),
+            itens,
+            gerenciados.JaEscolheu);
     }
 
     private static ItemDocumentoEmpresaResponse Item(
-        TipoDocumentoEmpresa tipo, string? nomePersonalizado, List<DocumentoEmpresa>? versoes, IReadOnlyDictionary<Guid, string> nomes, DateOnly hoje)
+        TipoDocumentoInfo info, string? nomePersonalizado, List<DocumentoEmpresa>? versoes, IReadOnlyDictionary<Guid, string> nomes, DateOnly hoje,
+        LinkDocumentoResolvido? link, string? linkProprio)
     {
-        var info = CatalogoDocumentosEmpresa.Obter(tipo);
         var atual = versoes is { Count: > 0 } ? Versao(versoes[0], nomes, hoje) : null;
-        return new ItemDocumentoEmpresaResponse(tipo, RegrasDocumentoEmpresa.Titulo(tipo, nomePersonalizado), nomePersonalizado,
-            info.Orgao, info.LinkEmissao, atual, versoes?.Count ?? 0);
+        var titulo = info.Tipo == TiposDocumentoSistema.Outro && !string.IsNullOrWhiteSpace(nomePersonalizado) ? nomePersonalizado.Trim() : info.Nome;
+        return new ItemDocumentoEmpresaResponse(info.Tipo, titulo, nomePersonalizado, info.Orgao, info.Categoria, info.CategoriaNome,
+            info.Abrangencia, link, linkProprio, atual, versoes?.Count ?? 0);
     }
 
     private static VersaoDocumentoEmpresaResponse Versao(DocumentoEmpresa d, IReadOnlyDictionary<Guid, string> nomes, DateOnly hoje)
@@ -113,10 +124,10 @@ public sealed class DocumentosEmpresaService : IDocumentosEmpresaUseCase
     }
 
     public async Task<IReadOnlyList<VersaoDocumentoEmpresaResponse>> HistoricoAsync(
-        Guid empresaId, TipoDocumentoEmpresa tipo, string? nomePersonalizado, CancellationToken cancellationToken)
+        Guid empresaId, int tipo, string? nomePersonalizado, CancellationToken cancellationToken)
     {
         await GarantirEmpresaAsync(empresaId, cancellationToken);
-        CatalogoDocumentosEmpresa.Obter(tipo);
+        (await _catalogo.ObterAsync(cancellationToken)).Obter(tipo);
         var chave = RegrasDocumentoEmpresa.NomeChave(tipo, nomePersonalizado);
 
         var versoes = await _db.DocumentosEmpresa.AsNoTracking()
@@ -137,19 +148,25 @@ public sealed class DocumentosEmpresaService : IDocumentosEmpresaUseCase
         if (!recurso.Ligado)
             throw new RegraNegocioException(RegrasRecursos.MensagemBloqueado(recurso));
 
-        if (!Enum.IsDefined(request.Tipo))
-            throw new RegraNegocioException("Escolha o tipo do documento.");
+        var catalogo = await _catalogo.ObterAsync(cancellationToken);
+        var info = catalogo.Buscar(request.Tipo)
+            ?? throw new RegraNegocioException("Escolha o tipo do documento.");
+        // DOC4: só os documentos que a empresa gerencia (e o "Outro", que é livre).
+        if (request.Tipo != TiposDocumentoSistema.Outro
+            && !(await GerenciadosEmpresa.ObterAsync(_db, request.EmpresaId, catalogo, cancellationToken)).Tipos.Contains(request.Tipo))
+            throw new RegraNegocioException($"\"{info.Nome}\" não está na lista desta empresa: marque em \"Escolher documentos\" antes de enviar.");
+
         RegrasDocumentoEmpresa.ValidarArquivo(arquivo.NomeArquivo, arquivo.Conteudo);
         var hoje = DataBrasilia.Hoje();
-        var dados = RegrasDocumentoEmpresa.Validar(request.Tipo, request.NomePersonalizado, request.DataEmissao, request.ValidaAte, request.Observacao, hoje);
+        var dados = RegrasDocumentoEmpresa.Validar(info, request.NomePersonalizado, request.DataEmissao, request.ValidaAte, request.Observacao, hoje);
 
         // "Outro" com o mesmo nome de um já existente: usa a grafia que já está lá
         // (o histórico continua com um título só).
         var nomePersonalizado = dados.NomePersonalizado;
-        if (request.Tipo == TipoDocumentoEmpresa.Outro)
+        if (request.Tipo == TiposDocumentoSistema.Outro)
         {
             nomePersonalizado = await _db.DocumentosEmpresa.AsNoTracking()
-                .Where(d => d.EmpresaId == request.EmpresaId && d.Tipo == TipoDocumentoEmpresa.Outro && d.NomeChave == dados.NomeChave)
+                .Where(d => d.EmpresaId == request.EmpresaId && d.Tipo == TiposDocumentoSistema.Outro && d.NomeChave == dados.NomeChave)
                 .OrderBy(d => d.CreatedAt)
                 .Select(d => d.NomePersonalizado)
                 .FirstOrDefaultAsync(cancellationToken) ?? nomePersonalizado;
@@ -176,7 +193,7 @@ public sealed class DocumentosEmpresaService : IDocumentosEmpresaUseCase
         _auditLogWriter.Registrar("EnviarDocumentoEmpresa", "Empresa", request.EmpresaId, new
         {
             DocumentoId = documento.Id,
-            Documento = RegrasDocumentoEmpresa.Titulo(documento.Tipo, documento.NomePersonalizado),
+            Documento = catalogo.Titulo(documento.Tipo, documento.NomePersonalizado),
             documento.DataEmissao,
             documento.ValidaAte,
             documento.NomeArquivo,
@@ -218,11 +235,12 @@ public sealed class DocumentosEmpresaService : IDocumentosEmpresaUseCase
         var documento = await _db.DocumentosEmpresa.FirstOrDefaultAsync(d => d.Id == documentoId, cancellationToken)
             ?? throw new RecursoNaoEncontradoException($"Documento {documentoId} não encontrado.");
 
+        var catalogo = await _catalogo.ObterAsync(cancellationToken);
         _db.DocumentosEmpresa.Remove(documento);
         _auditLogWriter.Registrar("ExcluirDocumentoEmpresa", "Empresa", documento.EmpresaId, new
         {
             DocumentoId = documento.Id,
-            Documento = RegrasDocumentoEmpresa.Titulo(documento.Tipo, documento.NomePersonalizado),
+            Documento = catalogo.Titulo(documento.Tipo, documento.NomePersonalizado),
             documento.ValidaAte,
             documento.NomeArquivo
         });
@@ -244,6 +262,7 @@ public sealed class DocumentosEmpresaService : IDocumentosEmpresaUseCase
     public async Task<ResumoDocumentosEmpresaResponse> ResumoAsync(CancellationToken cancellationToken)
     {
         var hoje = DataBrasilia.Hoje();
+        var catalogo = await _catalogo.ObterAsync(cancellationToken);
         var atuais = await AtuaisAsync(_db, null, cancellationToken);
         var empresas = await _db.Empresas.AsNoTracking().Where(e => e.Ativo)
             .ToDictionaryAsync(e => e.Id, e => e.RazaoSocial, cancellationToken);
@@ -254,7 +273,7 @@ public sealed class DocumentosEmpresaService : IDocumentosEmpresaUseCase
             .Where(x => x.Situacao is SituacaoDocumentoEmpresa.Vencido or SituacaoDocumentoEmpresa.VenceEmBreve)
             .OrderBy(x => x.Doc.ValidaAte)
             .Select(x => new AlertaDocumentoEmpresa(x.Doc.EmpresaId, empresas[x.Doc.EmpresaId],
-                RegrasDocumentoEmpresa.Titulo(x.Doc.Tipo, x.Doc.NomePersonalizado), x.Doc.ValidaAte!.Value, x.Situacao,
+                catalogo.Titulo(x.Doc.Tipo, x.Doc.NomePersonalizado), x.Doc.ValidaAte!.Value, x.Situacao,
                 RegrasDocumentoEmpresa.TextoSituacao(x.Situacao, RegrasDocumentoEmpresa.DiasParaVencer(x.Doc.ValidaAte, hoje))))
             .ToList();
 
@@ -266,7 +285,7 @@ public sealed class DocumentosEmpresaService : IDocumentosEmpresaUseCase
 
     /// <summary>DOC2: versões que valem por Empresa, no formato do envio do e-mail (conta atual).</summary>
     internal static async Task<Dictionary<Guid, List<DocumentoAtual>>> AtuaisParaEmailAsync(
-        AppDbContext db, IReadOnlyCollection<Guid> empresaIds, CancellationToken cancellationToken)
+        AppDbContext db, IReadOnlyCollection<Guid> empresaIds, CatalogoDocumentosEmpresa catalogo, CancellationToken cancellationToken)
     {
         if (empresaIds.Count == 0)
             return new Dictionary<Guid, List<DocumentoAtual>>();
@@ -279,7 +298,7 @@ public sealed class DocumentosEmpresaService : IDocumentosEmpresaUseCase
             .Select(g => g.OrderByDescending(d => d.CreatedAt).First())
             .GroupBy(d => d.EmpresaId)
             .ToDictionary(g => g.Key, g => g.Select(d => new DocumentoAtual(d.Id, d.Tipo, d.NomeChave,
-                RegrasDocumentoEmpresa.Titulo(d.Tipo, d.NomePersonalizado), d.NomeArquivo, d.TamanhoBytes, d.ValidaAte)).ToList());
+                catalogo.Titulo(d.Tipo, d.NomePersonalizado), d.NomeArquivo, d.TamanhoBytes, d.ValidaAte)).ToList());
     }
 
     /// <summary>A versão que vale de cada "lugar" (da conta atual; de uma Empresa só, se informada).</summary>

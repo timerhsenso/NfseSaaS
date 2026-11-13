@@ -201,11 +201,12 @@ public sealed class MontadorExportacaoDados
         var documentosEmpresa = await _db.DocumentosEmpresa.AsNoTracking()
             .OrderBy(d => d.EmpresaId).ThenBy(d => d.Tipo).ThenBy(d => d.NomeChave).ThenBy(d => d.CreatedAt)
             .ToListAsync(cancellationToken);
+        var catalogoDocumentos = await new NfseSaaS.Infrastructure.UseCases.CatalogoDocumentosService(_db).ObterAsync(cancellationToken);
         var tDocumentosEmpresa = new TabelaExportacao("empresas_documentos",
             "EmpresaCnpj", "Documento", "DataEmissao", "ValidaAte", "NomeArquivo", "TamanhoBytes", "Observacao", "EnviadoEm", "ArquivoNoZip");
         foreach (var d in documentosEmpresa)
         {
-            var titulo = NfseSaaS.Application.UseCases.DocumentosEmpresa.RegrasDocumentoEmpresa.Titulo(d.Tipo, d.NomePersonalizado);
+            var titulo = catalogoDocumentos.Titulo(d.Tipo, d.NomePersonalizado);
             var caminho = Unico(nomesUsados, $"documentos-empresa/{Cnpj(d.EmpresaId)}",
                 NomeSeguro($"{titulo} {d.CreatedAt:yyyy-MM-dd}", 80), ".pdf");
             string? noZip = null;
@@ -223,6 +224,15 @@ public sealed class MontadorExportacaoDados
             tDocumentosEmpresa.Adicionar(Cnpj(d.EmpresaId), titulo, d.DataEmissao, d.ValidaAte, d.NomeArquivo, d.TamanhoBytes, d.Observacao, d.CreatedAt, noZip);
         }
         Tabela(zip, tDocumentosEmpresa);
+
+        // ----- DOC4: documentos que cada empresa gerencia e os links que ela cadastrou -----
+        var gerenciados = await _db.DocumentosGerenciadosEmpresa.AsNoTracking()
+            .OrderBy(d => d.EmpresaId).ThenBy(d => d.TipoDocumentoId)
+            .ToListAsync(cancellationToken);
+        var tGerenciados = new TabelaExportacao("empresas_documentos_escolhidos", "EmpresaCnpj", "Documento", "LinkProprio");
+        foreach (var g in gerenciados)
+            tGerenciados.Adicionar(Cnpj(g.EmpresaId), catalogoDocumentos.Titulo(g.TipoDocumentoId, null), g.LinkProprio);
+        Tabela(zip, tGerenciados);
 
         // ----- Notas (em lotes) -----
         var tNotas = new TabelaExportacao("notas",

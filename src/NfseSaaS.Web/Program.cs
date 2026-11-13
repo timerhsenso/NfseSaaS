@@ -248,6 +248,7 @@ try
     await NfseSaaS.Infrastructure.Persistence.Seeders.CodigoTributacaoNacionalSeeder.SeedAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.CodigoNbsSeeder.SeedAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.MunicipioSeeder.SeedAsync(app.Services);
+    await NfseSaaS.Infrastructure.Persistence.Seeders.CatalogoDocumentosSeeder.SeedAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.PlanosSeeder.SeedAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.NumeroNfseCorrecao.CorrigirAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.NumeroContratoBackfill.PreencherAsync(app.Services);

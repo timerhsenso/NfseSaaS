@@ -10,7 +10,10 @@
 @section AcoesPagina {
     @if (podeEditar)
     {
-        <button type="button" class="btn btn-primary btn-sm d-none" id="btn-novo-documento" data-requer-empresa>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-escolher-documentos" data-requer-empresa>
+            <i class="bi bi-ui-checks-grid"></i> Escolher documentos
+        </button>
+        <button type="button" class="btn btn-outline-primary btn-sm d-none" id="btn-novo-documento" data-requer-empresa>
             <i class="bi bi-plus-lg"></i> Outro documento
         </button>
     }
@@ -21,6 +24,16 @@
         Guarde aqui as certidões e documentos da empresa (PDF). Avisamos por e-mail e no painel quando um documento
         vence em até 15 dias e quando vence. Ao enviar a versão nova, a anterior fica no histórico.
     </p>
+
+    @* DOC4: empresa que ainda não escolheu vê a lista básica, com o convite para montar a dela. *@
+    <div class="alert alert-info d-none documentos-convite" id="documentos-convite" role="status">
+        <i class="bi bi-ui-checks-grid" aria-hidden="true"></i>
+        <span class="me-auto">Esta é a lista básica. Monte a da sua empresa em segundos: escolha um pacote pelo ramo (indústria, obras, saúde, licitação…) ou marque um a um.</span>
+        @if (podeEditar)
+        {
+            <button type="button" class="btn btn-sm btn-primary" data-abrir-escolha>Escolher documentos</button>
+        }
+    </div>
 
     <div class="alert alert-warning d-none" id="documentos-bloqueio" role="status">
         <i class="bi bi-lock" aria-hidden="true"></i> <span id="documentos-bloqueio-texto"></span>
@@ -100,6 +113,71 @@
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                         <button type="submit" class="btn btn-primary" id="btn-salvar-documento">Enviar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@if (podeEditar)
+{
+    @* DOC4: quais documentos esta empresa gerencia (catálogo por categoria + pacotes por ramo). *@
+    <div class="modal fade" id="modal-escolher-documentos" tabindex="-1" aria-labelledby="titulo-escolher-documentos">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="titulo-escolher-documentos">Escolher documentos</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="erro-escolha" class="alert alert-danger d-none"></div>
+                    <div class="escolha-pacotes" id="escolha-pacotes-bloco">
+                        <div class="escolha-subtitulo">Comece por um pacote do seu ramo <span class="text-muted">(marca vários de uma vez; você ajusta depois)</span></div>
+                        <div class="escolha-pacotes-lista" id="escolha-pacotes"></div>
+                    </div>
+                    <div class="escolha-busca">
+                        <i class="bi bi-search" aria-hidden="true"></i>
+                        <input type="search" class="form-control" id="escolha-busca" placeholder="Buscar documento (ex.: PCMSO, alvará, certidão)" aria-label="Buscar documento" autocomplete="off" />
+                    </div>
+                    <div id="escolha-categorias" class="escolha-categorias"></div>
+                    <div class="text-muted small text-center py-3 d-none" id="escolha-vazio">Nenhum documento encontrado. Para um documento que não está no catálogo, use "Outro documento".</div>
+                </div>
+                <div class="modal-footer escolha-rodape">
+                    <div class="me-auto escolha-resumo">
+                        <strong id="escolha-contagem">0</strong> <span id="escolha-contagem-texto">documentos marcados</span>
+                        <div class="form-check mt-1 d-none" id="escolha-copiar-bloco">
+                            <input class="form-check-input" type="checkbox" id="escolha-copiar" />
+                            <label class="form-check-label small" for="escolha-copiar" id="escolha-copiar-texto">Usar a mesma lista nas outras empresas</label>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btn-salvar-escolha">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* DOC4: link oficial próprio da empresa para um documento. *@
+    <div class="modal fade" id="modal-link-documento" tabindex="-1" aria-labelledby="titulo-link-documento">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="form-link-documento" novalidate>
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="titulo-link-documento">Link oficial</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="erro-link-documento" class="alert alert-danger d-none"></div>
+                        <p class="small text-muted mb-2" id="link-documento-atual"></p>
+                        <label class="form-label" for="link-documento-url">Endereço do site onde você tira este documento</label>
+                        <input type="url" class="form-control" id="link-documento-url" maxlength="500" placeholder="https://..." inputmode="url" autocomplete="off" />
+                        <div class="form-text">Ex.: o site da prefeitura ou da SEFAZ do seu estado. Fica só para esta empresa. Deixe em branco para voltar ao link sugerido.</div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-danger me-auto d-none" id="btn-remover-link-documento">Remover meu link</button>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btn-salvar-link-documento">Salvar</button>
                     </div>
                 </form>
             </div>

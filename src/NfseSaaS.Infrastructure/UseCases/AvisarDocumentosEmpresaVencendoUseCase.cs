@@ -24,14 +24,16 @@ public sealed class AvisarDocumentosEmpresaVencendoUseCase : IAvisarDocumentosEm
     private readonly ICurrentTenant _currentTenant;
     private readonly IEmailQueueService _emailQueue;
     private readonly EmailOptions _emailOptions;
+    private readonly ICatalogoDocumentos _catalogo;
 
     public AvisarDocumentosEmpresaVencendoUseCase(
-        AppDbContext db, ICurrentTenant currentTenant, IEmailQueueService emailQueue, IOptions<EmailOptions> emailOptions)
+        AppDbContext db, ICurrentTenant currentTenant, IEmailQueueService emailQueue, IOptions<EmailOptions> emailOptions, ICatalogoDocumentos catalogo)
     {
         _db = db;
         _currentTenant = currentTenant;
         _emailQueue = emailQueue;
         _emailOptions = emailOptions.Value;
+        _catalogo = catalogo;
     }
 
     public static string Chave(Guid documentoId, int faixa) => $"doc:{documentoId:N}:{faixa}";
@@ -47,9 +49,14 @@ public sealed class AvisarDocumentosEmpresaVencendoUseCase : IAvisarDocumentosEm
             .FirstOrDefaultAsync(cancellationToken)
             ?? throw new RecursoNaoEncontradoException($"Empresa {empresaId} não encontrada.");
 
+        // DOC4: só os documentos que a empresa gerencia (desmarcou = parou de avisar) e os "Outros".
+        var catalogo = await _catalogo.ObterAsync(cancellationToken);
+        var gerenciados = await GerenciadosEmpresa.ObterAsync(_db, empresaId, catalogo, cancellationToken);
         var pendentes = new List<(Domain.Entities.DocumentoEmpresa Doc, int Faixa, string Chave)>();
         foreach (var doc in await DocumentosEmpresaService.AtuaisAsync(_db, empresaId, cancellationToken))
         {
+            if (doc.Tipo != Domain.Entities.TiposDocumentoSistema.Outro && !gerenciados.Tipos.Contains(doc.Tipo))
+                continue;
             if (RegrasDocumentoEmpresa.FaixaAviso(doc.ValidaAte, hoje) is not { } faixa)
                 continue;
             var chave = Chave(doc.Id, faixa);
@@ -65,10 +72,15 @@ public sealed class AvisarDocumentosEmpresaVencendoUseCase : IAvisarDocumentosEm
         if (destinatarios.Count == 0)
             return new AvisoDocumentosEmpresaResult(0, destinatarios, "Nenhum destinatário com e-mail.");
 
+        // Link que vale para esta empresa (o dela, o do município/estado ou o do catálogo).
+        var tiposComLink = pendentes.Select(p => p.Doc.Tipo).Where(t => t != Domain.Entities.TiposDocumentoSistema.Outro)
+            .Distinct().Select(catalogo.Obter).ToList();
+        var links = await LinksDocumentoEmpresa.ResolverAsync(_db, empresaId, tiposComLink, gerenciados.LinksProprios, cancellationToken);
+
         foreach (var (doc, _, chave) in pendentes)
         {
-            var titulo = RegrasDocumentoEmpresa.Titulo(doc.Tipo, doc.NomePersonalizado);
-            var link = CatalogoDocumentosEmpresa.Obter(doc.Tipo).LinkEmissao;
+            var titulo = catalogo.Titulo(doc.Tipo, doc.NomePersonalizado);
+            var link = links.GetValueOrDefault(doc.Tipo)?.Link;
             var (assunto, corpo) = MontarMensagem(titulo, link, empresa.RazaoSocial, empresa.Cnpj, doc.ValidaAte!.Value, hoje);
             foreach (var destinatario in destinatarios)
             {
@@ -102,7 +114,7 @@ public sealed class AvisarDocumentosEmpresaVencendoUseCase : IAvisarDocumentosEm
 
         var tirar = linkEmissao is null
             ? "Tire a versão nova no órgão que emite"
-            : $"""Tire a versão nova no <a href="{linkEmissao}">site oficial</a>""";
+            : $"""Tire a versão nova no <a href="{WebUtility.HtmlEncode(linkEmissao)}">site oficial</a>""";
         var app = string.IsNullOrWhiteSpace(_emailOptions.AppBaseUrl)
             ? null
             : $"{_emailOptions.AppBaseUrl.TrimEnd('/')}/Documentos";

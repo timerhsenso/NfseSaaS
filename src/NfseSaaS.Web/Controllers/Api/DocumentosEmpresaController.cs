@@ -17,18 +17,45 @@ namespace NfseSaaS.Web.Controllers.Api;
 public sealed class DocumentosEmpresaController : ControllerBase
 {
     private readonly IDocumentosEmpresaUseCase _documentos;
+    private readonly IEscolhaDocumentosEmpresaUseCase _escolha;
 
-    public DocumentosEmpresaController(IDocumentosEmpresaUseCase documentos)
+    public DocumentosEmpresaController(IDocumentosEmpresaUseCase documentos, IEscolhaDocumentosEmpresaUseCase escolha)
     {
         _documentos = documentos;
+        _escolha = escolha;
     }
+
+    /// <summary>DOC4: o catálogo por categoria, o que a empresa gerencia e os pacotes por ramo.</summary>
+    [HttpGet("escolha")]
+    public async Task<IActionResult> Escolha([FromQuery] Guid empresaId, CancellationToken cancellationToken)
+        => Ok(await _escolha.ObterAsync(empresaId, cancellationToken));
+
+    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Alterar)]
+    [HttpPut("escolha")]
+    public async Task<IActionResult> SalvarEscolha([FromBody] SalvarEscolhaDocumentosRequest request, CancellationToken cancellationToken)
+    {
+        await _escolha.SalvarAsync(request, cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>Copia a lista desta empresa para as outras da conta. Devolve quantas mudaram.</summary>
+    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Alterar)]
+    [HttpPost("escolha/copiar")]
+    public async Task<IActionResult> CopiarEscolha([FromBody] CopiarEscolhaDocumentosRequest request, CancellationToken cancellationToken)
+        => Ok(new { empresas = await _escolha.CopiarParaOutrasAsync(request, cancellationToken) });
+
+    /// <summary>Link oficial próprio da empresa para um documento (vazio = volta ao do catálogo). Devolve o link que passa a valer.</summary>
+    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Alterar)]
+    [HttpPut("link")]
+    public async Task<IActionResult> SalvarLink([FromBody] SalvarLinkDocumentoRequest request, CancellationToken cancellationToken)
+        => Ok(new { link = await _escolha.SalvarLinkAsync(request, cancellationToken) });
 
     [HttpGet]
     public async Task<IActionResult> Listar([FromQuery] Guid empresaId, CancellationToken cancellationToken)
         => Ok(await _documentos.ListarAsync(empresaId, cancellationToken));
 
     [HttpGet("historico")]
-    public async Task<IActionResult> Historico([FromQuery] Guid empresaId, [FromQuery] TipoDocumentoEmpresa tipo, [FromQuery] string? nome, CancellationToken cancellationToken)
+    public async Task<IActionResult> Historico([FromQuery] Guid empresaId, [FromQuery] int tipo, [FromQuery] string? nome, CancellationToken cancellationToken)
         => Ok(await _documentos.HistoricoAsync(empresaId, tipo, nome, cancellationToken));
 
     /// <summary>Painel inicial: vencidos e vencendo em até 15 dias, em todas as empresas da conta.</summary>
@@ -42,7 +69,7 @@ public sealed class DocumentosEmpresaController : ControllerBase
     [RequestSizeLimit(6 * 1024 * 1024)]
     public async Task<IActionResult> Enviar(
         [FromForm] Guid empresaId,
-        [FromForm] TipoDocumentoEmpresa tipo,
+        [FromForm] int tipo,
         [FromForm] string? nomePersonalizado,
         [FromForm] DateOnly? dataEmissao,
         [FromForm] DateOnly? validaAte,

@@ -5,6 +5,32 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (DOC4 — catálogo de documentos)
+- **Catálogo geral de documentos no banco**, mantido só pelo dono da plataforma
+  (Plataforma › Documentos): nome, categoria (fiscal, trabalhista, cadastro,
+  financeiro, segurança do trabalho, saúde ocupacional, qualificação técnica,
+  ambiental, jurídico), de onde se tira (nacional, estado ou município), órgão,
+  link oficial, validade usual em dias, validade obrigatória, padrão e ativo.
+  Vem com os 8 de antes e mais 20 (PGR, PCMSO, LTCAT, alvarás, inscrições, CNO,
+  ART, balanço, certidão de falência, comprovantes mensais de FGTS/INSS...).
+  Nada é apagado: inativar esconde de quem não usa.
+- **Cada empresa escolhe o que gerencia** ("Escolher documentos"): catálogo por
+  categoria com busca, os básicos já marcados, aviso antes de tirar documento
+  que tem arquivo ou que cliente exige, e "usar a mesma lista nas outras
+  empresas". A tela passa a mostrar a lista da empresa, agrupada por categoria.
+- **Pacotes por ramo** com um clique: serviços em geral, indústria, construção
+  civil, clínicas e saúde, licitação. O operador cria e edita os pacotes.
+- **Link oficial certo para cada empresa**: o que ela cadastrou → o do município
+  ou do estado (cadastrado pelo operador) → o usado por outras empresas do mesmo
+  lugar (sugestão com "Usar este link"; só sites .gov.br ou usados por 2+ contas,
+  e só o endereço, nunca o documento) → o geral do catálogo. O operador vê os
+  links que as empresas usam e oficializa com um clique.
+- Aviso de vencimento e e-mail usam o link da empresa; documento tirado da lista
+  para de gerar aviso. Exportação dos dados inclui a lista e os links da empresa.
+- Banco: tabelas `tipos_documento`, `documentos_gerenciados_empresa`,
+  `links_locais_documento`, `pacotes_documento`; coluna
+  `empresas.DocumentosEscolhidosEm`; chave estrangeira de `documentos_empresa.Tipo`.
+
 ### Melhorado (DOC3 — envio de documentos)
 - **Data de emissão obrigatória** em todo documento novo (tela e servidor). Os já
   guardados sem data continuam valendo.

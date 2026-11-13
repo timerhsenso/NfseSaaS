@@ -21,6 +21,12 @@ public sealed class DocumentoEmpresaConfiguration : IEntityTypeConfiguration<Doc
         // Lista da tela e histórico: versões de um "lugar", da mais nova para a mais antiga.
         builder.HasIndex(d => new { d.TenantId, d.EmpresaId, d.Tipo, d.NomeChave, d.CreatedAt });
 
+        // DOC4: o tipo vem do catálogo (tipos_documento). Tipo nunca é apagado (só inativado).
+        builder.HasOne<TipoDocumento>()
+            .WithMany()
+            .HasForeignKey(d => d.Tipo)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // Some junto com a Empresa (a pasta em disco é apagada em ExcluirEmpresaUseCase).
         builder.HasOne<Empresa>()
             .WithMany()

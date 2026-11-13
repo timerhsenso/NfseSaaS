@@ -5,7 +5,7 @@ namespace NfseSaaS.Application.UseCases.DocumentosEmpresa;
 /// <summary>Uma opção do cadastro do cliente: documento que pode ser exigido e como está na empresa atual.</summary>
 /// <param name="Situacao">Na empresa escolhida no topo (nulo quando a tela não informou a empresa).</param>
 public sealed record OpcaoDocumentoExigido(
-    TipoDocumentoEmpresa Tipo,
+    int Tipo,
     string NomeChave,
     string Titulo,
     bool Exigido,
@@ -17,7 +17,7 @@ public sealed record DocumentosExigidosClienteResponse(
     AcaoDocumentoPendente AcaoPendente,
     IReadOnlyList<OpcaoDocumentoExigido> Opcoes);
 
-public sealed record ChaveDocumentoRequest(TipoDocumentoEmpresa Tipo, string? NomeChave);
+public sealed record ChaveDocumentoRequest(int Tipo, string? NomeChave);
 
 public sealed record SalvarDocumentosExigidosRequest(IReadOnlyList<ChaveDocumentoRequest>? Documentos, AcaoDocumentoPendente AcaoPendente);
 

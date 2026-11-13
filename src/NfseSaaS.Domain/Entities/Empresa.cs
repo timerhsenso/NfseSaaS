@@ -115,6 +115,13 @@ public sealed class Empresa : BaseEntity, ITenantEntity
     public Guid? ModeloEmailNotaId { get; set; }
 
     /// <summary>
+    /// DOC4: quando a empresa escolheu os documentos que gerencia (Documentos
+    /// da empresa › Escolher documentos). Nulo = ainda não escolheu: valem os
+    /// tipos padrão do catálogo e os que ela já tem arquivo.
+    /// </summary>
+    public DateTimeOffset? DocumentosEscolhidosEm { get; set; }
+
+    /// <summary>
     /// O que falta no cadastro para emitir nota (em palavras para o usuário).
     /// A Empresa criada no cadastro em etapas nasce só com os dados públicos
     /// do CNPJ; Inscrição Municipal e regime ficam para o usuário completar.

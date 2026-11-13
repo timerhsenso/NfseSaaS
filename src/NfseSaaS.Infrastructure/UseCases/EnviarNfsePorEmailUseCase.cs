@@ -103,11 +103,15 @@ public sealed class EnviarNfsePorEmailUseCase : IEnviarNfsePorEmailUseCase
         AppDbContext db, IReadOnlyCollection<NotaParaEmail> notas, CancellationToken cancellationToken)
     {
         var comExigidos = notas.Where(n => n.DocumentosExigidos.Count > 0).ToList();
-        var atuais = await DocumentosEmpresaService.AtuaisParaEmailAsync(db, comExigidos.Select(n => n.EmpresaId).Distinct().ToList(), cancellationToken);
+        if (comExigidos.Count == 0)
+            return notas.ToDictionary(n => n.Id, _ => (IReadOnlyList<DocumentoExigidoAvaliado>)Array.Empty<DocumentoExigidoAvaliado>());
+
+        var catalogo = await new CatalogoDocumentosService(db).ObterAsync(cancellationToken);
+        var atuais = await DocumentosEmpresaService.AtuaisParaEmailAsync(db, comExigidos.Select(n => n.EmpresaId).Distinct().ToList(), catalogo, cancellationToken);
         var hoje = DataBrasilia.Hoje();
         return notas.ToDictionary(n => n.Id, n => n.DocumentosExigidos.Count == 0
             ? (IReadOnlyList<DocumentoExigidoAvaliado>)Array.Empty<DocumentoExigidoAvaliado>()
-            : RegrasDocumentosExigidos.Avaliar(n.DocumentosExigidos, atuais.GetValueOrDefault(n.EmpresaId) ?? new List<DocumentoAtual>(), hoje));
+            : RegrasDocumentosExigidos.Avaliar(n.DocumentosExigidos, atuais.GetValueOrDefault(n.EmpresaId) ?? new List<DocumentoAtual>(), hoje, catalogo));
     }
 
     public async Task<EnviarNfsePorEmailResult> ExecutarAsync(Guid nfseId, bool automatico, TextoEmailNota? texto, CancellationToken cancellationToken)

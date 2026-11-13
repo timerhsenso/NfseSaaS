@@ -53,6 +53,10 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
     public DbSet<ContratoServico> ContratoServicos => Set<ContratoServico>();
     public DbSet<ContratoDocumento> ContratoDocumentos => Set<ContratoDocumento>();
     public DbSet<DocumentoEmpresa> DocumentosEmpresa => Set<DocumentoEmpresa>();
+    public DbSet<TipoDocumento> TiposDocumento => Set<TipoDocumento>();
+    public DbSet<LinkLocalDocumento> LinksLocaisDocumento => Set<LinkLocalDocumento>();
+    public DbSet<PacoteDocumento> PacotesDocumento => Set<PacoteDocumento>();
+    public DbSet<DocumentoGerenciadoEmpresa> DocumentosGerenciadosEmpresa => Set<DocumentoGerenciadoEmpresa>();
     public DbSet<LogoConta> LogosConta => Set<LogoConta>();
     public DbSet<ModeloEmailNota> ModelosEmailNota => Set<ModeloEmailNota>();
     public DbSet<MovimentacaoValorContrato> MovimentacoesValorContrato => Set<MovimentacaoValorContrato>();

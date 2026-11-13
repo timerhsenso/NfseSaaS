@@ -17,26 +17,35 @@ public sealed record VersaoDocumentoEmpresaResponse(
     string? EnviadoPor);
 
 /// <summary>Uma linha da tela: o "lugar" do documento e a versão que vale (nula = ainda não enviado).</summary>
+/// <param name="Link">Link oficial que vale para esta empresa (DOC4: próprio → município/estado → sugerido → catálogo).</param>
+/// <param name="LinkProprio">O link que a empresa cadastrou (para editar); nulo = usa o do catálogo.</param>
 public sealed record ItemDocumentoEmpresaResponse(
-    TipoDocumentoEmpresa Tipo,
+    int Tipo,
     string Titulo,
     string? NomePersonalizado,
     string Orgao,
-    string? LinkEmissao,
+    CategoriaDocumento Categoria,
+    string CategoriaNome,
+    AbrangenciaDocumento Abrangencia,
+    LinkDocumentoResolvido? Link,
+    string? LinkProprio,
     VersaoDocumentoEmpresaResponse? Atual,
     int TotalVersoes);
 
 /// <param name="EnvioLiberado">PL1 (recurso "documentos-empresa"): false = só ver e baixar o que já existe.</param>
+/// <param name="Tipos">Os que a empresa gerencia e o "Outro documento" (opções do envio).</param>
+/// <param name="JaEscolheu">DOC4: false = a lista é o padrão (a empresa ainda não usou "Escolher documentos").</param>
 public sealed record ListaDocumentosEmpresaResponse(
     Guid EmpresaId,
     bool EnvioLiberado,
     string? MensagemBloqueio,
     IReadOnlyList<TipoDocumentoInfo> Tipos,
-    IReadOnlyList<ItemDocumentoEmpresaResponse> Itens);
+    IReadOnlyList<ItemDocumentoEmpresaResponse> Itens,
+    bool JaEscolheu);
 
 public sealed record EnviarDocumentoEmpresaRequest(
     Guid EmpresaId,
-    TipoDocumentoEmpresa Tipo,
+    int Tipo,
     string? NomePersonalizado,
     DateOnly? DataEmissao,
     DateOnly? ValidaAte,
@@ -66,7 +75,7 @@ public interface IDocumentosEmpresaUseCase
 
     /// <summary>Todas as versões do mesmo "lugar", da mais nova para a mais antiga.</summary>
     Task<IReadOnlyList<VersaoDocumentoEmpresaResponse>> HistoricoAsync(
-        Guid empresaId, TipoDocumentoEmpresa tipo, string? nomePersonalizado, CancellationToken cancellationToken);
+        Guid empresaId, int tipo, string? nomePersonalizado, CancellationToken cancellationToken);
 
     /// <summary>Cada envio é uma versão nova (a anterior vai para o histórico). Barra se o plano não libera o recurso.</summary>
     Task<VersaoDocumentoEmpresaResponse> EnviarAsync(EnviarDocumentoEmpresaRequest request, ArquivoDocumentoEmpresa arquivo, CancellationToken cancellationToken);

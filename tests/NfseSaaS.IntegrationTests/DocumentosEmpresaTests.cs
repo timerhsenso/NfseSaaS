@@ -62,7 +62,8 @@ public class DocumentosEmpresaTests
         sp.GetRequiredService<ICurrentUser>(),
         sp.GetRequiredService<IRecursosConta>(),
         new DocumentoEmpresaFileStore(Options.Create(new DocumentStorageOptions { BasePath = c.Pasta })),
-        sp.GetRequiredService<IAuditLogWriter>());
+        sp.GetRequiredService<IAuditLogWriter>(),
+        sp.GetRequiredService<ICatalogoDocumentos>());
 
     private static async Task LimparAsync(IServiceProvider sp, Cenario c)
     {
@@ -78,7 +79,7 @@ public class DocumentosEmpresaTests
             Directory.Delete(c.Pasta, recursive: true);
     }
 
-    private static EnviarDocumentoEmpresaRequest Pedido(Guid empresaId, TipoDocumentoEmpresa tipo, DateOnly? emissao, DateOnly? validade = null, string? nome = null) =>
+    private static EnviarDocumentoEmpresaRequest Pedido(Guid empresaId, int tipo, DateOnly? emissao, DateOnly? validade = null, string? nome = null) =>
         new(empresaId, tipo, nome, emissao, validade, null);
 
     [Fact]
@@ -92,37 +93,38 @@ public class DocumentosEmpresaTests
             var servico = Servico(sp, c);
             var hoje = DataBrasilia.Hoje();
 
-            // Lista inicial: os tipos fixos aparecem como "não enviado".
+            // Lista inicial (DOC4: empresa que ainda não escolheu): os padrão aparecem como "não enviado".
             var vazia = await servico.ListarAsync(c.Empresa.Id, CancellationToken.None);
             Assert.True(vazia.EnvioLiberado);
-            Assert.Equal(CatalogoDocumentosEmpresa.Fixos.Count(), vazia.Itens.Count);
+            Assert.False(vazia.JaEscolheu);
+            Assert.Equal(8, vazia.Itens.Count);
             Assert.All(vazia.Itens, i => Assert.Null(i.Atual));
 
             // FGTS sem validade informada: emissão + 30 dias.
-            var primeira = await servico.EnviarAsync(Pedido(c.Empresa.Id, TipoDocumentoEmpresa.CrfFgts, hoje.AddDays(-20)),
+            var primeira = await servico.EnviarAsync(Pedido(c.Empresa.Id, TiposDocumentoSistema.CrfFgts, hoje.AddDays(-20)),
                 new ArquivoDocumentoEmpresa("crf antigo.pdf", Pdf), CancellationToken.None);
             Assert.Equal(hoje.AddDays(10), primeira.ValidaAte);
             Assert.Equal(SituacaoDocumentoEmpresa.VenceEmBreve, primeira.Situacao);
             Assert.True(File.Exists(Path.Combine(c.Pasta, c.Conta.Id.ToString("N"), c.Empresa.Id.ToString("N"), "documentos", $"{primeira.Id:N}.pdf")));
 
-            var segunda = await servico.EnviarAsync(Pedido(c.Empresa.Id, TipoDocumentoEmpresa.CrfFgts, hoje),
+            var segunda = await servico.EnviarAsync(Pedido(c.Empresa.Id, TiposDocumentoSistema.CrfFgts, hoje),
                 new ArquivoDocumentoEmpresa("crf novo.pdf", Pdf), CancellationToken.None);
 
             // "Outro": mesmo nome com outra grafia cai no mesmo histórico.
-            await servico.EnviarAsync(Pedido(c.Empresa.Id, TipoDocumentoEmpresa.Outro, hoje, nome: "Alvará de funcionamento"),
+            await servico.EnviarAsync(Pedido(c.Empresa.Id, TiposDocumentoSistema.Outro, hoje, nome: "Alvará de funcionamento"),
                 new ArquivoDocumentoEmpresa("alvara.pdf", Pdf), CancellationToken.None);
-            await servico.EnviarAsync(Pedido(c.Empresa.Id, TipoDocumentoEmpresa.Outro, hoje, nome: "  alvará DE funcionamento "),
+            await servico.EnviarAsync(Pedido(c.Empresa.Id, TiposDocumentoSistema.Outro, hoje, nome: "  alvará DE funcionamento "),
                 new ArquivoDocumentoEmpresa("alvara2.pdf", Pdf), CancellationToken.None);
 
             var lista = await servico.ListarAsync(c.Empresa.Id, CancellationToken.None);
-            var fgts = lista.Itens.Single(i => i.Tipo == TipoDocumentoEmpresa.CrfFgts);
+            var fgts = lista.Itens.Single(i => i.Tipo == TiposDocumentoSistema.CrfFgts);
             Assert.Equal(segunda.Id, fgts.Atual!.Id);
             Assert.Equal(2, fgts.TotalVersoes);
-            var alvara = Assert.Single(lista.Itens, i => i.Tipo == TipoDocumentoEmpresa.Outro);
+            var alvara = Assert.Single(lista.Itens, i => i.Tipo == TiposDocumentoSistema.Outro);
             Assert.Equal("Alvará de funcionamento", alvara.Titulo);
             Assert.Equal(2, alvara.TotalVersoes);
 
-            var historico = await servico.HistoricoAsync(c.Empresa.Id, TipoDocumentoEmpresa.CrfFgts, null, CancellationToken.None);
+            var historico = await servico.HistoricoAsync(c.Empresa.Id, TiposDocumentoSistema.CrfFgts, null, CancellationToken.None);
             Assert.Equal(new[] { segunda.Id, primeira.Id }, historico.Select(h => h.Id));
 
             var baixado = await servico.BaixarAsync(primeira.Id, CancellationToken.None);
@@ -131,7 +133,7 @@ public class DocumentosEmpresaTests
 
             // Excluir a versão que vale: a anterior volta a valer; o arquivo some.
             await servico.ExcluirAsync(segunda.Id, CancellationToken.None);
-            var depois = (await servico.ListarAsync(c.Empresa.Id, CancellationToken.None)).Itens.Single(i => i.Tipo == TipoDocumentoEmpresa.CrfFgts);
+            var depois = (await servico.ListarAsync(c.Empresa.Id, CancellationToken.None)).Itens.Single(i => i.Tipo == TiposDocumentoSistema.CrfFgts);
             Assert.Equal(primeira.Id, depois.Atual!.Id);
             Assert.False(File.Exists(Path.Combine(c.Pasta, c.Conta.Id.ToString("N"), c.Empresa.Id.ToString("N"), "documentos", $"{segunda.Id:N}.pdf")));
 
@@ -163,10 +165,10 @@ public class DocumentosEmpresaTests
             var hoje = DataBrasilia.Hoje();
 
             var naoPdf = await Assert.ThrowsAsync<RegraNegocioException>(() => servico.EnviarAsync(
-                Pedido(c.Empresa.Id, TipoDocumentoEmpresa.CartaoCnpj, hoje), new ArquivoDocumentoEmpresa("foto.pdf", Encoding.ASCII.GetBytes("GIF89a")), CancellationToken.None));
+                Pedido(c.Empresa.Id, TiposDocumentoSistema.CartaoCnpj, hoje), new ArquivoDocumentoEmpresa("foto.pdf", Encoding.ASCII.GetBytes("GIF89a")), CancellationToken.None));
             Assert.Contains("PDF", naoPdf.Message);
 
-            var cartao = await servico.EnviarAsync(Pedido(c.Empresa.Id, TipoDocumentoEmpresa.CartaoCnpj, hoje),
+            var cartao = await servico.EnviarAsync(Pedido(c.Empresa.Id, TiposDocumentoSistema.CartaoCnpj, hoje),
                 new ArquivoDocumentoEmpresa("cartao.pdf", Pdf), CancellationToken.None);
             Assert.Equal(SituacaoDocumentoEmpresa.SemValidade, cartao.Situacao);
 
@@ -175,13 +177,13 @@ public class DocumentosEmpresaTests
                 new SalvarExcecaoRecursoRequest(CatalogoRecursos.DocumentosEmpresa, false, null, "Teste de bloqueio do recurso", null), null, CancellationToken.None);
 
             var bloqueado = await Assert.ThrowsAsync<RegraNegocioException>(() => servico.EnviarAsync(
-                Pedido(c.Empresa.Id, TipoDocumentoEmpresa.CartaoCnpj, hoje), new ArquivoDocumentoEmpresa("cartao2.pdf", Pdf), CancellationToken.None));
+                Pedido(c.Empresa.Id, TiposDocumentoSistema.CartaoCnpj, hoje), new ArquivoDocumentoEmpresa("cartao2.pdf", Pdf), CancellationToken.None));
             Assert.Contains("não está incluído no seu plano", bloqueado.Message);
 
             var lista = await servico.ListarAsync(c.Empresa.Id, CancellationToken.None);
             Assert.False(lista.EnvioLiberado);
             Assert.NotNull(lista.MensagemBloqueio);
-            Assert.Equal(cartao.Id, lista.Itens.Single(i => i.Tipo == TipoDocumentoEmpresa.CartaoCnpj).Atual!.Id);
+            Assert.Equal(cartao.Id, lista.Itens.Single(i => i.Tipo == TiposDocumentoSistema.CartaoCnpj).Atual!.Id);
             Assert.Equal(Pdf, (await servico.BaixarAsync(cartao.Id, CancellationToken.None)).Conteudo);
 
             // Empresa de outra conta não é achada.
@@ -206,10 +208,10 @@ public class DocumentosEmpresaTests
             var db = sp.GetRequiredService<AppDbContext>();
             var hoje = DataBrasilia.Hoje();
 
-            var cndt = await servico.EnviarAsync(Pedido(c.Empresa.Id, TipoDocumentoEmpresa.Cndt, hoje.AddDays(-10), hoje.AddDays(5)),
+            var cndt = await servico.EnviarAsync(Pedido(c.Empresa.Id, TiposDocumentoSistema.Cndt, hoje.AddDays(-10), hoje.AddDays(5)),
                 new ArquivoDocumentoEmpresa("cndt.pdf", Pdf), CancellationToken.None);
             // Sem validade: nunca avisa.
-            await servico.EnviarAsync(Pedido(c.Empresa.Id, TipoDocumentoEmpresa.ContratoSocial, hoje),
+            await servico.EnviarAsync(Pedido(c.Empresa.Id, TiposDocumentoSistema.ContratoSocial, hoje),
                 new ArquivoDocumentoEmpresa("contrato.pdf", Pdf), CancellationToken.None);
 
             var primeiro = await aviso.ExecutarAsync(c.Empresa.Id, hoje, CancellationToken.None);
@@ -232,7 +234,7 @@ public class DocumentosEmpresaTests
                 e.ChaveDeduplicacao == AvisarDocumentosEmpresaVencendoUseCase.Chave(cndt.Id, RegrasDocumentoEmpresa.FaixaVencido)));
 
             // Versão nova, válida por 180 dias: a antiga sai da conta e nada é avisado.
-            await servico.EnviarAsync(Pedido(c.Empresa.Id, TipoDocumentoEmpresa.Cndt, hoje),
+            await servico.EnviarAsync(Pedido(c.Empresa.Id, TiposDocumentoSistema.Cndt, hoje),
                 new ArquivoDocumentoEmpresa("cndt nova.pdf", Pdf), CancellationToken.None);
             Assert.Equal(0, (await aviso.ExecutarAsync(c.Empresa.Id, hoje.AddDays(6), CancellationToken.None)).Avisados);
         }

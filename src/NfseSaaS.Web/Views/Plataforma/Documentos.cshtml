@@ -1,0 +1,223 @@
+@{
+    ViewData["Title"] = "Catálogo de documentos";
+}
+
+@* DOC4: catálogo geral de tipos de documento (as contas só escolhem o que
+   gerenciam), pacotes por ramo e links oficiais por estado/município.
+   Dados via api/plataforma/documentos. Nada é apagado: só inativado. *@
+@section AcoesPagina {
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-novo-pacote"><i class="bi bi-collection"></i> Novo pacote</button>
+    <button type="button" class="btn btn-primary btn-sm" id="btn-novo-tipo"><i class="bi bi-plus-lg"></i> Novo documento</button>
+}
+
+<div class="alert alert-info small">
+    <i class="bi bi-info-circle"></i>
+    Cada empresa escolhe, deste catálogo, os documentos que gerencia. <strong>Padrão</strong> = já vem marcado para quem ainda não escolheu.
+    Documento <strong>estadual</strong> ou <strong>municipal</strong> pega o link do estado/município da empresa: cadastre em <strong>Links</strong>
+    ou oficialize o que as empresas já usam. Nada é apagado: inative o que sair do catálogo (quem já usa continua vendo).
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center gap-2 flex-wrap">
+        <span><i class="bi bi-folder2-open"></i> Documentos</span>
+        <input type="search" class="form-control form-control-sm catalogo-busca" id="busca-tipos" placeholder="Buscar" aria-label="Buscar documento" />
+    </div>
+    <div class="card-body p-0 table-responsive">
+        <table class="table table-hover mb-0 align-middle" id="tabela-tipos">
+            <thead>
+                <tr>
+                    <th>Documento</th>
+                    <th>Categoria</th>
+                    <th>Onde se tira</th>
+                    <th class="text-end">Validade</th>
+                    <th class="text-end">Empresas</th>
+                    <th>Situação</th>
+                    <th class="text-end">Ações</th>
+                </tr>
+            </thead>
+            <tbody><tr><td colspan="7" class="text-center text-muted py-4">Carregando…</td></tr></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header"><i class="bi bi-collection"></i> Pacotes por ramo</div>
+    <div class="card-body p-0 table-responsive">
+        <table class="table table-hover mb-0 align-middle" id="tabela-pacotes">
+            <thead>
+                <tr>
+                    <th>Pacote</th>
+                    <th>Documentos</th>
+                    <th>Situação</th>
+                    <th class="text-end">Ações</th>
+                </tr>
+            </thead>
+            <tbody><tr><td colspan="4" class="text-center text-muted py-4">Carregando…</td></tr></tbody>
+        </table>
+    </div>
+</div>
+
+@* Criar / alterar tipo de documento *@
+<div class="modal fade" id="modal-tipo" tabindex="-1" aria-labelledby="titulo-modal-tipo">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="form-tipo" novalidate>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="titulo-modal-tipo">Documento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="erro-tipo" class="alert alert-danger d-none"></div>
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label" for="tipo-nome">Nome</label>
+                            <input type="text" class="form-control" id="tipo-nome" maxlength="100" required placeholder="ex.: PCMSO — Programa de Controle Médico" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="tipo-categoria">Categoria</label>
+                            <select class="form-select" id="tipo-categoria"></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="tipo-abrangencia">Onde se tira</label>
+                            <select class="form-select" id="tipo-abrangencia">
+                                <option value="1">Nacional (um link para todos)</option>
+                                <option value="2">Estadual (link por estado)</option>
+                                <option value="3">Municipal (link por município)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="tipo-orgao">Quem emite <span class="text-muted">(opcional)</span></label>
+                            <input type="text" class="form-control" id="tipo-orgao" maxlength="100" placeholder="ex.: Receita Federal, Prefeitura" />
+                        </div>
+                        <div class="col-12" id="grupo-tipo-link">
+                            <label class="form-label" for="tipo-link">Link oficial <span class="text-muted">(nacional; opcional)</span></label>
+                            <input type="url" class="form-control" id="tipo-link" maxlength="500" placeholder="https://..." />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="tipo-validade">Validade usual (dias)</label>
+                            <input type="number" class="form-control" id="tipo-validade" min="1" max="3650" placeholder="vazio = varia" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="tipo-ordem">Ordem na categoria</label>
+                            <input type="number" class="form-control" id="tipo-ordem" min="0" max="9999" value="100" />
+                        </div>
+                        <div class="col-md-4 d-flex flex-column justify-content-end gap-1">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="tipo-exige-validade" />
+                                <label class="form-check-label" for="tipo-exige-validade">Validade obrigatória (certidão)</label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="tipo-padrao" />
+                                <label class="form-check-label" for="tipo-padrao">Padrão para novas empresas</label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="tipo-ativo" checked />
+                                <label class="form-check-label" for="tipo-ativo">Ativo no catálogo</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@* Criar / alterar pacote *@
+<div class="modal fade" id="modal-pacote" tabindex="-1" aria-labelledby="titulo-modal-pacote">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <form id="form-pacote" novalidate class="d-flex flex-column h-100 overflow-hidden">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="titulo-modal-pacote">Pacote</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="erro-pacote" class="alert alert-danger d-none"></div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label" for="pacote-nome">Nome (como o cliente vê)</label>
+                            <input type="text" class="form-control" id="pacote-nome" maxlength="80" placeholder="ex.: Presto serviço para indústria" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label" for="pacote-ordem">Ordem</label>
+                            <input type="number" class="form-control" id="pacote-ordem" min="0" max="9999" value="100" />
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="pacote-ativo" checked />
+                                <label class="form-check-label" for="pacote-ativo">Ativo</label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="pacote-descricao">Descrição curta <span class="text-muted">(opcional)</span></label>
+                            <input type="text" class="form-control" id="pacote-descricao" maxlength="200" />
+                        </div>
+                    </div>
+                    <div class="fw-semibold mb-2">Documentos do pacote <small class="text-muted" id="pacote-contagem"></small></div>
+                    <div id="pacote-tipos" class="escolha-categorias"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@* Links oficiais por estado/município + os que as empresas usam *@
+<div class="modal fade" id="modal-links" tabindex="-1" aria-labelledby="titulo-modal-links">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="titulo-modal-links">Links</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div id="erro-links" class="alert alert-danger d-none"></div>
+                <form id="form-link-local" class="row g-2 align-items-end mb-3" novalidate>
+                    <div class="col-md-4" id="grupo-link-uf">
+                        <label class="form-label" for="link-uf">Estado</label>
+                        <select class="form-select" id="link-uf"></select>
+                    </div>
+                    <div class="col-md-4" id="grupo-link-municipio">
+                        <label class="form-label" for="link-municipio">Município</label>
+                        <select class="form-select" id="link-municipio"></select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="link-local-url">Link oficial</label>
+                        <input type="url" class="form-control" id="link-local-url" maxlength="500" placeholder="https://..." />
+                    </div>
+                    <div class="col-md-2 d-grid">
+                        <button type="submit" class="btn btn-primary">Salvar</button>
+                    </div>
+                </form>
+                <div class="fw-semibold mb-1">Links oficiais <small class="text-muted">(valem antes da sugestão das empresas)</small></div>
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle mb-0" id="tabela-links-oficiais">
+                        <thead><tr><th>Lugar</th><th>Link</th><th class="text-end">Ações</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="fw-semibold mb-1">Usados pelas empresas <small class="text-muted">(só o endereço do site; "sugerido" = as outras empresas do lugar já veem)</small></div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0" id="tabela-links-usados">
+                        <thead><tr><th>Lugar</th><th>Link</th><th class="text-end">Contas</th><th>Situação</th><th class="text-end">Ações</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/paginas/plataforma-documentos.js" asp-append-version="true"></script>
+}

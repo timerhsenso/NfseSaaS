@@ -4093,3 +4093,231 @@ html[data-theme="dark"] .painel-aparencia .btn-close { filter: invert(1) graysca
     border-width: .15em;
     vertical-align: -2px;
 }
+
+/* =============== DOC4: escolher documentos, categorias e links =============== */
+
+.documentos-convite {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.documentos-convite > span {
+    flex: 1 1 280px;
+    min-width: 0;
+}
+
+.list-group-item.documentos-categoria {
+    background: var(--surface-2);
+    color: var(--muted);
+    font-size: calc(12px * var(--escala-fonte));
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+
+.documento-link-sugerido {
+    color: var(--info-ink);
+}
+
+.escolha-subtitulo {
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: calc(14px * var(--escala-fonte));
+}
+
+.escolha-pacotes {
+    margin-bottom: 16px;
+}
+
+.escolha-pacotes-lista {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 8px;
+}
+
+.escolha-pacote {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    text-align: left;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px 12px;
+    color: var(--text);
+    transition: border-color .15s ease, background .15s ease;
+}
+
+.escolha-pacote:hover,
+.escolha-pacote:focus-visible {
+    border-color: var(--primary);
+}
+
+.escolha-pacote > i {
+    color: var(--primary);
+    font-size: 1.1rem;
+    margin-top: 1px;
+}
+
+.escolha-pacote > span:first-of-type {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.escolha-pacote small {
+    color: var(--muted);
+    font-size: calc(12px * var(--escala-fonte));
+    line-height: 1.3;
+}
+
+.escolha-pacote-total {
+    flex: 0 0 auto;
+    background: var(--surface-3);
+    color: var(--muted);
+    border-radius: 999px;
+    padding: 0 8px;
+    font-size: calc(12px * var(--escala-fonte));
+    font-variant-numeric: tabular-nums;
+}
+
+.escolha-pacote.aplicado {
+    background: var(--primary-soft);
+    border-color: var(--primary);
+}
+
+.escolha-pacote.aplicado > i {
+    color: var(--success);
+}
+
+.escolha-busca {
+    position: sticky;
+    top: -16px;
+    z-index: 2;
+    background: var(--surface);
+    padding: 8px 0;
+    margin-bottom: 8px;
+}
+
+.escolha-busca > i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--subtle);
+    pointer-events: none;
+}
+
+.escolha-busca .form-control {
+    padding-left: 36px;
+}
+
+.escolha-categoria {
+    margin-bottom: 16px;
+}
+
+.escolha-categoria legend {
+    font-size: calc(13px * var(--escala-fonte));
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--muted);
+    margin-bottom: 6px;
+}
+
+.escolha-categoria legend small {
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+    margin-left: 4px;
+}
+
+.escolha-grade {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 6px;
+}
+
+.escolha-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 8px 10px;
+    cursor: pointer;
+    margin: 0;
+    transition: border-color .15s ease, background .15s ease;
+}
+
+.escolha-item:hover {
+    border-color: var(--field-line);
+}
+
+.escolha-item.marcado {
+    border-color: color-mix(in srgb, var(--primary) 55%, transparent);
+    background: var(--primary-soft);
+}
+
+.escolha-item .form-check-input {
+    margin-top: 3px;
+    flex: 0 0 auto;
+}
+
+.escolha-item-texto {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.escolha-item-nome {
+    font-weight: 500;
+    line-height: 1.3;
+}
+
+.escolha-item-texto small {
+    font-size: calc(12px * var(--escala-fonte));
+}
+
+.escolha-item-selos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.escolha-item-selos .badge {
+    font-weight: 500;
+}
+
+.escolha-rodape {
+    flex-wrap: wrap;
+}
+
+.escolha-resumo {
+    min-width: 0;
+}
+
+@media (max-width: 575.98px) {
+    .escolha-pacotes-lista,
+    .escolha-grade {
+        grid-template-columns: 1fr;
+    }
+
+    .escolha-rodape > .btn {
+        flex: 1 1 auto;
+    }
+
+    .escolha-resumo {
+        flex: 1 1 100%;
+    }
+}
+
+.catalogo-busca {
+    max-width: 260px;
+}

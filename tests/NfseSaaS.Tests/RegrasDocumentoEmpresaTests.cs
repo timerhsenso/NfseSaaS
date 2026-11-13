@@ -2,6 +2,7 @@ using System.Text;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.DocumentosEmpresa;
 using NfseSaaS.Application.UseCases.Recursos;
+using NfseSaaS.Domain.Entities;
 using NfseSaaS.Domain.Enums;
 using Xunit;
 
@@ -13,25 +14,30 @@ public class RegrasDocumentoEmpresaTests
     private static readonly DateOnly Hoje = new(2026, 11, 13);
     private static readonly byte[] Pdf = Encoding.ASCII.GetBytes("%PDF-1.4\n%teste\n");
 
+    private static TipoDocumentoInfo T(int tipo) => CatalogoDocumentosTeste.Sistema.Obter(tipo);
+
     [Fact]
-    public void Catalogo_tem_todos_os_tipos_do_enum_uma_vez()
+    public void Tipos_de_sistema_mantem_os_numeros_ja_gravados()
     {
-        var doEnum = Enum.GetValues<TipoDocumentoEmpresa>().OrderBy(t => t).ToList();
-        Assert.Equal(doEnum, CatalogoDocumentosEmpresa.Todos.Select(t => t.Tipo).OrderBy(t => t).ToList());
-        Assert.DoesNotContain(CatalogoDocumentosEmpresa.Fixos, t => t.Tipo == TipoDocumentoEmpresa.Outro);
-        Assert.All(CatalogoDocumentosEmpresa.Todos.Where(t => t.LinkEmissao is not null),
+        Assert.Equal(new[] { 1, 2, 3, 4, 5, 6, 7, 8, 99 }, CatalogoDocumentosTeste.Sistema.Todos.Select(t => t.Tipo).OrderBy(t => t).ToArray());
+        Assert.DoesNotContain(CatalogoDocumentosTeste.Sistema.Selecionaveis, t => t.Tipo == TiposDocumentoSistema.Outro);
+        Assert.All(CatalogoDocumentosTeste.Sistema.Todos.Where(t => t.LinkEmissao is not null),
             t => Assert.StartsWith("https://", t.LinkEmissao));
+        // Os 8 de antes do catálogo continuam vindo marcados para quem ainda não escolheu.
+        Assert.Equal(8, CatalogoDocumentosTeste.Sistema.Selecionaveis.Count(t => t.PadraoNovasEmpresas));
+        Assert.Equal(AbrangenciaDocumento.Municipal, T(TiposDocumentoSistema.CndMunicipal).Abrangencia);
+        Assert.Equal(AbrangenciaDocumento.Estadual, T(TiposDocumentoSistema.CndEstadual).Abrangencia);
     }
 
     [Fact]
     public void Prazos_usuais_federal_180_fgts_30_cndt_180()
     {
         var emissao = new DateOnly(2026, 11, 1);
-        Assert.Equal(emissao.AddDays(180), RegrasDocumentoEmpresa.ValidadeSugerida(TipoDocumentoEmpresa.CndFederal, emissao));
-        Assert.Equal(emissao.AddDays(30), RegrasDocumentoEmpresa.ValidadeSugerida(TipoDocumentoEmpresa.CrfFgts, emissao));
-        Assert.Equal(emissao.AddDays(180), RegrasDocumentoEmpresa.ValidadeSugerida(TipoDocumentoEmpresa.Cndt, emissao));
-        Assert.Null(RegrasDocumentoEmpresa.ValidadeSugerida(TipoDocumentoEmpresa.CndMunicipal, emissao));
-        Assert.Null(RegrasDocumentoEmpresa.ValidadeSugerida(TipoDocumentoEmpresa.CrfFgts, null));
+        Assert.Equal(emissao.AddDays(180), RegrasDocumentoEmpresa.ValidadeSugerida(T(TiposDocumentoSistema.CndFederal), emissao));
+        Assert.Equal(emissao.AddDays(30), RegrasDocumentoEmpresa.ValidadeSugerida(T(TiposDocumentoSistema.CrfFgts), emissao));
+        Assert.Equal(emissao.AddDays(180), RegrasDocumentoEmpresa.ValidadeSugerida(T(TiposDocumentoSistema.Cndt), emissao));
+        Assert.Null(RegrasDocumentoEmpresa.ValidadeSugerida(T(TiposDocumentoSistema.CndMunicipal), emissao));
+        Assert.Null(RegrasDocumentoEmpresa.ValidadeSugerida(T(TiposDocumentoSistema.CrfFgts), null));
     }
 
     [Theory]
@@ -63,44 +69,44 @@ public class RegrasDocumentoEmpresaTests
     [Fact]
     public void Certidao_sem_validade_preenche_pelo_prazo_usual_ou_pede_a_data()
     {
-        var fgts = RegrasDocumentoEmpresa.Validar(TipoDocumentoEmpresa.CrfFgts, null, Hoje, null, null, Hoje);
+        var fgts = RegrasDocumentoEmpresa.Validar(T(TiposDocumentoSistema.CrfFgts), null, Hoje, null, null, Hoje);
         Assert.Equal(Hoje.AddDays(30), fgts.ValidaAte);
         Assert.Equal(string.Empty, fgts.NomeChave);
 
         var municipal = Assert.Throws<RegraNegocioException>(() =>
-            RegrasDocumentoEmpresa.Validar(TipoDocumentoEmpresa.CndMunicipal, null, Hoje, null, null, Hoje));
+            RegrasDocumentoEmpresa.Validar(T(TiposDocumentoSistema.CndMunicipal), null, Hoje, null, null, Hoje));
         Assert.Contains("vale", municipal.Message);
 
         // Cartão CNPJ não vence: validade em branco é aceita.
-        Assert.Null(RegrasDocumentoEmpresa.Validar(TipoDocumentoEmpresa.CartaoCnpj, null, Hoje, null, null, Hoje).ValidaAte);
+        Assert.Null(RegrasDocumentoEmpresa.Validar(T(TiposDocumentoSistema.CartaoCnpj), null, Hoje, null, null, Hoje).ValidaAte);
     }
 
     [Fact]
     public void Datas_e_textos_conferidos()
     {
         Assert.Throws<RegraNegocioException>(() =>
-            RegrasDocumentoEmpresa.Validar(TipoDocumentoEmpresa.CndFederal, null, Hoje.AddDays(1), null, null, Hoje));
+            RegrasDocumentoEmpresa.Validar(T(TiposDocumentoSistema.CndFederal), null, Hoje.AddDays(1), null, null, Hoje));
         Assert.Throws<RegraNegocioException>(() =>
-            RegrasDocumentoEmpresa.Validar(TipoDocumentoEmpresa.CndEstadual, null, Hoje, Hoje.AddDays(-1), null, Hoje));
+            RegrasDocumentoEmpresa.Validar(T(TiposDocumentoSistema.CndEstadual), null, Hoje, Hoje.AddDays(-1), null, Hoje));
         Assert.Throws<RegraNegocioException>(() =>
-            RegrasDocumentoEmpresa.Validar(TipoDocumentoEmpresa.CartaoCnpj, null, Hoje, null, new string('x', 301), Hoje));
+            RegrasDocumentoEmpresa.Validar(T(TiposDocumentoSistema.CartaoCnpj), null, Hoje, null, new string('x', 301), Hoje));
 
         // Vencida já no envio é aceita (a tela pergunta antes): quem decide é o usuário.
-        Assert.Equal(Hoje.AddDays(-5), RegrasDocumentoEmpresa.Validar(TipoDocumentoEmpresa.CndEstadual, null, Hoje.AddDays(-30), Hoje.AddDays(-5), null, Hoje).ValidaAte);
+        Assert.Equal(Hoje.AddDays(-5), RegrasDocumentoEmpresa.Validar(T(TiposDocumentoSistema.CndEstadual), null, Hoje.AddDays(-30), Hoje.AddDays(-5), null, Hoje).ValidaAte);
     }
 
     [Fact]
     public void Outro_exige_nome_e_agrupa_pela_chave()
     {
         Assert.Throws<RegraNegocioException>(() =>
-            RegrasDocumentoEmpresa.Validar(TipoDocumentoEmpresa.Outro, "  ", null, null, null, Hoje));
+            RegrasDocumentoEmpresa.Validar(T(TiposDocumentoSistema.Outro), "  ", null, null, null, Hoje));
 
-        var dados = RegrasDocumentoEmpresa.Validar(TipoDocumentoEmpresa.Outro, "  Alvará   de Funcionamento ", Hoje, null, null, Hoje);
+        var dados = RegrasDocumentoEmpresa.Validar(T(TiposDocumentoSistema.Outro), "  Alvará   de Funcionamento ", Hoje, null, null, Hoje);
         Assert.Equal("Alvará de Funcionamento", dados.NomePersonalizado);
         Assert.Equal("alvará de funcionamento", dados.NomeChave);
-        Assert.Equal(dados.NomeChave, RegrasDocumentoEmpresa.NomeChave(TipoDocumentoEmpresa.Outro, "alvará de funcionamento"));
-        Assert.Equal("Alvará de Funcionamento", RegrasDocumentoEmpresa.Titulo(TipoDocumentoEmpresa.Outro, dados.NomePersonalizado));
-        Assert.Equal("Cartão CNPJ", RegrasDocumentoEmpresa.Titulo(TipoDocumentoEmpresa.CartaoCnpj, "ignorado"));
+        Assert.Equal(dados.NomeChave, RegrasDocumentoEmpresa.NomeChave(TiposDocumentoSistema.Outro, "alvará de funcionamento"));
+        Assert.Equal("Alvará de Funcionamento", CatalogoDocumentosTeste.Sistema.Titulo(TiposDocumentoSistema.Outro, dados.NomePersonalizado));
+        Assert.Equal("Cartão CNPJ", CatalogoDocumentosTeste.Sistema.Titulo(TiposDocumentoSistema.CartaoCnpj, "ignorado"));
     }
 
     [Fact]
@@ -137,7 +143,7 @@ public class RegrasDocumentoEmpresaTests
     public void Emissao_obrigatoria_e_validade_por_dias()
     {
         var semEmissao = Assert.Throws<RegraNegocioException>(() =>
-            RegrasDocumentoEmpresa.Validar(TipoDocumentoEmpresa.ContratoSocial, null, null, null, null, Hoje));
+            RegrasDocumentoEmpresa.Validar(T(TiposDocumentoSistema.ContratoSocial), null, null, null, null, Hoje));
         Assert.Contains("data de emissão", semEmissao.Message);
 
         // "Vale por 90 dias" e a data final andam juntos, nos dois sentidos.
