@@ -136,7 +136,7 @@ public class DocumentosExigidosTests
             var auditoria = sp.GetRequiredService<IAuditLogWriter>();
             var modelos = new ModeloEmailNotaService(db, tenantAtual, new UsuarioFalso(admin.Id), auditoria, new EmailQueueService(db, fila),
                 sp.GetRequiredService<IOptions<PlataformaOptions>>(), sp.GetRequiredService<NfseSaaS.Application.UseCases.Recursos.IRecursosConta>());
-            var enviar = new EnviarNfsePorEmailUseCase(db, new EmailQueueService(db, fila), auditoria, modelos);
+            var enviar = new EnviarNfsePorEmailUseCase(db, new EmailQueueService(db, fila), auditoria, modelos, sp.GetRequiredService<NfseSaaS.Application.UseCases.Clientes.ILinkSaidaCopia>());
             var envio = new EnvioEmailNfseService(db, enviar, modelos);
 
             async Task<EmailLog> UltimoEmail(Guid nfseId) =>

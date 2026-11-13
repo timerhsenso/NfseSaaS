@@ -187,6 +187,8 @@
                                     <label class="btn btn-outline-primary" for="copiaCco" title="Cópia oculta: cada um vê só o próprio endereço">Cco</label>
                                 </div>
                                 <div class="form-text">Separe por vírgula. <strong>Cc</strong>: todos veem quem recebeu. <strong>Cco</strong>: cópia oculta.</div>
+                                @* RC1: quem pediu (pelo rodapé do e-mail) para sair das cópias — clientes.js › carregarSaidasCopiaCliente. *@
+                                <div class="form-text text-warning-emphasis d-none" id="saidas-copia-cliente"></div>
                             </div>
 
                             @* DOC2: documentos da empresa que vão junto com a nota (clientes.js › carregarDocumentosExigidosCliente). *@

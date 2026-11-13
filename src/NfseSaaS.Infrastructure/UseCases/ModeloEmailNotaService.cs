@@ -67,7 +67,8 @@ public sealed class ModeloEmailNotaService : IModeloEmailNotaUseCase
         var itens = modelos.Select(m => new ModeloEmailNotaItem(
                 m.Id, m.Nome, m.Padrao, m.Assunto, m.Mensagem, m.ResponderPara, m.CopiaOcultaPara, m.OcultarDivulgacao,
                 empresas.Where(e => e.ModeloEmailNotaId == m.Id).Select(e => e.Nome).OrderBy(n => n).ToList(),
-                clientes.FirstOrDefault(c => c.ModeloId == m.Id)?.Quantidade ?? 0))
+                clientes.FirstOrDefault(c => c.ModeloId == m.Id)?.Quantidade ?? 0,
+                m.OcultarSaidaCopias))
             .ToList();
 
         // Na prévia, [Empresa] mostra a primeira empresa de verdade.
@@ -118,7 +119,7 @@ public sealed class ModeloEmailNotaService : IModeloEmailNotaUseCase
 
         await PreencherAsync(modelo, request, tenantId, usuarioId, cancellationToken);
         _auditLogWriter.Registrar("AlterarModeloEmailNota", "ModeloEmailNota", modelo.Id,
-            new { modelo.Nome, modelo.Assunto, modelo.ResponderPara, modelo.CopiaOcultaPara, modelo.OcultarDivulgacao });
+            new { modelo.Nome, modelo.Assunto, modelo.ResponderPara, modelo.CopiaOcultaPara, modelo.OcultarDivulgacao, modelo.OcultarSaidaCopias });
         await _db.SaveChangesAsync(cancellationToken);
     }
 
@@ -137,7 +138,8 @@ public sealed class ModeloEmailNotaService : IModeloEmailNotaUseCase
             Mensagem = original.Mensagem,
             ResponderPara = original.ResponderPara,
             CopiaOcultaPara = original.CopiaOcultaPara,
-            OcultarDivulgacao = original.OcultarDivulgacao
+            OcultarDivulgacao = original.OcultarDivulgacao,
+            OcultarSaidaCopias = original.OcultarSaidaCopias
         };
         _db.ModelosEmailNota.Add(copia);
         _auditLogWriter.Registrar("CriarModeloEmailNota", "ModeloEmailNota", copia.Id, new { copia.Nome, DuplicadoDe = original.Id });
@@ -316,6 +318,7 @@ public sealed class ModeloEmailNotaService : IModeloEmailNotaUseCase
         modelo.ResponderPara = Limpar(request.ResponderPara);
         modelo.CopiaOcultaPara = Limpar(request.CopiaOcultaPara);
         modelo.OcultarDivulgacao = request.OcultarDivulgacao && await PodeOcultarDivulgacaoAsync(tenantId, usuarioId, cancellationToken);
+        modelo.OcultarSaidaCopias = request.OcultarSaidaCopias;
     }
 
     private async Task<ModeloEmailNota> ObterAsync(Guid id, CancellationToken cancellationToken) =>

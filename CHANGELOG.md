@@ -5,6 +5,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (RC1 — quem recebe em cópia pode pedir para sair)
+- No rodapé do e-mail da nota que vai **com cópia** (Cc ou Cco) aparece "Recebeu
+  este e-mail como cópia e não quer mais receber as notas de LFMS? Pedir para
+  sair das cópias". O link é assinado e vale 90 dias.
+- A pessoa informa o e-mail e recebe um **link de confirmação no próprio
+  endereço** (vale 24 horas); só ao clicar em "Confirmar" (não basta abrir o
+  link) o e-mail sai das cópias daquele cliente. Até 3 pedidos por dia por
+  e-mail, e a resposta não revela quem está na lista.
+- O **destinatário principal nunca sai** por aqui: a página orienta a responder
+  o e-mail da nota e falar com o fornecedor.
+- Fica o **histórico** (pedido, confirmação, IP, nota de origem) e a auditoria;
+  o fornecedor (administradores e e-mail da empresa) **recebe um aviso**.
+- No cadastro do cliente aparece "Pediram para sair das cópias: …" e, se alguém
+  colocar de volta um desses e-mails, o sistema **pede confirmação** antes de
+  salvar.
+- Modelos de e-mail: opção "Tirar do rodapé o link para quem recebe em cópia
+  pedir para sair". A exportação de dados da conta inclui o histórico
+  (`clientes_saidas_copia`).
+- Migração `SaidaCopiaEmail` (tabela `saidas_copia_email` e coluna
+  `modelos_email_nota.OcultarSaidaCopias`).
+
 ### Melhorado (E-mail da nota com o nome da empresa)
 - O e-mail da nota chega como **"LFMS via MicoEmpresa"** (nome fantasia da
   empresa que emitiu, ou a razão social), para o cliente reconhecer o

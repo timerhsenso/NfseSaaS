@@ -34,6 +34,12 @@ public sealed class ModeloEmailNota : BaseEntity, ITenantEntity
     /// <summary>Tira o convite do micoempresa do rodapé (só vale no plano Escritório).</summary>
     public bool OcultarDivulgacao { get; set; }
 
+    /// <summary>
+    /// RC1: tira do rodapé a linha "Recebeu como cópia e não quer mais? Pedir
+    /// para sair" (padrão: a linha aparece quando o e-mail tem cópia).
+    /// </summary>
+    public bool OcultarSaidaCopias { get; set; }
+
     public const int TamanhoMaximoNome = 60;
     public const int TamanhoMaximoAssunto = 150;
     public const int TamanhoMaximoMensagem = 4000;

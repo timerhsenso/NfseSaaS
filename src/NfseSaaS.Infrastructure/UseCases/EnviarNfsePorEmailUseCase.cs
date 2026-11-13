@@ -34,12 +34,16 @@ public sealed class EnviarNfsePorEmailUseCase : IEnviarNfsePorEmailUseCase
     private readonly IAuditLogWriter _auditLogWriter;
     private readonly IModeloEmailNotaUseCase _modelos;
 
-    public EnviarNfsePorEmailUseCase(AppDbContext db, IEmailQueueService emailQueue, IAuditLogWriter auditLogWriter, IModeloEmailNotaUseCase modelos)
+    private readonly NfseSaaS.Application.UseCases.Clientes.ILinkSaidaCopia _linkSaidaCopia;
+
+    public EnviarNfsePorEmailUseCase(AppDbContext db, IEmailQueueService emailQueue, IAuditLogWriter auditLogWriter, IModeloEmailNotaUseCase modelos,
+        NfseSaaS.Application.UseCases.Clientes.ILinkSaidaCopia linkSaidaCopia)
     {
         _db = db;
         _emailQueue = emailQueue;
         _auditLogWriter = auditLogWriter;
         _modelos = modelos;
+        _linkSaidaCopia = linkSaidaCopia;
     }
 
     /// <summary>O que o envio precisa saber de uma nota (também usado pela prévia e pelo lote).</summary>
@@ -160,7 +164,9 @@ public sealed class EnviarNfsePorEmailUseCase : IEnviarNfsePorEmailUseCase
         }
 
         var assunto = RegrasModeloEmailNota.MontarAssunto(assuntoModelo, nota.Dados);
-        var corpoHtml = RegrasModeloEmailNota.MontarCorpoHtml(mensagemModelo, nota.Dados, !modelo.OcultarDivulgacao, LinkDivulgacao);
+        // RC1: com cópia (e o modelo não tirou a linha), o rodapé leva o "pedir para sair das cópias".
+        var linkSaida = nota.Copias.Count > 0 && !modelo.OcultarSaidaCopias ? _linkSaidaCopia.Gerar(nota.TenantId, nfseId) : null;
+        var corpoHtml = RegrasModeloEmailNota.MontarCorpoHtml(mensagemModelo, nota.Dados, !modelo.OcultarDivulgacao, LinkDivulgacao, linkSaida);
         var responderPara = modelo.ResponderPara ?? nota.Dados.EmpresaEmail;
 
         var emailLogId = await _emailQueue.EnfileirarAsync(

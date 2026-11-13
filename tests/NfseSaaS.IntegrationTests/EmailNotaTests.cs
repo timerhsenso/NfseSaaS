@@ -107,7 +107,7 @@ public class EmailNotaTests
                 new(db, tenantAtual, new UsuarioFalso(quem.Id), auditoria, new EmailQueueService(db, fila), plataforma,
                     sp.GetRequiredService<NfseSaaS.Application.UseCases.Recursos.IRecursosConta>());
             var modelosAdmin = Modelos(admin);
-            var enviar = new EnviarNfsePorEmailUseCase(db, new EmailQueueService(db, fila), auditoria, modelosAdmin);
+            var enviar = new EnviarNfsePorEmailUseCase(db, new EmailQueueService(db, fila), auditoria, modelosAdmin, sp.GetRequiredService<NfseSaaS.Application.UseCases.Clientes.ILinkSaidaCopia>());
             var lote = new EnvioEmailNfseService(db, enviar, modelosAdmin);
 
             // Conta nova: ganha o modelo "Padrão" com o texto do sistema.

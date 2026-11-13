@@ -1,0 +1,42 @@
+@model NfseSaaS.Application.UseCases.Clientes.ConfirmacaoSaidaCopia?
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Confirmar saída das cópias";
+}
+
+@* RC1: a saída só acontece no clique (POST) — robô que abre link não confirma. *@
+@if (Model is null)
+{
+    <h5 class="card-title mb-3">Link inválido</h5>
+    <p class="text-muted">Este link de confirmação não é válido. Peça de novo pelo link do rodapé do e-mail da nota.</p>
+}
+else if (Model.Confirmada)
+{
+    <h5 class="card-title mb-3">Pronto</h5>
+    <div class="alert alert-success mb-0">@Model.EmailMascarado já não recebe as notas de <strong>@Model.Empresa</strong> como cópia.</div>
+}
+else if (Model.Expirada)
+{
+    <h5 class="card-title mb-3">Link expirado</h5>
+    <p class="text-muted">O link de confirmação vale 24 horas. Peça de novo pelo link do rodapé do e-mail da nota.</p>
+}
+else
+{
+    <h5 class="card-title mb-3">Confirmar saída das cópias</h5>
+    <p>
+        <strong>@Model.EmailMascarado</strong> deixa de receber, como cópia, as notas de <strong>@Model.Empresa</strong>.
+        O fornecedor é avisado.
+    </p>
+
+    <div id="erro-confirmar-saida" class="alert alert-danger d-none"></div>
+    <div id="sucesso-confirmar-saida" class="alert alert-success d-none"></div>
+
+    <form id="form-confirmar-saida">
+        <input type="hidden" id="codigo-confirmar-saida" value="@ViewData["Codigo"]" />
+        <button type="submit" class="btn btn-danger w-100">Confirmar: não quero mais receber</button>
+    </form>
+
+    @section Scripts {
+        <script src="~/js/paginas/saida-copia.js" asp-append-version="true"></script>
+    }
+}

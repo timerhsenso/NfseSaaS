@@ -220,6 +220,33 @@ function lerEmailsCopiaCliente() {
         .filter(e => e && !vistos.has(e.toLowerCase()) && vistos.add(e.toLowerCase()));
 }
 
+/** RC1: e-mails que pediram para sair das cópias deste cliente (vazio no cadastro novo). */
+let saidasCopiaCliente = [];
+
+async function carregarSaidasCopiaCliente(clienteId) {
+    const div = document.getElementById('saidas-copia-cliente');
+    saidasCopiaCliente = [];
+    div.classList.add('d-none');
+    div.innerHTML = '';
+    if (!clienteId) return;
+    try {
+        saidasCopiaCliente = (await apiFetch(`/api/clientes/${clienteId}/saidas-copia`)) || [];
+    } catch {
+        return; // só informativo: não atrapalha a edição
+    }
+    if (!saidasCopiaCliente.length) return;
+    const itens = saidasCopiaCliente.map(s =>
+        `${escaparHtml(s.email)} <span class="text-muted">(${new Date(s.confirmadoEm).toLocaleDateString('pt-BR')}${s.numeroNota ? ', nota ' + escaparHtml(s.numeroNota) : ''})</span>`);
+    div.innerHTML = `<i class="bi bi-person-dash"></i> Pediram para sair das cópias: ${itens.join('; ')}.`;
+    div.classList.remove('d-none');
+}
+
+/** E-mails da lista de cópias que já pediram para sair (para confirmar antes de salvar). */
+function copiasQueJaSairam(emails) {
+    const sairam = new Set(saidasCopiaCliente.map(s => s.email.toLowerCase()));
+    return emails.filter(e => sairam.has(e.toLowerCase()));
+}
+
 const ROTULO_MODELO_CLIENTE = 'O da empresa (sem modelo próprio)';
 
 async function abrirModalNovoCliente() {
@@ -229,6 +256,7 @@ async function abrirModalNovoCliente() {
     prepararDisponibilidadeCliente(null);
     await preencherSelectModeloEmail(document.getElementById('modeloEmailNotaCliente'), null, ROTULO_MODELO_CLIENTE);
     await carregarDocumentosExigidosCliente(null);
+    await carregarSaidasCopiaCliente(null);
     modalCliente.show();
 }
 
@@ -261,6 +289,7 @@ async function abrirModalEditarCliente(id) {
         prepararDisponibilidadeCliente(cliente.compartilhado === true);
         await preencherSelectModeloEmail(document.getElementById('modeloEmailNotaCliente'), cliente.modeloEmailNotaId, ROTULO_MODELO_CLIENTE);
         await carregarDocumentosExigidosCliente(cliente.id);
+        await carregarSaidasCopiaCliente(cliente.id);
         atualizarEnvioEmailCliente();
         atualizarObrigatoriedadeEndereco();
         atualizarStatusSecoesCliente();
@@ -325,6 +354,18 @@ async function salvarCliente(e) {
         trocarAbaCliente('tab-envio-cliente');
         mostrarErroFormulario('erro-cliente', 'Informe no máximo 5 e-mails em cópia.');
         return;
+    }
+
+    // RC1: quem pediu para sair das cópias só volta se a conta confirmar.
+    const voltando = copiasQueJaSairam(payload.emailsCopia);
+    if (voltando.length) {
+        const ok = await confirmarAcao(
+            `${voltando.join(', ')} pediu para não receber mais as notas como cópia. Colocar de volta mesmo assim? Faça isso só se a pessoa pediu.`,
+            { titulo: 'E-mail que pediu para sair', textoBotao: 'Colocar de volta', variante: 'perigo' });
+        if (!ok) {
+            trocarAbaCliente('tab-envio-cliente');
+            return;
+        }
     }
 
     try {

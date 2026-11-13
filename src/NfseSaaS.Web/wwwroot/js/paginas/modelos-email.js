@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     ['modelo-nome', 'modelo-assunto', 'modelo-mensagem', 'modelo-responder', 'modelo-cco'].forEach(id =>
         el(id).addEventListener('input', () => { alteradoSemSalvar = true; atualizarPrevia(); }));
     el('modelo-ocultar-divulgacao').addEventListener('change', () => { alteradoSemSalvar = true; atualizarPrevia(); });
+    el('modelo-ocultar-saida-copias').addEventListener('change', () => { alteradoSemSalvar = true; atualizarPrevia(); });
 
     el('modelo-campos').addEventListener('click', e => {
         const botao = e.target.closest('[data-etiqueta]');
@@ -110,6 +111,7 @@ function abrirModelo(id) {
     el('modelo-responder').value = m.responderPara ?? '';
     el('modelo-cco').value = m.copiaOcultaPara ?? '';
     el('modelo-ocultar-divulgacao').checked = !!m.ocultarDivulgacao;
+    el('modelo-ocultar-saida-copias').checked = !!m.ocultarSaidaCopias;
     aplicarPermissoes(m);
     alteradoSemSalvar = false;
     renderizarLista();
@@ -131,6 +133,7 @@ function novoModelo() {
     el('modelo-responder').value = '';
     el('modelo-cco').value = '';
     el('modelo-ocultar-divulgacao').checked = false;
+    el('modelo-ocultar-saida-copias').checked = false;
     aplicarPermissoes(null);
     alteradoSemSalvar = true;
     renderizarLista();
@@ -143,6 +146,7 @@ function aplicarPermissoes(modelo) {
     ['modelo-nome', 'modelo-assunto', 'modelo-mensagem', 'modelo-responder', 'modelo-cco']
         .forEach(id => { el(id).disabled = !pode; });
     el('modelo-ocultar-divulgacao').disabled = !pode || !dadosModelos.podeOcultarDivulgacao;
+    el('modelo-ocultar-saida-copias').disabled = !pode;
     document.querySelectorAll('#modelo-campos button').forEach(b => { b.disabled = !pode; });
     el('btn-salvar-modelo').classList.toggle('d-none', !pode);
     el('btn-texto-padrao').classList.toggle('d-none', !pode);
@@ -183,6 +187,7 @@ function atualizarPrevia() {
             </tbody></table>
             <div class="mt-1">Confira a autenticidade da nota na consulta pública da NFS-e.</div>
             <div class="mt-1"><i class="bi bi-paperclip"></i> PDF (DANFSe) e XML anexados</div>
+            ${el('modelo-ocultar-saida-copias').checked ? '' : `<div class="email-nota-rodape mt-2">Recebeu como cópia e não quer mais as notas de ${escaparHtml(exemplo('[Empresa]'))}? <u>Pedir para sair das cópias</u> <span class="text-muted">(só quando a nota vai com cópia)</span></div>`}
             <div class="email-nota-rodape mt-2">Enviado pela plataforma micoempresa em nome de ${escaparHtml(exemplo('[Empresa]'))}.</div>
             ${semRodape ? '' : '<div class="email-nota-rodape">Você também presta serviço? Emita suas notas com o micoempresa… Crie sua conta grátis.</div>'}
         </div>`;
@@ -215,7 +220,8 @@ function corpoModelo() {
         mensagem: el('modelo-mensagem').value,
         responderPara: el('modelo-responder').value.trim() || null,
         copiaOcultaPara: el('modelo-cco').value.trim() || null,
-        ocultarDivulgacao: el('modelo-ocultar-divulgacao').checked
+        ocultarDivulgacao: el('modelo-ocultar-divulgacao').checked,
+        ocultarSaidaCopias: el('modelo-ocultar-saida-copias').checked
     };
 }
 

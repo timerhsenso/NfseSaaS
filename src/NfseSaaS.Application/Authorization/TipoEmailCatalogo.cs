@@ -49,4 +49,10 @@ public static class TipoEmailCatalogo
 
     /// <summary>Aviso de que a conta (assinatura cancelada) será encerrada automaticamente numa data.</summary>
     public const string AvisoEncerramentoConta = "AvisoEncerramentoConta";
+
+    /// <summary>RC1: link para quem recebe a nota como cópia confirmar que quer sair das cópias.</summary>
+    public const string SaidaCopiaConfirmacao = "SaidaCopiaConfirmacao";
+
+    /// <summary>RC1: aviso ao fornecedor de que alguém saiu das cópias de um cliente.</summary>
+    public const string SaidaCopiaAviso = "SaidaCopiaAviso";
 }

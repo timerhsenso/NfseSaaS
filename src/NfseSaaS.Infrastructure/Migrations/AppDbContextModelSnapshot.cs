@@ -1560,6 +1560,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<bool>("OcultarDivulgacao")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("OcultarSaidaCopias")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("Padrao")
                         .HasColumnType("boolean");
 
@@ -2314,6 +2317,68 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.HasIndex("TenantId", "Status");
 
                     b.ToTable("reajustes_assinatura", (string)null);
+                });
+
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.SaidaCopiaEmail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClienteId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CodigoHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset?>("ConfirmadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("ExpiraEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IpConfirmacao")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)");
+
+                    b.Property<string>("IpPedido")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)");
+
+                    b.Property<Guid?>("NfseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClienteId");
+
+                    b.HasIndex("CodigoHash")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "ClienteId", "Email", "CreatedAt");
+
+                    b.ToTable("saidas_copia_email", (string)null);
                 });
 
             modelBuilder.Entity("NfseSaaS.Domain.Entities.Servico", b =>
@@ -3137,6 +3202,15 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.SaidaCopiaEmail", b =>
+                {
+                    b.HasOne("NfseSaaS.Domain.Entities.Cliente", null)
+                        .WithMany()
+                        .HasForeignKey("ClienteId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

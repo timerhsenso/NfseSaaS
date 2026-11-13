@@ -39,7 +39,8 @@ public sealed record ModeloEmailNotaEfetivo(
     string Mensagem,
     string? ResponderPara,
     string? CopiaOcultaPara,
-    bool OcultarDivulgacao);
+    bool OcultarDivulgacao,
+    bool OcultarSaidaCopias = false);
 
 /// <summary>
 /// Texto do e-mail da nota (cadastro Modelos de e-mail): campos entre colchetes que o usuário insere
@@ -109,7 +110,7 @@ public static partial class RegrasModeloEmailNota
         modelo is null
             ? Padrao
             : new ModeloEmailNotaEfetivo(modelo.Id, modelo.Nome, modelo.Assunto, modelo.Mensagem, modelo.ResponderPara, modelo.CopiaOcultaPara,
-                podeOcultarDivulgacao && modelo.OcultarDivulgacao);
+                podeOcultarDivulgacao && modelo.OcultarDivulgacao, modelo.OcultarSaidaCopias);
 
     /// <summary>"novembro de 2026".</summary>
     public static string MesPorExtenso(DateOnly competencia) =>
@@ -151,7 +152,8 @@ public static partial class RegrasModeloEmailNota
     /// linha viram parágrafos) e, abaixo, o que é fixo: aviso de homologação,
     /// quadro da nota, consulta pública e rodapé.
     /// </summary>
-    public static string MontarCorpoHtml(string mensagem, DadosEmailNota d, bool mostrarDivulgacao, string linkDivulgacao)
+    /// <param name="linkSaidaCopias">RC1: link "pedir para sair das cópias" (nulo = e-mail sem cópia ou o modelo tirou a linha).</param>
+    public static string MontarCorpoHtml(string mensagem, DadosEmailNota d, bool mostrarDivulgacao, string linkDivulgacao, string? linkSaidaCopias = null)
     {
         var texto = Preencher(mensagem, Valores(d)).Replace("\r\n", "\n").Trim();
         if (texto.Length == 0)
@@ -186,6 +188,9 @@ public static partial class RegrasModeloEmailNota
             html.Append($"<p style=\"font-size:13px\">Confira a autenticidade da nota na <a href=\"{WebUtility.HtmlEncode(link)}\">consulta pública da NFS-e</a>.</p>");
         }
 
+        if (!string.IsNullOrWhiteSpace(linkSaidaCopias))
+            html.Append($"<p style=\"color:#64748b;font-size:12px\">Recebeu este e-mail como cópia e não quer mais receber as notas de {WebUtility.HtmlEncode(d.Empresa)}? " +
+                $"<a href=\"{WebUtility.HtmlEncode(linkSaidaCopias)}\" style=\"color:#64748b\">Pedir para sair das cópias</a>.</p>");
         html.Append($"<p style=\"color:#64748b;font-size:12px\">Enviado pela plataforma micoempresa em nome de {WebUtility.HtmlEncode(d.Empresa)}.</p>");
         if (mostrarDivulgacao)
             html.Append($"<p style=\"color:#64748b;font-size:12px\">Você também presta serviço? Emita suas notas com o <a href=\"{WebUtility.HtmlEncode(linkDivulgacao)}\" style=\"color:#2563eb\">micoempresa</a>: nota mensal automática e nota enviada por e-mail ao seu cliente. Crie sua conta grátis.</p>");

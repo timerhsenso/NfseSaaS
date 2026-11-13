@@ -97,6 +97,14 @@ public sealed class ClientesController : ControllerBase
     }
 
     /// <summary>DOC2: documentos que vão junto com a nota (opções da empresa atual). clienteId vazio = cliente novo.</summary>
+    /// <summary>RC1: quem pediu (e confirmou) para sair das cópias deste cliente.</summary>
+    [HttpGet("{id:guid}/saidas-copia")]
+    public async Task<IActionResult> SaidasCopia(Guid id, [FromServices] ISaidaCopiaEmailUseCase saidas, CancellationToken cancellationToken)
+    {
+        var lista = await saidas.ListarDoClienteAsync(id, cancellationToken);
+        return Ok(lista);
+    }
+
     [HttpGet("documentos-exigidos")]
     public async Task<IActionResult> DocumentosExigidos(
         [FromQuery] Guid? clienteId, [FromQuery] Guid? empresaId,

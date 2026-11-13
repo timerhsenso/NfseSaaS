@@ -267,6 +267,9 @@ public static class DependencyInjection
         services.AddScoped<IObterNfsePorIdUseCase, ObterNfsePorIdUseCase>();
 
         services.AddScoped<IListarCandidatosNotaMensalUseCase, ListarCandidatosNotaMensalUseCase>();
+        services.AddScoped<LinkSaidaCopiaService>();
+        services.AddScoped<NfseSaaS.Application.UseCases.Clientes.ILinkSaidaCopia>(sp => sp.GetRequiredService<LinkSaidaCopiaService>());
+        services.AddScoped<NfseSaaS.Application.UseCases.Clientes.ISaidaCopiaEmailUseCase, SaidaCopiaEmailService>();
         services.AddScoped<NfseSaaS.Application.UseCases.DocumentosEmpresa.ICatalogoDocumentos, CatalogoDocumentosService>();
         services.AddScoped<NfseSaaS.Application.UseCases.DocumentosEmpresa.IEscolhaDocumentosEmpresaUseCase, EscolhaDocumentosEmpresaService>();
         services.AddScoped<NfseSaaS.Application.UseCases.DocumentosEmpresa.IAdministrarCatalogoDocumentosUseCase, AdministrarCatalogoDocumentosService>();

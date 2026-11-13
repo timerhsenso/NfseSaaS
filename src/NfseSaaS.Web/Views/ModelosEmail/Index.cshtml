@@ -65,7 +65,14 @@
                             <input type="email" class="form-control" id="modelo-cco" maxlength="256" placeholder="ex.: notas@seuescritorio.com.br" />
                             <div class="form-text">Para guardar uma cópia de cada nota enviada.</div>
 
-                            <div class="form-check mt-3 d-none" id="modelo-divulgacao-caixa">
+                            @* RC1: o link só sai quando a nota vai com cópia (Cc/Cco do cliente). *@
+                            <div class="form-check mt-3">
+                                <input class="form-check-input" type="checkbox" id="modelo-ocultar-saida-copias" />
+                                <label class="form-check-label small" for="modelo-ocultar-saida-copias">Tirar do rodapé o link para quem recebe em cópia pedir para sair</label>
+                                <div class="form-text mt-0">Sem o link, quem não quer mais as cópias precisa pedir a você.</div>
+                            </div>
+
+                            <div class="form-check mt-2 d-none" id="modelo-divulgacao-caixa">
                                 <input class="form-check-input" type="checkbox" id="modelo-ocultar-divulgacao" />
                                 <label class="form-check-label small" for="modelo-ocultar-divulgacao">Tirar o convite do micoempresa do rodapé</label>
                                 @* PL1: fechado no plano = cadeado e caminho para liberar (modelos-email.js). *@

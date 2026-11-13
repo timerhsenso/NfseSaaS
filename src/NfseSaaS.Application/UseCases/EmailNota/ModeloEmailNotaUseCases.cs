@@ -13,7 +13,8 @@ public sealed record ModeloEmailNotaItem(
     string? CopiaOcultaPara,
     bool OcultarDivulgacao,
     IReadOnlyList<string> Empresas,
-    int Clientes);
+    int Clientes,
+    bool OcultarSaidaCopias = false);
 
 /// <summary>Tela "Modelos de e-mail".</summary>
 /// <param name="PodeAlterar">Administrador da conta.</param>
@@ -41,7 +42,8 @@ public sealed record SalvarModeloEmailNotaRequest(
     string? Mensagem,
     string? ResponderPara,
     string? CopiaOcultaPara,
-    bool OcultarDivulgacao);
+    bool OcultarDivulgacao,
+    bool OcultarSaidaCopias = false);
 
 /// <summary>"Mandar um teste para mim": o texto da tela, com dados de exemplo.</summary>
 public sealed record EnviarTesteModeloEmailNotaRequest(string? Assunto, string? Mensagem, string? ResponderPara, bool OcultarDivulgacao);

@@ -1,0 +1,41 @@
+@model NfseSaaS.Application.UseCases.Clientes.ContextoSaidaCopia?
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Sair das cópias";
+}
+
+@* RC1: link do rodapé do e-mail da nota. Pede o e-mail e manda a confirmação para ele. *@
+@if (Model is null)
+{
+    <h5 class="card-title mb-3">Link expirado</h5>
+    <p class="text-muted">Este link expirou ou não é válido. Use o link de um e-mail de nota mais recente, ou responda o e-mail da nota e fale com o fornecedor.</p>
+}
+else
+{
+    <h5 class="card-title mb-3">Sair das cópias</h5>
+    <p class="text-muted small">
+        Você recebe as notas de <strong>@Model.Empresa</strong> como cópia? Informe seu e-mail: mandamos um link para
+        confirmar e, depois de confirmado, você deixa de receber as próximas notas.
+    </p>
+
+    <div id="erro-saida-copia" class="alert alert-danger d-none"></div>
+    <div id="sucesso-saida-copia" class="alert alert-success d-none"></div>
+    <div id="aviso-saida-copia" class="alert alert-warning d-none"></div>
+
+    <form id="form-saida-copia" novalidate>
+        <input type="hidden" id="token-saida-copia" value="@ViewData["Token"]" />
+        <div class="mb-3">
+            <label class="form-label" for="email-saida-copia">Seu e-mail</label>
+            <input type="email" class="form-control" id="email-saida-copia" maxlength="100" required autofocus autocomplete="email" />
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Enviar link de confirmação</button>
+    </form>
+
+    <p class="text-muted small mt-3 mb-0">
+        O contato principal do cadastro não sai por aqui. Para isso, responda o e-mail da nota e fale com @Model.Empresa.
+    </p>
+
+    @section Scripts {
+        <script src="~/js/paginas/saida-copia.js" asp-append-version="true"></script>
+    }
+}

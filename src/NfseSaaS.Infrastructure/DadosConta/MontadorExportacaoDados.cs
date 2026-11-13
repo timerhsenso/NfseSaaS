@@ -130,6 +130,17 @@ public sealed class MontadorExportacaoDados
                 c.RetemIss, c.EnviarNfsePorEmail, c.Ativo, c.CreatedAt);
         Tabela(zip, tClientes);
 
+        // ----- RC1: pedidos de quem recebia em cópia para sair (histórico) -----
+        var saidasCopia = await _db.SaidasCopiaEmail.AsNoTracking()
+            .OrderBy(s => s.ClienteId).ThenBy(s => s.CreatedAt)
+            .ToListAsync(cancellationToken);
+        var tSaidasCopia = new TabelaExportacao("clientes_saidas_copia",
+            "ClienteId", "Cliente", "Email", "Situacao", "PedidoEm", "ConfirmadoEm", "NotaId");
+        foreach (var s in saidasCopia)
+            tSaidasCopia.Adicionar(s.ClienteId, clientePorId.GetValueOrDefault(s.ClienteId)?.Nome, s.Email,
+                s.Status == NfseSaaS.Domain.Entities.StatusSaidaCopia.Confirmada ? "Confirmada" : "Pedida", s.CreatedAt, s.ConfirmadoEm, s.NfseId);
+        Tabela(zip, tSaidasCopia);
+
         // ----- Serviços -----
         var servicos = await _db.Servicos.AsNoTracking().OrderBy(s => s.Descricao).ToListAsync(cancellationToken);
         var descricaoServico = servicos.ToDictionary(s => s.Id, s => s.Descricao);
