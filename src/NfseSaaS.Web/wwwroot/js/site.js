@@ -779,3 +779,38 @@ async function salvarModeloEmailSeMudou(select, url) {
     await apiFetch(url, { method: 'PUT', body: JSON.stringify({ modeloId: select.value || null }) });
     select.dataset.original = select.value;
 }
+
+/**
+ * UX2: no celular as listas viram cartões (site.css). Cada célula ganha
+ * data-label com o título da coluna (o CSS mostra "rótulo: valor"). Vale
+ * para as tabelas do DataTables e para as marcadas com .tabela-cartoes,
+ * inclusive as que são redesenhadas depois (paginação, filtros, modais).
+ */
+function rotularCelulasTabela(tabela) {
+    const titulos = [...tabela.querySelectorAll(':scope > thead > tr:last-child > th')].map(th => th.textContent.replace(/\s+/g, ' ').trim());
+    if (titulos.length === 0) return;
+    tabela.querySelectorAll(':scope > tbody > tr').forEach(tr => {
+        let coluna = 0;
+        [...tr.children].forEach(td => {
+            if (!td.hasAttribute('data-label')) td.setAttribute('data-label', titulos[coluna] ?? '');
+            coluna += td.colSpan || 1;
+        });
+    });
+}
+
+(function () {
+    let agendado = false;
+    function rotularTudo() {
+        agendado = false;
+        document.querySelectorAll('table.dataTable, table.tabela-cartoes').forEach(rotularCelulasTabela);
+    }
+    function agendar() {
+        if (agendado) return;
+        agendado = true;
+        requestAnimationFrame(rotularTudo);
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+        rotularTudo();
+        new MutationObserver(agendar).observe(document.body, { childList: true, subtree: true });
+    });
+})();

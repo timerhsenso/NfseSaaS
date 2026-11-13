@@ -5,6 +5,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Melhorado (UX2 — celular e tablet)
+- Revisão de todas as telas em 390px (celular) e 768px (tablet), com conferência
+  automática de "nada passa da largura da tela".
+- **Listas em cartões no celular**: Notas, Contratos, Clientes, Serviços,
+  Empresas, Usuários, Grupos, E-mails, Índices, Auditoria, notas recentes do
+  painel e a Nota Mensal mostram cada linha como um cartão "rótulo: valor", com
+  as ações embaixo — sem rolar a tabela de lado. No tablet e no computador,
+  nada muda. (`.sem-cartoes` desliga numa tabela, se um dia precisar.)
+- **Topo no celular**: o botão do menu não fica mais cortado e a página não
+  "anda" de lado; o seletor de empresa usa o espaço que sobra.
+- **Sem zoom do iPhone** ao tocar num campo (fonte de 16px nos campos no
+  celular, respeitando a escala de fonte da Aparência).
+- **Painel**: indicadores em duas colunas e mais baixos; avisos com o ícone na
+  mesma linha do texto.
+- **Botão principal primeiro** no topo das telas (Emitir nota, Novo contrato…).
+- **Cadastros em seções** (Cliente, Empresa): no celular a aba aberta mostra o
+  nome e as outras só o ícone — todas cabem na tela.
+- Auditoria: a tabela larga rola dentro do quadro no tablet (antes estourava a página).
+
 ### Adicionado (DOC2 — documentos exigidos pelo cliente)
 - **Cliente › Envio da nota › "Documentos que vão junto com a nota"**: marque as
   certidões e documentos que o cliente exige (federal, FGTS, CNDT, "Outros" da
