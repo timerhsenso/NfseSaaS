@@ -35,10 +35,12 @@ public sealed class EnviarNfsePorEmailUseCase : IEnviarNfsePorEmailUseCase
     private readonly IModeloEmailNotaUseCase _modelos;
 
     private readonly NfseSaaS.Application.UseCases.Clientes.ILinkSaidaCopia _linkSaidaCopia;
+    private readonly ILinkConfirmacaoRecebimento _linkConfirmacao;
 
     public EnviarNfsePorEmailUseCase(AppDbContext db, IEmailQueueService emailQueue, IAuditLogWriter auditLogWriter, IModeloEmailNotaUseCase modelos,
-        NfseSaaS.Application.UseCases.Clientes.ILinkSaidaCopia linkSaidaCopia)
+        NfseSaaS.Application.UseCases.Clientes.ILinkSaidaCopia linkSaidaCopia, ILinkConfirmacaoRecebimento linkConfirmacao)
     {
+        _linkConfirmacao = linkConfirmacao;
         _db = db;
         _emailQueue = emailQueue;
         _auditLogWriter = auditLogWriter;
@@ -166,7 +168,11 @@ public sealed class EnviarNfsePorEmailUseCase : IEnviarNfsePorEmailUseCase
         var assunto = RegrasModeloEmailNota.MontarAssunto(assuntoModelo, nota.Dados);
         // RC1: com cópia (e o modelo não tirou a linha), o rodapé leva o "pedir para sair das cópias".
         var linkSaida = nota.Copias.Count > 0 && !modelo.OcultarSaidaCopias ? _linkSaidaCopia.Gerar(nota.TenantId, nfseId) : null;
-        var corpoHtml = RegrasModeloEmailNota.MontarCorpoHtml(mensagemModelo, nota.Dados, !modelo.OcultarDivulgacao, LinkDivulgacao, linkSaida);
+        // CR1: o campo [Confirmar recebimento] vira botão/link com a validade do modelo.
+        var linkConfirmacao = RegrasModeloEmailNota.PedeConfirmacao(mensagemModelo)
+            ? _linkConfirmacao.Gerar(nota.TenantId, nfseId, modelo.ValidadeConfirmacaoDias)
+            : null;
+        var corpoHtml = RegrasModeloEmailNota.MontarCorpoHtml(mensagemModelo, nota.Dados, !modelo.OcultarDivulgacao, LinkDivulgacao, linkSaida, linkConfirmacao);
         var responderPara = modelo.ResponderPara ?? nota.Dados.EmpresaEmail;
 
         var emailLogId = await _emailQueue.EnfileirarAsync(
@@ -180,6 +186,7 @@ public sealed class EnviarNfsePorEmailUseCase : IEnviarNfsePorEmailUseCase
         _auditLogWriter.Registrar("EnviarNfsePorEmail", "Nfse", nfseId,
             new { destinatario, copias = nota.Copias, copiasOcultas = nota.CopiasOcultas, copiaOcultaFixa = modelo.CopiaOcultaPara, modelo = modelo.Nome, automatico,
                 textoProprio = !string.IsNullOrWhiteSpace(texto?.Assunto) || !string.IsNullOrWhiteSpace(texto?.Mensagem),
+                pedeConfirmacao = linkConfirmacao is not null,
                 documentos = decisao.Anexos.Select(a => a.Titulo).ToList(), alertaDocumentos = decisao.Alerta, emailLogId });
         await _db.SaveChangesAsync(cancellationToken);
 

@@ -96,10 +96,11 @@ public sealed class NfseController : ControllerBase
         [FromQuery] DateOnly? dataFim = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
+        [FromQuery] string? recebimento = null,
         CancellationToken cancellationToken = default)
     {
         var resultado = await _listarNfse.ExecutarAsync(
-            new ListarNfseRequest(empresaId, status, clienteId, dataInicio, dataFim, page, pageSize), cancellationToken);
+            new ListarNfseRequest(empresaId, status, clienteId, dataInicio, dataFim, page, pageSize, recebimento), cancellationToken);
         return Ok(resultado);
     }
 
@@ -116,6 +117,15 @@ public sealed class NfseController : ControllerBase
     {
         var resultado = await _cancelarNfse.ExecutarAsync(id, request, cancellationToken);
         return Ok(resultado);
+    }
+
+    /// <summary>CR1: quem confirmou o recebimento do e-mail desta nota (e-mail, principal/cópia, IP, data).</summary>
+    [HttpGet("{id:guid}/recebimento")]
+    public async Task<IActionResult> Recebimento(Guid id,
+        [FromServices] NfseSaaS.Application.UseCases.EmailNota.IConfirmacaoRecebimentoUseCase confirmacoes, CancellationToken cancellationToken)
+    {
+        var lista = await confirmacoes.ListarDaNotaAsync(id, cancellationToken);
+        return Ok(lista);
     }
 
     [HttpGet("{id:guid}/eventos")]

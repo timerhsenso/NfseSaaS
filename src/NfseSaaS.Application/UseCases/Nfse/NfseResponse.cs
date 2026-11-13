@@ -74,7 +74,11 @@ public sealed record NfseResponse(
     DateTimeOffset? EmailUltimoEnvioEm = null,
     StatusEmailLog? EmailUltimoStatus = null,
     // C6: descontos e retenções federais gravados na emissão (nulo = nenhum).
-    DescontosRetencoesNfse? DescontosRetencoes = null)
+    DescontosRetencoesNfse? DescontosRetencoes = null,
+    // CR1: primeira confirmação de recebimento (envelope verde) e quantas houve. Só na listagem.
+    DateTimeOffset? RecebimentoConfirmadoEm = null,
+    string? RecebimentoConfirmadoPor = null,
+    int RecebimentoConfirmacoes = 0)
 {
     /// <summary>tpRetISSQN "2" = ISS retido pelo tomador.</summary>
     public bool IssRetido => TpRetIssqn == "2";

@@ -40,7 +40,8 @@ public sealed record ModeloEmailNotaEfetivo(
     string? ResponderPara,
     string? CopiaOcultaPara,
     bool OcultarDivulgacao,
-    bool OcultarSaidaCopias = false);
+    bool OcultarSaidaCopias = false,
+    int ValidadeConfirmacaoDias = ModeloEmailNota.ValidadeConfirmacaoPadraoDias);
 
 /// <summary>
 /// Texto do e-mail da nota (cadastro Modelos de e-mail): campos entre colchetes que o usuário insere
@@ -66,6 +67,12 @@ public static partial class RegrasModeloEmailNota
     public const string CampoContrato = "[Nº do contrato]";
     public const string CampoValorLiquido = "[Valor líquido]";
 
+    /// <summary>
+    /// CR1: vira o botão (sozinho na linha) ou o link (no meio da frase)
+    /// "Confirmar recebimento". Só na mensagem; o assunto não tem link.
+    /// </summary>
+    public const string CampoConfirmarRecebimento = "[Confirmar recebimento]";
+
     public static readonly IReadOnlyList<CampoModeloEmailNota> Campos = new[]
     {
         new CampoModeloEmailNota(CampoCliente, "Nome do cliente (tomador)", "Padaria Sol Nascente"),
@@ -77,7 +84,8 @@ public static partial class RegrasModeloEmailNota
         new CampoModeloEmailNota(CampoEmissao, "Data de emissão", "12/11/2026"),
         new CampoModeloEmailNota(CampoServico, "Descrição do serviço (resumida)", "Manutenção do sistema"),
         new CampoModeloEmailNota(CampoContrato, "Número do contrato (vazio na nota avulsa)", "2026/0001"),
-        new CampoModeloEmailNota(CampoEmpresa, "Nome da sua empresa (emitente)", "Sua Empresa")
+        new CampoModeloEmailNota(CampoEmpresa, "Nome da sua empresa (emitente)", "Sua Empresa"),
+        new CampoModeloEmailNota(CampoConfirmarRecebimento, "Botão para o cliente confirmar que recebeu (sozinho na linha = botão; na frase = link)", "Confirmar recebimento")
     };
 
     public const string AssuntoPadrao = "Nota fiscal " + CampoNumero + " — " + CampoEmpresa;
@@ -86,6 +94,7 @@ public static partial class RegrasModeloEmailNota
         "Olá, " + CampoCliente + ".\n\n" +
         "Segue a nota fiscal de serviço nº " + CampoNumero + ", referente a " + CampoMesExtenso + ", no valor de " + CampoValor + ". " +
         "O PDF e o XML estão anexados.\n\n" +
+        "Por favor, confirme o recebimento: " + CampoConfirmarRecebimento + "\n\n" +
         "Qualquer dúvida, é só responder este e-mail.\n\n" +
         "Atenciosamente,\n" + CampoEmpresa;
 
@@ -110,7 +119,7 @@ public static partial class RegrasModeloEmailNota
         modelo is null
             ? Padrao
             : new ModeloEmailNotaEfetivo(modelo.Id, modelo.Nome, modelo.Assunto, modelo.Mensagem, modelo.ResponderPara, modelo.CopiaOcultaPara,
-                podeOcultarDivulgacao && modelo.OcultarDivulgacao, modelo.OcultarSaidaCopias);
+                podeOcultarDivulgacao && modelo.OcultarDivulgacao, modelo.OcultarSaidaCopias, modelo.ValidadeConfirmacaoDias);
 
     /// <summary>"novembro de 2026".</summary>
     public static string MesPorExtenso(DateOnly competencia) =>
@@ -153,7 +162,9 @@ public static partial class RegrasModeloEmailNota
     /// quadro da nota, consulta pública e rodapé.
     /// </summary>
     /// <param name="linkSaidaCopias">RC1: link "pedir para sair das cópias" (nulo = e-mail sem cópia ou o modelo tirou a linha).</param>
-    public static string MontarCorpoHtml(string mensagem, DadosEmailNota d, bool mostrarDivulgacao, string linkDivulgacao, string? linkSaidaCopias = null)
+    /// <param name="linkConfirmacao">CR1: destino do [Confirmar recebimento] (nulo = o campo some do texto).</param>
+    public static string MontarCorpoHtml(string mensagem, DadosEmailNota d, bool mostrarDivulgacao, string linkDivulgacao, string? linkSaidaCopias = null,
+        string? linkConfirmacao = null)
     {
         var texto = Preencher(mensagem, Valores(d)).Replace("\r\n", "\n").Trim();
         if (texto.Length == 0)
@@ -162,8 +173,12 @@ public static partial class RegrasModeloEmailNota
         var html = new StringBuilder();
         foreach (var paragrafo in Regex.Split(texto, @"\n\s*\n"))
         {
-            var linhas = paragrafo.Split('\n').Select(l => WebUtility.HtmlEncode(l.TrimEnd()));
-            html.Append("<p>").Append(string.Join("<br>", linhas)).Append("</p>");
+            var linhas = paragrafo.Split('\n')
+                .Select(l => LinhaHtml(l.TrimEnd(), linkConfirmacao))
+                .Where(l => l is not null)
+                .ToList();
+            if (linhas.Count > 0)
+                html.Append("<p>").Append(string.Join("<br>", linhas)).Append("</p>");
         }
 
         if (d.Homologacao)
@@ -216,6 +231,8 @@ public static partial class RegrasModeloEmailNota
         var erros = new List<string>();
         if (string.IsNullOrWhiteSpace(assunto))
             erros.Add("Informe o assunto do e-mail.");
+        else if (PedeConfirmacao(assunto))
+            erros.Add($"O campo {CampoConfirmarRecebimento} só vale na mensagem (o assunto não tem botão nem link).");
         else if (assunto.Trim().Length > ModeloEmailNota.TamanhoMaximoAssunto)
             erros.Add($"O assunto pode ter no máximo {ModeloEmailNota.TamanhoMaximoAssunto} caracteres.");
 
@@ -241,6 +258,34 @@ public static partial class RegrasModeloEmailNota
             .Where(v => !Campos.Any(c => string.Equals(c.Etiqueta, v, StringComparison.OrdinalIgnoreCase)))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+
+    /// <summary>
+    /// Uma linha da mensagem em HTML. [Confirmar recebimento] sozinho na linha
+    /// vira botão; no meio da frase, link. Sem link, o campo some (e a linha,
+    /// se não sobrar nada). Nulo = linha que sumiu.
+    /// </summary>
+    private static string? LinhaHtml(string linha, string? linkConfirmacao)
+    {
+        if (!linha.Contains(CampoConfirmarRecebimento, StringComparison.OrdinalIgnoreCase))
+            return WebUtility.HtmlEncode(linha);
+
+        if (string.Equals(linha.Trim(), CampoConfirmarRecebimento, StringComparison.OrdinalIgnoreCase))
+            return linkConfirmacao is null ? null : BotaoConfirmacao(linkConfirmacao);
+
+        var partes = Regex.Split(linha, Regex.Escape(CampoConfirmarRecebimento), RegexOptions.IgnoreCase);
+        var link = linkConfirmacao is null
+            ? string.Empty
+            : $"<a href=\"{WebUtility.HtmlEncode(linkConfirmacao)}\" style=\"color:#2563eb;font-weight:600\">confirmar recebimento</a>";
+        var resultado = string.Join(link, partes.Select(WebUtility.HtmlEncode));
+        return linkConfirmacao is null && string.IsNullOrWhiteSpace(string.Concat(partes)) ? null : resultado;
+    }
+
+    private static string BotaoConfirmacao(string link) =>
+        $"<a href=\"{WebUtility.HtmlEncode(link)}\" style=\"display:inline-block;background:#16a34a;color:#ffffff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600\">Confirmar recebimento</a>";
+
+    /// <summary>A mensagem pede confirmação (tem o campo)?</summary>
+    public static bool PedeConfirmacao(string? mensagem) =>
+        (mensagem ?? string.Empty).Contains(CampoConfirmarRecebimento, StringComparison.OrdinalIgnoreCase);
 
     private static void Linha(StringBuilder html, string rotulo, string valorHtml) =>
         html.Append($"<tr><td style=\"color:#64748b\">{rotulo}</td><td>{valorHtml}</td></tr>");

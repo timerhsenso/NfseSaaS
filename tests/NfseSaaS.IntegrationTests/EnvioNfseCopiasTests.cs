@@ -74,7 +74,7 @@ public class EnvioNfseCopiasTests
             db.TenantIdOverrideDeSistema = null;
 
             var fila = new FilaFalsa();
-            var enviar = new EnviarNfsePorEmailUseCase(db, new EmailQueueService(db, fila), sp.GetRequiredService<IAuditLogWriter>(), sp.GetRequiredService<NfseSaaS.Application.UseCases.EmailNota.IModeloEmailNotaUseCase>(), sp.GetRequiredService<NfseSaaS.Application.UseCases.Clientes.ILinkSaidaCopia>());
+            var enviar = new EnviarNfsePorEmailUseCase(db, new EmailQueueService(db, fila), sp.GetRequiredService<IAuditLogWriter>(), sp.GetRequiredService<NfseSaaS.Application.UseCases.EmailNota.IModeloEmailNotaUseCase>(), sp.GetRequiredService<NfseSaaS.Application.UseCases.Clientes.ILinkSaidaCopia>(), sp.GetRequiredService<NfseSaaS.Application.UseCases.EmailNota.ILinkConfirmacaoRecebimento>());
 
             // Padrão (envio desligado): o automático não manda nada.
             Assert.False(cliente.EnviarNfsePorEmail);

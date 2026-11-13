@@ -5,6 +5,9 @@
 // RegrasModeloEmailNota.Preencher). Só o administrador grava.
 
 const REGEX_CAMPO = /\[[^\[\]\r\n]{1,40}\]/g;
+// CR1: vira botão (sozinho na linha) ou link (na frase) — mesma regra de RegrasModeloEmailNota.LinhaHtml.
+const CAMPO_CONFIRMAR = '[Confirmar recebimento]';
+const REGEX_CONFIRMAR = /\[confirmar recebimento\]/gi;
 
 let dadosModelos = null;     // última resposta de GET /api/modelos-email-nota
 let modeloAtualId = null;    // null = modelo novo (ainda não salvo)
@@ -14,7 +17,7 @@ let alteradoSemSalvar = false;
 document.addEventListener('DOMContentLoaded', async function () {
     campoAtivoModelo = el('modelo-mensagem');
     ['modelo-assunto', 'modelo-mensagem'].forEach(id => el(id).addEventListener('focus', () => { campoAtivoModelo = el(id); }));
-    ['modelo-nome', 'modelo-assunto', 'modelo-mensagem', 'modelo-responder', 'modelo-cco'].forEach(id =>
+    ['modelo-nome', 'modelo-assunto', 'modelo-mensagem', 'modelo-responder', 'modelo-cco', 'modelo-validade-confirmacao'].forEach(id =>
         el(id).addEventListener('input', () => { alteradoSemSalvar = true; atualizarPrevia(); }));
     el('modelo-ocultar-divulgacao').addEventListener('change', () => { alteradoSemSalvar = true; atualizarPrevia(); });
     el('modelo-ocultar-saida-copias').addEventListener('change', () => { alteradoSemSalvar = true; atualizarPrevia(); });
@@ -112,6 +115,7 @@ function abrirModelo(id) {
     el('modelo-cco').value = m.copiaOcultaPara ?? '';
     el('modelo-ocultar-divulgacao').checked = !!m.ocultarDivulgacao;
     el('modelo-ocultar-saida-copias').checked = !!m.ocultarSaidaCopias;
+    el('modelo-validade-confirmacao').value = m.validadeConfirmacaoDias ?? 30;
     aplicarPermissoes(m);
     alteradoSemSalvar = false;
     renderizarLista();
@@ -134,6 +138,7 @@ function novoModelo() {
     el('modelo-cco').value = '';
     el('modelo-ocultar-divulgacao').checked = false;
     el('modelo-ocultar-saida-copias').checked = false;
+    el('modelo-validade-confirmacao').value = 30;
     aplicarPermissoes(null);
     alteradoSemSalvar = true;
     renderizarLista();
@@ -143,7 +148,7 @@ function novoModelo() {
 
 function aplicarPermissoes(modelo) {
     const pode = !!dadosModelos.podeAlterar;
-    ['modelo-nome', 'modelo-assunto', 'modelo-mensagem', 'modelo-responder', 'modelo-cco']
+    ['modelo-nome', 'modelo-assunto', 'modelo-mensagem', 'modelo-responder', 'modelo-cco', 'modelo-validade-confirmacao']
         .forEach(id => { el(id).disabled = !pode; });
     el('modelo-ocultar-divulgacao').disabled = !pode || !dadosModelos.podeOcultarDivulgacao;
     el('modelo-ocultar-saida-copias').disabled = !pode;
@@ -160,6 +165,7 @@ function aplicarPermissoes(modelo) {
 
 function preencher(texto) {
     return String(texto ?? '').replace(REGEX_CAMPO, etiqueta => {
+        if (etiqueta.toLowerCase() === CAMPO_CONFIRMAR.toLowerCase()) return etiqueta; // vira botão/link na prévia
         const campo = dadosModelos.campos.find(c => c.etiqueta.toLowerCase() === etiqueta.toLowerCase());
         return campo ? campo.exemplo : etiqueta;
     });
@@ -173,9 +179,12 @@ function atualizarPrevia() {
     if (!dadosModelos) return;
     const assunto = el('modelo-assunto').value;
     const mensagem = el('modelo-mensagem').value;
-    el('previa-assunto').textContent = preencher(assunto) || '(sem assunto)';
+    el('previa-assunto').textContent = preencher(assunto).replace(REGEX_CONFIRMAR, '') || '(sem assunto)';
     const paragrafos = preencher(mensagem).replace(/\r\n/g, '\n').trim().split(/\n\s*\n/)
-        .map(p => `<p>${p.split('\n').map(escaparHtml).join('<br>')}</p>`).join('');
+        .map(p => `<p>${p.split('\n').map(linhaPrevia).join('<br>')}</p>`).join('');
+    const pedeConfirmacao = REGEX_CONFIRMAR.test(mensagem);
+    REGEX_CONFIRMAR.lastIndex = 0;
+    el('grupo-validade-confirmacao').classList.toggle('d-none', !pedeConfirmacao);
     const semRodape = el('modelo-ocultar-divulgacao').checked && dadosModelos.podeOcultarDivulgacao;
     el('previa-corpo').innerHTML = paragrafos +
         `<div class="email-nota-fixo small">
@@ -201,6 +210,13 @@ function atualizarPrevia() {
     el('btn-teste-modelo').disabled = !assunto.trim() || !mensagem.trim();
 }
 
+/** Uma linha da prévia: [Confirmar recebimento] sozinho = botão; na frase = link. */
+function linhaPrevia(linha) {
+    if (linha.trim().toLowerCase() === CAMPO_CONFIRMAR.toLowerCase())
+        return '<span class="previa-botao-confirmar"><i class="bi bi-check2-circle"></i> Confirmar recebimento</span>';
+    return linha.split(REGEX_CONFIRMAR).map(escaparHtml).join('<u class="previa-link-confirmar">confirmar recebimento</u>');
+}
+
 function inserirCampo(etiqueta) {
     const c = campoAtivoModelo;
     if (c.disabled) return;
@@ -221,7 +237,8 @@ function corpoModelo() {
         responderPara: el('modelo-responder').value.trim() || null,
         copiaOcultaPara: el('modelo-cco').value.trim() || null,
         ocultarDivulgacao: el('modelo-ocultar-divulgacao').checked,
-        ocultarSaidaCopias: el('modelo-ocultar-saida-copias').checked
+        ocultarSaidaCopias: el('modelo-ocultar-saida-copias').checked,
+        validadeConfirmacaoDias: Number(el('modelo-validade-confirmacao').value) || 30
     };
 }
 

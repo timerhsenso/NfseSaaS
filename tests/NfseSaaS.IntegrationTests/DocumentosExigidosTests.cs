@@ -135,8 +135,8 @@ public class DocumentosExigidosTests
             var fila = new FilaFalsa();
             var auditoria = sp.GetRequiredService<IAuditLogWriter>();
             var modelos = new ModeloEmailNotaService(db, tenantAtual, new UsuarioFalso(admin.Id), auditoria, new EmailQueueService(db, fila),
-                sp.GetRequiredService<IOptions<PlataformaOptions>>(), sp.GetRequiredService<NfseSaaS.Application.UseCases.Recursos.IRecursosConta>());
-            var enviar = new EnviarNfsePorEmailUseCase(db, new EmailQueueService(db, fila), auditoria, modelos, sp.GetRequiredService<NfseSaaS.Application.UseCases.Clientes.ILinkSaidaCopia>());
+                sp.GetRequiredService<IOptions<PlataformaOptions>>(), sp.GetRequiredService<NfseSaaS.Application.UseCases.Recursos.IRecursosConta>(), sp.GetRequiredService<NfseSaaS.Application.UseCases.EmailNota.ILinkConfirmacaoRecebimento>());
+            var enviar = new EnviarNfsePorEmailUseCase(db, new EmailQueueService(db, fila), auditoria, modelos, sp.GetRequiredService<NfseSaaS.Application.UseCases.Clientes.ILinkSaidaCopia>(), sp.GetRequiredService<NfseSaaS.Application.UseCases.EmailNota.ILinkConfirmacaoRecebimento>());
             var envio = new EnvioEmailNfseService(db, enviar, modelos);
 
             async Task<EmailLog> UltimoEmail(Guid nfseId) =>

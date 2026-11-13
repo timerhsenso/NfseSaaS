@@ -14,7 +14,8 @@ public sealed record ModeloEmailNotaItem(
     bool OcultarDivulgacao,
     IReadOnlyList<string> Empresas,
     int Clientes,
-    bool OcultarSaidaCopias = false);
+    bool OcultarSaidaCopias = false,
+    int ValidadeConfirmacaoDias = NfseSaaS.Domain.Entities.ModeloEmailNota.ValidadeConfirmacaoPadraoDias);
 
 /// <summary>Tela "Modelos de e-mail".</summary>
 /// <param name="PodeAlterar">Administrador da conta.</param>
@@ -43,7 +44,9 @@ public sealed record SalvarModeloEmailNotaRequest(
     string? ResponderPara,
     string? CopiaOcultaPara,
     bool OcultarDivulgacao,
-    bool OcultarSaidaCopias = false);
+    bool OcultarSaidaCopias = false,
+    // CR1: validade do link [Confirmar recebimento]; nulo = 30 dias (ou não muda).
+    int? ValidadeConfirmacaoDias = null);
 
 /// <summary>"Mandar um teste para mim": o texto da tela, com dados de exemplo.</summary>
 public sealed record EnviarTesteModeloEmailNotaRequest(string? Assunto, string? Mensagem, string? ResponderPara, bool OcultarDivulgacao);

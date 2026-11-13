@@ -617,6 +617,49 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.ToTable("configuracoes_automacao_nota_mensal", (string)null);
                 });
 
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.ConfirmacaoRecebimentoNota", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ConfirmadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Ip")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)");
+
+                    b.Property<Guid>("NfseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Principal")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NfseId", "Email")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "NfseId");
+
+                    b.ToTable("confirmacoes_recebimento_nota", (string)null);
+                });
+
             modelBuilder.Entity("NfseSaaS.Domain.Entities.ContadorDps", b =>
                 {
                     b.Property<Guid>("EmpresaId")
@@ -1575,6 +1618,11 @@ namespace NfseSaaS.Infrastructure.Migrations
 
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ValidadeConfirmacaoDias")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(30);
 
                     b.HasKey("Id");
 
@@ -2963,6 +3011,15 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.HasOne("NfseSaaS.Domain.Entities.Empresa", null)
                         .WithOne()
                         .HasForeignKey("NfseSaaS.Domain.Entities.ConfiguracaoAutomacaoNotaMensal", "EmpresaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.ConfirmacaoRecebimentoNota", b =>
+                {
+                    b.HasOne("NfseSaaS.Domain.Entities.Nfse", null)
+                        .WithMany()
+                        .HasForeignKey("NfseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

@@ -57,6 +57,13 @@
                             <textarea class="form-control" id="modelo-mensagem" rows="9" maxlength="4000"></textarea>
                             <div class="form-text mb-3" id="modelo-aviso-campos">Abaixo da mensagem seguem sempre os dados da nota, a consulta pública e os anexos.</div>
 
+                            @* CR1: só aparece quando a mensagem tem o campo [Confirmar recebimento] (modelos-email.js). *@
+                            <div class="mb-3 d-none" id="grupo-validade-confirmacao">
+                                <label class="form-label" for="modelo-validade-confirmacao">Link de confirmação de recebimento vale por (dias)</label>
+                                <input type="number" class="form-control" id="modelo-validade-confirmacao" min="1" max="365" value="30" />
+                                <div class="form-text">Depois disso, a página pede para o cliente responder o e-mail. Enviar a nota de novo gera um link novo.</div>
+                            </div>
+
                             <label class="form-label" for="modelo-responder">Respostas do cliente vão para</label>
                             <input type="email" class="form-control" id="modelo-responder" maxlength="256" />
                             <div class="form-text mb-3">Em branco: o e-mail da empresa que emitiu a nota.</div>

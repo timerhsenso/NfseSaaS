@@ -17,6 +17,8 @@ public sealed class ModeloEmailNotaConfiguration : IEntityTypeConfiguration<Mode
         builder.Property(m => m.Mensagem).HasMaxLength(ModeloEmailNota.TamanhoMaximoMensagem).IsRequired();
         builder.Property(m => m.ResponderPara).HasMaxLength(ModeloEmailNota.TamanhoMaximoEmail);
         builder.Property(m => m.CopiaOcultaPara).HasMaxLength(ModeloEmailNota.TamanhoMaximoEmail);
+        // CR1: modelos que já existem ganham os 30 dias.
+        builder.Property(m => m.ValidadeConfirmacaoDias).HasDefaultValue(ModeloEmailNota.ValidadeConfirmacaoPadraoDias);
 
         // Nome único na conta e um só padrão por conta.
         builder.HasIndex(m => new { m.TenantId, m.Nome }).IsUnique();

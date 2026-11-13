@@ -270,6 +270,9 @@ public static class DependencyInjection
         services.AddScoped<LinkSaidaCopiaService>();
         services.AddScoped<NfseSaaS.Application.UseCases.Clientes.ILinkSaidaCopia>(sp => sp.GetRequiredService<LinkSaidaCopiaService>());
         services.AddScoped<NfseSaaS.Application.UseCases.Clientes.ISaidaCopiaEmailUseCase, SaidaCopiaEmailService>();
+        // CR1: confirmação de recebimento do e-mail da nota.
+        services.AddScoped<NfseSaaS.Application.UseCases.EmailNota.ILinkConfirmacaoRecebimento, LinkConfirmacaoRecebimentoService>();
+        services.AddScoped<NfseSaaS.Application.UseCases.EmailNota.IConfirmacaoRecebimentoUseCase, ConfirmacaoRecebimentoService>();
         services.AddScoped<NfseSaaS.Application.UseCases.DocumentosEmpresa.ICatalogoDocumentos, CatalogoDocumentosService>();
         services.AddScoped<NfseSaaS.Application.UseCases.DocumentosEmpresa.IEscolhaDocumentosEmpresaUseCase, EscolhaDocumentosEmpresaService>();
         services.AddScoped<NfseSaaS.Application.UseCases.DocumentosEmpresa.IAdministrarCatalogoDocumentosUseCase, AdministrarCatalogoDocumentosService>();

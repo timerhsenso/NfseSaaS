@@ -1,0 +1,47 @@
+@model NfseSaaS.Application.UseCases.EmailNota.ContextoConfirmacaoRecebimento?
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Confirmar recebimento";
+}
+
+@* CR1: link do campo [Confirmar recebimento] do e-mail da nota. A confirmação é um POST (recebimento.js). *@
+@if (Model is null)
+{
+    <h5 class="card-title mb-3">Link expirado</h5>
+    <p class="text-muted mb-0">@NfseSaaS.Application.UseCases.EmailNota.RegrasConfirmacaoRecebimento.MensagemLinkInvalido</p>
+}
+else
+{
+    <h5 class="card-title mb-3">Confirmar recebimento</h5>
+    <dl class="row small mb-3 recebimento-nota">
+        <dt class="col-5 text-muted fw-normal">Empresa</dt><dd class="col-7 fw-semibold">@Model.Empresa</dd>
+        <dt class="col-5 text-muted fw-normal">Nota fiscal</dt><dd class="col-7">nº @Model.Numero</dd>
+        <dt class="col-5 text-muted fw-normal">Competência</dt><dd class="col-7">@Model.Competencia</dd>
+        <dt class="col-5 text-muted fw-normal">Valor</dt><dd class="col-7">@Model.Valor</dd>
+    </dl>
+
+    @if (Model.Confirmacoes.Count > 0)
+    {
+        <div class="alert alert-success small">
+            <i class="bi bi-check-circle"></i> Recebimento já confirmado por
+            @string.Join("; ", Model.Confirmacoes.Select(c => $"{c.EmailMascarado} em {c.ConfirmadoEm.ToOffset(TimeSpan.FromHours(-3)):dd/MM/yyyy 'às' HH:mm}")).
+            Se você também recebeu, pode confirmar.
+        </div>
+    }
+
+    <div id="erro-recebimento" class="alert alert-danger d-none"></div>
+    <div id="sucesso-recebimento" class="alert alert-success d-none"></div>
+
+    <form id="form-recebimento" novalidate>
+        <input type="hidden" id="token-recebimento" value="@ViewData["Token"]" />
+        <div class="mb-3">
+            <label class="form-label" for="email-recebimento">E-mail em que você recebeu a nota</label>
+            <input type="email" class="form-control" id="email-recebimento" maxlength="100" required autofocus autocomplete="email" />
+        </div>
+        <button type="submit" class="btn btn-success w-100"><i class="bi bi-check2-circle"></i> Confirmar recebimento</button>
+    </form>
+
+    @section Scripts {
+        <script src="~/js/paginas/recebimento.js" asp-append-version="true"></script>
+    }
+}

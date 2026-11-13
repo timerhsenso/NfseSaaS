@@ -5,6 +5,28 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (CR1 — confirmação de recebimento da nota)
+- Novo campo **[Confirmar recebimento]** nos modelos de e-mail: sozinho na
+  linha vira um **botão** verde; no meio da frase vira um **link** ("Clique
+  aqui e confirme o recebimento - [Confirmar recebimento]"). Não vale no
+  assunto. O texto padrão do sistema (contas novas) já traz a linha.
+- O cliente abre a página da nota (empresa, número, competência, valor),
+  informa o **e-mail em que recebeu** e clica em Confirmar. Só vale e-mail que
+  recebeu a nota (principal ou cópia, em qualquer envio). Fica registrado
+  e-mail, data, hora e IP. Abrir o link não confirma (antivírus e
+  pré-visualização não contam).
+- Se já foi confirmado, a página mostra "Recebimento já confirmado por
+  fi\*\*\*@ho\*\*\*.com.br em …", e outro destinatário ainda pode confirmar.
+- **Validade do link** por modelo (padrão 30 dias, de 1 a 365); enviar a nota
+  de novo gera link novo. No e-mail de teste e na prévia o botão leva a uma
+  página de exemplo.
+- Notas: **envelope verde** quando o cliente confirmou (passe o mouse para ver
+  quem e quando; azul = enviado sem confirmação), filtro "Recebimento
+  confirmado / Enviada, sem confirmação" e lista de confirmações no detalhe.
+  A exportação de dados inclui `notas_confirmacoes_recebimento`.
+- Migração `ConfirmacaoRecebimento` (tabela `confirmacoes_recebimento_nota` e
+  coluna `modelos_email_nota.ValidadeConfirmacaoDias`).
+
 ### Corrigido (Remetente do e-mail da nota)
 - O **"Mandar um teste para mim"** do modelo de e-mail também chega como
   "RHSENSO via MicoEmpresa" (antes saía só "MicoEmpresa").

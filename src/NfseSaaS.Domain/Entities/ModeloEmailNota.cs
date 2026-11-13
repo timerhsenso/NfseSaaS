@@ -40,6 +40,16 @@ public sealed class ModeloEmailNota : BaseEntity, ITenantEntity
     /// </summary>
     public bool OcultarSaidaCopias { get; set; }
 
+    /// <summary>
+    /// CR1: por quantos dias vale o link do campo [Confirmar recebimento]
+    /// (só importa quando a mensagem tem o campo).
+    /// </summary>
+    public int ValidadeConfirmacaoDias { get; set; } = ValidadeConfirmacaoPadraoDias;
+
+    public const int ValidadeConfirmacaoPadraoDias = 30;
+    public const int ValidadeConfirmacaoMinimaDias = 1;
+    public const int ValidadeConfirmacaoMaximaDias = 365;
+
     public const int TamanhoMaximoNome = 60;
     public const int TamanhoMaximoAssunto = 150;
     public const int TamanhoMaximoMensagem = 4000;

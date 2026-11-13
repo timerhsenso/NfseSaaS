@@ -79,6 +79,13 @@ public sealed class ListarNfseUseCase : IListarNfseUseCase
             query = query.Where(n => n.DataEmissao <= fimUtc);
         }
 
+        // CR1: filtro de confirmação de recebimento.
+        if (string.Equals(request.Recebimento, "confirmado", StringComparison.OrdinalIgnoreCase))
+            query = query.Where(n => _db.ConfirmacoesRecebimentoNota.Any(c => c.NfseId == n.Id));
+        else if (string.Equals(request.Recebimento, "pendente", StringComparison.OrdinalIgnoreCase))
+            query = query.Where(n => _db.EmailLogs.Any(e => e.NfseId == n.Id && e.Tipo == TipoEmailCatalogo.NfseTomador)
+                && !_db.ConfirmacoesRecebimentoNota.Any(c => c.NfseId == n.Id));
+
         var totalCount = await query.CountAsync(cancellationToken);
 
         var itens = await query
@@ -114,7 +121,12 @@ public sealed class ListarNfseUseCase : IListarNfseUseCase
                 _db.EmailLogs.Where(e => e.NfseId == n.Id && e.Tipo == TipoEmailCatalogo.NfseTomador)
                     .OrderByDescending(e => e.CreatedAt).Select(e => (StatusEmailLog?)e.Status).FirstOrDefault(),
                 new DescontosRetencoesNfse(n.DescontoIncondicionado, n.DescontoCondicionado,
-                    n.ValorRetidoIrrf, n.ValorRetidoPis, n.ValorRetidoCofins, n.ValorRetidoCsll, n.ValorRetidoInss)))
+                    n.ValorRetidoIrrf, n.ValorRetidoPis, n.ValorRetidoCofins, n.ValorRetidoCsll, n.ValorRetidoInss),
+                _db.ConfirmacoesRecebimentoNota.Where(c => c.NfseId == n.Id).OrderBy(c => c.ConfirmadoEm)
+                    .Select(c => (DateTimeOffset?)c.ConfirmadoEm).FirstOrDefault(),
+                _db.ConfirmacoesRecebimentoNota.Where(c => c.NfseId == n.Id).OrderBy(c => c.ConfirmadoEm)
+                    .Select(c => c.Email).FirstOrDefault(),
+                _db.ConfirmacoesRecebimentoNota.Count(c => c.NfseId == n.Id)))
             .ToListAsync(cancellationToken);
 
         return new PagedResult<NfseResponse>

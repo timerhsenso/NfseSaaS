@@ -141,6 +141,16 @@ public sealed class MontadorExportacaoDados
                 s.Status == NfseSaaS.Domain.Entities.StatusSaidaCopia.Confirmada ? "Confirmada" : "Pedida", s.CreatedAt, s.ConfirmadoEm, s.NfseId);
         Tabela(zip, tSaidasCopia);
 
+        // ----- CR1: confirmações de recebimento do e-mail da nota -----
+        var confirmacoes = await _db.ConfirmacoesRecebimentoNota.AsNoTracking()
+            .OrderBy(c => c.ConfirmadoEm)
+            .ToListAsync(cancellationToken);
+        var tConfirmacoes = new TabelaExportacao("notas_confirmacoes_recebimento",
+            "NotaId", "Email", "Destinatario", "ConfirmadoEm", "Ip");
+        foreach (var c in confirmacoes)
+            tConfirmacoes.Adicionar(c.NfseId, c.Email, c.Principal ? "Principal" : "Cópia", c.ConfirmadoEm, c.Ip);
+        Tabela(zip, tConfirmacoes);
+
         // ----- Serviços -----
         var servicos = await _db.Servicos.AsNoTracking().OrderBy(s => s.Descricao).ToListAsync(cancellationToken);
         var descricaoServico = servicos.ToDictionary(s => s.Id, s => s.Descricao);

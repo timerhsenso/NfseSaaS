@@ -223,6 +223,25 @@ a:hover {
     font-size: .75rem;
 }
 
+/* CR1: [Confirmar recebimento] na prévia do modelo (mesmo visual do e-mail). */
+.email-nota-previa-corpo .previa-botao-confirmar {
+    display: inline-block;
+    background: #16a34a;
+    color: #fff;
+    padding: .35rem .8rem;
+    border-radius: .5rem;
+    font-weight: 600;
+}
+
+.email-nota-previa-corpo .previa-link-confirmar {
+    color: #2563eb;
+    font-weight: 600;
+}
+
+#modelo-validade-confirmacao {
+    max-width: 8rem;
+}
+
 .logo-previa img {
     max-width: 100%;
     max-height: 56px;

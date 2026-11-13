@@ -368,13 +368,14 @@ document.addEventListener('DOMContentLoaded', function () {
         carregarNfse();
     });
 
-    ['filtro-data-inicio', 'filtro-data-fim', 'filtro-status', 'filtro-cliente'].forEach(id =>
+    ['filtro-data-inicio', 'filtro-data-fim', 'filtro-status', 'filtro-cliente', 'filtro-recebimento'].forEach(id =>
         document.getElementById(id).addEventListener('change', carregarNfse));
 
     document.getElementById('btn-limpar-filtros-nfse').addEventListener('click', function () {
         periodo.value = 'este-mes';
         aplicarPeriodoNfse('este-mes');
         document.getElementById('filtro-status').value = '';
+        document.getElementById('filtro-recebimento').value = '';
         document.getElementById('filtro-cliente').value = '';
         carregarNfse();
     });
@@ -414,6 +415,8 @@ function montarQueryFiltrosNfse() {
     if (dataFim) params.set('dataFim', dataFim);
     if (status !== '') params.set('status', status);
     if (clienteId) params.set('clienteId', clienteId);
+    const recebimento = document.getElementById('filtro-recebimento').value;
+    if (recebimento) params.set('recebimento', recebimento);
 
     return params.toString();
 }
@@ -449,6 +452,7 @@ function aplicarPeriodoNfse(valor) {
 function atualizarLimparFiltrosNfse() {
     const ativo = document.getElementById('filtro-periodo').value !== 'este-mes'
         || document.getElementById('filtro-status').value !== ''
+        || document.getElementById('filtro-recebimento').value !== ''
         || document.getElementById('filtro-cliente').value !== '';
     document.getElementById('btn-limpar-filtros-nfse').classList.toggle('d-none', !ativo);
 }
@@ -1178,6 +1182,7 @@ async function abrirDetalheNfse(id) {
         ]);
 
         document.getElementById('detalhe-nfse-dados').innerHTML = htmlDetalheNfse(nfse, snapshot);
+        carregarRecebimentoNfse(id);
         preencherNomesMunicipios(document.getElementById('detalhe-nfse-dados'));
 
         document.getElementById('detalhe-nfse-eventos').innerHTML = eventos.length
@@ -1692,13 +1697,40 @@ async function baixarDanfsePdfLote() {
 // ---------------------------------------------------------------------
 
 // StatusEmailLog (Domain.Enums): 0 Pendente, 1 Enviado, 2 Falhou.
+// CR1: verde (preenchido) = o cliente confirmou o recebimento; azul = enviado, sem confirmação.
 function envelopeEmailNfse(n) {
-    if (n.emailUltimoStatus == null) return '';
-    const quando = n.emailUltimoEnvioEm ? new Date(n.emailUltimoEnvioEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
-    const [icone, cor, texto] = n.emailUltimoStatus === 1 ? ['bi-envelope-check', 'text-success', `E-mail enviado em ${quando}`]
+    if (n.emailUltimoStatus == null && !n.recebimentoConfirmacoes) return '';
+    const formatar = d => new Date(d).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    if (n.recebimentoConfirmacoes > 0) {
+        const outros = n.recebimentoConfirmacoes > 1 ? ` (e mais ${n.recebimentoConfirmacoes - 1})` : '';
+        const texto = `Recebimento confirmado por ${n.recebimentoConfirmadoPor} em ${formatar(n.recebimentoConfirmadoEm)}${outros}`;
+        return ` <i class="bi bi-envelope-check-fill text-success ms-1" title="${escaparHtml(texto)}" aria-label="${escaparHtml(texto)}"></i>`;
+    }
+    const quando = n.emailUltimoEnvioEm ? formatar(n.emailUltimoEnvioEm) : '';
+    const [icone, cor, texto] = n.emailUltimoStatus === 1 ? ['bi-envelope-check', 'text-primary', `E-mail enviado em ${quando} — o cliente ainda não confirmou o recebimento`]
         : n.emailUltimoStatus === 2 ? ['bi-envelope-exclamation', 'text-danger', 'O último e-mail falhou — veja na tela de E-mails']
         : ['bi-envelope', 'text-muted', 'E-mail na fila de envio'];
     return ` <i class="bi ${icone} ${cor} ms-1" title="${escaparHtml(texto)}" aria-label="${escaparHtml(texto)}"></i>`;
+}
+
+/** CR1: quem confirmou o recebimento (detalhe da nota). */
+async function carregarRecebimentoNfse(id) {
+    const bloco = document.getElementById('detalhe-nfse-recebimento');
+    if (!bloco) return;
+    bloco.innerHTML = '';
+    try {
+        const lista = await apiFetch(`/api/nfse/${id}/recebimento`);
+        if (!lista || !lista.length) return;
+        const linhas = lista.map(c => `
+            <li class="list-group-item d-flex justify-content-between flex-wrap gap-1">
+                <span><i class="bi bi-envelope-check-fill text-success"></i> ${escaparHtml(c.email)}
+                    <span class="badge text-bg-light">${c.principal ? 'principal' : 'cópia'}</span></span>
+                <small class="text-muted">${new Date(c.confirmadoEm).toLocaleString('pt-BR')}${c.ip ? ' · IP ' + escaparHtml(c.ip) : ''}</small>
+            </li>`).join('');
+        bloco.innerHTML = `<h6 class="text-muted mt-3">Recebimento confirmado</h6><ul class="list-group mb-3">${linhas}</ul>`;
+    } catch {
+        // só informativo
+    }
 }
 
 function configurarEmailNfse() {

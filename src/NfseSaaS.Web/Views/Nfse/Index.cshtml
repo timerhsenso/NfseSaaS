@@ -59,6 +59,12 @@
                     <option value="4">Cancelada</option>
                     <option value="5">Substituída</option>
                 </select>
+                @* CR1: confirmação de recebimento do e-mail da nota. *@
+                <select class="form-select form-select-sm" id="filtro-recebimento" aria-label="Recebimento" style="max-width: 200px;">
+                    <option value="">Recebimento: todos</option>
+                    <option value="confirmado">Recebimento confirmado</option>
+                    <option value="pendente">Enviada, sem confirmação</option>
+                </select>
                 <select class="form-select form-select-sm" id="filtro-cliente" aria-label="Cliente" style="max-width: 240px;">
                     <option value="">Todos os clientes</option>
                 </select>
@@ -264,6 +270,7 @@
             <div class="modal-body">
                 @* Montado em nfse.js (abrirDetalheNfse): blocos Nota, Cliente e serviço, Descrição na nota, Valores e tributação, Erro. *@
                 <div id="detalhe-nfse-dados"></div>
+                <div id="detalhe-nfse-recebimento"></div>
 
                 <h6 class="text-muted mt-3">Histórico de eventos</h6>
                 <ul class="list-group mb-3" id="detalhe-nfse-eventos"></ul>

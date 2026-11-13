@@ -70,6 +70,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRo
     public DbSet<GrupoTela> GrupoTelas => Set<GrupoTela>();
     public DbSet<EmailLog> EmailLogs => Set<EmailLog>();
     public DbSet<SaidaCopiaEmail> SaidasCopiaEmail => Set<SaidaCopiaEmail>();
+    public DbSet<ConfirmacaoRecebimentoNota> ConfirmacoesRecebimentoNota => Set<ConfirmacaoRecebimentoNota>();
     public DbSet<CodigoTributacaoNacional> CodigosTributacaoNacional => Set<CodigoTributacaoNacional>();
     public DbSet<CodigoNbs> CodigosNbs => Set<CodigoNbs>();
     public DbSet<IndiceEconomicoMensal> IndicesEconomicosMensais => Set<IndiceEconomicoMensal>();

@@ -227,7 +227,7 @@ public class SaidaCopiaEmailTests
 
             var fila = new FilaFalsa();
             var enviar = new EnviarNfsePorEmailUseCase(db, new EmailQueueService(db, fila), sp.GetRequiredService<IAuditLogWriter>(),
-                sp.GetRequiredService<NfseSaaS.Application.UseCases.EmailNota.IModeloEmailNotaUseCase>(), sp.GetRequiredService<ILinkSaidaCopia>());
+                sp.GetRequiredService<NfseSaaS.Application.UseCases.EmailNota.IModeloEmailNotaUseCase>(), sp.GetRequiredService<ILinkSaidaCopia>(), sp.GetRequiredService<NfseSaaS.Application.UseCases.EmailNota.ILinkConfirmacaoRecebimento>());
 
             await enviar.ExecutarAsync(notaCom.Id, automatico: false, texto: null, CancellationToken.None);
             await enviar.ExecutarAsync(notaSem.Id, automatico: false, texto: null, CancellationToken.None);

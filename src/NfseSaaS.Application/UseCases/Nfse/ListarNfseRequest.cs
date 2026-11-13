@@ -9,4 +9,6 @@ public sealed record ListarNfseRequest(
     DateOnly? DataInicio = null,
     DateOnly? DataFim = null,
     int Page = 1,
-    int PageSize = 20);
+    int PageSize = 20,
+    // CR1: "confirmado" = algum destinatário confirmou; "pendente" = enviada por e-mail e ninguém confirmou.
+    string? Recebimento = null);
