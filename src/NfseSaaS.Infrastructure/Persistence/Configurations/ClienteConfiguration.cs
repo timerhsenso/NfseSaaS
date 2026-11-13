@@ -101,5 +101,12 @@ public sealed class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
             .WithMany()
             .HasForeignKey(c => c.EmpresaId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Modelo do e-mail da nota (cadastro Modelos de e-mail). Excluir o
+        // modelo devolve quem o usava ao padrão da conta.
+        builder.HasOne<ModeloEmailNota>()
+            .WithMany()
+            .HasForeignKey(c => c.ModeloEmailNotaId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

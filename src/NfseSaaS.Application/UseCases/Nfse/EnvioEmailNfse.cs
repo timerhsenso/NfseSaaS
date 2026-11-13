@@ -7,8 +7,11 @@ namespace NfseSaaS.Application.UseCases.Nfse;
 /// pelo modelo (o usuário pode ajustar só para este envio) e o último envio.
 /// </summary>
 /// <param name="Impedimento">Por que não dá para enviar (não autorizada, sem e-mail); nulo = pode.</param>
+/// <param name="ModeloId">Modelo usado no texto (nulo = texto padrão do sistema); Modelos = as opções para trocar.</param>
 public sealed record PreviaEmailNfseResponse(
     Guid NfseId,
+    Guid? ModeloId,
+    IReadOnlyList<NfseSaaS.Application.UseCases.EmailNota.OpcaoModeloEmailNota> Modelos,
     string? Destinatario,
     IReadOnlyList<string> Copias,
     bool CopiasOcultas,
@@ -37,7 +40,8 @@ public interface IEnvioEmailNfseUseCase
 {
     public const int MaximoPorLote = 200;
 
-    Task<PreviaEmailNfseResponse> PreviaAsync(Guid nfseId, CancellationToken cancellationToken);
+    /// <summary><paramref name="modeloId"/>: o modelo escolhido no modal (nulo = o que vale para a nota).</summary>
+    Task<PreviaEmailNfseResponse> PreviaAsync(Guid nfseId, Guid? modeloId, CancellationToken cancellationToken);
 
     Task<PreviaEnvioEmailLoteResponse> PreviaLoteAsync(EnvioEmailLoteRequest request, CancellationToken cancellationToken);
 

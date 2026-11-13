@@ -70,20 +70,35 @@ public sealed class RegrasModeloEmailNotaTests
     }
 
     [Fact]
-    public void Modelo_em_vigor_empresa_depois_conta_depois_padrao()
+    public void Modelo_em_vigor_cliente_depois_empresa_depois_padrao_da_conta_depois_sistema()
     {
-        var conta = new ModeloEmailNota { Assunto = "Conta", Mensagem = "M conta", ResponderPara = "conta@x.com", OcultarDivulgacao = true };
-        var empresa = new ModeloEmailNota { EmpresaId = Guid.NewGuid(), Assunto = "Empresa", Mensagem = "M empresa", CopiaOcultaPara = "cco@x.com" };
+        var padrao = new ModeloEmailNota { Nome = "Padrão", Padrao = true, Assunto = "Conta", Mensagem = "M conta", OcultarDivulgacao = true };
+        var daEmpresa = new ModeloEmailNota { Nome = "Formal", Assunto = "Empresa", Mensagem = "M empresa", CopiaOcultaPara = "cco@x.com" };
+        var doCliente = new ModeloEmailNota { Nome = "Corporativo", Assunto = "Cliente", Mensagem = "M cliente", ResponderPara = "fin@x.com" };
 
-        var deEmpresa = RegrasModeloEmailNota.Resolver(empresa, conta, podeOcultarDivulgacao: true);
-        Assert.Equal("Empresa", deEmpresa.Assunto);
-        Assert.Null(deEmpresa.ResponderPara);
-        Assert.Equal("cco@x.com", deEmpresa.CopiaOcultaPara);
-        Assert.True(deEmpresa.OcultarDivulgacao); // rodapé é da conta
+        var deCliente = RegrasModeloEmailNota.Resolver(doCliente, daEmpresa, padrao, podeOcultarDivulgacao: true);
+        Assert.Equal(doCliente.Id, deCliente.ModeloId);
+        Assert.Equal("Cliente", deCliente.Assunto);
+        Assert.Equal("fin@x.com", deCliente.ResponderPara);
+        Assert.False(deCliente.OcultarDivulgacao); // o rodapé é de cada modelo
 
-        Assert.Equal("Conta", RegrasModeloEmailNota.Resolver(null, conta, true).Assunto);
-        Assert.False(RegrasModeloEmailNota.Resolver(null, conta, podeOcultarDivulgacao: false).OcultarDivulgacao);
-        Assert.Equal(RegrasModeloEmailNota.AssuntoPadrao, RegrasModeloEmailNota.Resolver(null, null, true).Assunto);
+        Assert.Equal("Empresa", RegrasModeloEmailNota.Resolver(null, daEmpresa, padrao, true).Assunto);
+        var daConta = RegrasModeloEmailNota.Resolver(null, null, padrao, true);
+        Assert.Equal("Padrão", daConta.Nome);
+        Assert.True(daConta.OcultarDivulgacao);
+        Assert.False(RegrasModeloEmailNota.Resolver(null, null, padrao, podeOcultarDivulgacao: false).OcultarDivulgacao);
+
+        var sistema = RegrasModeloEmailNota.Resolver(null, null, null, true);
+        Assert.Null(sistema.ModeloId);
+        Assert.Equal(RegrasModeloEmailNota.AssuntoPadrao, sistema.Assunto);
+    }
+
+    [Fact]
+    public void Nome_do_modelo_e_obrigatorio_e_curto()
+    {
+        Assert.Empty(RegrasModeloEmailNota.ValidarModelo("Formal", "A", "B", null, null));
+        Assert.Contains(RegrasModeloEmailNota.ValidarModelo(" ", "A", "B", null, null), e => e.Contains("nome"));
+        Assert.Single(RegrasModeloEmailNota.ValidarModelo(new string('n', 61), "A", "B", null, null));
     }
 
     [Fact]

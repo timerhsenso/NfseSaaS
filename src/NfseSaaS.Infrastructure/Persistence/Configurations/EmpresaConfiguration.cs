@@ -98,5 +98,12 @@ public sealed class EmpresaConfiguration : IEntityTypeConfiguration<Empresa>
         // Um mesmo CNPJ não pode se repetir dentro do mesmo tenant.
         builder.HasIndex(e => new { e.TenantId, e.Cnpj })
             .IsUnique();
+
+        // Modelo do e-mail da nota (cadastro Modelos de e-mail). Excluir o
+        // modelo devolve quem o usava ao padrão da conta.
+        builder.HasOne<ModeloEmailNota>()
+            .WithMany()
+            .HasForeignKey(e => e.ModeloEmailNotaId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

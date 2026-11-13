@@ -17,13 +17,18 @@ public sealed record EnviarNfsePorEmailResult(bool Enfileirado, string? Destinat
 /// - automatico=false (botão "Enviar por e-mail" da tela): envia mesmo com
 ///   o envio automático desligado no cliente; sem e-mail cadastrado,
 ///   RegraNegocioException com a orientação.
-/// O texto vem do modelo da empresa/conta (Configurações da conta › E-mail
-/// da nota); <paramref name="texto"/> troca assunto e mensagem só neste envio.
+/// O texto vem do modelo do cliente, da empresa ou o padrão da conta
+/// (cadastro Modelos de e-mail); <paramref name="texto"/> troca o modelo,
+/// o assunto e a mensagem só neste envio.
 /// </summary>
 public interface IEnviarNfsePorEmailUseCase
 {
     Task<EnviarNfsePorEmailResult> ExecutarAsync(Guid nfseId, bool automatico, TextoEmailNota? texto, CancellationToken cancellationToken);
 }
 
-/// <summary>Assunto e mensagem escritos na hora (modal de envio), só para este envio.</summary>
-public sealed record TextoEmailNota(string Assunto, string Mensagem);
+/// <summary>
+/// Modal de envio, só para este envio: o modelo escolhido (respostas,
+/// cópia oculta e rodapé vêm dele) e o assunto e a mensagem como ficaram.
+/// Assunto/mensagem vazios = os do modelo.
+/// </summary>
+public sealed record TextoEmailNota(string? Assunto, string? Mensagem, Guid? ModeloId = null);

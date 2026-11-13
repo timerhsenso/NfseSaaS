@@ -134,6 +134,10 @@
                 {
                     <a href="/Empresas" class="@Ativo("/Empresas")"><span class="nav-icon bi bi-building"></span>Empresas</a>
                 }
+                @if (User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Empresas) || User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Clientes))
+                {
+                    <a href="/ModelosEmail" class="@Ativo("/ModelosEmail")"><span class="nav-icon bi bi-envelope-paper"></span>Modelos de e-mail</a>
+                }
                 @* Referência pública (tabela global): qualquer usuário autenticado vê. *@
                 <a href="/Indices" class="@Ativo("/Indices")"><span class="nav-icon bi bi-graph-up-arrow"></span>Índices econômicos</a>
             </nav>

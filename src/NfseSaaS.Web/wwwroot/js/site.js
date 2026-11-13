@@ -747,3 +747,33 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 });
+
+/**
+ * Campo "Modelo do e-mail da nota" (Empresa, Cliente): carrega os modelos
+ * (cadastro Modelos de e-mail) num <select>. A primeira opção (valor vazio)
+ * é "não escolher" — na Empresa, o padrão da conta; no Cliente, o da
+ * empresa. O padrão não aparece de novo na lista: escolher "vazio" já o usa.
+ * Guarda o valor carregado em data-original (para só salvar se mudou).
+ */
+async function preencherSelectModeloEmail(select, valorAtual, rotuloSemModelo) {
+    let opcoes = [];
+    try {
+        opcoes = await apiFetch('/api/modelos-email-nota/opcoes');
+    } catch {
+        // Sem a lista, o campo fica só com a opção vazia: o cadastro continua.
+    }
+    const padrao = opcoes.find(o => o.padrao);
+    const rotulo = typeof rotuloSemModelo === 'function' ? rotuloSemModelo(padrao) : rotuloSemModelo;
+    select.innerHTML = `<option value="">${escaparHtml(rotulo)}</option>` +
+        opcoes.filter(o => !o.padrao || o.id === valorAtual)
+            .map(o => `<option value="${o.id}">${escaparHtml(o.nome)}</option>`).join('');
+    select.value = valorAtual ?? '';
+    select.dataset.original = valorAtual ?? '';
+}
+
+/** Grava o modelo escolhido, só se mudou. url: /api/empresas/{id}/modelo-email-nota ou /api/clientes/{id}/modelo-email-nota. */
+async function salvarModeloEmailSeMudou(select, url) {
+    if (!select || select.value === (select.dataset.original ?? '')) return;
+    await apiFetch(url, { method: 'PUT', body: JSON.stringify({ modeloId: select.value || null }) });
+    select.dataset.original = select.value;
+}

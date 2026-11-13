@@ -181,10 +181,13 @@ function trocarAbaEmpresa(alvo) {
     document.querySelectorAll('.tab-conteudo-empresa').forEach(p => p.classList.toggle('d-none', p.dataset.tab !== alvo));
 }
 
-function abrirModalNovaEmpresa() {
+const ROTULO_MODELO_EMPRESA = padrao => padrao ? `Padrão da conta (${padrao.nome})` : 'Padrão da conta';
+
+async function abrirModalNovaEmpresa() {
     limparFormularioEmpresa();
     document.getElementById('titulo-modal-empresa').textContent = 'Nova empresa';
     document.getElementById('cnpj').disabled = false;
+    await preencherSelectModeloEmail(document.getElementById('modeloEmailNotaEmpresa'), null, ROTULO_MODELO_EMPRESA);
     modalEmpresa.show();
 }
 
@@ -220,6 +223,7 @@ async function abrirModalEditarEmpresa(id) {
         document.getElementById('percentualTotalTributosSimplesNacional').value = empresa.percentualTotalTributosSimplesNacional ?? '';
         document.getElementById('diasAlertaReajusteContratoPadrao').value = empresa.diasAlertaReajusteContratoPadrao;
         document.getElementById('aplicarReajusteAutomatico').checked = !!empresa.aplicarReajusteAutomatico;
+        await preencherSelectModeloEmail(document.getElementById('modeloEmailNotaEmpresa'), empresa.modeloEmailNotaId, ROTULO_MODELO_EMPRESA);
 
         const automacao = await apiFetch(`/api/empresas/${id}/automacao-nota-mensal`);
         document.getElementById('automacaoAtivo').checked = automacao.ativo;
@@ -321,6 +325,8 @@ async function salvarEmpresa(e) {
             method: 'PUT',
             body: JSON.stringify(montarPayloadAutomacao())
         });
+        // Modelo do e-mail da nota: sub-recurso próprio, só se mudou.
+        await salvarModeloEmailSeMudou(document.getElementById('modeloEmailNotaEmpresa'), `/api/empresas/${empresaId}/modelo-email-nota`);
 
         modalEmpresa.hide();
         await carregarEmpresas();

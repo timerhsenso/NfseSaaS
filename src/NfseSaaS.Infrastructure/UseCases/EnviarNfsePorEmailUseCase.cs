@@ -12,8 +12,8 @@ using NfseSaaS.Infrastructure.Persistence;
 namespace NfseSaaS.Infrastructure.UseCases;
 
 /// <summary>
-/// Ver IEnviarNfsePorEmailUseCase. Monta o texto pelo modelo da empresa ou
-/// da conta (Configurações da conta › E-mail da nota) e enfileira com
+/// Ver IEnviarNfsePorEmailUseCase. Monta o texto pelo modelo do cliente, da
+/// empresa ou o padrão da conta (cadastro Modelos de e-mail) e enfileira com
 /// EmailLog.NfseId — o PDF e o XML são anexados pelo
 /// EmailDispatchHostedService na hora do envio (AnexosNfseEmail).
 /// Responder-para: o do modelo, senão o e-mail da empresa emitente (a
@@ -113,7 +113,7 @@ public sealed class EnviarNfsePorEmailUseCase : IEnviarNfsePorEmailUseCase
             throw new RegraNegocioException("O cliente desta nota não tem e-mail cadastrado. Inclua o e-mail no cadastro do cliente e tente de novo.");
         }
 
-        var modelo = await _modelos.ResolverAsync(nota.TenantId, nota.EmpresaId, cancellationToken);
+        var modelo = await _modelos.ResolverAsync(nota.TenantId, nota.EmpresaId, nota.ClienteId, texto?.ModeloId, cancellationToken);
         var assuntoModelo = string.IsNullOrWhiteSpace(texto?.Assunto) ? modelo.Assunto : texto.Assunto;
         var mensagemModelo = string.IsNullOrWhiteSpace(texto?.Mensagem) ? modelo.Mensagem : texto.Mensagem;
         if (texto is not null)
@@ -134,7 +134,7 @@ public sealed class EnviarNfsePorEmailUseCase : IEnviarNfsePorEmailUseCase
             cancellationToken);
 
         _auditLogWriter.Registrar("EnviarNfsePorEmail", "Nfse", nfseId,
-            new { destinatario, copias = nota.Copias, copiasOcultas = nota.CopiasOcultas, copiaOcultaFixa = modelo.CopiaOcultaPara, automatico, textoProprio = texto is not null, emailLogId });
+            new { destinatario, copias = nota.Copias, copiasOcultas = nota.CopiasOcultas, copiaOcultaFixa = modelo.CopiaOcultaPara, modelo = modelo.Nome, automatico, textoProprio = texto is not null, emailLogId });
         await _db.SaveChangesAsync(cancellationToken);
 
         return new EnviarNfsePorEmailResult(true, destinatario, null, nota.Copias);

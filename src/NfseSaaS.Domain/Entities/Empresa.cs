@@ -106,6 +106,9 @@ public sealed class Empresa : BaseEntity, ITenantEntity
     /// </summary>
     public bool AplicarReajusteAutomatico { get; set; }
 
+    /// <summary>Modelo do e-mail da nota desta empresa. Nulo = o padrão da conta.</summary>
+    public Guid? ModeloEmailNotaId { get; set; }
+
     /// <summary>
     /// O que falta no cadastro para emitir nota (em palavras para o usuário).
     /// A Empresa criada no cadastro em etapas nasce só com os dados públicos

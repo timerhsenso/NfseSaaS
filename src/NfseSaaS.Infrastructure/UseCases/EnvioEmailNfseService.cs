@@ -27,12 +27,12 @@ public sealed class EnvioEmailNfseService : IEnvioEmailNfseUseCase
         _modelos = modelos;
     }
 
-    public async Task<PreviaEmailNfseResponse> PreviaAsync(Guid nfseId, CancellationToken cancellationToken)
+    public async Task<PreviaEmailNfseResponse> PreviaAsync(Guid nfseId, Guid? modeloId, CancellationToken cancellationToken)
     {
         var nota = (await EnviarNfsePorEmailUseCase.CarregarAsync(_db, new[] { nfseId }, cancellationToken)).FirstOrDefault()
             ?? throw new RecursoNaoEncontradoException($"Nfse {nfseId} não encontrada.");
 
-        var modelo = await _modelos.ResolverAsync(nota.TenantId, nota.EmpresaId, cancellationToken);
+        var modelo = await _modelos.ResolverAsync(nota.TenantId, nota.EmpresaId, nota.ClienteId, modeloId, cancellationToken);
         var valores = RegrasModeloEmailNota.Valores(nota.Dados);
         var ultimo = await _db.EmailLogs.AsNoTracking()
             .Where(e => e.NfseId == nfseId && e.Tipo == TipoEmailCatalogo.NfseTomador)
@@ -42,6 +42,8 @@ public sealed class EnvioEmailNfseService : IEnvioEmailNfseUseCase
 
         return new PreviaEmailNfseResponse(
             nfseId,
+            modelo.ModeloId,
+            await _modelos.OpcoesAsync(cancellationToken),
             nota.Destinatario,
             nota.Copias,
             nota.CopiasOcultas,

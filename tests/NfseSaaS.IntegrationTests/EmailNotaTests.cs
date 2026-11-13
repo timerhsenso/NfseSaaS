@@ -17,9 +17,10 @@ using Xunit;
 namespace NfseSaaS.IntegrationTests;
 
 /// <summary>
-/// E-mail da nota com o banco real: modelo da conta e da empresa, texto
-/// do modal só para um envio, responder-para e cópia oculta fixa, e o
-/// envio de várias notas (resumo, sem e-mail, não autorizada, já enviada).
+/// E-mail da nota com o banco real: modelos reutilizáveis (padrão da conta,
+/// da empresa e do cliente), troca de modelo e texto no modal só para um
+/// envio, responder-para e cópia oculta fixa, o envio de várias notas
+/// (resumo, sem e-mail, não autorizada, já enviada) e excluir modelo em uso.
 /// </summary>
 [Collection(AplicacaoEmMemoriaCollection.Nome)]
 public class EmailNotaTests
@@ -49,7 +50,7 @@ public class EmailNotaTests
     }
 
     [Fact]
-    public async Task Modelo_da_conta_e_da_empresa_texto_do_modal_e_envio_em_lote()
+    public async Task Modelos_reutilizaveis_por_empresa_e_cliente_modal_e_envio_em_lote()
     {
         using var escopo = _factory.Services.CreateScope();
         var sp = escopo.ServiceProvider;
@@ -108,46 +109,62 @@ public class EmailNotaTests
             var enviar = new EnviarNfsePorEmailUseCase(db, new EmailQueueService(db, fila), auditoria, modelosAdmin);
             var lote = new EnvioEmailNfseService(db, enviar, modelosAdmin);
 
-            // Sem modelo salvo: texto padrão, respostas para o e-mail da empresa.
-            var inicial = await modelosAdmin.ObterAsync(null, CancellationToken.None);
-            Assert.False(inicial.Personalizado);
-            Assert.Equal(RegrasModeloEmailNota.AssuntoPadrao, inicial.Assunto);
+            // Conta nova: ganha o modelo "Padrão" com o texto do sistema.
+            var inicial = await modelosAdmin.ListarAsync(CancellationToken.None);
+            var padrao = Assert.Single(inicial.Modelos);
+            Assert.True(padrao.Padrao);
+            Assert.Equal(RegrasModeloEmailNota.NomeModeloInicial, padrao.Nome);
+            Assert.Equal(RegrasModeloEmailNota.AssuntoPadrao, padrao.Assunto);
             Assert.True(inicial.PodeAlterar);
             Assert.False(inicial.PodeOcultarDivulgacao); // perfil Empresa
-            Assert.Equal(2, inicial.Empresas.Count);
 
-            // Só o administrador grava.
-            await Assert.ThrowsAsync<RegraNegocioException>(() => Modelos(comum).SalvarAsync(
-                new SalvarModeloEmailNotaRequest(null, true, "X", "Y", null, null, false), CancellationToken.None));
-            await Assert.ThrowsAsync<RegraNegocioException>(() => modelosAdmin.SalvarAsync(
-                new SalvarModeloEmailNotaRequest(null, true, "X", "Y", "sem-arroba", null, false), CancellationToken.None));
+            // Só o administrador grava; nome repetido e e-mail inválido barram.
+            await Assert.ThrowsAsync<RegraNegocioException>(() => Modelos(comum).CriarAsync(
+                new SalvarModeloEmailNotaRequest("X", "A", "B", null, null, false), CancellationToken.None));
+            await Assert.ThrowsAsync<RegraNegocioException>(() => modelosAdmin.CriarAsync(
+                new SalvarModeloEmailNotaRequest("padrão", "A", "B", null, null, false), CancellationToken.None));
+            await Assert.ThrowsAsync<RegraNegocioException>(() => modelosAdmin.CriarAsync(
+                new SalvarModeloEmailNotaRequest("Y", "A", "B", "sem-arroba", null, false), CancellationToken.None));
 
-            // Modelo da conta (o exemplo do Carlos) com cópia oculta fixa.
-            var salvo = await modelosAdmin.SalvarAsync(new SalvarModeloEmailNotaRequest(null, true,
+            // Padrão da conta com o exemplo do Carlos e cópia oculta fixa.
+            await modelosAdmin.AtualizarAsync(padrao.Id, new SalvarModeloEmailNotaRequest("Padrão",
                 "Nota [Número da nota] de [Mês por extenso]",
                 "Você está recebendo a nota [Número da nota], referente ao mês [Mês por extenso], pelo site micoempresa da empresa [Empresa].",
                 null, "escritorio@contab.com", OcultarDivulgacao: true), CancellationToken.None);
-            Assert.True(salvo.Personalizado);
-            Assert.False(salvo.OcultarDivulgacao); // só no plano Escritório
 
-            // Empresa B personalizada.
-            await modelosAdmin.SalvarAsync(new SalvarModeloEmailNotaRequest(empresaB.Id, true,
+            // Modelo "Beta" para a empresa B e "Corporativo" para um cliente.
+            var beta = await modelosAdmin.CriarAsync(new SalvarModeloEmailNotaRequest("Beta",
                 "Beta: nota [Número da nota]", "Oi [Cliente], segue a nota.", "financeiro@beta.com", null, false), CancellationToken.None);
-            Assert.True((await modelosAdmin.ObterAsync(empresaB.Id, CancellationToken.None)).Personalizado);
-            Assert.False((await modelosAdmin.ObterAsync(empresaA.Id, CancellationToken.None)).Personalizado);
+            var corporativo = await modelosAdmin.DuplicarAsync(beta, CancellationToken.None);
+            await modelosAdmin.AtualizarAsync(corporativo, new SalvarModeloEmailNotaRequest("Corporativo",
+                "Pedido de serviço — nota [Número da nota]", "Prezados, segue a nota do mês [Competência].", null, null, false), CancellationToken.None);
+            await modelosAdmin.DefinirDaEmpresaAsync(empresaB.Id, new DefinirModeloEmailNotaRequest(beta), CancellationToken.None);
+            await modelosAdmin.DefinirDoClienteAsync(comEmail.Id, new DefinirModeloEmailNotaRequest(corporativo), CancellationToken.None);
 
-            // Prévia do modal: texto já preenchido.
-            var previa = await lote.PreviaAsync(nota1.Id, CancellationToken.None);
-            Assert.Equal("cliente@teste.com", previa.Destinatario);
-            Assert.Equal("Nota 101 de novembro de 2026", previa.Assunto);
-            Assert.Contains("pelo site micoempresa da empresa Alfa.", previa.Mensagem);
+            var lista = await modelosAdmin.ListarAsync(CancellationToken.None);
+            Assert.Equal(new[] { "Padrão", "Beta", "Corporativo" }, lista.Modelos.Select(m => m.Nome));
+            Assert.Equal(new[] { "Beta LTDA" }, lista.Modelos.Single(m => m.Id == beta).Empresas);
+            Assert.Equal(1, lista.Modelos.Single(m => m.Id == corporativo).Clientes);
+            Assert.False(lista.Modelos.Single(m => m.Nome == "Padrão").OcultarDivulgacao); // só no plano Escritório
+
+            // Prévia do modal: o modelo do cliente vence o da empresa e o padrão.
+            var previa = await lote.PreviaAsync(nota1.Id, null, CancellationToken.None);
+            Assert.Equal(corporativo, previa.ModeloId);
+            Assert.Equal(3, previa.Modelos.Count);
+            Assert.Equal("Pedido de serviço — nota 101", previa.Assunto);
             Assert.Equal("contato@alfa.com", previa.ResponderPara);
-            Assert.Equal("escritorio@contab.com", previa.CopiaOcultaPara);
-            Assert.Null(previa.Impedimento);
-            Assert.Equal("Cliente sem e-mail no cadastro.", (await lote.PreviaAsync(nota2.Id, CancellationToken.None)).Impedimento);
+            Assert.Null(previa.CopiaOcultaPara);
 
-            // Texto do modal: só neste envio.
-            await enviar.ExecutarAsync(nota1.Id, automatico: false, new TextoEmailNota("Assunto meu [Número da nota]", "Segue com o boleto."), CancellationToken.None);
+            // Trocar o modelo no modal refaz o texto (e a cópia oculta vem dele).
+            var previaPadrao = await lote.PreviaAsync(nota1.Id, padrao.Id, CancellationToken.None);
+            Assert.Equal("Nota 101 de novembro de 2026", previaPadrao.Assunto);
+            Assert.Contains("pelo site micoempresa da empresa Alfa.", previaPadrao.Mensagem);
+            Assert.Equal("escritorio@contab.com", previaPadrao.CopiaOcultaPara);
+            Assert.Equal("Cliente sem e-mail no cadastro.", (await lote.PreviaAsync(nota2.Id, null, CancellationToken.None)).Impedimento);
+
+            // Texto do modal + modelo escolhido: só neste envio.
+            await enviar.ExecutarAsync(nota1.Id, automatico: false,
+                new TextoEmailNota("Assunto meu [Número da nota]", "Segue com o boleto.", padrao.Id), CancellationToken.None);
             var log1 = await db.EmailLogs.AsNoTracking().SingleAsync(e => e.NfseId == nota1.Id);
             Assert.Equal("Assunto meu 101", log1.Assunto);
             Assert.Contains("Segue com o boleto.", log1.CorpoHtml);
@@ -169,19 +186,26 @@ public class EmailNotaTests
             Assert.Equal("financeiro@beta.com", log4.ResponderPara);
             Assert.Null(log4.CopiaOcultaFixa);
 
-            // Sem pular: manda de novo a nota1.
+            // Sem pular: manda de novo a nota1 (agora com o modelo do cliente).
             var deNovo = await lote.EnviarLoteAsync(new EnvioEmailLoteRequest(new[] { nota1.Id }, PularJaEnviadas: false), CancellationToken.None);
             Assert.Equal(1, deNovo.Enfileiradas);
+            Assert.Contains(await db.EmailLogs.AsNoTracking().Where(e => e.NfseId == nota1.Id).Select(e => e.Assunto).ToListAsync(),
+                a => a == "Pedido de serviço — nota 101");
 
-            // Lista: envelope com o último envio.
-            var lista = await new ListarNfseUseCase(db).ExecutarAsync(new ListarNfseRequest { EmpresaId = empresaA.Id }, CancellationToken.None);
-            Assert.Equal(StatusEmailLog.Pendente, lista.Items.Single(n => n.Id == nota1.Id).EmailUltimoStatus);
-            Assert.Null(lista.Items.Single(n => n.Id == nota2.Id).EmailUltimoStatus);
+            // Lista de notas: envelope com o último envio.
+            var notas = await new ListarNfseUseCase(db).ExecutarAsync(new ListarNfseRequest { EmpresaId = empresaA.Id }, CancellationToken.None);
+            Assert.Equal(StatusEmailLog.Pendente, notas.Items.Single(n => n.Id == nota1.Id).EmailUltimoStatus);
+            Assert.Null(notas.Items.Single(n => n.Id == nota2.Id).EmailUltimoStatus);
 
-            // Empresa B volta ao modelo da conta.
-            var voltou = await modelosAdmin.SalvarAsync(new SalvarModeloEmailNotaRequest(empresaB.Id, false, null, null, null, null, false), CancellationToken.None);
-            Assert.False(voltou.Personalizado);
-            Assert.Equal("Nota [Número da nota] de [Mês por extenso]", voltou.Assunto);
+            // Padrão não sai; outro vira padrão; excluir devolve quem usava ao padrão.
+            await Assert.ThrowsAsync<RegraNegocioException>(() => modelosAdmin.ExcluirAsync(padrao.Id, CancellationToken.None));
+            await modelosAdmin.DefinirPadraoAsync(beta, CancellationToken.None);
+            db.ChangeTracker.Clear();
+            Assert.Equal(beta, (await db.ModelosEmailNota.SingleAsync(m => m.Padrao)).Id);
+            await modelosAdmin.ExcluirAsync(corporativo, CancellationToken.None);
+            db.ChangeTracker.Clear();
+            Assert.Null((await db.Clientes.AsNoTracking().SingleAsync(c => c.Id == comEmail.Id)).ModeloEmailNotaId);
+            Assert.Equal(beta, (await lote.PreviaAsync(nota1.Id, null, CancellationToken.None)).ModeloId);
         }
         finally
         {

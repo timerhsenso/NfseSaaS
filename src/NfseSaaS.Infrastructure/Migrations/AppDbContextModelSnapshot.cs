@@ -418,6 +418,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<Guid?>("ModeloEmailNotaId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -451,6 +454,8 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("EmpresaId");
+
+                    b.HasIndex("ModeloEmailNotaId");
 
                     b.HasIndex("TenantId", "Apelido")
                         .IsUnique()
@@ -963,6 +968,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<Guid?>("ModeloEmailNotaId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("NomeFantasia")
                         .HasColumnType("text");
 
@@ -1031,6 +1039,8 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ModeloEmailNotaId");
 
                     b.HasIndex("TenantId", "Cnpj")
                         .IsUnique();
@@ -1318,15 +1328,20 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("EmpresaId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("Mensagem")
                         .IsRequired()
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
                     b.Property<bool>("OcultarDivulgacao")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("Padrao")
                         .HasColumnType("boolean");
 
                     b.Property<string>("ResponderPara")
@@ -1341,15 +1356,12 @@ namespace NfseSaaS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EmpresaId");
-
                     b.HasIndex("TenantId")
                         .IsUnique()
-                        .HasFilter("\"EmpresaId\" IS NULL");
+                        .HasFilter("\"Padrao\"");
 
-                    b.HasIndex("TenantId", "EmpresaId")
-                        .IsUnique()
-                        .HasFilter("\"EmpresaId\" IS NOT NULL");
+                    b.HasIndex("TenantId", "Nome")
+                        .IsUnique();
 
                     b.ToTable("modelos_email_nota", (string)null);
                 });
@@ -2353,6 +2365,11 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("EmpresaId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("NfseSaaS.Domain.Entities.ModeloEmailNota", null)
+                        .WithMany()
+                        .HasForeignKey("ModeloEmailNotaId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("NfseSaaS.Domain.Entities.ConfiguracaoAutomacaoNotaMensal", b =>
@@ -2403,6 +2420,14 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.Empresa", b =>
+                {
+                    b.HasOne("NfseSaaS.Domain.Entities.ModeloEmailNota", null)
+                        .WithMany()
+                        .HasForeignKey("ModeloEmailNotaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
             modelBuilder.Entity("NfseSaaS.Domain.Entities.ExportacaoDados", b =>
                 {
                     b.HasOne("NfseSaaS.Domain.Entities.Tenant", null)
@@ -2438,11 +2463,6 @@ namespace NfseSaaS.Infrastructure.Migrations
 
             modelBuilder.Entity("NfseSaaS.Domain.Entities.ModeloEmailNota", b =>
                 {
-                    b.HasOne("NfseSaaS.Domain.Entities.Empresa", null)
-                        .WithMany()
-                        .HasForeignKey("EmpresaId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
                     b.HasOne("NfseSaaS.Domain.Entities.Tenant", null)
                         .WithMany()
                         .HasForeignKey("TenantId")

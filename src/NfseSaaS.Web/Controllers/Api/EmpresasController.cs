@@ -97,6 +97,17 @@ public sealed class EmpresasController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Modelo do e-mail da nota desta empresa (cadastro Modelos de e-mail). Nulo = o padrão da conta.</summary>
+    [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Alterar)]
+    [HttpPut("{id:guid}/modelo-email-nota")]
+    public async Task<IActionResult> DefinirModeloEmailNota(
+        Guid id, [FromBody] NfseSaaS.Application.UseCases.EmailNota.DefinirModeloEmailNotaRequest request,
+        [FromServices] NfseSaaS.Application.UseCases.EmailNota.IModeloEmailNotaUseCase modelos, CancellationToken cancellationToken)
+    {
+        await modelos.DefinirDaEmpresaAsync(id, request, cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>Soft delete (Ativo=false) — reversível via /reativar. Use quando a Empresa já tem histórico.</summary>
     [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Alterar)]
     [HttpPost("{id:guid}/desativar")]

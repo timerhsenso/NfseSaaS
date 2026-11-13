@@ -87,4 +87,7 @@ public sealed class Cliente : BaseEntity, ITenantEntity
 
     /// <summary>true = cópias em Cco (ocultas); false = Cc (todos veem quem recebeu).</summary>
     public bool CopiaOculta { get; set; }
+
+    /// <summary>Modelo do e-mail da nota só deste cliente. Nulo = o da empresa (ou o padrão da conta).</summary>
+    public Guid? ModeloEmailNotaId { get; set; }
 }

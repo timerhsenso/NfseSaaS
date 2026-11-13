@@ -165,11 +165,14 @@ function lerEmailsCopiaCliente() {
         .filter(e => e && !vistos.has(e.toLowerCase()) && vistos.add(e.toLowerCase()));
 }
 
-function abrirModalNovoCliente() {
+const ROTULO_MODELO_CLIENTE = 'O da empresa (sem modelo próprio)';
+
+async function abrirModalNovoCliente() {
     limparFormularioCliente();
     document.getElementById('titulo-modal-cliente').textContent = 'Novo cliente';
     document.getElementById('cpfCnpj').disabled = false;
     prepararDisponibilidadeCliente(null);
+    await preencherSelectModeloEmail(document.getElementById('modeloEmailNotaCliente'), null, ROTULO_MODELO_CLIENTE);
     modalCliente.show();
 }
 
@@ -199,6 +202,7 @@ async function abrirModalEditarCliente(id) {
         document.getElementById('emailsCopia').value = (cliente.emailsCopia || []).join(', ');
         document.getElementById(cliente.copiaOculta ? 'copiaCco' : 'copiaCc').checked = true;
         prepararDisponibilidadeCliente(cliente.compartilhado === true);
+        await preencherSelectModeloEmail(document.getElementById('modeloEmailNotaCliente'), cliente.modeloEmailNotaId, ROTULO_MODELO_CLIENTE);
         atualizarEnvioEmailCliente();
         atualizarObrigatoriedadeEndereco();
 
@@ -260,12 +264,16 @@ async function salvarCliente(e) {
     }
 
     try {
+        let clienteId = id;
         if (id) {
             await apiFetch(`/api/clientes/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
         } else {
             payload.cpfCnpj = document.getElementById('cpfCnpj').value;
-            await apiFetch('/api/clientes', { method: 'POST', body: JSON.stringify(payload) });
+            clienteId = (await apiFetch('/api/clientes', { method: 'POST', body: JSON.stringify(payload) }))?.clienteId;
         }
+        // Modelo do e-mail da nota: sub-recurso próprio, só se mudou.
+        if (clienteId)
+            await salvarModeloEmailSeMudou(document.getElementById('modeloEmailNotaCliente'), `/api/clientes/${clienteId}/modelo-email-nota`);
 
         modalCliente.hide();
         await carregarClientes();

@@ -5,6 +5,36 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Alterado (modelos de e-mail reutilizáveis)
+- **Novo cadastro "Modelos de e-mail"** (menu Cadastros e referência): o texto
+  do e-mail da nota deixa de ser uma configuração da conta e vira modelos com
+  nome. Lista à esquerda (quem usa cada um), editor com os botões de campo e
+  prévia à direita. Crie quantos quiser (até 30), **duplique** para aproveitar
+  o texto de outro, marque um como **padrão da conta** (estrela) e exclua os
+  que não usa (quem usava volta ao padrão; o padrão não pode ser excluído).
+  Toda conta ganha o modelo "Padrão" com o texto do sistema.
+- **Empresa › Dados gerais › Modelo do e-mail da nota**: "Padrão da conta" ou
+  um modelo. Várias empresas podem usar o mesmo modelo.
+- **Cliente › Modelo do e-mail da nota** (opcional): para o cliente que
+  precisa de texto próprio. Ordem no envio: cliente → empresa → padrão da conta.
+- **Enviar por e-mail (uma nota)**: o modal mostra o modelo usado e deixa
+  **trocar o modelo** ali (texto, respostas e cópia oculta vêm do escolhido),
+  além de ajustar o texto só naquele envio.
+- Respostas e cópia oculta passam a ser de cada modelo; tirar o convite do
+  rodapé também (plano Escritório).
+- Configurações da conta › E-mail da nota vira só um atalho para Modelos de e-mail.
+- API: `GET/POST /api/modelos-email-nota`, `GET /api/modelos-email-nota/opcoes`,
+  `PUT/DELETE /api/modelos-email-nota/{id}`, `POST .../{id}/duplicar`,
+  `POST .../{id}/padrao`, `POST /api/modelos-email-nota/teste`,
+  `PUT /api/empresas/{id}/modelo-email-nota`, `PUT /api/clientes/{id}/modelo-email-nota`;
+  `GET /api/nfse/{id}/email-previa?modeloId=`; `POST /api/nfse/{id}/enviar-email`
+  aceita `modeloId`. Saíram `GET/PUT /api/conta/email-nota` e `POST /api/conta/email-nota/teste`.
+- Banco: `modelos_email_nota` ganha `Nome` (único na conta) e `Padrao` (um por
+  conta) e perde `EmpresaId`; `empresas` e `clientes` ganham `ModeloEmailNotaId`
+  (FK, excluir o modelo zera). A migration converte o que existir: o modelo
+  da conta vira "Padrão"; o de cada empresa vira um modelo com o nome dela,
+  já escolhido na empresa.
+
 ### Adicionado (e-mail da nota: texto próprio e envio em lote)
 - **Configurações da conta › E-mail da nota** (nova seção): assunto e mensagem
   do e-mail que leva a nota (PDF e XML) ao cliente, com **botões que inserem

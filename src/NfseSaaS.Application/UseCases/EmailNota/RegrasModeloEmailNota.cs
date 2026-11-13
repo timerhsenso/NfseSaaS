@@ -26,8 +26,13 @@ public sealed record DadosEmailNota(
     string? ChaveAcesso,
     bool Homologacao);
 
-/// <summary>Modelo em vigor para uma empresa (o dela, o da conta ou o padrão do sistema).</summary>
+/// <summary>
+/// Modelo em vigor para uma nota (o do cliente, o da empresa, o padrão da
+/// conta ou o texto padrão do sistema). ModeloId nulo = texto do sistema.
+/// </summary>
 public sealed record ModeloEmailNotaEfetivo(
+    Guid? ModeloId,
+    string Nome,
     string Assunto,
     string Mensagem,
     string? ResponderPara,
@@ -35,9 +40,9 @@ public sealed record ModeloEmailNotaEfetivo(
     bool OcultarDivulgacao);
 
 /// <summary>
-/// Texto do e-mail da nota: campos entre colchetes que o usuário insere
+/// Texto do e-mail da nota (cadastro Modelos de e-mail): campos entre colchetes que o usuário insere
 /// por botões ("[Número da nota]") e o sistema troca pelos dados de cada
-/// nota. Puro — a prévia da tela (configuracoes-conta.js) repete a mesma
+/// nota. Puro — a prévia da tela (modelos-email.js) repete a mesma
 /// troca. O que dá validade à nota (quadro com número, valor e chave,
 /// consulta pública, anexos) fica fixo abaixo da mensagem: o usuário
 /// personaliza a conversa, não tira o essencial.
@@ -79,20 +84,28 @@ public static partial class RegrasModeloEmailNota
         "Qualquer dúvida, é só responder este e-mail.\n\n" +
         "Atenciosamente,\n" + CampoEmpresa;
 
-    public static ModeloEmailNotaEfetivo Padrao { get; } = new(AssuntoPadrao, MensagemPadrao, null, null, false);
+    /// <summary>Nome do modelo que toda conta ganha (com o texto padrão).</summary>
+    public const string NomeModeloInicial = "Padrão";
+
+    /// <summary>Limite de modelos por conta (cadastro, não é cobrança).</summary>
+    public const int MaximoModelos = 30;
+
+    public static ModeloEmailNotaEfetivo Padrao { get; } = new(null, "Texto padrão do sistema", AssuntoPadrao, MensagemPadrao, null, null, false);
 
     /// <summary>
-    /// O modelo que vale para a empresa: o personalizado dela, senão o da
-    /// conta, senão o padrão. Ocultar o rodapé vem sempre da conta (é do plano).
+    /// O modelo que vale para uma nota: o do cliente, senão o da empresa,
+    /// senão o padrão da conta, senão o texto do sistema. Tirar o rodapé só
+    /// vale no plano Escritório.
     /// </summary>
-    public static ModeloEmailNotaEfetivo Resolver(ModeloEmailNota? daEmpresa, ModeloEmailNota? daConta, bool podeOcultarDivulgacao)
-    {
-        var ocultar = podeOcultarDivulgacao && (daConta?.OcultarDivulgacao ?? false);
-        var modelo = daEmpresa ?? daConta;
-        return modelo is null
-            ? Padrao with { OcultarDivulgacao = ocultar }
-            : new ModeloEmailNotaEfetivo(modelo.Assunto, modelo.Mensagem, modelo.ResponderPara, modelo.CopiaOcultaPara, ocultar);
-    }
+    public static ModeloEmailNotaEfetivo Resolver(
+        ModeloEmailNota? doCliente, ModeloEmailNota? daEmpresa, ModeloEmailNota? padraoDaConta, bool podeOcultarDivulgacao) =>
+        Efetivo(doCliente ?? daEmpresa ?? padraoDaConta, podeOcultarDivulgacao);
+
+    public static ModeloEmailNotaEfetivo Efetivo(ModeloEmailNota? modelo, bool podeOcultarDivulgacao) =>
+        modelo is null
+            ? Padrao
+            : new ModeloEmailNotaEfetivo(modelo.Id, modelo.Nome, modelo.Assunto, modelo.Mensagem, modelo.ResponderPara, modelo.CopiaOcultaPara,
+                podeOcultarDivulgacao && modelo.OcultarDivulgacao);
 
     /// <summary>"novembro de 2026".</summary>
     public static string MesPorExtenso(DateOnly competencia) =>
@@ -173,7 +186,19 @@ public static partial class RegrasModeloEmailNota
         return html.ToString();
     }
 
-    /// <summary>Erros do modelo (vazio = válido). E-mails opcionais, mas se informados precisam ser válidos.</summary>
+    /// <summary>Erros do modelo inteiro (nome incluído); vazio = válido.</summary>
+    public static IReadOnlyList<string> ValidarModelo(string? nome, string? assunto, string? mensagem, string? responderPara, string? copiaOcultaPara)
+    {
+        var erros = new List<string>();
+        if (string.IsNullOrWhiteSpace(nome))
+            erros.Add("Dê um nome ao modelo (ex.: \"Padrão escritório\").");
+        else if (nome.Trim().Length > ModeloEmailNota.TamanhoMaximoNome)
+            erros.Add($"O nome pode ter no máximo {ModeloEmailNota.TamanhoMaximoNome} caracteres.");
+        erros.AddRange(Validar(assunto, mensagem, responderPara, copiaOcultaPara));
+        return erros;
+    }
+
+    /// <summary>Erros do texto (vazio = válido). E-mails opcionais, mas se informados precisam ser válidos.</summary>
     public static IReadOnlyList<string> Validar(string? assunto, string? mensagem, string? responderPara, string? copiaOcultaPara)
     {
         var erros = new List<string>();

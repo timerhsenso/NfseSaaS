@@ -85,6 +85,17 @@ public sealed class ClientesController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Modelo do e-mail da nota só deste cliente (cadastro Modelos de e-mail). Nulo = o da empresa.</summary>
+    [RequerPermissao(TelaCatalogo.Clientes, AcaoPermissao.Alterar)]
+    [HttpPut("{id:guid}/modelo-email-nota")]
+    public async Task<IActionResult> DefinirModeloEmailNota(
+        Guid id, [FromBody] NfseSaaS.Application.UseCases.EmailNota.DefinirModeloEmailNotaRequest request,
+        [FromServices] NfseSaaS.Application.UseCases.EmailNota.IModeloEmailNotaUseCase modelos, CancellationToken cancellationToken)
+    {
+        await modelos.DefinirDoClienteAsync(id, request, cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>Soft delete (Ativo=false) — reversível via /reativar. Use quando o Cliente já tem histórico (Nfse).</summary>
     [RequerPermissao(TelaCatalogo.Clientes, AcaoPermissao.Alterar)]
     [HttpPost("{id:guid}/desativar")]

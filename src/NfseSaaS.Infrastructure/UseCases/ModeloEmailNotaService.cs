@@ -12,11 +12,12 @@ using NfseSaaS.Infrastructure.Persistence;
 namespace NfseSaaS.Infrastructure.UseCases;
 
 /// <summary>
-/// Configurações da conta › E-mail da nota: o texto do e-mail que leva a
-/// nota ao cliente, da conta ou personalizado por empresa (ver
-/// <see cref="RegrasModeloEmailNota"/>). Qualquer usuário lê; só o
-/// administrador grava. Ocultar o convite do rodapé é do plano Escritório
-/// (mesma regra da logomarca).
+/// Cadastro "Modelos de e-mail" (ver <see cref="RegrasModeloEmailNota"/>):
+/// modelos reutilizáveis do e-mail da nota, um padrão por conta, e a
+/// escolha do modelo na Empresa e no Cliente. Qualquer usuário lê; só o
+/// administrador cria, altera e exclui modelos. Escolher o modelo de uma
+/// Empresa ou de um Cliente segue a permissão daquelas telas (controller).
+/// Tirar o convite do rodapé é do plano Escritório (mesma regra da logomarca).
 /// </summary>
 public sealed class ModeloEmailNotaService : IModeloEmailNotaUseCase
 {
@@ -43,105 +44,144 @@ public sealed class ModeloEmailNotaService : IModeloEmailNotaUseCase
         _plataforma = plataforma.Value;
     }
 
-    public async Task<ModeloEmailNotaResponse> ObterAsync(Guid? empresaId, CancellationToken cancellationToken)
+    public async Task<ModelosEmailNotaResponse> ListarAsync(CancellationToken cancellationToken)
     {
         var (tenantId, usuarioId) = Identificar();
+        await GarantirPadraoAsync(cancellationToken);
 
+        var modelos = await _db.ModelosEmailNota.AsNoTracking()
+            .OrderByDescending(m => m.Padrao).ThenBy(m => m.Nome)
+            .ToListAsync(cancellationToken);
         var empresas = await _db.Empresas.AsNoTracking()
-            .OrderBy(e => e.NomeFantasia ?? e.RazaoSocial)
-            .Select(e => new EmpresaModeloEmailNota(
-                e.Id, e.NomeFantasia ?? e.RazaoSocial, e.Email,
-                _db.ModelosEmailNota.Any(m => m.EmpresaId == e.Id)))
+            .Where(e => e.ModeloEmailNotaId != null)
+            .Select(e => new { e.ModeloEmailNotaId, Nome = e.NomeFantasia ?? e.RazaoSocial })
+            .ToListAsync(cancellationToken);
+        var clientes = await _db.Clientes.AsNoTracking()
+            .Where(c => c.ModeloEmailNotaId != null)
+            .GroupBy(c => c.ModeloEmailNotaId)
+            .Select(g => new { ModeloId = g.Key, Quantidade = g.Count() })
             .ToListAsync(cancellationToken);
 
-        EmpresaModeloEmailNota? empresa = null;
-        if (empresaId is { } id)
-            empresa = empresas.FirstOrDefault(e => e.Id == id)
-                ?? throw new RecursoNaoEncontradoException($"Empresa {id} não encontrada.");
+        var itens = modelos.Select(m => new ModeloEmailNotaItem(
+                m.Id, m.Nome, m.Padrao, m.Assunto, m.Mensagem, m.ResponderPara, m.CopiaOcultaPara, m.OcultarDivulgacao,
+                empresas.Where(e => e.ModeloEmailNotaId == m.Id).Select(e => e.Nome).OrderBy(n => n).ToList(),
+                clientes.FirstOrDefault(c => c.ModeloId == m.Id)?.Quantidade ?? 0))
+            .ToList();
 
-        var daConta = await _db.ModelosEmailNota.AsNoTracking().FirstOrDefaultAsync(m => m.EmpresaId == null, cancellationToken);
-        var daEmpresa = empresaId is null
-            ? null
-            : await _db.ModelosEmailNota.AsNoTracking().FirstOrDefaultAsync(m => m.EmpresaId == empresaId, cancellationToken);
+        // Na prévia, [Empresa] mostra a primeira empresa de verdade.
+        var primeiraEmpresa = await _db.Empresas.AsNoTracking().OrderBy(e => e.CreatedAt)
+            .Select(e => e.NomeFantasia ?? e.RazaoSocial).FirstOrDefaultAsync(cancellationToken);
+        var campos = RegrasModeloEmailNota.Campos
+            .Select(c => c.Etiqueta == RegrasModeloEmailNota.CampoEmpresa && primeiraEmpresa is not null ? c with { Exemplo = primeiraEmpresa } : c)
+            .ToList();
 
-        var podeOcultar = await PodeOcultarDivulgacaoAsync(tenantId, usuarioId, cancellationToken);
-        var mostrado = daEmpresa ?? daConta;
-
-        return new ModeloEmailNotaResponse(
-            empresaId,
-            Personalizado: empresaId is null ? daConta is not null : daEmpresa is not null,
-            mostrado?.Assunto ?? RegrasModeloEmailNota.AssuntoPadrao,
-            mostrado?.Mensagem ?? RegrasModeloEmailNota.MensagemPadrao,
-            mostrado?.ResponderPara,
-            mostrado?.CopiaOcultaPara,
-            podeOcultar && (daConta?.OcultarDivulgacao ?? false),
-            podeOcultar,
+        return new ModelosEmailNotaResponse(
+            itens, campos,
             await EhAdministradorAsync(tenantId, usuarioId, cancellationToken),
-            empresa?.Email,
-            // Na prévia, [Empresa] mostra a empresa de verdade (a escolhida, ou a primeira).
-            RegrasModeloEmailNota.Campos
-                .Select(c => c.Etiqueta == RegrasModeloEmailNota.CampoEmpresa && (empresa ?? empresas.FirstOrDefault()) is { } nome
-                    ? c with { Exemplo = nome.Nome }
-                    : c)
-                .ToList(),
-            empresas);
+            await PodeOcultarDivulgacaoAsync(tenantId, usuarioId, cancellationToken));
     }
 
-    public async Task<ModeloEmailNotaResponse> SalvarAsync(SalvarModeloEmailNotaRequest request, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<OpcaoModeloEmailNota>> OpcoesAsync(CancellationToken cancellationToken)
     {
-        var (tenantId, usuarioId) = Identificar();
-        if (!await EhAdministradorAsync(tenantId, usuarioId, cancellationToken))
-            throw new RegraNegocioException("Só o administrador da conta muda o e-mail da nota.");
+        await GarantirPadraoAsync(cancellationToken);
+        return await _db.ModelosEmailNota.AsNoTracking()
+            .OrderByDescending(m => m.Padrao).ThenBy(m => m.Nome)
+            .Select(m => new OpcaoModeloEmailNota(m.Id, m.Nome, m.Padrao))
+            .ToListAsync(cancellationToken);
+    }
 
-        if (request.EmpresaId is { } empresaId
-            && !await _db.Empresas.AnyAsync(e => e.Id == empresaId, cancellationToken))
-            throw new RecursoNaoEncontradoException($"Empresa {empresaId} não encontrada.");
+    public async Task<Guid> CriarAsync(SalvarModeloEmailNotaRequest request, CancellationToken cancellationToken)
+    {
+        var (tenantId, usuarioId) = await ExigirAdministradorAsync(cancellationToken);
+        await ValidarAsync(request, idAtual: null, cancellationToken);
 
-        var modelo = await _db.ModelosEmailNota.FirstOrDefaultAsync(m => m.EmpresaId == request.EmpresaId, cancellationToken);
+        var quantidade = await _db.ModelosEmailNota.CountAsync(cancellationToken);
+        if (quantidade >= RegrasModeloEmailNota.MaximoModelos)
+            throw new RegraNegocioException($"A conta pode ter até {RegrasModeloEmailNota.MaximoModelos} modelos. Exclua um que não usa mais.");
 
-        // Empresa que volta a usar o modelo da conta.
-        if (request.EmpresaId is not null && !request.Personalizar)
-        {
-            if (modelo is not null)
-            {
-                _db.ModelosEmailNota.Remove(modelo);
-                _auditLogWriter.Registrar("SalvarModeloEmailNota", "Empresa", request.EmpresaId, new { personalizado = false });
-                await _db.SaveChangesAsync(cancellationToken);
-            }
-            return await ObterAsync(request.EmpresaId, cancellationToken);
-        }
+        var modelo = new ModeloEmailNota { Padrao = quantidade == 0 };
+        await PreencherAsync(modelo, request, tenantId, usuarioId, cancellationToken);
+        _db.ModelosEmailNota.Add(modelo);
 
-        var erros = RegrasModeloEmailNota.Validar(request.Assunto, request.Mensagem, request.ResponderPara, request.CopiaOcultaPara);
-        if (erros.Count > 0)
-            throw new RegraNegocioException(string.Join(" ", erros));
-
-        if (modelo is null)
-        {
-            modelo = new ModeloEmailNota { EmpresaId = request.EmpresaId };
-            _db.ModelosEmailNota.Add(modelo);
-        }
-
-        modelo.Assunto = request.Assunto!.Trim();
-        modelo.Mensagem = request.Mensagem!.Replace("\r\n", "\n").Trim();
-        modelo.ResponderPara = Limpar(request.ResponderPara);
-        modelo.CopiaOcultaPara = Limpar(request.CopiaOcultaPara);
-        // Rodapé é do plano e vale para a conta inteira.
-        modelo.OcultarDivulgacao = request.EmpresaId is null
-            && request.OcultarDivulgacao
-            && await PodeOcultarDivulgacaoAsync(tenantId, usuarioId, cancellationToken);
-
-        _auditLogWriter.Registrar("SalvarModeloEmailNota", request.EmpresaId is null ? "Tenant" : "Empresa", request.EmpresaId ?? tenantId,
-            new { modelo.Assunto, modelo.ResponderPara, modelo.CopiaOcultaPara, modelo.OcultarDivulgacao });
+        _auditLogWriter.Registrar("CriarModeloEmailNota", "ModeloEmailNota", modelo.Id, new { modelo.Nome, modelo.Assunto });
         await _db.SaveChangesAsync(cancellationToken);
+        return modelo.Id;
+    }
 
-        return await ObterAsync(request.EmpresaId, cancellationToken);
+    public async Task AtualizarAsync(Guid id, SalvarModeloEmailNotaRequest request, CancellationToken cancellationToken)
+    {
+        var (tenantId, usuarioId) = await ExigirAdministradorAsync(cancellationToken);
+        var modelo = await ObterAsync(id, cancellationToken);
+        await ValidarAsync(request, id, cancellationToken);
+
+        await PreencherAsync(modelo, request, tenantId, usuarioId, cancellationToken);
+        _auditLogWriter.Registrar("AlterarModeloEmailNota", "ModeloEmailNota", modelo.Id,
+            new { modelo.Nome, modelo.Assunto, modelo.ResponderPara, modelo.CopiaOcultaPara, modelo.OcultarDivulgacao });
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<Guid> DuplicarAsync(Guid id, CancellationToken cancellationToken)
+    {
+        await ExigirAdministradorAsync(cancellationToken);
+        var original = await ObterAsync(id, cancellationToken);
+        if (await _db.ModelosEmailNota.CountAsync(cancellationToken) >= RegrasModeloEmailNota.MaximoModelos)
+            throw new RegraNegocioException($"A conta pode ter até {RegrasModeloEmailNota.MaximoModelos} modelos. Exclua um que não usa mais.");
+
+        var nomes = await _db.ModelosEmailNota.Select(m => m.Nome).ToListAsync(cancellationToken);
+        var copia = new ModeloEmailNota
+        {
+            Nome = NomeLivre("Cópia de " + original.Nome, nomes),
+            Assunto = original.Assunto,
+            Mensagem = original.Mensagem,
+            ResponderPara = original.ResponderPara,
+            CopiaOcultaPara = original.CopiaOcultaPara,
+            OcultarDivulgacao = original.OcultarDivulgacao
+        };
+        _db.ModelosEmailNota.Add(copia);
+        _auditLogWriter.Registrar("CriarModeloEmailNota", "ModeloEmailNota", copia.Id, new { copia.Nome, DuplicadoDe = original.Id });
+        await _db.SaveChangesAsync(cancellationToken);
+        return copia.Id;
+    }
+
+    public async Task DefinirPadraoAsync(Guid id, CancellationToken cancellationToken)
+    {
+        await ExigirAdministradorAsync(cancellationToken);
+        var modelo = await ObterAsync(id, cancellationToken);
+        if (modelo.Padrao)
+            return;
+
+        // Dois passos numa transação: o índice único de "um padrão por
+        // conta" não deixa existir dois ao mesmo tempo nem por um instante.
+        var estrategia = _db.Database.CreateExecutionStrategy();
+        await estrategia.ExecuteAsync(async () =>
+        {
+            await using var transacao = await _db.Database.BeginTransactionAsync(cancellationToken);
+            await _db.ModelosEmailNota.Where(m => m.Padrao).ExecuteUpdateAsync(s => s.SetProperty(m => m.Padrao, false), cancellationToken);
+            modelo.Padrao = true;
+            _auditLogWriter.Registrar("PadraoModeloEmailNota", "ModeloEmailNota", modelo.Id, new { modelo.Nome });
+            await _db.SaveChangesAsync(cancellationToken);
+            await transacao.CommitAsync(cancellationToken);
+        });
+    }
+
+    public async Task ExcluirAsync(Guid id, CancellationToken cancellationToken)
+    {
+        await ExigirAdministradorAsync(cancellationToken);
+        var modelo = await ObterAsync(id, cancellationToken);
+        if (modelo.Padrao)
+            throw new RegraNegocioException("O modelo padrão não pode ser excluído. Marque outro como padrão antes.");
+
+        // FK SET NULL no banco: empresas e clientes que usavam voltam ao padrão.
+        _db.ModelosEmailNota.Remove(modelo);
+        _auditLogWriter.Registrar("ExcluirModeloEmailNota", "ModeloEmailNota", modelo.Id, new { modelo.Nome });
+        await _db.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<string> EnviarTesteAsync(EnviarTesteModeloEmailNotaRequest request, CancellationToken cancellationToken)
     {
         var (tenantId, usuarioId) = Identificar();
 
-        var erros = RegrasModeloEmailNota.Validar(request.Assunto, request.Mensagem, null, null);
+        var erros = RegrasModeloEmailNota.Validar(request.Assunto, request.Mensagem, request.ResponderPara, null);
         if (erros.Count > 0)
             throw new RegraNegocioException(string.Join(" ", erros));
 
@@ -149,11 +189,9 @@ public sealed class ModeloEmailNotaService : IModeloEmailNotaUseCase
         if (string.IsNullOrWhiteSpace(email))
             throw new RegraNegocioException("Seu usuário não tem e-mail para receber o teste.");
 
-        var empresa = request.EmpresaId is { } empresaId
-            ? await _db.Empresas.AsNoTracking().Where(e => e.Id == empresaId)
-                .Select(e => new { Nome = e.NomeFantasia ?? e.RazaoSocial, e.RazaoSocial, e.Email }).FirstOrDefaultAsync(cancellationToken)
-            : await _db.Empresas.AsNoTracking().OrderBy(e => e.CreatedAt)
-                .Select(e => new { Nome = e.NomeFantasia ?? e.RazaoSocial, e.RazaoSocial, e.Email }).FirstOrDefaultAsync(cancellationToken);
+        var empresa = await _db.Empresas.AsNoTracking().OrderBy(e => e.CreatedAt)
+            .Select(e => new { Nome = e.NomeFantasia ?? e.RazaoSocial, e.RazaoSocial, e.Email })
+            .FirstOrDefaultAsync(cancellationToken);
         var nomeEmpresa = empresa?.Nome ?? "Sua Empresa";
 
         var exemplo = new DadosEmailNota(
@@ -161,38 +199,140 @@ public sealed class ModeloEmailNotaService : IModeloEmailNotaUseCase
             "58", new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1), 344.21m, DateTimeOffset.UtcNow,
             "Manutenção do sistema", "2026/0001", ChaveAcesso: null, Homologacao: false);
 
-        var efetivo = request.EmpresaId is { } id
-            ? await ResolverAsync(tenantId, id, cancellationToken)
-            : RegrasModeloEmailNota.Resolver(null,
-                await _db.ModelosEmailNota.AsNoTracking().FirstOrDefaultAsync(m => m.EmpresaId == null, cancellationToken),
-                await PodeOcultarDivulgacaoAsync(tenantId, usuarioId, cancellationToken));
-
+        var ocultar = request.OcultarDivulgacao && await PodeOcultarDivulgacaoAsync(tenantId, usuarioId, cancellationToken);
         var assunto = "[Teste do modelo] " + RegrasModeloEmailNota.MontarAssunto(request.Assunto!, exemplo);
         var corpo = "<p style=\"color:#b45309\"><strong>Teste do modelo do e-mail da nota, com dados de exemplo e sem anexos.</strong></p>"
-            + RegrasModeloEmailNota.MontarCorpoHtml(request.Mensagem!, exemplo, !efetivo.OcultarDivulgacao, EnviarNfsePorEmailUseCase.LinkDivulgacao);
+            + RegrasModeloEmailNota.MontarCorpoHtml(request.Mensagem!, exemplo, !ocultar, EnviarNfsePorEmailUseCase.LinkDivulgacao);
 
+        var responderPara = string.IsNullOrWhiteSpace(request.ResponderPara) ? empresa?.Email : request.ResponderPara.Trim();
         await _emailQueue.EnfileirarAsync(
             new EmailParaEnfileirar(TipoEmailCatalogo.NfseTomador, usuarioId, email, assunto, corpo,
-                ResponderPara: efetivo.ResponderPara ?? empresa?.Email),
+                ResponderPara: string.IsNullOrWhiteSpace(responderPara) ? null : responderPara),
             cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
 
         return email;
     }
 
-    public async Task<ModeloEmailNotaEfetivo> ResolverAsync(Guid tenantId, Guid empresaId, CancellationToken cancellationToken)
+    public async Task DefinirDaEmpresaAsync(Guid empresaId, DefinirModeloEmailNotaRequest request, CancellationToken cancellationToken)
+    {
+        var empresa = await _db.Empresas.FirstOrDefaultAsync(e => e.Id == empresaId, cancellationToken)
+            ?? throw new RecursoNaoEncontradoException($"Empresa {empresaId} não encontrada.");
+        await GarantirModeloDaContaAsync(request.ModeloId, cancellationToken);
+        if (empresa.ModeloEmailNotaId == request.ModeloId)
+            return;
+
+        empresa.ModeloEmailNotaId = request.ModeloId;
+        _auditLogWriter.Registrar("DefinirModeloEmailNota", "Empresa", empresaId, new { request.ModeloId });
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task DefinirDoClienteAsync(Guid clienteId, DefinirModeloEmailNotaRequest request, CancellationToken cancellationToken)
+    {
+        var cliente = await _db.Clientes.FirstOrDefaultAsync(c => c.Id == clienteId, cancellationToken)
+            ?? throw new RecursoNaoEncontradoException($"Cliente {clienteId} não encontrado.");
+        await GarantirModeloDaContaAsync(request.ModeloId, cancellationToken);
+        if (cliente.ModeloEmailNotaId == request.ModeloId)
+            return;
+
+        cliente.ModeloEmailNotaId = request.ModeloId;
+        _auditLogWriter.Registrar("DefinirModeloEmailNota", "Cliente", clienteId, new { request.ModeloId });
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<ModeloEmailNotaEfetivo> ResolverAsync(
+        Guid tenantId, Guid empresaId, Guid clienteId, Guid? modeloEscolhidoId, CancellationToken cancellationToken)
     {
         // IgnoreQueryFilters + TenantId explícito: também roda fora de uma
         // requisição (envio automático depois da autorização, jobs).
+        var doCliente = await _db.Clientes.IgnoreQueryFilters().AsNoTracking()
+            .Where(c => c.Id == clienteId && c.TenantId == tenantId).Select(c => c.ModeloEmailNotaId).FirstOrDefaultAsync(cancellationToken);
+        var daEmpresa = await _db.Empresas.IgnoreQueryFilters().AsNoTracking()
+            .Where(e => e.Id == empresaId && e.TenantId == tenantId).Select(e => e.ModeloEmailNotaId).FirstOrDefaultAsync(cancellationToken);
+
         var modelos = await _db.ModelosEmailNota.IgnoreQueryFilters().AsNoTracking()
-            .Where(m => m.TenantId == tenantId && (m.EmpresaId == null || m.EmpresaId == empresaId))
+            .Where(m => m.TenantId == tenantId
+                && (m.Padrao || m.Id == modeloEscolhidoId || m.Id == doCliente || m.Id == daEmpresa))
             .ToListAsync(cancellationToken);
         var perfil = await _db.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.Perfil).FirstOrDefaultAsync(cancellationToken);
+        var podeOcultar = RegrasLogoConta.Disponivel(perfil, operadorPlataforma: false);
+
+        if (modeloEscolhidoId is { } escolhido)
+            return RegrasModeloEmailNota.Efetivo(
+                modelos.FirstOrDefault(m => m.Id == escolhido)
+                    ?? throw new RecursoNaoEncontradoException($"Modelo de e-mail {escolhido} não encontrado."),
+                podeOcultar);
 
         return RegrasModeloEmailNota.Resolver(
-            modelos.FirstOrDefault(m => m.EmpresaId == empresaId),
-            modelos.FirstOrDefault(m => m.EmpresaId == null),
-            RegrasLogoConta.Disponivel(perfil, operadorPlataforma: false));
+            modelos.FirstOrDefault(m => m.Id == doCliente),
+            modelos.FirstOrDefault(m => m.Id == daEmpresa),
+            modelos.FirstOrDefault(m => m.Padrao),
+            podeOcultar);
+    }
+
+    /// <summary>Conta sem modelo padrão ganha o "Padrão" com o texto do sistema.</summary>
+    private async Task GarantirPadraoAsync(CancellationToken cancellationToken)
+    {
+        if (await _db.ModelosEmailNota.AnyAsync(m => m.Padrao, cancellationToken))
+            return;
+
+        var nomes = await _db.ModelosEmailNota.Select(m => m.Nome).ToListAsync(cancellationToken);
+        _db.ModelosEmailNota.Add(new ModeloEmailNota
+        {
+            Nome = NomeLivre(RegrasModeloEmailNota.NomeModeloInicial, nomes),
+            Padrao = true,
+            Assunto = RegrasModeloEmailNota.AssuntoPadrao,
+            Mensagem = RegrasModeloEmailNota.MensagemPadrao
+        });
+        try
+        {
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // Duas abas abrindo ao mesmo tempo: o outro pedido já criou.
+            _db.ChangeTracker.Clear();
+        }
+    }
+
+    private async Task ValidarAsync(SalvarModeloEmailNotaRequest request, Guid? idAtual, CancellationToken cancellationToken)
+    {
+        var erros = RegrasModeloEmailNota.ValidarModelo(request.Nome, request.Assunto, request.Mensagem, request.ResponderPara, request.CopiaOcultaPara).ToList();
+        var nome = request.Nome?.Trim();
+        if (!string.IsNullOrEmpty(nome)
+            && await _db.ModelosEmailNota.AnyAsync(m => m.Nome.ToLower() == nome.ToLower() && m.Id != idAtual, cancellationToken))
+            erros.Add($"Já existe um modelo chamado \"{nome}\".");
+        if (erros.Count > 0)
+            throw new RegraNegocioException(string.Join(" ", erros));
+    }
+
+    private async Task PreencherAsync(ModeloEmailNota modelo, SalvarModeloEmailNotaRequest request, Guid tenantId, Guid usuarioId, CancellationToken cancellationToken)
+    {
+        modelo.Nome = request.Nome!.Trim();
+        modelo.Assunto = request.Assunto!.Trim();
+        modelo.Mensagem = request.Mensagem!.Replace("\r\n", "\n").Trim();
+        modelo.ResponderPara = Limpar(request.ResponderPara);
+        modelo.CopiaOcultaPara = Limpar(request.CopiaOcultaPara);
+        modelo.OcultarDivulgacao = request.OcultarDivulgacao && await PodeOcultarDivulgacaoAsync(tenantId, usuarioId, cancellationToken);
+    }
+
+    private async Task<ModeloEmailNota> ObterAsync(Guid id, CancellationToken cancellationToken) =>
+        await _db.ModelosEmailNota.FirstOrDefaultAsync(m => m.Id == id, cancellationToken)
+            ?? throw new RecursoNaoEncontradoException($"Modelo de e-mail {id} não encontrado.");
+
+    private async Task GarantirModeloDaContaAsync(Guid? modeloId, CancellationToken cancellationToken)
+    {
+        if (modeloId is { } id && !await _db.ModelosEmailNota.AnyAsync(m => m.Id == id, cancellationToken))
+            throw new RecursoNaoEncontradoException($"Modelo de e-mail {id} não encontrado.");
+    }
+
+    internal static string NomeLivre(string desejado, IReadOnlyCollection<string> existentes)
+    {
+        var baseNome = desejado.Length > ModeloEmailNota.TamanhoMaximoNome - 4 ? desejado[..(ModeloEmailNota.TamanhoMaximoNome - 4)] : desejado;
+        var nome = baseNome;
+        for (var i = 2; existentes.Any(e => string.Equals(e, nome, StringComparison.OrdinalIgnoreCase)); i++)
+            nome = $"{baseNome} ({i})";
+        return nome;
     }
 
     private async Task<bool> PodeOcultarDivulgacaoAsync(Guid tenantId, Guid usuarioId, CancellationToken cancellationToken)
@@ -202,6 +342,14 @@ public sealed class ModeloEmailNotaService : IModeloEmailNotaUseCase
     }
 
     private static string? Limpar(string? email) => string.IsNullOrWhiteSpace(email) ? null : email.Trim();
+
+    private async Task<(Guid TenantId, Guid UsuarioId)> ExigirAdministradorAsync(CancellationToken cancellationToken)
+    {
+        var (tenantId, usuarioId) = Identificar();
+        if (!await EhAdministradorAsync(tenantId, usuarioId, cancellationToken))
+            throw new RegraNegocioException("Só o administrador da conta cria e altera os modelos de e-mail.");
+        return (tenantId, usuarioId);
+    }
 
     private (Guid TenantId, Guid UsuarioId) Identificar() =>
         _currentTenant.TenantId is { } t && _currentUser.UserId is { } u

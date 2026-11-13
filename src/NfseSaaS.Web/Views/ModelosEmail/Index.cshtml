@@ -1,0 +1,95 @@
+@{
+    ViewData["Title"] = "Modelos de e-mail";
+}
+
+@* Modelos reutilizáveis do e-mail que leva a nota ao cliente. Um é o padrão
+   da conta; Empresa e Cliente escolhem o seu no próprio cadastro. Só o
+   administrador cria e altera (modelos-email.js esconde os botões; o
+   servidor confere de novo). *@
+@section AcoesPagina {
+    <button type="button" class="btn btn-primary btn-sm d-none" id="btn-novo-modelo">
+        <i class="bi bi-plus-lg"></i> Novo modelo
+    </button>
+}
+
+<p class="text-muted small mb-3" id="modelos-intro">
+    O texto do e-mail que leva a nota (PDF e XML) ao seu cliente. Crie quantos modelos quiser e escolha qual cada
+    <a href="/Empresas">empresa</a> usa (ou um cliente específico, no cadastro dele). Quem não escolheu usa o modelo padrão <i class="bi bi-star-fill text-warning" aria-hidden="true"></i>.
+</p>
+
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="list-group" id="lista-modelos" aria-label="Modelos de e-mail"></div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card" id="editor-modelo">
+            <div class="card-header d-flex align-items-center gap-2">
+                <span class="fw-semibold" id="editor-titulo">Modelo</span>
+                <span class="badge text-bg-warning d-none" id="editor-selo-padrao"><i class="bi bi-star-fill"></i> Padrão</span>
+                <div class="dropdown ms-auto d-none" id="editor-mais">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Mais ações">
+                        <i class="bi bi-three-dots"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><button type="button" class="dropdown-item" id="btn-duplicar-modelo"><i class="bi bi-copy"></i> Duplicar</button></li>
+                        <li><button type="button" class="dropdown-item" id="btn-padrao-modelo"><i class="bi bi-star"></i> Tornar padrão da conta</button></li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><button type="button" class="dropdown-item text-danger" id="btn-excluir-modelo"><i class="bi bi-trash"></i> Excluir</button></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="small text-muted mb-3" id="editor-uso"></div>
+                <div class="row g-4">
+                    <div class="col-xl-7">
+                        <form id="form-modelo" novalidate>
+                            <label class="form-label" for="modelo-nome">Nome do modelo</label>
+                            <input type="text" class="form-control mb-3" id="modelo-nome" maxlength="60" placeholder="ex.: Padrão escritório, Cliente corporativo" />
+
+                            <label class="form-label" for="modelo-assunto">Assunto</label>
+                            <input type="text" class="form-control mb-2" id="modelo-assunto" maxlength="150" />
+
+                            <div class="small text-muted mb-1">Inserir campo onde está o cursor:</div>
+                            <div class="d-flex flex-wrap gap-1 mb-2" id="modelo-campos" aria-label="Campos"></div>
+
+                            <label class="form-label" for="modelo-mensagem">Mensagem</label>
+                            <textarea class="form-control" id="modelo-mensagem" rows="9" maxlength="4000"></textarea>
+                            <div class="form-text mb-3" id="modelo-aviso-campos">Abaixo da mensagem seguem sempre os dados da nota, a consulta pública e os anexos.</div>
+
+                            <label class="form-label" for="modelo-responder">Respostas do cliente vão para</label>
+                            <input type="email" class="form-control" id="modelo-responder" maxlength="256" />
+                            <div class="form-text mb-3">Em branco: o e-mail da empresa que emitiu a nota.</div>
+
+                            <label class="form-label" for="modelo-cco">Cópia oculta de todo envio <span class="text-muted fw-normal">(opcional)</span></label>
+                            <input type="email" class="form-control" id="modelo-cco" maxlength="256" placeholder="ex.: notas@seuescritorio.com.br" />
+                            <div class="form-text">Para guardar uma cópia de cada nota enviada.</div>
+
+                            <div class="form-check mt-3 d-none" id="modelo-divulgacao-caixa">
+                                <input class="form-check-input" type="checkbox" id="modelo-ocultar-divulgacao" />
+                                <label class="form-check-label small" for="modelo-ocultar-divulgacao">Tirar o convite do micoempresa do rodapé (plano Escritório)</label>
+                            </div>
+
+                            <div class="d-flex flex-wrap gap-2 mt-3" id="modelo-acoes">
+                                <button type="submit" class="btn btn-primary btn-sm" id="btn-salvar-modelo"><i class="bi bi-check2"></i> Salvar</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-teste-modelo"><i class="bi bi-send"></i> Mandar um teste para mim</button>
+                                <button type="button" class="btn btn-link btn-sm ms-auto" id="btn-texto-padrao">Voltar ao texto padrão</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="col-xl-5">
+                        <div class="small text-muted mb-1">Prévia (com dados de exemplo)</div>
+                        <div class="email-nota-previa border rounded" aria-live="polite">
+                            <div class="email-nota-previa-assunto" id="previa-assunto"></div>
+                            <div class="email-nota-previa-corpo" id="previa-corpo"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/paginas/modelos-email.js" asp-append-version="true"></script>
+}

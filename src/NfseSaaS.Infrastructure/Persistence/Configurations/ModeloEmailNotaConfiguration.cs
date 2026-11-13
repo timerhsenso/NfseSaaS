@@ -12,25 +12,19 @@ public sealed class ModeloEmailNotaConfiguration : IEntityTypeConfiguration<Mode
 
         builder.HasKey(m => m.Id);
 
+        builder.Property(m => m.Nome).HasMaxLength(ModeloEmailNota.TamanhoMaximoNome).IsRequired();
         builder.Property(m => m.Assunto).HasMaxLength(ModeloEmailNota.TamanhoMaximoAssunto).IsRequired();
         builder.Property(m => m.Mensagem).HasMaxLength(ModeloEmailNota.TamanhoMaximoMensagem).IsRequired();
         builder.Property(m => m.ResponderPara).HasMaxLength(ModeloEmailNota.TamanhoMaximoEmail);
         builder.Property(m => m.CopiaOcultaPara).HasMaxLength(ModeloEmailNota.TamanhoMaximoEmail);
 
-        // Um modelo da conta e no máximo um por empresa (mesmo padrão dos
-        // índices parciais do Cliente compartilhado).
-        builder.HasIndex(m => m.TenantId).IsUnique().HasFilter("\"EmpresaId\" IS NULL");
-        builder.HasIndex(m => new { m.TenantId, m.EmpresaId }).IsUnique().HasFilter("\"EmpresaId\" IS NOT NULL");
+        // Nome único na conta e um só padrão por conta.
+        builder.HasIndex(m => new { m.TenantId, m.Nome }).IsUnique();
+        builder.HasIndex(m => m.TenantId).IsUnique().HasFilter("\"Padrao\"");
 
         builder.HasOne<Tenant>()
             .WithMany()
             .HasForeignKey(m => m.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
-
-        // Configuração, não histórico: sai junto com a empresa.
-        builder.HasOne<Empresa>()
-            .WithMany()
-            .HasForeignKey(m => m.EmpresaId)
-            .OnDelete(DeleteBehavior.Cascade);
     }
 }

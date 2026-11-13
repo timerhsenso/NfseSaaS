@@ -1448,6 +1448,7 @@ function configurarEmailNfse() {
     modalEmailNfse = new bootstrap.Modal(modalEnvio);
     modalEmailLote = new bootstrap.Modal(document.getElementById('modal-email-lote'));
 
+    document.getElementById('email-nfse-modelo').addEventListener('change', trocarModeloEmailNfse);
     document.getElementById('form-email-nfse').addEventListener('submit', async e => {
         e.preventDefault();
         await executarComBotaoDesabilitado(document.getElementById('btn-confirmar-email-nfse'), enviarEmailNfse);
@@ -1468,6 +1469,11 @@ async function abrirModalEmailNfse(id) {
         mostrarErro(err.message);
         return;
     }
+    const seletor = document.getElementById('email-nfse-modelo');
+    seletor.innerHTML = (previa.modelos ?? []).map(m =>
+        `<option value="${m.id}">${escaparHtml(m.nome)}${m.padrao ? ' (padrão)' : ''}</option>`).join('') ||
+        '<option value="">Texto padrão do sistema</option>';
+    seletor.value = previa.modeloId ?? '';
     if (previa.impedimento) {
         mostrarErro(previa.impedimento === 'Cliente sem e-mail no cadastro.'
             ? 'O cliente desta nota não tem e-mail cadastrado. Inclua o e-mail no cadastro do cliente e tente de novo.'
@@ -1476,6 +1482,22 @@ async function abrirModalEmailNfse(id) {
     }
 
     nfseIdEmailAtual = id;
+    mostrarPreviaEmailNfse(previa);
+    modalEmailNfse.show();
+}
+
+// Trocou o modelo no modal: texto, respostas e cópia oculta vêm do novo.
+async function trocarModeloEmailNfse() {
+    const modeloId = document.getElementById('email-nfse-modelo').value;
+    try {
+        const previa = await apiFetch(`/api/nfse/${nfseIdEmailAtual}/email-previa${modeloId ? `?modeloId=${modeloId}` : ''}`);
+        mostrarPreviaEmailNfse(previa);
+    } catch (err) {
+        mostrarErroFormulario('erro-email-nfse', err.message);
+    }
+}
+
+function mostrarPreviaEmailNfse(previa) {
     const linha = (rotulo, valor) => `<dt class="col-sm-3 text-muted fw-normal">${rotulo}</dt><dd class="col-sm-9 mb-1">${valor}</dd>`;
     const copias = previa.copias?.length
         ? linha(previa.copiasOcultas ? 'Cópia oculta' : 'Cópia', previa.copias.map(escaparHtml).join(', ')) : '';
@@ -1492,7 +1514,6 @@ async function abrirModalEmailNfse(id) {
     document.getElementById('email-nfse-homologacao').classList.toggle('d-none', !previa.homologacao);
     document.getElementById('email-nfse-assunto').value = previa.assunto;
     document.getElementById('email-nfse-mensagem').value = previa.mensagem;
-    modalEmailNfse.show();
 }
 
 async function enviarEmailNfse() {
@@ -1505,7 +1526,7 @@ async function enviarEmailNfse() {
     }
     try {
         const resultado = await apiFetch(`/api/nfse/${nfseIdEmailAtual}/enviar-email`, {
-            method: 'POST', body: JSON.stringify({ assunto, mensagem })
+            method: 'POST', body: JSON.stringify({ assunto, mensagem, modeloId: document.getElementById('email-nfse-modelo').value || null })
         });
         modalEmailNfse.hide();
         const copias = resultado.copias?.length ? ` (+${resultado.copias.length} em cópia)` : '';

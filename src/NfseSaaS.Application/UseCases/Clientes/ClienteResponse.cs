@@ -21,7 +21,9 @@ public sealed record ClienteResponse(
     IReadOnlyList<string> EmailsCopia,
     bool CopiaOculta,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? UpdatedAt)
+    DateTimeOffset? UpdatedAt,
+    // Modelo do e-mail da nota só deste cliente; nulo = o da empresa.
+    Guid? ModeloEmailNotaId = null)
 {
     /// <summary>C10: true = disponível para todas as empresas da conta (EmpresaId nulo).</summary>
     public bool Compartilhado => EmpresaId is null;

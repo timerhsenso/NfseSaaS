@@ -156,10 +156,10 @@ public sealed class NfseController : ControllerBase
         return Ok(resultado);
     }
 
-    /// <summary>Modal de envio: destinatário, cópias e o texto já preenchido pelo modelo.</summary>
+    /// <summary>Modal de envio: destinatário, cópias e o texto já preenchido pelo modelo (o da nota ou o escolhido em modeloId).</summary>
     [HttpGet("{id:guid}/email-previa")]
-    public async Task<IActionResult> PreviaEmail(Guid id, [FromServices] IEnvioEmailNfseUseCase envioEmail, CancellationToken cancellationToken)
-        => Ok(await envioEmail.PreviaAsync(id, cancellationToken));
+    public async Task<IActionResult> PreviaEmail(Guid id, [FromQuery] Guid? modeloId, [FromServices] IEnvioEmailNfseUseCase envioEmail, CancellationToken cancellationToken)
+        => Ok(await envioEmail.PreviaAsync(id, modeloId, cancellationToken));
 
     /// <summary>Resumo antes de enviar várias notas (quantas vão, já enviadas, sem e-mail, não autorizadas).</summary>
     [HttpPost("enviar-email/lote/previa")]

@@ -176,12 +176,7 @@ a:hover {
     max-width: 720px;
 }
 
-/* E-mail da nota: texto + prévia lado a lado, precisa de mais largura. */
-.config-conta-secao.config-conta-larga {
-    max-width: 1140px;
-}
-
-/* Prévia do e-mail: "papel" branco mesmo no tema escuro, como o cliente vê. */
+/* Prévia do e-mail (Modelos de e-mail): "papel" branco mesmo no tema escuro, como o cliente vê. */
 .email-nota-previa {
     background: #fff;
     color: #1e293b;

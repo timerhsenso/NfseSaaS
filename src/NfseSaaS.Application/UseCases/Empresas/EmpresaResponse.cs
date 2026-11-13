@@ -33,4 +33,6 @@ public sealed record EmpresaResponse(
     TipoAmbiente TipoAmbiente,
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt,
-    bool AplicarReajusteAutomatico = false);
+    bool AplicarReajusteAutomatico = false,
+    // Modelo do e-mail da nota (cadastro Modelos de e-mail); nulo = o padrão da conta.
+    Guid? ModeloEmailNotaId = null);
