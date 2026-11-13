@@ -1,6 +1,5 @@
 using System.Security.Cryptography;
 using NfseSaaS.Application.Exceptions;
-using NfseSaaS.Domain.Enums;
 
 namespace NfseSaaS.Application.UseCases.Aparencia;
 
@@ -15,14 +14,15 @@ public static class RegrasLogoConta
     public const int TamanhoMaximoBytes = 512 * 1024;
 
     /// <summary>
-    /// Logo é recurso do plano Escritório: contas de contador. O operador da
-    /// plataforma também pode (para conferir a tela na própria conta).
+    /// Logo liberada pelo plano da conta (recurso "logo-propria" do PL1; o
+    /// padrão é só contas de contador). O operador da plataforma também pode
+    /// (para conferir a tela na própria conta).
     /// </summary>
-    public static bool Disponivel(PerfilConta perfil, bool operadorPlataforma) =>
-        perfil == PerfilConta.Contador || operadorPlataforma;
+    public static bool Disponivel(bool liberadaNoPlano, bool operadorPlataforma) =>
+        liberadaNoPlano || operadorPlataforma;
 
     public const string MensagemIndisponivel =
-        "A logomarca própria faz parte do plano Escritório (contas de contador).";
+        "A logomarca própria não está incluída no seu plano. Veja os planos em Assinatura.";
 
     /// <summary>Tipo da imagem pelo conteúdo; null se não for PNG, JPEG ou WebP.</summary>
     public static string? DetectarTipo(ReadOnlySpan<byte> conteudo)

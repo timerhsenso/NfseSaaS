@@ -339,6 +339,7 @@ public class FiltroDeContaNoModeloTests
         ["TesteGratisCnpj"] = "registro entre contas (um teste por CNPJ)",
         ["ReajusteAssinatura"] = "reajuste de assinantes: o operador agenda para várias contas e o job aplica, sem usuário da conta; sempre por TenantId/AssinaturaId",
         ["NotaMensalidade"] = "nota da conta emissora para a conta que pagou (TenantId = a pagadora); só o job da mensalidade usa",
+        ["ExcecaoRecursoConta"] = "PL1: o operador da plataforma cria para qualquer conta; leitura sempre por TenantId (IRecursosConta)",
         ["ApplicationUser"] = "Identity/login antes de existir conta resolvida; consultas sempre por TenantId ou GrupoId"
     };
 

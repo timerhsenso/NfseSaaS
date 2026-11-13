@@ -40,7 +40,8 @@ public class AparenciaServiceTests
         sp.GetRequiredService<IMemoryCache>(),
         sp.GetRequiredService<IAuditLogWriter>(),
         NullLogger<AparenciaService>.Instance,
-        Options.Create(new PlataformaOptions { UsuariosOperadoresIds = operadores.ToList() }));
+        Options.Create(new PlataformaOptions { UsuariosOperadoresIds = operadores.ToList() }),
+        sp.GetRequiredService<NfseSaaS.Application.UseCases.Recursos.IRecursosConta>());
 
     private static readonly byte[] Png = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3, 4 };
     private static readonly byte[] Jpeg = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 9, 9, 9 };

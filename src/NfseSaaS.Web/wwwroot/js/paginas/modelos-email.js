@@ -65,7 +65,10 @@ async function carregarModelos(abrirId) {
     el('modelo-campos').innerHTML = dadosModelos.campos.map(c =>
         `<button type="button" class="btn btn-outline-secondary btn-sm email-nota-campo" data-etiqueta="${escaparHtml(c.etiqueta)}" title="${escaparHtml(c.descricao)}">${escaparHtml(c.etiqueta)}</button>`).join('');
     el('btn-novo-modelo').classList.toggle('d-none', !dadosModelos.podeAlterar);
-    el('modelo-divulgacao-caixa').classList.toggle('d-none', !dadosModelos.podeOcultarDivulgacao);
+    // PL1: sempre visível; fechado no plano = desmarcado, desabilitado e com cadeado.
+    el('modelo-divulgacao-caixa').classList.remove('d-none');
+    el('modelo-ocultar-divulgacao').disabled = !dadosModelos.podeOcultarDivulgacao;
+    el('modelo-divulgacao-bloqueada').classList.toggle('d-none', !!dadosModelos.podeOcultarDivulgacao);
     if (!dadosModelos.podeAlterar)
         el('modelos-intro').insertAdjacentHTML('beforeend', ' <strong>Só o administrador da conta cria e altera modelos.</strong>');
 
@@ -137,8 +140,9 @@ function novoModelo() {
 
 function aplicarPermissoes(modelo) {
     const pode = !!dadosModelos.podeAlterar;
-    ['modelo-nome', 'modelo-assunto', 'modelo-mensagem', 'modelo-responder', 'modelo-cco', 'modelo-ocultar-divulgacao']
+    ['modelo-nome', 'modelo-assunto', 'modelo-mensagem', 'modelo-responder', 'modelo-cco']
         .forEach(id => { el(id).disabled = !pode; });
+    el('modelo-ocultar-divulgacao').disabled = !pode || !dadosModelos.podeOcultarDivulgacao;
     document.querySelectorAll('#modelo-campos button').forEach(b => { b.disabled = !pode; });
     el('btn-salvar-modelo').classList.toggle('d-none', !pode);
     el('btn-texto-padrao').classList.toggle('d-none', !pode);

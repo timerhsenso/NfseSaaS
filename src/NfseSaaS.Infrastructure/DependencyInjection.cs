@@ -254,6 +254,9 @@ public static class DependencyInjection
 
         services.AddScoped<IEmitirNfseUseCase, EmitirNfseUseCase>();
         services.AddScoped<ISimularRetencoesUseCase, SimularRetencoesUseCase>();
+        services.AddScoped<RecursosContaService>();
+        services.AddScoped<NfseSaaS.Application.UseCases.Recursos.IRecursosConta>(sp => sp.GetRequiredService<RecursosContaService>());
+        services.AddScoped<NfseSaaS.Application.UseCases.Recursos.IAdministrarRecursosUseCase>(sp => sp.GetRequiredService<RecursosContaService>());
         services.AddScoped<IListarNfseUseCase, ListarNfseUseCase>();
         services.AddScoped<IObterNfsePorIdUseCase, ObterNfsePorIdUseCase>();
 

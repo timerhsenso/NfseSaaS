@@ -275,6 +275,60 @@
     </div>
 </div>
 
+@* PL1: recursos da conta (o que vale e de onde vem) e exceções (plataforma.js, abrirRecursosConta) *@
+<div class="modal fade" id="modal-recursos-conta" tabindex="-1" aria-labelledby="titulo-recursos-conta">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title" id="titulo-recursos-conta">Recursos da conta</h5>
+                    <div class="small text-muted" id="subtitulo-recursos-conta"></div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div id="erro-recursos-conta" class="alert alert-danger d-none"></div>
+                <h6 class="text-muted text-uppercase small fw-bold">O que vale hoje</h6>
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead><tr><th>Recurso</th><th>Vale</th><th>De onde vem</th><th class="text-end"></th></tr></thead>
+                        <tbody id="corpo-recursos-conta"></tbody>
+                    </table>
+                </div>
+
+                <form id="form-excecao-recurso" class="border rounded p-3 bg-body-tertiary d-none" novalidate>
+                    <h6 class="mb-2" id="titulo-excecao-recurso">Exceção</h6>
+                    <div class="row g-2">
+                        <div class="col-md-5">
+                            <label class="form-label small mb-1">Valor nesta conta</label>
+                            <div id="controle-excecao-recurso"></div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small mb-1" for="excecao-valida-ate">Vale até (inclusive)</label>
+                            <input type="date" class="form-control form-control-sm" id="excecao-valida-ate" />
+                            <div class="form-text">Em branco = sem prazo.</div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small mb-1" for="excecao-motivo">Motivo</label>
+                            <input type="text" class="form-control form-control-sm" id="excecao-motivo" maxlength="300"
+                                   placeholder="ex.: cortesia de lançamento, negociação com o escritório X" />
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 mt-3">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-cancelar-excecao">Cancelar</button>
+                        <button type="submit" class="btn btn-sm btn-primary">Salvar exceção</button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <span class="me-auto small text-muted">A exceção vence o plano enquanto valer. Toda mudança fica no histórico da conta.</span>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
+    <script src="~/js/paginas/recursos-plano.js" asp-append-version="true"></script>
     <script src="~/js/paginas/plataforma.js" asp-append-version="true"></script>
 }

@@ -80,12 +80,14 @@ function itensCobranca(t, nome) {
     const item = (acao, icone, texto) => ({ classe: 'btn-cobranca', icone, texto, dados: { acao, id: t.id, nome } });
     // Liberar nova exportação dos dados (Meus dados): vale para qualquer conta.
     const exportacao = item('liberar-exportacao', 'bi-file-earmark-zip', 'Liberar nova exportação dos dados');
-    if (c.isentaNaConfiguracao) return [exportacao];
+    // PL1: o que o plano libera para esta conta e exceções (vale para qualquer conta).
+    const recursos = { classe: 'btn-recursos-conta', icone: 'bi-sliders', texto: 'Recursos e exceções…', dados: { id: t.id, nome } };
+    if (c.isentaNaConfiguracao) return [recursos, exportacao];
 
     // Já assinou: teste e isenção não se aplicam (faturas no Asaas); só
     // conferir a situação com o Asaas agora, sem esperar a conciliação diária.
     if (c.temAssinaturaNoGateway)
-        return [item('conciliar', 'bi-arrow-repeat', 'Conferir com o Asaas agora'), { divisor: true }, exportacao];
+        return [item('conciliar', 'bi-arrow-repeat', 'Conferir com o Asaas agora'), { divisor: true }, recursos, exportacao];
 
     const podeTeste = t.statusAssinatura !== 4 && !c.isenta;
     return [
@@ -93,9 +95,121 @@ function itensCobranca(t, nome) {
         podeTeste && item('liberar', 'bi-arrow-counterclockwise', 'Liberar novo teste…'),
         c.isenta ? item('remover-isencao', 'bi-x-circle', 'Remover isenção') : item('isentar', 'bi-gift', 'Isentar de cobrança…'),
         { divisor: true },
+        recursos,
         exportacao
     ];
 }
+
+// ---------- PL1: recursos e exceções da conta ----------
+
+let modalRecursosConta = null;
+let recursosContaAtual = null;   // RecursosContaResponse
+let recursoEmExcecao = null;     // RecursoResolvido sendo editado
+
+async function abrirRecursosConta(id, nome) {
+    modalRecursosConta ??= new bootstrap.Modal('#modal-recursos-conta');
+    document.getElementById('titulo-recursos-conta').textContent = `Recursos · ${nome}`;
+    try {
+        renderizarRecursosConta(await apiFetch(`/api/plataforma/tenants/${id}/recursos`));
+        modalRecursosConta.show();
+    } catch (err) {
+        mostrarErro(err.message);
+    }
+}
+
+function renderizarRecursosConta(dados) {
+    recursosContaAtual = dados;
+    ocultarErroFormulario('erro-recursos-conta');
+    document.getElementById('form-excecao-recurso').classList.add('d-none');
+    document.getElementById('subtitulo-recursos-conta').textContent = dados.planoNome
+        ? `Plano ${dados.planoNome}` : 'Sem plano (teste, beta ou cobrança desligada): vale o padrão';
+
+    document.getElementById('corpo-recursos-conta').innerHTML = dados.recursos.map(r => {
+        const origem = ORIGENS_RECURSO[r.origem] ?? ORIGENS_RECURSO[1];
+        const excecao = dados.excecoes.find(e => e.codigo === r.codigo);
+        const vencida = dados.excecoes.find(e => e.codigo === r.codigo && e.vencida);
+        const detalhe = r.origem === 3 && excecao
+            ? `<div class="small text-muted">${escaparHtml(excecao.motivo)}${excecao.validaAte ? ' · até ' + new Date(excecao.validaAte + 'T00:00:00').toLocaleDateString('pt-BR') : ' · sem prazo'}</div>`
+            : vencida ? `<div class="small text-muted">Exceção vencida em ${new Date(vencida.validaAte + 'T00:00:00').toLocaleDateString('pt-BR')}</div>` : '';
+        return `<tr>
+            <td><div class="fw-semibold">${escaparHtml(r.nome)}</div>${detalhe}</td>
+            <td>${escaparHtml(textoValorRecurso(r.tipo, r.ligado, r.limite))}</td>
+            <td><span class="badge text-bg-${origem.cor}">${origem.texto}</span></td>
+            <td class="text-end text-nowrap">
+                <button type="button" class="btn btn-sm btn-outline-primary btn-editar-excecao" data-codigo="${escaparHtml(r.codigo)}">${excecao ? 'Alterar exceção' : 'Criar exceção'}</button>
+                ${excecao ? `<button type="button" class="btn btn-sm btn-outline-danger btn-remover-excecao" data-id="${excecao.id}" title="Remover exceção (volta ao plano)"><i class="bi bi-x-lg"></i></button>` : ''}
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+function abrirFormExcecao(codigo) {
+    recursoEmExcecao = recursosContaAtual.recursos.find(r => r.codigo === codigo);
+    const excecao = recursosContaAtual.excecoes.find(e => e.codigo === codigo);
+    document.getElementById('titulo-excecao-recurso').textContent = `Exceção · ${recursoEmExcecao.nome}`;
+    document.getElementById('controle-excecao-recurso').innerHTML = controleValorRecurso('excecao', recursoEmExcecao.tipo,
+        excecao ? { padrao: false, ligado: excecao.ligado, limite: excecao.limite } : { padrao: false, ligado: !recursoEmExcecao.ligado, limite: recursoEmExcecao.limite }, false);
+    document.getElementById('excecao-valida-ate').value = excecao?.validaAte ?? '';
+    document.getElementById('excecao-motivo').value = excecao?.motivo ?? '';
+    document.getElementById('form-excecao-recurso').classList.remove('d-none');
+    document.getElementById('excecao-motivo').focus();
+}
+
+async function salvarExcecaoRecurso(e) {
+    e.preventDefault();
+    ocultarErroFormulario('erro-recursos-conta');
+    let valor;
+    try {
+        valor = lerValorRecurso('excecao', recursoEmExcecao.tipo, recursoEmExcecao.nome);
+    } catch (err) {
+        mostrarErroFormulario('erro-recursos-conta', err.message);
+        return;
+    }
+    await executarComBotaoDesabilitado(e.submitter, async () => {
+        try {
+            renderizarRecursosConta(await apiFetch(`/api/plataforma/tenants/${recursosContaAtual.tenantId}/recursos/excecoes`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    recurso: recursoEmExcecao.codigo, ligado: valor.ligado, limite: valor.limite,
+                    motivo: document.getElementById('excecao-motivo').value,
+                    validaAte: document.getElementById('excecao-valida-ate').value || null
+                })
+            }));
+            mostrarToast('Exceção salva. Vale na hora para esta conta.');
+        } catch (err) {
+            mostrarErroFormulario('erro-recursos-conta', err.message);
+        }
+    });
+}
+
+async function removerExcecaoRecurso(botao) {
+    const confirmado = await confirmarAcao('Remover esta exceção? A conta volta a seguir o plano.',
+        { titulo: 'Remover exceção', textoBotao: 'Remover', variante: 'perigo' });
+    if (!confirmado) return;
+    await executarComBotaoDesabilitado(botao, async () => {
+        try {
+            renderizarRecursosConta(await apiFetch(`/api/plataforma/tenants/${recursosContaAtual.tenantId}/recursos/excecoes/${botao.dataset.id}`, { method: 'DELETE' }));
+            mostrarToast('Exceção removida.');
+        } catch (err) {
+            mostrarErroFormulario('erro-recursos-conta', err.message);
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const corpo = document.getElementById('corpo-recursos-conta');
+    if (!corpo) return;
+    corpo.addEventListener('click', function (e) {
+        const editar = e.target.closest('.btn-editar-excecao');
+        if (editar) abrirFormExcecao(editar.dataset.codigo);
+        const remover = e.target.closest('.btn-remover-excecao');
+        if (remover) removerExcecaoRecurso(remover);
+    });
+    ligarControlesRecurso(document.getElementById('controle-excecao-recurso'));
+    document.getElementById('form-excecao-recurso').addEventListener('submit', salvarExcecaoRecurso);
+    document.getElementById('btn-cancelar-excecao').addEventListener('click', () =>
+        document.getElementById('form-excecao-recurso').classList.add('d-none'));
+});
 
 // StatusPremioIndicacao (Domain.Enums): 1 Pendente, 2 Aplicando, 3 Aplicado, 4 Erro.
 function situacaoPremioPlataforma(status) {
@@ -255,6 +369,10 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('tabela-tenants').addEventListener('click', async function (e) {
         const botao = e.target.closest('button');
         if (!botao) return;
+        if (botao.classList.contains('btn-recursos-conta')) {
+            await executarComBotaoDesabilitado(botao, () => abrirRecursosConta(botao.dataset.id, botao.dataset.nome));
+            return;
+        }
         if (botao.classList.contains('btn-cobranca')) {
             await abrirCobranca(botao.dataset.acao, botao.dataset.id, botao.dataset.nome);
             return;

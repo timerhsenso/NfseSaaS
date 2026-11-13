@@ -40,10 +40,10 @@ public class RegrasLogoContaTests
     }
 
     [Fact]
-    public void Disponivel_no_plano_escritorio_ou_para_o_operador()
+    public void Disponivel_quando_o_plano_libera_ou_para_o_operador()
     {
-        Assert.True(RegrasLogoConta.Disponivel(PerfilConta.Contador, operadorPlataforma: false));
-        Assert.False(RegrasLogoConta.Disponivel(PerfilConta.Empresa, operadorPlataforma: false));
-        Assert.True(RegrasLogoConta.Disponivel(PerfilConta.Empresa, operadorPlataforma: true));
+        Assert.True(RegrasLogoConta.Disponivel(liberadaNoPlano: true, operadorPlataforma: false));
+        Assert.False(RegrasLogoConta.Disponivel(liberadaNoPlano: false, operadorPlataforma: false));
+        Assert.True(RegrasLogoConta.Disponivel(liberadaNoPlano: false, operadorPlataforma: true));
     }
 }

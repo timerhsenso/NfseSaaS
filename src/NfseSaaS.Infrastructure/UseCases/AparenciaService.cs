@@ -37,8 +37,10 @@ public sealed class AparenciaService : IAparenciaUseCase
         IMemoryCache cache,
         IAuditLogWriter auditLogWriter,
         ILogger<AparenciaService> logger,
-        IOptions<PlataformaOptions> plataforma)
+        IOptions<PlataformaOptions> plataforma,
+        NfseSaaS.Application.UseCases.Recursos.IRecursosConta recursos)
     {
+        _recursos = recursos;
         _plataforma = plataforma.Value;
         _db = db;
         _currentTenant = currentTenant;
@@ -177,12 +179,13 @@ public sealed class AparenciaService : IAparenciaUseCase
             .FirstOrDefaultAsync(cancellationToken);
     }
 
-    /// <summary>Plano Escritório (conta de contador) ou operador da plataforma.</summary>
-    private async Task<bool> LogoDisponivelAsync(Guid tenantId, Guid usuarioId, CancellationToken cancellationToken)
-    {
-        var perfil = await _db.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.Perfil).FirstAsync(cancellationToken);
-        return RegrasLogoConta.Disponivel(perfil, _plataforma.UsuariosOperadoresIds.Contains(usuarioId));
-    }
+    /// <summary>Recurso "logo-propria" do plano (PL1) ou operador da plataforma.</summary>
+    private async Task<bool> LogoDisponivelAsync(Guid tenantId, Guid usuarioId, CancellationToken cancellationToken) =>
+        RegrasLogoConta.Disponivel(
+            await _recursos.LigadoAsync(tenantId, NfseSaaS.Application.UseCases.Recursos.CatalogoRecursos.LogoPropria, cancellationToken),
+            _plataforma.UsuariosOperadoresIds.Contains(usuarioId));
+
+    private readonly NfseSaaS.Application.UseCases.Recursos.IRecursosConta _recursos;
 
     private (Guid TenantId, Guid UsuarioId) Identificar() =>
         _currentTenant.TenantId is { } t && _currentUser.UserId is { } u

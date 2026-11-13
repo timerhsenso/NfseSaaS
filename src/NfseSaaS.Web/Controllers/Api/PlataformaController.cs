@@ -3,6 +3,7 @@ using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.UseCases.Cobranca;
 using NfseSaaS.Application.UseCases.Indicacao;
 using NfseSaaS.Application.UseCases.Plataforma;
+using NfseSaaS.Application.UseCases.Recursos;
 using NfseSaaS.Web.Filters;
 
 namespace NfseSaaS.Web.Controllers.Api;
@@ -173,6 +174,28 @@ public sealed class PlataformaController : ControllerBase
     [HttpPost("protecao-chaves/reproteger")]
     public async Task<IActionResult> ReprotegerChaves(CancellationToken cancellationToken)
         => Ok(await _reprotegerChaves.ExecutarAsync(_currentUser.UserId, cancellationToken));
+
+    // ---------- PL1: recursos por plano e exceções por conta ----------
+
+    [HttpGet("planos/{id:guid}/recursos")]
+    public async Task<IActionResult> RecursosDoPlano(Guid id, [FromServices] IAdministrarRecursosUseCase recursos, CancellationToken cancellationToken)
+        => Ok(await recursos.RecursosDoPlanoAsync(id, cancellationToken));
+
+    [HttpPut("planos/{id:guid}/recursos")]
+    public async Task<IActionResult> SalvarRecursosDoPlano(Guid id, [FromBody] SalvarRecursosPlanoRequest request, [FromServices] IAdministrarRecursosUseCase recursos, CancellationToken cancellationToken)
+        => Ok(await recursos.SalvarRecursosDoPlanoAsync(id, request, _currentUser.UserId, cancellationToken));
+
+    [HttpGet("tenants/{id:guid}/recursos")]
+    public async Task<IActionResult> RecursosDaConta(Guid id, [FromServices] IAdministrarRecursosUseCase recursos, CancellationToken cancellationToken)
+        => Ok(await recursos.RecursosDaContaAsync(id, cancellationToken));
+
+    [HttpPost("tenants/{id:guid}/recursos/excecoes")]
+    public async Task<IActionResult> SalvarExcecaoRecurso(Guid id, [FromBody] SalvarExcecaoRecursoRequest request, [FromServices] IAdministrarRecursosUseCase recursos, CancellationToken cancellationToken)
+        => Ok(await recursos.SalvarExcecaoAsync(id, request, _currentUser.UserId, cancellationToken));
+
+    [HttpDelete("tenants/{id:guid}/recursos/excecoes/{excecaoId:guid}")]
+    public async Task<IActionResult> RemoverExcecaoRecurso(Guid id, Guid excecaoId, [FromServices] IAdministrarRecursosUseCase recursos, CancellationToken cancellationToken)
+        => Ok(await recursos.RemoverExcecaoAsync(id, excecaoId, _currentUser.UserId, cancellationToken));
 
     // ---------- Planos (catálogo, preços com histórico, vagas de fundador) ----------
 

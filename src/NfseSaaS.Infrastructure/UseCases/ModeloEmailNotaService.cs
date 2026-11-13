@@ -34,8 +34,10 @@ public sealed class ModeloEmailNotaService : IModeloEmailNotaUseCase
         ICurrentUser currentUser,
         IAuditLogWriter auditLogWriter,
         IEmailQueueService emailQueue,
-        IOptions<PlataformaOptions> plataforma)
+        IOptions<PlataformaOptions> plataforma,
+        NfseSaaS.Application.UseCases.Recursos.IRecursosConta recursos)
     {
+        _recursos = recursos;
         _db = db;
         _currentTenant = currentTenant;
         _currentUser = currentUser;
@@ -254,8 +256,8 @@ public sealed class ModeloEmailNotaService : IModeloEmailNotaUseCase
             .Where(m => m.TenantId == tenantId
                 && (m.Padrao || m.Id == modeloEscolhidoId || m.Id == doCliente || m.Id == daEmpresa))
             .ToListAsync(cancellationToken);
-        var perfil = await _db.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.Perfil).FirstOrDefaultAsync(cancellationToken);
-        var podeOcultar = RegrasLogoConta.Disponivel(perfil, operadorPlataforma: false);
+        // PL1: recurso "email-sem-divulgacao" do plano (padrão: contas de contador).
+        var podeOcultar = await _recursos.LigadoAsync(tenantId, NfseSaaS.Application.UseCases.Recursos.CatalogoRecursos.EmailSemDivulgacao, cancellationToken);
 
         if (modeloEscolhidoId is { } escolhido)
             return RegrasModeloEmailNota.Efetivo(
@@ -335,11 +337,11 @@ public sealed class ModeloEmailNotaService : IModeloEmailNotaUseCase
         return nome;
     }
 
-    private async Task<bool> PodeOcultarDivulgacaoAsync(Guid tenantId, Guid usuarioId, CancellationToken cancellationToken)
-    {
-        var perfil = await _db.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.Perfil).FirstAsync(cancellationToken);
-        return RegrasLogoConta.Disponivel(perfil, _plataforma.UsuariosOperadoresIds.Contains(usuarioId));
-    }
+    private async Task<bool> PodeOcultarDivulgacaoAsync(Guid tenantId, Guid usuarioId, CancellationToken cancellationToken) =>
+        await _recursos.LigadoAsync(tenantId, NfseSaaS.Application.UseCases.Recursos.CatalogoRecursos.EmailSemDivulgacao, cancellationToken)
+        || _plataforma.UsuariosOperadoresIds.Contains(usuarioId);
+
+    private readonly NfseSaaS.Application.UseCases.Recursos.IRecursosConta _recursos;
 
     private static string? Limpar(string? email) => string.IsNullOrWhiteSpace(email) ? null : email.Trim();
 

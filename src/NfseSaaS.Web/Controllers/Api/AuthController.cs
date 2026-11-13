@@ -550,10 +550,15 @@ public sealed class AuthController : ControllerBase
     /// </summary>
     [RequerPermissao(TelaCatalogo.Usuarios, AcaoPermissao.Incluir)]
     [HttpPost("convidar")]
-    public async Task<IActionResult> Convidar([FromBody] ConvidarRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Convidar([FromBody] ConvidarRequest request,
+        [FromServices] NfseSaaS.Application.UseCases.Recursos.IRecursosConta recursos, CancellationToken cancellationToken)
     {
         if (_currentTenant.TenantId is not { } tenantId)
             return Unauthorized();
+
+        // PL1: limite de usuários do plano (convites pendentes contam). Quem já está continua.
+        var usuarios = await _db.Users.CountAsync(u => u.TenantId == tenantId, cancellationToken);
+        await recursos.GarantirCabeMaisUmAsync(tenantId, NfseSaaS.Application.UseCases.Recursos.CatalogoRecursos.Usuarios, usuarios, cancellationToken);
 
         var grupo = await _db.Grupos.FirstOrDefaultAsync(g => g.Id == request.GrupoId && g.TenantId == tenantId, cancellationToken);
         if (grupo is null)

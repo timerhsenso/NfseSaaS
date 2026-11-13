@@ -117,8 +117,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     if (!dados.logoDisponivel) {
-        document.getElementById('logo-ajuda').textContent =
-            'A logomarca própria faz parte do plano Escritório (contas de contador): seus clientes veem a marca do escritório no sistema.';
+        // PL1: recurso fechado aparece com cadeado e o caminho para liberar.
+        document.getElementById('logo-ajuda').innerHTML =
+            '<i class="bi bi-lock-fill text-muted" aria-hidden="true"></i> A logomarca própria não está incluída no seu plano: com ela, seus clientes veem a sua marca no sistema. ' +
+            '<a href="/Assinatura">Conhecer os planos</a>';
         document.getElementById('logo-acoes').classList.add('d-none');
         document.getElementById('logo-formato').classList.add('d-none');
         return;

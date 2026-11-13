@@ -61,7 +61,8 @@ public class MunicipiosTests
             db.Empresas.Add(empresa);
             await db.SaveChangesAsync();
 
-            var cadastrar = new CadastrarClienteUseCase(db, sp.GetRequiredService<IAuditLogWriter>(), sp.GetRequiredService<ICurrentTenant>());
+            var cadastrar = new CadastrarClienteUseCase(db, sp.GetRequiredService<IAuditLogWriter>(), sp.GetRequiredService<ICurrentTenant>(),
+                sp.GetRequiredService<NfseSaaS.Application.UseCases.Recursos.IRecursosConta>());
             CadastrarClienteRequest Pedido(string municipio, string uf) => new(
                 empresa.Id, "11222333000181", "Cliente", "Ap " + s[..6], null, null, municipio, "40010000", "Rua A", "1", null, "Centro", uf);
 

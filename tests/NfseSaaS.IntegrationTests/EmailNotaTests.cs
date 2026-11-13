@@ -104,7 +104,8 @@ public class EmailNotaTests
             var auditoria = sp.GetRequiredService<IAuditLogWriter>();
             var plataforma = sp.GetRequiredService<IOptions<PlataformaOptions>>();
             ModeloEmailNotaService Modelos(ApplicationUser quem) =>
-                new(db, tenantAtual, new UsuarioFalso(quem.Id), auditoria, new EmailQueueService(db, fila), plataforma);
+                new(db, tenantAtual, new UsuarioFalso(quem.Id), auditoria, new EmailQueueService(db, fila), plataforma,
+                    sp.GetRequiredService<NfseSaaS.Application.UseCases.Recursos.IRecursosConta>());
             var modelosAdmin = Modelos(admin);
             var enviar = new EnviarNfsePorEmailUseCase(db, new EmailQueueService(db, fila), auditoria, modelosAdmin);
             var lote = new EnvioEmailNfseService(db, enviar, modelosAdmin);

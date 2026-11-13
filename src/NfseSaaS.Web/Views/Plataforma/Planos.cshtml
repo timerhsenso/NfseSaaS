@@ -166,6 +166,42 @@
     </div>
 </div>
 
+@* PL1: recursos do plano (plataforma-planos.js, abrirRecursosPlano) *@
+<div class="modal fade" id="modal-recursos-plano" tabindex="-1" aria-labelledby="titulo-recursos-plano">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="form-recursos-plano" novalidate>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="titulo-recursos-plano">Recursos do plano</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="erro-recursos-plano" class="alert alert-danger d-none"></div>
+                    <p class="text-muted small">
+                        O que este plano libera ou limita. <strong>Padrão</strong> = como o sistema funciona sem configurar (nada muda para quem já usa).
+                        Limites só barram cadastro novo: a emissão de nota nunca para, e o que já existe continua.
+                    </p>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0 tabela-recursos">
+                            <thead>
+                                <tr>
+                                    <th>Recurso</th>
+                                    <th style="width: 34%">Neste plano</th>
+                                </tr>
+                            </thead>
+                            <tbody id="corpo-recursos-plano"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @* Histórico de preços *@
 <div class="modal fade" id="modal-historico-precos" tabindex="-1" aria-labelledby="titulo-historico-precos">
     <div class="modal-dialog modal-lg">
@@ -310,5 +346,6 @@
 </div>
 
 @section Scripts {
+    <script src="~/js/paginas/recursos-plano.js" asp-append-version="true"></script>
     <script src="~/js/paginas/plataforma-planos.js" asp-append-version="true"></script>
 }

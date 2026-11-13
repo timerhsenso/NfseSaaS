@@ -1122,6 +1122,51 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.ToTable("eventos_cobranca", (string)null);
                 });
 
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.ExcecaoRecursoConta", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CriadoPorUsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool?>("Ligado")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("Limite")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Motivo")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("Recurso")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("ValidaAte")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Recurso")
+                        .IsUnique();
+
+                    b.ToTable("excecoes_recurso_conta", (string)null);
+                });
+
             modelBuilder.Entity("NfseSaaS.Domain.Entities.ExportacaoDados", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1871,6 +1916,40 @@ namespace NfseSaaS.Infrastructure.Migrations
                     b.ToTable("planos", (string)null);
                 });
 
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.PlanoRecurso", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool?>("Ligado")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("Limite")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("PlanoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Recurso")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlanoId", "Recurso")
+                        .IsUnique();
+
+                    b.ToTable("planos_recursos", (string)null);
+                });
+
             modelBuilder.Entity("NfseSaaS.Domain.Entities.PrecoPlano", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2469,6 +2548,15 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.ExcecaoRecursoConta", b =>
+                {
+                    b.HasOne("NfseSaaS.Domain.Entities.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("NfseSaaS.Domain.Entities.ExportacaoDados", b =>
                 {
                     b.HasOne("NfseSaaS.Domain.Entities.Tenant", null)
@@ -2561,6 +2649,15 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("NfseId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("NfseSaaS.Domain.Entities.PlanoRecurso", b =>
+                {
+                    b.HasOne("NfseSaaS.Domain.Entities.Plano", null)
+                        .WithMany()
+                        .HasForeignKey("PlanoId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

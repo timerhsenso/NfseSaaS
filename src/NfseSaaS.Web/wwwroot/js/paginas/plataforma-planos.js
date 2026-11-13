@@ -8,7 +8,8 @@ let planos = [];
 let planoEmEdicao = null;   // null = novo plano
 let planoDoPreco = null;
 let grupoDasVagas = null;
-let modalPlano, modalPreco, modalHistorico, modalVagas, modalExcluirPlano, modalReajuste;
+let modalPlano, modalPreco, modalHistorico, modalVagas, modalExcluirPlano, modalReajuste, modalRecursosPlano;
+let recursosDoPlano = null; // PL1: grade aberta (RecursosPlanoResponse)
 let planoDoReajuste = null;
 // StatusReajusteAssinatura (Domain.Enums): 1 Agendado, 2 Aplicado, 3 Cancelado, 4 Erro.
 const SITUACOES_REAJUSTE = {
@@ -47,6 +48,9 @@ document.addEventListener('DOMContentLoaded', function () {
     modalVagas = new bootstrap.Modal('#modal-vagas');
     modalExcluirPlano = new bootstrap.Modal('#modal-excluir-plano');
     modalReajuste = new bootstrap.Modal('#modal-reajuste');
+    modalRecursosPlano = new bootstrap.Modal('#modal-recursos-plano');
+    ligarControlesRecurso(document.getElementById('corpo-recursos-plano'));
+    document.getElementById('form-recursos-plano').addEventListener('submit', salvarRecursosPlano);
 
     tabelaPlanos = new DataTable('#tabela-planos', {
         order: [],
@@ -93,6 +97,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         { classe: 'btn-editar-plano', icone: 'bi-pencil', texto: 'Alterar', dados: { id } }
                     ],
                     [
+                        { classe: 'btn-recursos-plano', icone: 'bi-sliders', texto: 'Recursos e limites', dados: { id } },
                         { classe: 'btn-historico-plano', icone: 'bi-clock-history', texto: 'Histórico de preços', dados: { id } },
                         p.assinantes > 0 && { classe: 'btn-reajuste-plano', icone: 'bi-graph-up-arrow', texto: 'Reajustar quem já assina', dados: { id } },
                         { divisor: true },
@@ -114,6 +119,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!plano) return;
         if (botao.classList.contains('btn-editar-plano')) abrirPlano(plano);
         else if (botao.classList.contains('btn-preco-plano')) abrirPreco(plano);
+        else if (botao.classList.contains('btn-recursos-plano')) await executarComBotaoDesabilitado(botao, () => abrirRecursosPlano(plano));
         else if (botao.classList.contains('btn-historico-plano')) await executarComBotaoDesabilitado(botao, () => abrirHistorico(plano));
         else if (botao.classList.contains('btn-reajuste-plano')) await executarComBotaoDesabilitado(botao, () => abrirReajuste(plano));
         else if (botao.classList.contains('btn-excluir-plano')) await executarComBotaoDesabilitado(botao, () => pedirCodigoExclusaoPlano(plano));
@@ -295,6 +301,48 @@ async function salvarPreco(e) {
             await carregarPlanos();
         } catch (err) {
             mostrarErroFormulario('erro-preco', err.message);
+        }
+    });
+}
+
+// ---------- PL1: recursos e limites do plano ----------
+
+async function abrirRecursosPlano(plano) {
+    try {
+        recursosDoPlano = await apiFetch(`/api/plataforma/planos/${plano.id}/recursos`);
+        ocultarErroFormulario('erro-recursos-plano');
+        document.getElementById('titulo-recursos-plano').textContent = `Recursos e limites · ${plano.nome}`;
+        document.getElementById('corpo-recursos-plano').innerHTML = recursosDoPlano.itens.map(r => `
+            <tr>
+                <td>
+                    <div class="fw-semibold">${escaparHtml(r.nome)}</div>
+                    <div class="small text-muted">${escaparHtml(r.descricao)}</div>
+                </td>
+                <td>${controleValorRecurso(`rp-${r.codigo}`, r.tipo, { padrao: !r.configurado, ligado: r.ligado, limite: r.limite }, true, r.textoPadrao)}</td>
+            </tr>`).join('');
+        modalRecursosPlano.show();
+    } catch (err) {
+        mostrarErro(err.message);
+    }
+}
+
+async function salvarRecursosPlano(e) {
+    e.preventDefault();
+    ocultarErroFormulario('erro-recursos-plano');
+    let itens;
+    try {
+        itens = recursosDoPlano.itens.map(r => ({ codigo: r.codigo, ...lerValorRecurso(`rp-${r.codigo}`, r.tipo, r.nome) }));
+    } catch (err) {
+        mostrarErroFormulario('erro-recursos-plano', err.message);
+        return;
+    }
+    await executarComBotaoDesabilitado(botaoSalvar(e), async function () {
+        try {
+            await apiFetch(`/api/plataforma/planos/${recursosDoPlano.planoId}/recursos`, { method: 'PUT', body: JSON.stringify({ itens }) });
+            modalRecursosPlano.hide();
+            mostrarToast('Recursos do plano salvos. Valem na hora para quem assina este plano.');
+        } catch (err) {
+            mostrarErroFormulario('erro-recursos-plano', err.message);
         }
     });
 }

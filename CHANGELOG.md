@@ -5,6 +5,33 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (PL1 — planos flexíveis)
+- **Plataforma › Planos › "Recursos e limites"**: o operador monta cada plano
+  pela tela, sem código e sem deploy. Cada recurso fica em **Padrão** (como o
+  sistema funcionava antes), **Liberado/Bloqueado** ou **Ilimitado/Até N**.
+  Recursos de hoje: **Logomarca própria**, **E-mail da nota sem o convite do
+  micoempresa**, **Usuários na conta** e **Clientes por empresa**.
+- **Plataforma › Contas › "Recursos e exceções…"**: mostra o que vale para a
+  conta e de onde vem (padrão, plano ou exceção) e deixa criar **exceção por
+  conta** (cortesia, negociação, teste de recurso), com motivo obrigatório e
+  validade opcional. A exceção vence o plano enquanto valer; tudo vai para o
+  histórico da conta.
+- Ponto único de decisão no código (`IRecursosConta`): exceção → plano da
+  assinatura → padrão do catálogo. Recurso novo entra no catálogo
+  (`CatalogoRecursos`) com o padrão = como funcionava antes.
+- Limites só barram **cadastro novo** (convidar usuário, cadastrar cliente),
+  com mensagem dizendo o que fazer. **A emissão de nota nunca é bloqueada** e o
+  que já existe continua funcionando.
+- Recurso fechado aparece com **cadeado** e "conhecer os planos" (logomarca em
+  Configurações da conta; rodapé do e-mail em Modelos de e-mail).
+
+### Alterado (PL1)
+- Logomarca e rodapé do e-mail deixam de ser fixos por perfil no código: viram
+  recursos do plano. Sem configurar (e com a cobrança desligada), continuam
+  como antes: liberados só para contas de contador.
+- Banco: tabelas `planos_recursos` e `excecoes_recurso_conta` (migration
+  `RecursosPlano`).
+
 ### Alterado (cadastro de cliente em seções)
 - **Cliente** com o mesmo layout do cadastro de Empresa: seções à esquerda
   (**Dados gerais**, **Endereço**, **Envio da nota**, **Retenções**) com ✓ / !

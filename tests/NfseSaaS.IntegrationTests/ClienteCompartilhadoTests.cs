@@ -67,7 +67,8 @@ public class ClienteCompartilhadoTests
             Compartilhado: compartilhado, EmpresaId: empresaId);
 
     private static CadastrarClienteUseCase Cadastrar(Cenario c) =>
-        new(c.Db, c.Sp.GetRequiredService<IAuditLogWriter>(), c.Sp.GetRequiredService<ICurrentTenant>());
+        new(c.Db, c.Sp.GetRequiredService<IAuditLogWriter>(), c.Sp.GetRequiredService<ICurrentTenant>(),
+            c.Sp.GetRequiredService<NfseSaaS.Application.UseCases.Recursos.IRecursosConta>());
 
     private static AtualizarClienteUseCase Atualizar(Cenario c) =>
         new(c.Db, c.Sp.GetRequiredService<IAuditLogWriter>());
