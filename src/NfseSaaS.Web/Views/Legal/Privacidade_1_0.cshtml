@@ -6,8 +6,7 @@
 }
 
 <h1>Política de privacidade</h1>
-<p class="legal-versao">Versão 1.0 · vigente de 04/11/2026 até @DocumentosLegais.VigentesDesde.AddDays(-1).ToString("dd/MM/yyyy")</p>
-<p class="alert alert-secondary small">Esta é a versão anterior, guardada como foi aceita. A versão atual está em <a href="/privacidade">Política de privacidade</a>.</p>
+@await Html.PartialAsync("_VersaoLegal", (TipoDocumentoLegal.PoliticaPrivacidade, DocumentosLegais.Versao("1.0")))
 
 <p class="legal-resumo">
     <strong>Em poucas palavras:</strong> usamos os seus dados só para fazer a plataforma funcionar, emitir as suas

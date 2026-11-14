@@ -43,46 +43,35 @@ public sealed class AceiteTermosService : IAceiteTermosService
         _httpContextAccessor = httpContextAccessor;
     }
 
-    public async Task<bool> AceitouVersaoVigenteAsync(Guid usuarioId, CancellationToken cancellationToken)
+    public Task<bool> AceitouVersaoVigenteAsync(Guid usuarioId, CancellationToken cancellationToken) =>
+        AceitouAoMenosAsync(usuarioId, DocumentosLegais.Vigente(DataBrasilia.Hoje()).Versao, cancellationToken);
+
+    public Task<bool> AceitouVersaoAtualAsync(Guid usuarioId, CancellationToken cancellationToken) =>
+        AceitouAoMenosAsync(usuarioId, DocumentosLegais.Atual(DataBrasilia.Hoje()).Versao, cancellationToken);
+
+    /// <summary>
+    /// Aceitou esta versão ou uma mais nova (aceitar a 1.2 vale para a 1.1).
+    /// Termos e Política andam juntos: vale a menor das duas versões aceitas
+    /// no mesmo registro.
+    /// </summary>
+    private async Task<bool> AceitouAoMenosAsync(Guid usuarioId, string versao, CancellationToken cancellationToken)
     {
-        if (await AceitouVersaoAtualAsync(usuarioId, cancellationToken))
-            return true;
-
-        // Aviso prévio: até a nova versão valer, o aceite da anterior libera o uso.
-        if (!DocumentosLegais.AceiteAnteriorAindaVale(DataBrasilia.Hoje()))
-            return false;
-
-        var chave = ChaveCacheAnterior(usuarioId);
+        var chave = ChaveCache(usuarioId, versao);
         if (_cache.TryGetValue(chave, out _))
             return true;
 
-        var aceitouAnterior = await _db.AceitesTermos.AsNoTracking().AnyAsync(a =>
-            a.UsuarioId == usuarioId
-            && a.VersaoTermosDeUso == DocumentosLegais.VersaoAnteriorTermosDeUso
-            && a.VersaoPoliticaPrivacidade == DocumentosLegais.VersaoAnteriorPoliticaPrivacidade,
-            cancellationToken);
+        var aceites = await _db.AceitesTermos.AsNoTracking()
+            .Where(a => a.UsuarioId == usuarioId)
+            .Select(a => new { a.VersaoTermosDeUso, a.VersaoPoliticaPrivacidade })
+            .ToListAsync(cancellationToken);
 
-        // Cache curto: no dia em que a versão nova passa a valer, a
-        // checagem acima (AceiteAnteriorAindaVale) já corta antes daqui.
-        if (aceitouAnterior)
-            _cache.Set(chave, true, DuracaoCache);
+        var minimo = DocumentosLegais.Ordem(versao);
+        var aceitou = minimo >= 0 && aceites.Any(a =>
+            Math.Min(DocumentosLegais.Ordem(a.VersaoTermosDeUso), DocumentosLegais.Ordem(a.VersaoPoliticaPrivacidade)) >= minimo);
 
-        return aceitouAnterior;
-    }
-
-    public async Task<bool> AceitouVersaoAtualAsync(Guid usuarioId, CancellationToken cancellationToken)
-    {
-        if (_cache.TryGetValue(ChaveCache(usuarioId), out _))
-            return true;
-
-        var aceitou = await _db.AceitesTermos.AsNoTracking().AnyAsync(a =>
-            a.UsuarioId == usuarioId
-            && a.VersaoTermosDeUso == DocumentosLegais.VersaoTermosDeUso
-            && a.VersaoPoliticaPrivacidade == DocumentosLegais.VersaoPoliticaPrivacidade,
-            cancellationToken);
-
+        // Só a resposta positiva vai pro cache (quem não aceitou consulta de novo até aceitar).
         if (aceitou)
-            MarcarComoAceito(usuarioId);
+            _cache.Set(chave, true, DuracaoCache);
 
         return aceitou;
     }
@@ -98,8 +87,8 @@ public sealed class AceiteTermosService : IAceiteTermosService
         var aceite = new AceiteTermos
         {
             UsuarioId = usuarioId,
-            VersaoTermosDeUso = DocumentosLegais.VersaoTermosDeUso,
-            VersaoPoliticaPrivacidade = DocumentosLegais.VersaoPoliticaPrivacidade,
+            VersaoTermosDeUso = DocumentosLegais.Atual(DataBrasilia.Hoje()).Versao,
+            VersaoPoliticaPrivacidade = DocumentosLegais.Atual(DataBrasilia.Hoje()).Versao,
             AceitoEm = DateTimeOffset.UtcNow,
             IpAddress = _currentUser.IpAddress,
             UserAgent = userAgent,
@@ -116,12 +105,13 @@ public sealed class AceiteTermosService : IAceiteTermosService
         });
     }
 
-    public void MarcarComoAceito(Guid usuarioId) =>
-        _cache.Set(ChaveCache(usuarioId), true, DuracaoCache);
+    public void MarcarComoAceito(Guid usuarioId)
+    {
+        // Aceitou a atual: vale também para a vigente (que é igual ou mais antiga).
+        var hoje = DataBrasilia.Hoje();
+        _cache.Set(ChaveCache(usuarioId, DocumentosLegais.Atual(hoje).Versao), true, DuracaoCache);
+        _cache.Set(ChaveCache(usuarioId, DocumentosLegais.Vigente(hoje).Versao), true, DuracaoCache);
+    }
 
-    private static string ChaveCacheAnterior(Guid usuarioId) =>
-        $"aceite-termos-anterior:{usuarioId:N}:{DocumentosLegais.VersaoAnteriorTermosDeUso}:{DocumentosLegais.VersaoAnteriorPoliticaPrivacidade}";
-
-    private static string ChaveCache(Guid usuarioId) =>
-        $"aceite-termos:{usuarioId:N}:{DocumentosLegais.VersaoTermosDeUso}:{DocumentosLegais.VersaoPoliticaPrivacidade}";
+    private static string ChaveCache(Guid usuarioId, string versao) => $"aceite-termos:{usuarioId:N}:{versao}";
 }

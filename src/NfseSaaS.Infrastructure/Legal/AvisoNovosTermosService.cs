@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Authorization;
+using NfseSaaS.Application.Common;
 using NfseSaaS.Domain.Legal;
 using NfseSaaS.Infrastructure.Email;
 using NfseSaaS.Infrastructure.Persistence;
@@ -32,8 +33,11 @@ public sealed class AvisoNovosTermosService
     }
 
     /// <summary>Chave de deduplicação do aviso de um usuário para a versão atual.</summary>
-    public static string Chave(Guid usuarioId) =>
-        $"termos:{DocumentosLegais.VersaoTermosDeUso}/{DocumentosLegais.VersaoPoliticaPrivacidade}:{usuarioId:N}";
+    public static string Chave(Guid usuarioId)
+    {
+        var versao = DocumentosLegais.Atual(DataBrasilia.Hoje()).Versao;
+        return $"termos:{versao}/{versao}:{usuarioId:N}";
+    }
 
     /// <returns>Quantos e-mails foram para a fila agora.</returns>
     public async Task<int> AvisarContaAsync(CancellationToken cancellationToken)
@@ -42,6 +46,12 @@ public sealed class AvisoNovosTermosService
             throw new InvalidOperationException("Tenant não definido para o aviso de novos termos.");
 
         var agora = DateTimeOffset.UtcNow;
+        // Quem já aceitou a versão nova (ou uma mais nova) não recebe o aviso.
+        var atual = DocumentosLegais.Atual(DataBrasilia.Hoje());
+        var versoesQueValem = DocumentosLegais.Versoes
+            .Where(v => DocumentosLegais.Ordem(v.Versao) >= DocumentosLegais.Ordem(atual.Versao))
+            .Select(v => v.Versao)
+            .ToList();
         var usuarios = await _db.Users.AsNoTracking()
             .Where(u => u.TenantId == tenantId
                         && u.EmailConfirmed
@@ -49,8 +59,8 @@ public sealed class AvisoNovosTermosService
                         && (u.ConvidadoEm == null || u.ConviteAceitoEm != null)
                         && (u.LockoutEnd == null || u.LockoutEnd < agora)
                         && !_db.AceitesTermos.Any(a => a.UsuarioId == u.Id
-                                                       && a.VersaoTermosDeUso == DocumentosLegais.VersaoTermosDeUso
-                                                       && a.VersaoPoliticaPrivacidade == DocumentosLegais.VersaoPoliticaPrivacidade))
+                                                       && versoesQueValem.Contains(a.VersaoTermosDeUso)
+                                                       && versoesQueValem.Contains(a.VersaoPoliticaPrivacidade)))
             .Select(u => new { u.Id, Email = u.Email! })
             .ToListAsync(cancellationToken);
 
@@ -72,7 +82,8 @@ public sealed class AvisoNovosTermosService
 
     private (string Assunto, string CorpoHtml) Mensagem()
     {
-        var data = DocumentosLegais.VigentesDesde.ToString("dd/MM/yyyy");
+        var atual = DocumentosLegais.Atual(DataBrasilia.Hoje());
+        var data = atual.VigenteDesde.ToString("dd/MM/yyyy");
         var baseUrl = string.IsNullOrWhiteSpace(_emailOptions.AppBaseUrl)
             ? "https://" + DocumentosLegais.Site
             : _emailOptions.AppBaseUrl.TrimEnd('/');
@@ -80,8 +91,8 @@ public sealed class AvisoNovosTermosService
         var assunto = $"Termos de uso e Política de privacidade novos a partir de {data}";
         var corpo = $"""
             <p>Olá,</p>
-            <p>Os <strong>Termos de uso</strong> e a <strong>Política de privacidade</strong> do {DocumentosLegais.NomeServico} têm uma versão nova ({DocumentosLegais.VersaoTermosDeUso}), que passa a valer em <strong>{data}</strong>.</p>
-            <p>{WebUtility.HtmlEncode(DocumentosLegais.ResumoMudancas)}</p>
+            <p>Os <strong>Termos de uso</strong> e a <strong>Política de privacidade</strong> do {DocumentosLegais.NomeServico} têm uma versão nova ({atual.Versao}), que passa a valer em <strong>{data}</strong>.</p>
+            <p>{WebUtility.HtmlEncode(atual.ResumoMudancas)}</p>
             <p>Leia os textos (o que mudou está no topo de cada um): <a href="{baseUrl}/termos">Termos de uso</a> · <a href="{baseUrl}/privacidade">Política de privacidade</a>.</p>
             <p>Você pode aceitar agora pelo aviso no topo da plataforma. A partir de {data}, o aceite será pedido ao entrar. Se não concordar, pode cancelar a assinatura e pedir o encerramento da conta, sem multa.</p>
             <p style="color:#64748b;font-size:12px">Aviso da plataforma {DocumentosLegais.NomeServico}, enviado a todos os usuários com e-mail confirmado. Dúvidas: {DocumentosLegais.EmailPrivacidade}.</p>

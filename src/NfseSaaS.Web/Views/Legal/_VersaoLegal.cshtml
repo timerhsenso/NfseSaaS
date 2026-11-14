@@ -1,0 +1,30 @@
+@using NfseSaaS.Application.Common
+@using NfseSaaS.Domain.Legal
+@model (TipoDocumentoLegal Tipo, VersaoDocumentosLegais Versao)
+@* JUR1: linha de versão de um texto legal (vigência e links para as outras versões publicadas). *@
+@{
+    var hoje = DataBrasilia.Hoje();
+    var v = Model.Versao;
+    var seguinte = DocumentosLegais.Versoes.FirstOrDefault(x => DocumentosLegais.Ordem(x.Versao) > DocumentosLegais.Ordem(v.Versao) && x.Publicada(hoje));
+    var outras = DocumentosLegais.Versoes.Where(x => x.Versao != v.Versao && x.Publicada(hoje)).ToList();
+    var atual = DocumentosLegais.Atual(hoje);
+    var vigencia = !v.Vigente(hoje)
+        ? $"vale a partir de {v.VigenteDesde:dd/MM/yyyy}"
+        : seguinte is not null
+            ? $"vigente de {v.VigenteDesde:dd/MM/yyyy} até {seguinte.VigenteDesde.AddDays(-1):dd/MM/yyyy}"
+            : $"vigente desde {v.VigenteDesde:dd/MM/yyyy}";
+}
+<p class="legal-versao">
+    Versão @v.Versao · @vigencia
+    @foreach (var outra in outras)
+    {
+        @: · <a href="@DocumentosLegais.Url(Model.Tipo, outra.Versao)">versão @outra.Versao</a>
+    }
+</p>
+@if (v.Versao != atual.Versao)
+{
+    <p class="alert alert-secondary small">
+        Esta é a versão @v.Versao, guardada como foi publicada. A versão mais nova é a
+        <a href="@DocumentosLegais.Url(Model.Tipo, atual.Versao)">@atual.Versao</a>.
+    </p>
+}

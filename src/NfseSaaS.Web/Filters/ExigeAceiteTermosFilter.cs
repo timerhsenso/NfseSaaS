@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using NfseSaaS.Application.Abstractions;
+using NfseSaaS.Application.Legal;
 
 namespace NfseSaaS.Web.Filters;
 
@@ -29,11 +30,13 @@ public sealed class ExigeAceiteTermosFilter : IAsyncActionFilter
     public const string CaminhoTelaAceite = "/Legal/Aceitar";
 
     private readonly IAceiteTermosService _aceiteTermos;
+    private readonly IAceiteInstrumentosService _instrumentos;
     private readonly ICurrentUser _currentUser;
 
-    public ExigeAceiteTermosFilter(IAceiteTermosService aceiteTermos, ICurrentUser currentUser)
+    public ExigeAceiteTermosFilter(IAceiteTermosService aceiteTermos, IAceiteInstrumentosService instrumentos, ICurrentUser currentUser)
     {
         _aceiteTermos = aceiteTermos;
+        _instrumentos = instrumentos;
         _currentUser = currentUser;
     }
 
@@ -47,7 +50,9 @@ public sealed class ExigeAceiteTermosFilter : IAsyncActionFilter
             return;
         }
 
-        if (await _aceiteTermos.AceitouVersaoVigenteAsync(usuarioId, context.HttpContext.RequestAborted))
+        // JUR1: depois que o DPA passa a valer, o administrador também precisa tê-lo aceito (uma vez por conta).
+        if (await _aceiteTermos.AceitouVersaoVigenteAsync(usuarioId, context.HttpContext.RequestAborted)
+            && !await _instrumentos.DpaObrigatorioPendenteAsync(usuarioId, context.HttpContext.RequestAborted))
         {
             await next();
             return;

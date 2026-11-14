@@ -2,6 +2,7 @@
 @inject Microsoft.Extensions.Options.IOptions<NfseSaaS.Application.Common.SuporteOptions> SuporteOpcoes
 @inject NfseSaaS.Application.UseCases.Aparencia.IAparenciaUseCase AparenciaUseCase
 @inject NfseSaaS.Application.Abstractions.IAceiteTermosService AceiteTermos
+@inject NfseSaaS.Application.Legal.IAceiteInstrumentosService AceiteInstrumentos
 @inject NfseSaaS.Application.Abstractions.ICurrentUser UsuarioAtual
 @inject NfseSaaS.Application.UseCases.Seguranca.IExigenciaDuploFatorService ExigenciaDuploFator
 @{
@@ -19,9 +20,14 @@
 
     // Aviso prévio dos Termos/Política novos: até a data em que passam a valer,
     // quem ainda não aceitou a versão atual vê o convite para ler e aceitar.
-    var avisoNovosTermos = !NfseSaaS.Domain.Legal.DocumentosLegais.VersaoAtualVigente(NfseSaaS.Application.Common.DataBrasilia.Hoje())
+    var versaoLegalAtual = NfseSaaS.Domain.Legal.DocumentosLegais.Atual(NfseSaaS.Application.Common.DataBrasilia.Hoje());
+    var avisoNovosTermos = NfseSaaS.Domain.Legal.DocumentosLegais.EmAvisoPrevio(NfseSaaS.Application.Common.DataBrasilia.Hoje())
         && UsuarioAtual.UserId is { } usuarioIdTermos
         && !await AceiteTermos.AceitouVersaoAtualAsync(usuarioIdTermos, Context.RequestAborted);
+    // JUR1: administrador com DPA ou autorizações (A1, emissão automática) por aceitar.
+    var pendenciasLegais = !avisoNovosTermos && versaoLegalAtual.VersaoDpa is not null && UsuarioAtual.UserId is { } usuarioIdLegal
+        ? await AceiteInstrumentos.PendenciasAsync(usuarioIdLegal, Context.RequestAborted)
+        : NfseSaaS.Application.Legal.PendenciasInstrumentos.Nenhuma;
     // Verificação em duas etapas obrigatória (SEG1): enquanto corre o prazo,
     // aviso no topo com o atalho para ligar (depois do prazo, o filtro
     // ExigeDuploFatorFilter já não deixa chegar aqui).
@@ -277,9 +283,27 @@
                     <div class="alert alert-info d-flex align-items-start gap-2" role="status" id="aviso-novos-termos">
                         <i class="bi bi-file-earmark-text mt-1" aria-hidden="true"></i>
                         <div>
-                            <strong>Termos de uso e Política de privacidade novos a partir de @NfseSaaS.Domain.Legal.DocumentosLegais.VigentesDesde.ToString("dd/MM/yyyy").</strong>
-                            @NfseSaaS.Domain.Legal.DocumentosLegais.ResumoMudancas
+                            <strong>Termos de uso e Política de privacidade novos a partir de @versaoLegalAtual.VigenteDesde.ToString("dd/MM/yyyy").</strong>
+                            @versaoLegalAtual.ResumoMudancas
                             <a href="/Legal/Aceitar?returnUrl=@Uri.EscapeDataString(Context.Request.Path + Context.Request.QueryString)">Ler e aceitar agora</a>
+                        </div>
+                    </div>
+                }
+                @if (pendenciasLegais.AlgumaPendente)
+                {
+                    <div class="alert alert-info d-flex align-items-start gap-2" role="status" id="aviso-autorizacoes">
+                        <i class="bi bi-shield-check mt-1" aria-hidden="true"></i>
+                        <div>
+                            <strong>Autorizações da conta por revisar.</strong>
+                            @{
+                                var itensAutorizacao = new List<string>();
+                                if (pendenciasLegais.DpaPendente) { itensAutorizacao.Add("o Acordo de Tratamento de Dados"); }
+                                if (pendenciasLegais.Certificados.Count > 0) { itensAutorizacao.Add(pendenciasLegais.Certificados.Count == 1 ? "o uso do certificado de 1 empresa" : $"o uso do certificado de {pendenciasLegais.Certificados.Count} empresas"); }
+                                if (pendenciasLegais.EmissaoAutomatica.Count > 0) { itensAutorizacao.Add(pendenciasLegais.EmissaoAutomatica.Count == 1 ? "a emissão automática de 1 empresa" : $"a emissão automática de {pendenciasLegais.EmissaoAutomatica.Count} empresas"); }
+                            }
+                            Falta autorizar @string.Join(", ", itensAutorizacao.Take(itensAutorizacao.Count - 1))@(itensAutorizacao.Count > 1 ? " e " : "")@itensAutorizacao.Last()
+                            (@(versaoLegalAtual.Vigente(NfseSaaS.Application.Common.DataBrasilia.Hoje()) ? "valem desde" : "valem a partir de") @versaoLegalAtual.VigenteDesde.ToString("dd/MM/yyyy")).
+                            <a href="/Legal/Aceitar?returnUrl=@Uri.EscapeDataString(Context.Request.Path + Context.Request.QueryString)">Revisar agora</a>
                         </div>
                     </div>
                 }

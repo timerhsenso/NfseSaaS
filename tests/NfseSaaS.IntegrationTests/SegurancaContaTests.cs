@@ -159,8 +159,8 @@ public class SegurancaContaTests
         {
             TenantId = tenantId,
             UsuarioId = usuario.Id,
-            VersaoTermosDeUso = DocumentosLegais.VersaoTermosDeUso,
-            VersaoPoliticaPrivacidade = DocumentosLegais.VersaoPoliticaPrivacidade,
+            VersaoTermosDeUso = DocumentosLegais.Atual(DataBrasilia.Hoje()).Versao,
+            VersaoPoliticaPrivacidade = DocumentosLegais.Atual(DataBrasilia.Hoje()).Versao,
             AceitoEm = entrouEm,
             Origem = OrigemAceiteTermos.Convite
         });

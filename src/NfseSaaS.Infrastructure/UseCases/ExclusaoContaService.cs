@@ -248,6 +248,7 @@ public sealed class ExclusaoContaService : ISolicitarExclusaoContaUseCase, IConf
             await _db.Empresas.IgnoreQueryFilters().Where(x => x.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
 
             await _db.AceitesTermos.IgnoreQueryFilters().Where(x => x.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
+            await _db.AceitesInstrumentos.IgnoreQueryFilters().Where(x => x.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
             await _db.ConvitesIndicacao.IgnoreQueryFilters().Where(x => x.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);
             // Os arquivos ZIP saem na limpeza diária (pasta de conta sem pedido vivo).
             await _db.ExportacoesDados.IgnoreQueryFilters().Where(x => x.TenantId == tenantId).ExecuteDeleteAsync(cancellationToken);

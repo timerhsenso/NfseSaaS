@@ -88,6 +88,8 @@ public static class DependencyInjection
         services.AddScoped<ICurrentUser, CurrentUser>();
         services.AddScoped<IAuditLogWriter, AuditLogWriter>();
         services.AddScoped<IAceiteTermosService, NfseSaaS.Infrastructure.Legal.AceiteTermosService>();
+        // JUR1: aceite do DPA e das autorizações (A1, emissão automática) e documentos aceitos.
+        services.AddScoped<NfseSaaS.Application.Legal.IAceiteInstrumentosService, NfseSaaS.Infrastructure.Legal.AceiteInstrumentosService>();
         services.AddScoped<NfseSaaS.Infrastructure.Legal.AvisoNovosTermosService>();
         services.AddScoped<IGrupoProvisionamentoService, GrupoProvisionamentoService>();
         services.AddScoped<INfseEventoWriter, NfseEventoWriter>();

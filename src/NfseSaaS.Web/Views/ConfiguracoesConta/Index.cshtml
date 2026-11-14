@@ -88,6 +88,30 @@
     </div>
 </div>
 
+<div class="card config-conta-secao mt-3" id="documentos-legais">
+    <div class="card-header"><i class="bi bi-file-earmark-check" aria-hidden="true"></i> Documentos aceitos</div>
+    <div class="card-body">
+        <p class="small text-muted mb-2" id="documentos-legais-ajuda">
+            Termos de uso, Política de privacidade, Acordo de Tratamento de Dados e autorizações aceitos, com data, IP e a identificação do texto. Baixe o comprovante em PDF quando precisar.
+        </p>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle tabela-cartoes documentos-aceitos mb-0" id="tabela-documentos-aceitos">
+                <thead>
+                    <tr>
+                        <th>Documento</th>
+                        <th class="col-curta">Versão</th>
+                        <th>Aceito por</th>
+                        <th class="col-curta">Quando</th>
+                        <th class="col-curta">Situação</th>
+                        <th class="col-curta"></th>
+                    </tr>
+                </thead>
+                <tbody><tr><td colspan="6" class="text-muted small">Carregando…</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script src="~/js/paginas/configuracoes-conta.js" asp-append-version="true"></script>
 }

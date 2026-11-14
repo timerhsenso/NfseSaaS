@@ -1,0 +1,157 @@
+@using NfseSaaS.Domain.Legal
+@{
+    Layout = "_LegalLayout";
+    ViewData["Title"] = "Termos de uso (versão 1.2)";
+}
+@* JUR1: texto da versão 1.2. Versão publicada não se edita: mudança de conteúdo = versão nova (DocumentosLegais.Versoes). *@
+
+<h1>Termos de uso</h1>
+@await Html.PartialAsync("_VersaoLegal", (TipoDocumentoLegal.TermosDeUso, DocumentosLegais.Versao("1.2")))
+
+<div class="legal-resumo">
+<p class="mb-0"><strong>O que muda na versão 1.2:</strong> a emissão de notas passa a ter duas modalidades, assistida e automática (item 6); o uso do certificado digital passa a ter autorização própria (item 5); entra o Acordo de Tratamento de Dados (item 15); ficam definidos o suporte (item 8), a exportação e a guarda dos documentos depois do encerramento (item 13) e o registro dos aceites (item 17). As regras de teste, preço de fundador, atraso, cancelamento e indicação não mudam.</p>
+</div>
+<div class="legal-resumo">
+<p class="mb-0"><strong>Em poucas palavras:</strong> o micoempresa é uma plataforma para emitir e organizar notas fiscais de serviço (NFS-e) no padrão nacional. Você continua responsável pelas informações fiscais que cadastra e pelas notas que emite; nós cuidamos de manter a plataforma funcionando, segura e com os seus dados protegidos. Este texto vale como contrato entre você e a LFMS.</p>
+</div>
+<h2>1. Quem somos e aceitação</h2>
+<p>O micoempresa (micoempresa.com.br) é mantido pela <strong>LFMS - Consultoria e Desenvolvimento de Sistemas Ltda</strong>, CNPJ 04.747.304/0001-78, com sede em Lauro de Freitas/BA, aqui chamada de "micoempresa", "nós" ou "plataforma".</p>
+<p>Ao criar uma conta, aceitar um convite ou continuar usando a plataforma depois de uma nova versão destes Termos, você declara que leu, entendeu e concorda com eles e com a <a href="/privacidade">Política de privacidade</a>. Quem usa a plataforma em nome de uma empresa declara ter poderes para contratar por ela e responde pela exatidão dos dados cadastrados. Se não concordar, não use a plataforma.</p>
+<h2>2. Definições</h2>
+<ul>
+<li><strong>Cliente:</strong> a empresa ou o escritório de contabilidade (identificado pelo CNPJ ou CPF) que contrata a plataforma e é titular da conta.</li>
+<li><strong>Conta:</strong> o espaço do Cliente na plataforma, com suas empresas, cadastros, contratos e notas, separado das demais contas.</li>
+<li><strong>Usuário:</strong> a pessoa que acessa a Conta com e-mail e senha: o primeiro usuário (administrador) e os convidados por ele.</li>
+<li><strong>NFS-e:</strong> nota fiscal de serviço eletrônica emitida no Ambiente Nacional da NFS-e (Sistema Nacional NFS-e / SEFIN Nacional).</li>
+<li><strong>Produção e homologação:</strong> produção é o ambiente em que a nota tem valor fiscal; homologação é o ambiente de testes da SEFIN, sem valor fiscal.</li>
+<li><strong>Certificado digital:</strong> o certificado ICP-Brasil do Cliente (tipo A1, arquivo .pfx), usado para assinar e transmitir as notas.</li>
+<li><strong>Emissão assistida:</strong> cada nota (ou cada lote de notas) é transmitida somente depois que um usuário autorizado confere os dados e confirma.</li>
+<li><strong>Emissão automática:</strong> a plataforma transmite as notas mensais dos contratos sem confirmação nota a nota, dentro das regras que o Cliente definiu e da Autorização de emissão automática.</li>
+</ul>
+<h2>3. O serviço</h2>
+<p>A plataforma permite cadastrar empresas, tomadores, serviços e contratos; importar cadastros por planilha; emitir, consultar, substituir, cancelar e baixar NFS-e (XML e PDF); emitir notas mensais em lote ou de forma automática; acompanhar reajustes de contratos por índices econômicos; guardar documentos da empresa; enviar as notas por e-mail aos tomadores; e convidar outros usuários com permissões por perfil.</p>
+<p>Funcionalidades podem mudar, ser incluídas ou retiradas, sempre com aviso quando afetarem o uso que você já faz. As operações fiscais dependem dos ambientes oficiais, de requisitos fiscais e de limites técnicos. A plataforma não presta serviços de contabilidade, nem consultoria fiscal ou jurídica.</p>
+<h2>4. Conta, usuários e senhas</h2>
+<ul>
+<li>As informações de cadastro devem ser verdadeiras e mantidas atualizadas. É vedado criar conta em nome de empresa sem autorização dela.</li>
+<li>Cada usuário deve ter seu próprio acesso. Senhas são pessoais e intransferíveis; o Cliente responde pelo que for feito com os acessos da sua Conta.</li>
+<li>O administrador da Conta decide quem entra, com quais permissões, e pode bloquear ou remover usuários a qualquer momento. Administradores precisam usar a verificação em duas etapas; o administrador pode exigi-la de todos os usuários da Conta.</li>
+<li>Algumas ações sensíveis (trocar o certificado, mudar o ambiente da empresa, mudar permissões, exportar os dados) pedem a senha de novo.</li>
+<li>Em caso de suspeita de uso indevido, troque a senha imediatamente e avise-nos pelo e-mail <a href="mailto:@DocumentosLegais.EmailSuporte">@DocumentosLegais.EmailSuporte</a>. Podemos adotar controles proporcionais contra fraude e abuso, com aviso quando cabível.</li>
+</ul>
+<h2>5. Certificado digital</h2>
+<p>O Cliente pode enviar o certificado A1 da empresa e a respectiva senha para as operações fiscais da plataforma. O envio depende da aceitação, em separado, da <strong><a href="/autorizacao-certificado">Autorização de custódia e uso do certificado digital A1</a></strong>, que define o que pode ser feito com ele.</p>
+<ul>
+<li>O certificado é usado somente para assinar e transmitir ao Ambiente Nacional da NFS-e os documentos autorizados pelo Cliente (item 6 e Autorização A1), para consultar o resultado dessas operações e para testar a conexão com a SEFIN quando o Cliente pedir ou quando a empresa passar para produção. Nunca para outra finalidade.</li>
+<li>O arquivo e a senha são guardados criptografados, nunca aparecem em telas, mensagens de erro ou registros técnicos, e cada uso fica registrado com a identificação do certificado.</li>
+<li>O Cliente declara ter legitimidade para disponibilizar o certificado e responde por sua validade, renovação e revogação perante a autoridade certificadora.</li>
+<li>O Cliente pode remover o certificado a qualquer momento (Empresa › Certificado › Remover). A remoção impede novas operações, mas não desfaz notas já transmitidas e não equivale à revogação do certificado na autoridade certificadora.</li>
+<li>A autorização não dá à LFMS poderes gerais de representação do Cliente.</li>
+</ul>
+<h2>6. Emissão assistida e emissão automática</h2>
+<ul>
+<li><strong>Assistida (padrão):</strong> a plataforma pode sugerir notas a partir dos contratos e cadastros, mas <strong>sugestão não é emissão</strong>. Cada nota, ou cada lote, só é transmitida depois que um usuário com permissão confere os dados apresentados e confirma. A confirmação fica registrada e ligada aos dados aprovados; se os dados mudarem antes da transmissão, a plataforma pede nova confirmação. Notas ainda não transmitidas podem ser descartadas; cancelar nota já emitida depende das regras fiscais.</li>
+<li><strong>Automática (opcional):</strong> a emissão sem confirmação nota a nota só acontece se o Cliente ligar a Nota Mensal automática de uma empresa e aceitar, em separado, a <strong><a href="/autorizacao-emissao-automatica">Autorização de emissão automática</a></strong>, com as regras, os limites e a forma de suspender ali descritos. O simples envio do certificado não autoriza emissão automática.</li>
+<li><strong>Transição:</strong> empresas que usavam a Nota Mensal automática na versão 1.1 continuam assim até o início da vigência desta versão. Depois, se a Autorização de emissão automática não tiver sido aceita, a automação passa sozinha a apenas listar as notas para revisão, e o Cliente é avisado por e-mail.</li>
+<li>Cancelamento, substituição e outros eventos de nota sempre dependem de ação de um usuário com permissão.</li>
+</ul>
+<h2>7. Responsabilidade pelas informações fiscais</h2>
+<p>O Cliente é o emitente das notas e responde pela veracidade, completude e adequação fiscal dos dados e instruções que fornece. Por isso, cabe ao Cliente:</p>
+<ul>
+<li>conferir, de preferência com o seu contador, regime tributário, códigos de tributação, NBS, alíquotas, retenções, município, valores e dados dos tomadores;</li>
+<li>conferir os dados de cada nota antes de confirmar a emissão assistida;</li>
+<li>revisar as automações que ativar (Nota Mensal automática, reajuste automático de contratos) e os valores que elas vão aplicar;</li>
+<li>acompanhar o resultado de cada emissão e tratar as rejeições informadas pela SEFIN;</li>
+<li>guardar os XML das notas pelo prazo exigido pela legislação (item 13).</li>
+</ul>
+<p>A plataforma valida o formato dos dados conforme o leiaute oficial, mas não substitui a análise fiscal do Cliente. A LFMS continua responsável pelas falhas próprias do serviço, nos limites da lei.</p>
+<h2>8. Disponibilidade, suporte e serviços de terceiros</h2>
+<p>Trabalhamos para manter a plataforma disponível e segura, com cópias de segurança diárias, mas não garantimos funcionamento ininterrupto ou livre de erros. Podem ocorrer paradas para manutenção (avisadas com antecedência sempre que possível) e falhas fora do nosso controle, em especial indisponibilidade ou mudanças do Ambiente Nacional da NFS-e, da empresa de pagamentos, de provedores de hospedagem e internet e de serviços públicos de consulta (CNPJ, CEP, índices econômicos).</p>
+<p>Suporte: pelo e-mail <a href="mailto:@DocumentosLegais.EmailSuporte">@DocumentosLegais.EmailSuporte</a>, em dias úteis, com resposta em até 2 (dois) dias úteis. Os planos atuais não têm acordo de nível de serviço (SLA) com créditos.</p>
+<h2>9. Planos, teste grátis, preços e pagamento</h2>
+<h3>9.1 Teste grátis</h3>
+<ul>
+<li>Toda conta nova tem 30 dias de teste grátis, sem cartão e sem limite de notas. O prazo começa na primeira nota emitida em produção (ou na assinatura, se ela vier antes). Notas em homologação são sempre livres e não contam.</li>
+<li>Um teste por CNPJ: se o CNPJ de uma empresa da conta já usou o teste em outra conta, a conta nova não tem teste e precisa assinar um plano para emitir em produção. Se achar que é engano, fale com o suporte. Essa regra não vale para contas de escritórios de contabilidade, que cadastram empresas dos seus clientes.</li>
+<li>Terminado o teste sem assinatura, só a emissão em produção para (inclusive a automática). Consultas, downloads, cadastros e homologação continuam liberados.</li>
+</ul>
+<h3>9.2 Planos e primeira cobrança</h3>
+<ul>
+<li>Preço, limites, periodicidade e funcionalidades de cada plano estão na página <a href="/precos">Preços</a> e na tela Assinatura, são mostrados antes da contratação e ficam registrados. Nada é cobrado sem que o Cliente tenha escolhido um plano.</li>
+<li>O Cliente pode assinar quando quiser: assinando durante o teste, a primeira fatura vence no último dia do teste, sem perder nenhum dia de teste. Depois, a cobrança é mensal, no mesmo dia.</li>
+<li>O pagamento é feito por Pix, boleto ou cartão, na página da fatura, pela empresa de pagamentos parceira (Asaas). Não guardamos dados de cartão.</li>
+<li>Cada plano tem um número de notas por mês. Passando do limite, avisamos e indicamos o plano adequado; a emissão não é interrompida por isso.</li>
+<li>Para cada pagamento confirmado, emitimos a nota fiscal de serviço correspondente para o Cliente.</li>
+</ul>
+<h3>9.3 Preço de fundador (campanha de lançamento)</h3>
+<ul>
+<li>Durante a campanha de lançamento, quem cria a conta e confirma o e-mail enquanto houver vaga (e até a data-fim da campanha, mostradas na página Preços) garante o preço de fundador. As vagas são contadas separadamente para empresas e para escritórios de contabilidade.</li>
+<li>A vaga fica reservada até 7 dias depois do fim do teste grátis. Se o Cliente não assinar nesse prazo, a vaga volta para a campanha. Contas criadas durante o período de testes com clientes convidados (beta) têm a vaga reservada sem prazo.</li>
+<li>O preço de fundador vale enquanto a assinatura continuar ativa, inclusive na troca para outro plano (vale o preço de fundador do novo plano), e não sofre o reajuste anual dos preços de tabela. Atraso no pagamento não tira o preço de fundador.</li>
+<li>Cancelando a assinatura, o preço de fundador se perde. Voltando depois, a assinatura é feita pelo preço de tabela do dia.</li>
+<li>Ofertas de preço de fundador já feitas são respeitadas nos termos da oferta original. Qualquer condição nova vale só para adesões posteriores à sua divulgação e nunca retroage.</li>
+</ul>
+<h3>9.4 Atraso, estorno e contestação</h3>
+<ul>
+<li>Fatura não paga até o vencimento: avisamos por e-mail e na plataforma, e a emissão em produção continua por mais 10 dias depois do vencimento.</li>
+<li>Passado esse prazo sem pagamento, só a emissão em produção fica bloqueada (inclusive a automática) até o pagamento ser confirmado; a liberação é automática. O acesso, as consultas, os downloads, os cadastros e a homologação continuam funcionando, e a Conta não é suspensa por atraso.</li>
+<li>Pagamento estornado ou contestado junto ao banco ou à operadora do cartão (chargeback) conta como fatura não paga a partir do dia em que soubermos, com o mesmo prazo de 10 dias. Se a contestação for resolvida a favor do pagamento, tudo volta ao normal.</li>
+</ul>
+<h3>9.5 Reajuste e cancelamento</h3>
+<ul>
+<li>Os preços de tabela podem ser reajustados uma vez por ano, ou alterados por mudança de plano, com aviso de pelo menos 30 (trinta) dias. O preço de fundador fica de fora (item 9.3).</li>
+<li>O Cliente pode cancelar a qualquer momento pela tela Assinatura, sem multa. A emissão em produção continua até o último dia já pago (ou até o fim do teste) e as faturas seguintes não são geradas. A Conta e os dados continuam disponíveis para consulta e download.</li>
+<li>Valores de período já pago não são devolvidos, salvo quando a lei determinar.</li>
+</ul>
+<h2>10. Indique e ganhe e convites por e-mail</h2>
+<ul>
+<li>Cada Conta tem um link de indicação. Quando uma conta nova criada por esse link paga a primeira fatura, as duas ganham 1 (um) mês grátis: a próxima fatura de cada uma é dispensada. Se a conta que ganhou ainda não assinou, está com fatura em atraso, cancelada ou suspensa, o prêmio fica guardado até a situação se resolver.</li>
+<li>Não vale indicar a própria conta, outra conta do mesmo Cliente ou contas criadas só para ganhar o prêmio. Nesses casos, ou em qualquer fraude, o prêmio é cancelado.</li>
+<li>Pela tela "Indique e ganhe", o usuário pode mandar convites por e-mail para pessoas que conhece: até 10 por dia, e o mesmo endereço não recebe outro convite (de nenhuma conta) por 30 dias. O convite sai em nome do usuário, com resposta para o e-mail dele, e traz um link para a pessoa não receber mais convites.</li>
+<li>Ao mandar convites, o usuário declara que tem relação com as pessoas convidadas e que elas não se oporiam a receber a mensagem. É proibido usar os convites para enviar mensagens em massa ou não solicitadas (spam).</li>
+</ul>
+<h2>11. Uso permitido</h2>
+<p>É proibido usar a plataforma para:</p>
+<ul>
+<li>emitir documentos fiscais falsos, simulados ou em nome de terceiros sem autorização, ou praticar qualquer fraude;</li>
+<li>acessar, ou tentar acessar, contas e dados de outros clientes, ou contornar controles de acesso;</li>
+<li>testar ou explorar vulnerabilidades, sobrecarregar, copiar ou fazer engenharia reversa da plataforma, ou automatizar acessos fora dos meios que oferecemos;</li>
+<li>cadastrar dados pessoais de terceiros sem base legal para isso;</li>
+<li>criar contas em série para repetir o teste grátis, o preço de fundador ou o prêmio de indicação.</li>
+</ul>
+<h2>12. Suspensão, cancelamento e encerramento</h2>
+<ul>
+<li>O Cliente pode cancelar a assinatura pela tela Assinatura (item 9.5) e encerrar a Conta pela tela "Meus dados" (administrador) ou pelo e-mail <a href="mailto:@DocumentosLegais.EmailSuporte">@DocumentosLegais.EmailSuporte</a>.</li>
+<li>Podemos suspender ou encerrar a Conta em caso de violação destes Termos (inclusive do item 11), de risco à segurança da plataforma ou de outros clientes, ou de ordem de autoridade, com critérios proporcionais. Fora de situações urgentes ou ilegais, avisaremos antes, por e-mail. Durante a suspensão, ninguém da Conta acessa a plataforma e nenhuma nota é emitida, inclusive pela emissão automática.</li>
+<li>Atraso de pagamento não suspende a Conta: ele bloqueia só a emissão em produção, nos termos do item 9.4.</li>
+<li>Cancelar a assinatura não apaga a Conta. Encerrar a Conta interrompe novas operações e cobranças, sem apagar obrigações já constituídas; os dados seguem o item 13.</li>
+</ul>
+<h2>13. Exportação, exclusão e guarda dos documentos</h2>
+<ul>
+<li>Enquanto a Conta existir, inclusive com a assinatura cancelada, o Cliente pode baixar as notas (XML e PDF) e exportar todos os dados da Conta pela tela "Meus dados".</li>
+<li>Encerrada a Conta, há 90 (noventa) dias para reabri-la ou pedir a exportação. Depois disso, os dados são excluídos, conforme o Acordo de Tratamento de Dados e a Política de privacidade, ressalvados os documentos fiscais (abaixo) e os registros necessários ao cumprimento de obrigações legais e à defesa de direitos.</li>
+<li><strong>Guarda dos documentos fiscais:</strong> como serviço incluído no plano, a plataforma mantém as notas fiscais, seus XML e eventos por 5 (cinco) anos contados na forma da legislação tributária, mesmo depois do encerramento, e os entrega ao Cliente que pedir nesse prazo. Essa guarda não substitui a obrigação legal de guarda do próprio Cliente, que continua com ele.</li>
+</ul>
+<h2>14. Propriedade intelectual</h2>
+<p>A plataforma, sua marca, código e aparência pertencem à LFMS. O Cliente recebe uma licença de uso limitada, não exclusiva e intransferível, enquanto a Conta estiver ativa. Os dados e documentos que o Cliente cadastra continuam sendo do Cliente.</p>
+<h2>15. Proteção de dados pessoais</h2>
+<p>O tratamento de dados pessoais segue a Lei Geral de Proteção de Dados (Lei nº 13.709/2018) e está descrito na <a href="/privacidade">Política de privacidade</a>. Para os dados dos usuários da Conta, a LFMS é a controladora. Para os dados que o Cliente cadastra sobre os próprios clientes, tomadores e contatos, o Cliente é o controlador e a LFMS atua como operadora, nos termos do <strong><a href="/dpa">Acordo de Tratamento de Dados Pessoais (DPA)</a></strong>, que integra estes Termos e é aceito pelo administrador da Conta. A LFMS mantém medidas de segurança proporcionais ao risco, inclusive proteção dos certificados, separação entre contas, registro de auditoria e resposta a incidentes.</p>
+<h2>16. Limitação de responsabilidade</h2>
+<p>Cada parte responde por suas condutas, instruções e obrigações legais. A LFMS não responde por:</p>
+<ul>
+<li>multas, tributos, juros ou prejuízos decorrentes de informações fiscais cadastradas ou confirmadas pelo Cliente, ou de automações que ele ativou dentro das regras que definiu;</li>
+<li>indisponibilidade, demora, rejeição ou mudança de regras do Ambiente Nacional da NFS-e ou de outros serviços públicos;</li>
+<li>uso indevido de senhas ou do certificado digital por falha de guarda do Cliente ou de seus usuários;</li>
+<li>notas não emitidas em produção enquanto a emissão estiver bloqueada por fim do teste ou por atraso (item 9);</li>
+<li>lucros cessantes e danos indiretos.</li>
+</ul>
+<p>Em qualquer caso, a responsabilidade total da LFMS fica limitada ao valor pago pelo Cliente nos 12 (doze) meses anteriores ao fato. Nada nestes Termos afasta responsabilidade que a lei não permita limitar, nem a decorrente de dolo ou culpa grave.</p>
+<h2>17. Alterações e registro dos aceites</h2>
+<p>Podemos atualizar estes Termos. Mudanças relevantes são avisadas por e-mail e na plataforma com pelo menos 15 (quinze) dias de antecedência, salvo quando exigidas por lei ou por segurança. Cada versão tem número, data de publicação e início de vigência; a nova versão precisa ser aceita para continuar usando a plataforma a partir da data em que passa a valer, e as anteriores continuam disponíveis para consulta.</p>
+<p>Cada aceite (destes Termos, da Política de privacidade, do DPA e das autorizações) é registrado com o usuário, a empresa, a versão, a data e hora, o endereço IP, o navegador e a identificação do texto aceito. O Cliente pode consultar e baixar os documentos que aceitou em Configurações da conta. Se não concordar com uma nova versão, o Cliente pode cancelar a assinatura e encerrar a Conta sem multa.</p>
+<h2>18. Comunicações</h2>
+<p>Os avisos são enviados para o e-mail dos usuários cadastrados na Conta e/ou exibidos na plataforma. Mantenha os e-mails atualizados.</p>
+<h2>19. Lei aplicável e foro</h2>
+<p>Estes Termos seguem as leis do Brasil. A nulidade de uma disposição não invalida as demais. Fica eleito o foro da comarca de Salvador/BA para resolver qualquer questão relacionada a eles, ressalvados os casos em que a lei garanta outro foro.</p>
+<h2>20. Contato</h2>
+<p>Suporte e avisos contratuais: <a href="mailto:@DocumentosLegais.EmailSuporte">@DocumentosLegais.EmailSuporte</a>. Privacidade e proteção de dados: <a href="mailto:@DocumentosLegais.EmailPrivacidade">@DocumentosLegais.EmailPrivacidade</a>.</p>

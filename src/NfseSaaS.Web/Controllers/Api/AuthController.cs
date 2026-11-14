@@ -111,6 +111,7 @@ public sealed class AuthController : ControllerBase
     private readonly IHostEnvironment _environment;
     private readonly PlataformaOptions _plataforma;
     private readonly IAceiteTermosService _aceiteTermos;
+    private readonly NfseSaaS.Application.Legal.IAceiteInstrumentosService _instrumentos;
     private readonly IConsultarCnpjUseCase _consultarCnpj;
     private readonly ICriarEmpresaInicialService _empresaInicial;
     private readonly IConfirmacaoEmailService _confirmacaoEmail;
@@ -131,6 +132,7 @@ public sealed class AuthController : ControllerBase
         IHostEnvironment environment,
         IOptions<PlataformaOptions> plataforma,
         IAceiteTermosService aceiteTermos,
+        NfseSaaS.Application.Legal.IAceiteInstrumentosService instrumentos,
         IConsultarCnpjUseCase consultarCnpj,
         ICriarEmpresaInicialService empresaInicial,
         IConfirmacaoEmailService confirmacaoEmail,
@@ -150,6 +152,7 @@ public sealed class AuthController : ControllerBase
         _environment = environment;
         _plataforma = plataforma.Value;
         _aceiteTermos = aceiteTermos;
+        _instrumentos = instrumentos;
         _consultarCnpj = consultarCnpj;
         _empresaInicial = empresaInicial;
         _confirmacaoEmail = confirmacaoEmail;
@@ -271,6 +274,9 @@ public sealed class AuthController : ControllerBase
         try
         {
             _aceiteTermos.Registrar(user.Id, OrigemAceiteTermos.Cadastro);
+            // JUR1: quem cria a conta é o administrador e aceita também o DPA (a caixa do cadastro cita os três).
+            if (NfseSaaS.Domain.Legal.DocumentosLegais.Atual(NfseSaaS.Application.Common.DataBrasilia.Hoje()).VersaoDpa is not null)
+                await _instrumentos.RegistrarDpaAsync(user.Id, NfseSaaS.Domain.Entities.OrigemAceiteInstrumento.Cadastro, cancellationToken);
             if (request.Perfil == PerfilConta.Empresa)
                 _empresaInicial.Adicionar(tenant.Id, documento, tenant.RazaoSocial, request.Email.Trim(), consulta);
             await _db.SaveChangesAsync(cancellationToken);
@@ -436,6 +442,7 @@ public sealed class AuthController : ControllerBase
     /// </summary>
     [Authorize]
     [PermitirSemDuploFator]
+    [PermitirSemAceiteTermos] // JUR1: a tela de aceite pede a senha para autorizar a emissão automática.
     [EnableRateLimiting("AuthSensivel")]
     [HttpPost("confirmar-senha")]
     public async Task<IActionResult> ConfirmarSenha([FromBody] ConfirmarSenhaRequest request, CancellationToken cancellationToken)

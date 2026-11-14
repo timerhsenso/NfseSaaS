@@ -4,20 +4,15 @@
 @using NfseSaaS.Domain.Legal
 @{
     Layout = "_LegalLayout";
-    ViewData["Title"] = "Termos de uso";
+    ViewData["Title"] = "Termos de uso (versão 1.1)";
     var servico = DocumentosLegais.NomeServico;
-    var jaVale = DocumentosLegais.VersaoAtualVigente(DataBrasilia.Hoje());
-    var desde = DocumentosLegais.VigentesDesde.ToString("dd/MM/yyyy");
 }
 
 <h1>Termos de uso</h1>
-<p class="legal-versao">
-    Versão @DocumentosLegais.VersaoTermosDeUso · @(jaVale ? "vigente desde" : "vale a partir de") @desde
-    · <a href="/termos/@DocumentosLegais.VersaoAnteriorTermosDeUso">versão anterior (@DocumentosLegais.VersaoAnteriorTermosDeUso)</a>
-</p>
+@await Html.PartialAsync("_VersaoLegal", (TipoDocumentoLegal.TermosDeUso, DocumentosLegais.Versao("1.1")))
 
 <div class="legal-resumo">
-    <p class="mb-2"><strong>O que mudou na versão @DocumentosLegais.VersaoTermosDeUso:</strong></p>
+    <p class="mb-2"><strong>O que mudou na versão 1.1:</strong></p>
     <ul class="mb-0">
         <li>a plataforma passa a ser mantida pela <strong>@DocumentosLegais.ResponsavelNome</strong> (CNPJ @DocumentosLegais.ResponsavelCnpj);</li>
         <li>regras do teste grátis (@Planos.TesteDias dias, um por CNPJ), do preço de fundador e da primeira cobrança (itens 8.1 a 8.3);</li>

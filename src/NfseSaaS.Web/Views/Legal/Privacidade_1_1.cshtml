@@ -3,20 +3,15 @@
 @using NfseSaaS.Domain.Legal
 @{
     Layout = "_LegalLayout";
-    ViewData["Title"] = "Política de privacidade";
+    ViewData["Title"] = "Política de privacidade (versão 1.1)";
     var servico = DocumentosLegais.NomeServico;
-    var jaVale = DocumentosLegais.VersaoAtualVigente(DataBrasilia.Hoje());
-    var desde = DocumentosLegais.VigentesDesde.ToString("dd/MM/yyyy");
 }
 
 <h1>Política de privacidade</h1>
-<p class="legal-versao">
-    Versão @DocumentosLegais.VersaoPoliticaPrivacidade · @(jaVale ? "vigente desde" : "vale a partir de") @desde
-    · <a href="/privacidade/@DocumentosLegais.VersaoAnteriorPoliticaPrivacidade">versão anterior (@DocumentosLegais.VersaoAnteriorPoliticaPrivacidade)</a>
-</p>
+@await Html.PartialAsync("_VersaoLegal", (TipoDocumentoLegal.PoliticaPrivacidade, DocumentosLegais.Versao("1.1")))
 
 <div class="legal-resumo">
-    <p class="mb-2"><strong>O que mudou na versão @DocumentosLegais.VersaoPoliticaPrivacidade:</strong></p>
+    <p class="mb-2"><strong>O que mudou na versão 1.1:</strong></p>
     <ul class="mb-0">
         <li>o responsável (controlador) passa a ser a <strong>@DocumentosLegais.ResponsavelNome</strong> (CNPJ @DocumentosLegais.ResponsavelCnpj);</li>
         <li>dados de quem é convidado pelo "Indique e ganhe" (itens 3, 4 e 7);</li>

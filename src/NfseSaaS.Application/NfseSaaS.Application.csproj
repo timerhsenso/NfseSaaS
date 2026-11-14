@@ -22,6 +22,8 @@
     <EmbeddedResource Include="Rejeicoes\rejeicoes-sefin.json" LogicalName="NfseSaaS.Application.Rejeicoes.rejeicoes-sefin.json" />
     <!-- Anexos VII e VIII da Reforma Tributária na NFS-e (gerado por tools/ibscbs/gerar_correlacao.py). -->
     <EmbeddedResource Include="Fiscal\IbsCbs\correlacao-ibscbs.json" LogicalName="NfseSaaS.Application.Fiscal.IbsCbs.correlacao-ibscbs.json" />
+    <!-- JUR1: textos dos instrumentos legais (DPA e autorizações), um arquivo por versão; o aceite guarda o SHA-256 deste texto. -->
+    <EmbeddedResource Include="Legal\Textos\*.html" LogicalName="NfseSaaS.Application.Legal.Textos.%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!-- Não deve conhecer EF Core, PostgreSQL ou detalhes de infraestrutura. -->

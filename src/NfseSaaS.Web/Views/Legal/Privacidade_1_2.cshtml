@@ -1,0 +1,274 @@
+@using NfseSaaS.Domain.Legal
+@{
+    Layout = "_LegalLayout";
+    ViewData["Title"] = "Política de privacidade (versão 1.2)";
+}
+@* JUR1: texto da versão 1.2. Versão publicada não se edita: mudança de conteúdo = versão nova (DocumentosLegais.Versoes). *@
+
+<h1>Política de privacidade</h1>
+@await Html.PartialAsync("_VersaoLegal", (TipoDocumentoLegal.PoliticaPrivacidade, DocumentosLegais.Versao("1.2")))
+
+<div class="legal-resumo">
+<p class="mb-0"><strong>O que muda na versão 1.2:</strong> entram o WhatsApp da conta e os avisos por WhatsApp; os dados de terceiros que o Cliente trata na plataforma (confirmação de recebimento, saída das cópias, documentos da empresa); a emissão assistida e automática; o registro dos aceites; a lista atualizada de cookies; e prazos novos de retenção (convites, registro do teste).</p>
+</div>
+<h2>1. Responsável e abrangência</h2>
+<p>O responsável pela plataforma micoempresa é a <strong>LFMS - Consultoria e Desenvolvimento de Sistemas Ltda</strong>, CNPJ 04.747.304/0001-78, com sede em Lauro de Freitas/BA. Esta Política explica como tratamos dados pessoais, nos termos da Lei nº 13.709/2018 (LGPD); integra os <a href="/termos">Termos de uso</a> e deve ser lida com o <a href="/dpa">Acordo de Tratamento de Dados (DPA)</a>. Canal de privacidade, inclusive para os pedidos do item 10: <a href="mailto:@DocumentosLegais.EmailPrivacidade">@DocumentosLegais.EmailPrivacidade</a>.</p>
+<h2>2. Nosso papel em cada tipo de dado</h2>
+<ul>
+<li><strong>Controladora:</strong> a LFMS decide como e para que são usados os dados de cadastro, autenticação, assinatura e cobrança, segurança, prevenção de fraude, suporte e administração da plataforma, os dados dos usuários e os de quem recebe um convite do "Indique e ganhe".</li>
+<li><strong>Operadora:</strong> para os dados que o Cliente cadastra sobre os próprios clientes, tomadores e contatos (nome, CPF/CNPJ, endereço, contatos, contratos, notas, anexos, confirmações de recebimento), o Cliente é o controlador. Tratamos esses dados somente para prestar o serviço, conforme as instruções do Cliente e o DPA. Pedidos dos titulares desses dados são encaminhados ao Cliente.</li>
+</ul>
+<p>A classificação pode variar conforme a operação efetiva e as finalidades definidas por cada parte.</p>
+<h2>3. Quais dados tratamos</h2>
+<div class="table-responsive">
+<table class="table legal-tabela">
+<thead>
+<tr>
+<th>Categoria</th>
+<th>Exemplos</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cadastro de acesso</td>
+<td>nome, e-mail, senha (guardada só como código irreversível), perfil de permissão, data do convite, configuração da verificação em duas etapas</td>
+</tr>
+<tr>
+<td>WhatsApp da conta</td>
+<td>número de WhatsApp informado de forma opcional pelo administrador e a autorização para receber avisos por ele, com data</td>
+</tr>
+<tr>
+<td>Dados da empresa cliente</td>
+<td>razão social, CNPJ, inscrição municipal, endereço, telefone, e-mail, regime tributário</td>
+</tr>
+<tr>
+<td>Certificado digital</td>
+<td>arquivo do certificado A1 e sua senha, guardados criptografados; titular, CNPJ, validade e impressão digital do certificado</td>
+</tr>
+<tr>
+<td>Tomadores, contatos e contratos</td>
+<td>nome, CPF/CNPJ, endereço, e-mails (principal e cópias) e telefone dos tomadores; contratos, valores, índices e documentos anexados; planilhas importadas</td>
+</tr>
+<tr>
+<td>Documentos da empresa</td>
+<td>certidões, contrato social e outros PDFs que o Cliente guarda, com validade</td>
+</tr>
+<tr>
+<td>Documentos fiscais</td>
+<td>NFS-e, DPS, XML, PDF (DANFSe), eventos, protocolos e mensagens da SEFIN</td>
+</tr>
+<tr>
+<td>Envio das notas e respostas dos destinatários</td>
+<td>e-mails enviados (destinatários, assunto, situação); confirmação de recebimento (e-mail de quem confirmou, IP, data e hora); pedido de saída das cópias (e-mail, IP, data e hora)</td>
+</tr>
+<tr>
+<td>Aprovações e aceites</td>
+<td>quem aprovou cada emissão, quando e a identificação dos dados aprovados; aceites dos Termos, desta Política, do DPA e das autorizações (versão, data e hora, IP, navegador, identificação do texto)</td>
+</tr>
+<tr>
+<td>Registros de uso e segurança</td>
+<td>endereço IP, data e hora de acesso, navegador, ações realizadas (histórico de auditoria), tentativas de login, uso do certificado</td>
+</tr>
+<tr>
+<td>Assinatura e pagamento</td>
+<td>plano, preço, situação do teste e da cobrança, faturas, pagamentos, estornos e contestações. Dados de cartão ficam só com a empresa de pagamentos</td>
+</tr>
+<tr>
+<td>Registro do teste grátis</td>
+<td>o CNPJ que usou o teste e a data de início</td>
+</tr>
+<tr>
+<td>Indicação e convites</td>
+<td>qual conta indicou qual, os prêmios e o e-mail de quem foi convidado, com a data do convite</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>A plataforma não foi feita para coletar dados sensíveis (saúde, religião, biometria etc.). Documentos e anexos enviados pelo Cliente podem, porém, contê-los; nesse caso, o tratamento segue as instruções do Cliente e a lei. A plataforma é destinada a maiores de 18 anos.</p>
+<h2>4. Para que usamos e com qual base legal</h2>
+<div class="table-responsive">
+<table class="table legal-tabela">
+<thead>
+<tr>
+<th>Finalidade</th>
+<th>Base legal (LGPD)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Criar e manter a conta, autenticar usuários e prestar o serviço contratado (emitir, consultar e guardar notas, automações, e-mails da plataforma)</td>
+<td>Execução de contrato (art. 7º, V)</td>
+</tr>
+<tr>
+<td>Transmitir documentos fiscais ao Ambiente Nacional da NFS-e</td>
+<td>Execução de contrato (art. 7º, V), como operadora do Cliente</td>
+</tr>
+<tr>
+<td>Faturar os planos, emitir a nota fiscal de cada pagamento e guardar os documentos fiscais da LFMS</td>
+<td>Execução de contrato (art. 7º, V) e obrigação legal (art. 7º, II)</td>
+</tr>
+<tr>
+<td>Guardar registros de acesso pelo prazo do Marco Civil da Internet</td>
+<td>Obrigação legal (art. 7º, II)</td>
+</tr>
+<tr>
+<td>Segurança, prevenção de fraude e de acesso indevido, auditoria, cópias de segurança, suporte</td>
+<td>Legítimo interesse (art. 7º, IX)</td>
+</tr>
+<tr>
+<td>Aplicar a regra de um teste grátis por CNPJ, inclusive depois da exclusão de uma conta</td>
+<td>Legítimo interesse (art. 7º, IX), para prevenir abuso da oferta</td>
+</tr>
+<tr>
+<td>Enviar o convite pedido pelo "Indique e ganhe", evitar repetição e conceder os prêmios</td>
+<td>Legítimo interesse (art. 7º, IX), com aviso ao destinatário e oposição pelo próprio convite</td>
+</tr>
+<tr>
+<td>Avisos da plataforma por WhatsApp ao número da conta</td>
+<td>Consentimento (art. 7º, I), revogável a qualquer momento em Configurações da conta ou respondendo "parar"</td>
+</tr>
+<tr>
+<td>Defesa em processos e comprovação dos aceites e das aprovações</td>
+<td>Exercício regular de direitos (art. 7º, VI)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Para os dados tratados como operadora, cabe ao Cliente definir e documentar as bases legais. Não usamos dados para publicidade de terceiros, não traçamos perfis de comportamento e não vendemos nem alugamos dados.</p>
+<h2>5. Emissão assistida, emissão automática e certificado</h2>
+<p>Na emissão assistida (padrão), nenhuma nota é transmitida sem a confirmação de um usuário autorizado, ligada aos dados aprovados; se os dados mudarem, a confirmação é pedida de novo. A emissão automática só existe quando o Cliente a liga para uma empresa e aceita a <a href="/autorizacao-emissao-automatica">Autorização de emissão automática</a>. O certificado A1 é usado somente nas operações fiscais autorizadas, nos limites da <a href="/autorizacao-certificado">Autorização de custódia e uso do certificado</a>; guardá-lo não autoriza nenhuma outra assinatura ou emissão.</p>
+<h2>6. Com quem compartilhamos</h2>
+<p>Somente o necessário para cada finalidade:</p>
+<ul>
+<li><strong>Ambiente Nacional da NFS-e (Receita Federal / SEFIN Nacional) e municípios:</strong> as notas e eventos que o Cliente manda emitir, cancelar ou consultar, e a nota fiscal de cada mensalidade paga.</li>
+<li><strong>Asaas (empresa de pagamentos):</strong> nome ou razão social, CPF ou CNPJ e e-mail do Cliente, plano e valor, para gerar as faturas. O pagamento é feito na página do Asaas, que tem política própria.</li>
+<li><strong>Hostinger:</strong> hospedagem do servidor e do banco de dados e envio dos e-mails da plataforma.</li>
+<li><strong>Microsoft (OneDrive):</strong> guarda das cópias de segurança, que saem do nosso servidor já criptografadas; a Microsoft não consegue ler o conteúdo.</li>
+<li><strong>Meta (WhatsApp Business Platform):</strong> somente quando os avisos por WhatsApp estiverem disponíveis e autorizados pelo administrador: o número de WhatsApp da conta e o texto do aviso.</li>
+<li><strong>Serviços públicos de consulta</strong> (BrasilAPI, ViaCEP, IBGE, Banco Central): recebem apenas o CNPJ, CEP ou código consultado.</li>
+<li><strong>Redes de distribuição de conteúdo</strong> (jsDelivr, Cloudflare, jQuery, DataTables, Google Fonts): fornecem estilos, scripts, ícones e fontes das telas e, como em qualquer site, recebem o IP e o navegador de quem acessa.</li>
+<li><strong>Autoridades:</strong> quando houver obrigação legal ou ordem válida.</li>
+</ul>
+<p>Esta lista é atualizada sempre que a arquitetura ou os fornecedores mudarem.</p>
+<h2>7. Transferência internacional</h2>
+<p>Alguns desses fornecedores (armazenamento das cópias de segurança, distribuição de conteúdo e, quando ativado, o WhatsApp) podem tratar dados fora do Brasil. Nesses casos, a LFMS verifica a hipótese e o mecanismo aplicável do art. 33 da LGPD e da regulamentação da ANPD, inclusive cláusulas-padrão quando exigíveis, e as cópias de segurança são sempre criptografadas antes de sair do nosso servidor. Mais informações sobre países, fornecedores e salvaguardas podem ser pedidas pelo canal de privacidade.</p>
+<h2>8. Por quanto tempo guardamos</h2>
+<div class="table-responsive">
+<table class="table legal-tabela">
+<thead>
+<tr>
+<th>Dado</th>
+<th>Prazo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dados da conta e do serviço</td>
+<td>Enquanto a conta existir, inclusive com a assinatura cancelada</td>
+</tr>
+<tr>
+<td>Demais dados, após o encerramento da conta</td>
+<td>90 (noventa) dias para reabertura ou exportação; depois, excluídos</td>
+</tr>
+<tr>
+<td>Notas fiscais, XML e eventos dos Clientes</td>
+<td>5 (cinco) anos após o encerramento, como serviço de guarda incluído (Termos, item 13); não substitui a guarda obrigatória do Cliente</td>
+</tr>
+<tr>
+<td>Faturas, pagamentos e documentos fiscais da LFMS</td>
+<td>5 (cinco) anos, pela legislação fiscal e contábil</td>
+</tr>
+<tr>
+<td>Registro do teste grátis (CNPJ e data)</td>
+<td>3 (três) anos desde o início do teste</td>
+</tr>
+<tr>
+<td>E-mail de quem recebeu convite e não criou conta</td>
+<td>Até 6 (seis) meses depois do convite. Quem pediu para não receber convites fica só numa lista de bloqueio com o e-mail em forma irreversível (hash)</td>
+</tr>
+<tr>
+<td>Certificado A1 e sua senha</td>
+<td>Excluídos ao serem removidos pelo Cliente ou no encerramento da conta; cópias nos backups criptografados somem com a rotação e nunca são reutilizadas</td>
+</tr>
+<tr>
+<td>Registros de acesso (IP, data e hora)</td>
+<td>6 (seis) meses, conforme o art. 15 do Marco Civil da Internet</td>
+</tr>
+<tr>
+<td>Aceites, aprovações de emissão e dados necessários à defesa de direitos</td>
+<td>Pelo prazo legal de prescrição aplicável</td>
+</tr>
+<tr>
+<td>Cópias de segurança</td>
+<td>Sobrescritas automaticamente em até 35 (trinta e cinco) dias</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Apagar um dado ativo não o remove na hora das cópias de segurança ainda dentro do ciclo de rotação; se uma cópia precisar ser restaurada, as exclusões feitas depois dela são aplicadas de novo.</p>
+<h2>9. Como protegemos e o que fazemos em incidentes</h2>
+<ul>
+<li>Acesso somente por conexão segura (HTTPS); senhas guardadas como código irreversível.</li>
+<li>Verificação em duas etapas obrigatória para administradores; senha pedida de novo em ações sensíveis.</li>
+<li>Bloqueio temporário após tentativas de login erradas e limite de requisições contra ataques.</li>
+<li>Separação entre contas, conferida por testes automáticos a cada mudança do sistema.</li>
+<li>Certificados guardados criptografados, nunca exibidos, com registro de cada uso; senhas, tokens e documentos mascarados nos registros técnicos.</li>
+<li>Perfis de permissão por usuário e histórico de auditoria das operações.</li>
+<li>Cópias de segurança diárias, criptografadas, com restauração testada periodicamente.</li>
+</ul>
+<p>Nenhum sistema é imune a incidentes. Quando atuamos como operadora, avisamos o Cliente sem demora indevida, com meta de até 24 horas após confirmar o incidente (DPA). Quando atuamos como controladora, comunicamos a ANPD e os titulares nos casos e prazos da lei e da regulamentação da ANPD.</p>
+<h2>10. Direitos dos titulares</h2>
+<p>Pelo art. 18 da LGPD, você pode pedir, sem custo: confirmação e acesso; correção; anonimização, bloqueio ou eliminação de dados desnecessários ou tratados em desacordo com a lei; portabilidade, quando regulamentada; informação sobre compartilhamento; revisão de decisões tomadas unicamente de forma automatizada, quando houver; e oposição ao tratamento baseado em legítimo interesse, quando cabível, e revogação do consentimento (WhatsApp).</p>
+<p>Envie o pedido para <a href="mailto:@DocumentosLegais.EmailPrivacidade">@DocumentosLegais.EmailPrivacidade</a>, de preferência a partir do e-mail cadastrado; podemos pedir confirmação proporcional de identidade. Respondemos em até 15 (quinze) dias. Alguns dados não podem ser excluídos enquanto durar uma obrigação legal de guarda (item 8). Pedidos sobre dados cadastrados por um Cliente (por exemplo, você é tomador de serviço dele) são encaminhados ao Cliente ou atendidos conforme as instruções dele. Você também pode reclamar à ANPD (gov.br/anpd).</p>
+<h2>11. Cookies e armazenamento no navegador</h2>
+<p>Usamos apenas recursos necessários para a plataforma funcionar, que por isso não pedem consentimento:</p>
+<div class="table-responsive">
+<table class="table legal-tabela">
+<thead>
+<tr>
+<th>Nome</th>
+<th>Para quê</th>
+<th>Duração</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cookie de sessão</td>
+<td>manter você conectado</td>
+<td>até sair ou expirar a sessão</td>
+</tr>
+<tr>
+<td>NfseSaaS.Antiforgery e NfseSaaS.Xsrf</td>
+<td>proteger contra falsificação de requisições</td>
+<td>sessão</td>
+</tr>
+<tr>
+<td>EmpresaAtualId</td>
+<td>lembrar a empresa escolhida no topo da tela</td>
+<td>até trocar</td>
+</tr>
+<tr>
+<td>NfseSaaS.SenhaConfirmada</td>
+<td>lembrar que você digitou a senha de novo, para não pedir outra vez</td>
+<td>15 minutos</td>
+</tr>
+<tr>
+<td>"Não pedir neste navegador" (verificação em duas etapas)</td>
+<td>dispensar o código neste navegador, se você escolher</td>
+<td>14 dias</td>
+</tr>
+<tr>
+<td>Armazenamento local: tema, menu recolhido e escolha do painel financeiro</td>
+<td>preferências de tela, só no seu navegador</td>
+<td>até você limpar o navegador</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Não usamos cookies de análise, rastreamento ou publicidade. Os serviços de distribuição de conteúdo do item 6 recebem o IP e o navegador ao carregar estilos, scripts e fontes.</p>
+<h2>12. Indique e ganhe</h2>
+<p>Quando o usuário pede o envio de um convite, usamos o e-mail do destinatário somente para aquele convite e para não repetir o envio por 30 dias. O convite identifica quem convidou e traz um link para a pessoa não receber mais convites. O e-mail não entra em lista de divulgação.</p>
+<h2>13. Alterações desta Política</h2>
+<p>Mudanças relevantes são avisadas por e-mail e na plataforma com pelo menos 15 (quinze) dias de antecedência e, quando exigido, dependem de novo aceite. Cada versão mostra número, data de publicação e início de vigência, e as anteriores continuam disponíveis para consulta.</p>
+<h2>14. Contato</h2>
+<p>LFMS - Consultoria e Desenvolvimento de Sistemas Ltda, CNPJ 04.747.304/0001-78. Privacidade e proteção de dados: <a href="mailto:@DocumentosLegais.EmailPrivacidade">@DocumentosLegais.EmailPrivacidade</a>.</p>

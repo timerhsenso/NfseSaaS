@@ -1,0 +1,33 @@
+@using NfseSaaS.Application.Common
+@using NfseSaaS.Domain.Legal
+@model NfseSaaS.Web.Controllers.InstrumentoLegalViewModel
+@* JUR1: DPA e autorizações (texto embutido em Application/Legal/Textos, o mesmo usado no hash do aceite). *@
+@{
+    Layout = "_LegalLayout";
+    var nome = DocumentosLegais.Nome(Model.Tipo);
+    var versao = Model.Texto.Versao;
+    ViewData["Title"] = $"{nome} (versão {versao})";
+    var hoje = DataBrasilia.Hoje();
+    var desde = Model.Desde;
+}
+
+<h1>@nome</h1>
+<p class="legal-versao">
+    Versão @versao ·
+    @(desde.Vigente(hoje) ? $"vigente desde {desde.VigenteDesde:dd/MM/yyyy}" : $"vale a partir de {desde.VigenteDesde:dd/MM/yyyy}")
+    · parte dos documentos legais @desde.Versao (<a href="@DocumentosLegais.Url(TipoDocumentoLegal.TermosDeUso, desde.Versao)">Termos de uso</a>)
+    @foreach (var outra in Model.Versoes.Where(v => v != versao))
+    {
+        @: · <a href="@DocumentosLegais.Url(Model.Tipo, outra)">versão @outra</a>
+    }
+</p>
+@if (!Model.EhAtual)
+{
+    <p class="alert alert-secondary small">Esta é a versão @versao, guardada como foi publicada.</p>
+}
+
+@Html.Raw(Model.Texto.Html)
+
+<p class="legal-hash small text-muted mt-4">
+    Identificação deste texto (SHA-256): <code>@Model.Texto.Hash</code>. É o mesmo código gravado em cada aceite desta versão.
+</p>

@@ -109,7 +109,7 @@ public class ExigeAceiteTermosFilterTests
         var contexto = new ActionExecutingContext(actionContext, new List<IFilterMetadata>(), new Dictionary<string, object?>(), controller: new object());
 
         var executou = false;
-        var filtro = new ExigeAceiteTermosFilter(aceite, new UsuarioFalso(autenticado ? UsuarioId : null));
+        var filtro = new ExigeAceiteTermosFilter(aceite, new InstrumentosFalso(), new UsuarioFalso(autenticado ? UsuarioId : null));
 
         await filtro.OnActionExecutionAsync(contexto, () =>
         {
@@ -139,6 +139,21 @@ public class ExigeAceiteTermosFilterTests
         public void Registrar(Guid usuarioId, string origem) => throw new NotSupportedException();
 
         public void MarcarComoAceito(Guid usuarioId) => throw new NotSupportedException();
+    }
+
+    /// <summary>JUR1: nenhum DPA pendente (o caso do DPA é coberto em AceiteInstrumentosTests).</summary>
+    private sealed class InstrumentosFalso : NfseSaaS.Application.Legal.IAceiteInstrumentosService
+    {
+        public Task<NfseSaaS.Application.Legal.PendenciasInstrumentos> PendenciasAsync(Guid usuarioId, CancellationToken cancellationToken) =>
+            Task.FromResult(NfseSaaS.Application.Legal.PendenciasInstrumentos.Nenhuma);
+        public Task<bool> DpaObrigatorioPendenteAsync(Guid usuarioId, CancellationToken cancellationToken) => Task.FromResult(false);
+        public Task RegistrarDpaAsync(Guid usuarioId, string origem, CancellationToken cancellationToken) => throw new NotSupportedException();
+        public Task RegistrarAutorizacaoCertificadoAsync(Guid usuarioId, Guid empresaId, string origem, CancellationToken cancellationToken) => throw new NotSupportedException();
+        public Task RegistrarAutorizacaoEmissaoAutomaticaAsync(Guid usuarioId, Guid empresaId, string origem, CancellationToken cancellationToken) => throw new NotSupportedException();
+        public Task<bool> RevogarAsync(NfseSaaS.Domain.Legal.TipoDocumentoLegal tipo, Guid empresaId, Guid usuarioId, string motivo, CancellationToken cancellationToken) => throw new NotSupportedException();
+        public Task<bool> AutorizacaoVigenteAsync(NfseSaaS.Domain.Legal.TipoDocumentoLegal tipo, Guid empresaId, CancellationToken cancellationToken) => throw new NotSupportedException();
+        public Task<IReadOnlyList<NfseSaaS.Application.Legal.DocumentoAceitoResponse>> ListarAsync(Guid usuarioId, CancellationToken cancellationToken) => throw new NotSupportedException();
+        public Task<NfseSaaS.Application.Legal.ArquivoGerado?> ComprovanteAsync(Guid usuarioId, string origem, Guid id, CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 
     private sealed class UsuarioFalso : ICurrentUser

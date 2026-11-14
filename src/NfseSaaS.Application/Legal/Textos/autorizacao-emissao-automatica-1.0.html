@@ -1,0 +1,25 @@
+<p>Aceite específico e destacado, uma vez por empresa, ao ligar a Nota Mensal automática. A empresa e o usuário que autoriza ficam identificados no registro do aceite. <strong>Prestadora:</strong> LFMS - Consultoria e Desenvolvimento de Sistemas Ltda, CNPJ 04.747.304/0001-78.</p>
+<h2>1. O que esta autorização permite</h2>
+<p>O Cliente autoriza a plataforma a transmitir ao Ambiente Nacional da NFS-e, <strong>sem aprovação nota a nota</strong>, as notas mensais dos contratos da empresa indicada, usando o certificado A1 já autorizado, na frequência, dia e horário que o Cliente configurou em Nota Mensal › Automação. Nada além disso: notas avulsas, cancelamentos, substituições e qualquer outro evento continuam dependendo de ação de um usuário.</p>
+<h2>2. Regras da emissão automática</h2>
+<p>A plataforma só emite sozinha a nota de um contrato quando todas estas condições valem:</p>
+<ul>
+<li>o contrato está ativo, tem cobrança mensal e está vigente na competência;</li>
+<li>ainda não existe nota autorizada daquele contrato na competência (nunca duas notas no mesmo mês);</li>
+<li>desde a última nota autorizada do contrato, não mudaram o tomador, os serviços, a tributação nem o valor, salvo reajuste registrado no histórico de valores;</li>
+<li>o contrato não tem serviço de valor variável;</li>
+<li>o valor da nota não passa do teto por nota que o Cliente tenha definido (opcional);</li>
+<li>a empresa está em produção, com certificado válido e a emissão liberada (sem bloqueio por fim do teste ou atraso).</li>
+</ul>
+<p>O que não atende a todas as condições não é emitido: vai para a lista de revisão da Nota Mensal, para aprovação de um usuário.</p>
+<h2>3. Avisos e acompanhamento</h2>
+<p>A cada execução, a plataforma envia por e-mail aos administradores (e ao e-mail configurado na automação) o resumo do que foi emitido, do que foi para revisão e do que foi rejeitado pela SEFIN. Cada nota emitida assim fica marcada como "emissão automática" no histórico de auditoria, com a versão desta autorização.</p>
+<h2>4. Suspensão e revogação</h2>
+<p>O Cliente pode, a qualquer momento e com efeito imediato, voltar a automação para "listar para revisão" ou desligá-la; qualquer das duas revoga esta autorização. Remover o certificado também a revoga. Para voltar ao automático, é preciso aceitar de novo. A revogação não desfaz notas já transmitidas.</p>
+<p>A plataforma suspende a emissão automática sozinha, voltando a listar para revisão e avisando o Cliente, quando: a empresa sai de produção; o certificado vence ou é removido; a emissão fica bloqueada; ou houver suspeita de incidente de segurança.</p>
+<h2>5. Responsabilidades</h2>
+<p>O Cliente define as regras e mantém corretos os contratos, os serviços, a tributação e os tomadores, porque as notas automáticas usam esses dados como estão. Cabe a ele acompanhar os resumos e tratar o que for para revisão ou for rejeitado. A LFMS responde pelo cumprimento das regras deste instrumento e pelo funcionamento do serviço, nos limites dos Termos de uso e da lei.</p>
+<h2>6. Permissão de quem autoriza</h2>
+<p>Só pode aceitar esta autorização um usuário administrador da conta ou com permissão para alterar a empresa, depois de confirmar a senha.</p>
+<h2>7. Registro</h2>
+<p>São registrados: conta, CNPJ da empresa, usuário, perfil e permissões, configuração da automação no momento do aceite (frequência, dia, horário, teto), versão deste instrumento, data e hora (UTC), IP, navegador e identificação (hash) do texto aceito. A revogação também fica registrada, com data e usuário.</p>

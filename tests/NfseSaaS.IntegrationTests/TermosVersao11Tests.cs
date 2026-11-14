@@ -41,8 +41,9 @@ public class TermosVersao11Tests
     [Fact]
     public async Task Termos_1_1_trazem_o_responsavel_e_as_regras_com_os_numeros_do_codigo()
     {
-        var termos = await PaginaAsync("/termos");
-        Assert.Contains($"Versão {DocumentosLegais.VersaoTermosDeUso}", termos);
+        // JUR1: a 1.1 tem endereço próprio; /termos mostra a mais nova publicada.
+        var termos = await PaginaAsync("/termos/1.1");
+        Assert.Contains("Versão 1.1", termos);
         Assert.Contains(DocumentosLegais.ResponsavelNome, termos);
         Assert.Contains(DocumentosLegais.ResponsavelCnpj, termos);
         Assert.Contains($"{Planos.TesteDias} dias de teste grátis", termos);
@@ -55,9 +56,10 @@ public class TermosVersao11Tests
         Assert.Contains("1 (um) mês grátis", termos);
         Assert.Contains("chargeback", termos);
         Assert.Contains("/termos/1.0", termos);
+        Assert.Contains($"Versão {DocumentosLegais.Atual(DataBrasilia.Hoje()).Versao}", await PaginaAsync("/termos"));
 
-        var politica = await PaginaAsync("/privacidade");
-        Assert.Contains($"Versão {DocumentosLegais.VersaoPoliticaPrivacidade}", politica);
+        var politica = await PaginaAsync("/privacidade/1.1");
+        Assert.Contains("Versão 1.1", politica);
         Assert.Contains(DocumentosLegais.ResponsavelNome, politica);
         Assert.Contains("Asaas", politica);
         Assert.Contains("Registro do teste grátis", politica);
@@ -93,8 +95,8 @@ public class TermosVersao11Tests
             db.TenantIdOverrideDeSistema = tenant.Id;
             db.AceitesTermos.Add(new AceiteTermos
             {
-                UsuarioId = usuario.Id, VersaoTermosDeUso = DocumentosLegais.VersaoAnteriorTermosDeUso,
-                VersaoPoliticaPrivacidade = DocumentosLegais.VersaoAnteriorPoliticaPrivacidade, Origem = OrigemAceiteTermos.Cadastro
+                UsuarioId = usuario.Id, VersaoTermosDeUso = "1.0",
+                VersaoPoliticaPrivacidade = "1.0", Origem = OrigemAceiteTermos.Cadastro
             });
             await db.SaveChangesAsync();
 
@@ -105,14 +107,14 @@ public class TermosVersao11Tests
                 var aceite = e1.ServiceProvider.GetRequiredService<IAceiteTermosService>();
                 Assert.False(await aceite.AceitouVersaoAtualAsync(usuario.Id, CancellationToken.None));
                 // Antes de 24/11/2026 o aceite da 1.0 libera; depois, não.
-                Assert.Equal(DocumentosLegais.AceiteAnteriorAindaVale(DataBrasilia.Hoje()),
+                Assert.Equal(DocumentosLegais.AceiteLibera("1.0", DataBrasilia.Hoje()),
                     await aceite.AceitouVersaoVigenteAsync(usuario.Id, CancellationToken.None));
             }
 
             db.AceitesTermos.Add(new AceiteTermos
             {
-                UsuarioId = usuario.Id, VersaoTermosDeUso = DocumentosLegais.VersaoTermosDeUso,
-                VersaoPoliticaPrivacidade = DocumentosLegais.VersaoPoliticaPrivacidade, Origem = OrigemAceiteTermos.Atualizacao
+                UsuarioId = usuario.Id, VersaoTermosDeUso = DocumentosLegais.Atual(DataBrasilia.Hoje()).Versao,
+                VersaoPoliticaPrivacidade = DocumentosLegais.Atual(DataBrasilia.Hoje()).Versao, Origem = OrigemAceiteTermos.Atualizacao
             });
             await db.SaveChangesAsync();
 
@@ -129,6 +131,23 @@ public class TermosVersao11Tests
             db.TenantIdOverrideDeSistema = null;
             await LimparAsync(db, tenant.Id);
         }
+    }
+
+    [Theory]
+    [InlineData("/termos/1.2")]
+    [InlineData("/privacidade/1.2")]
+    [InlineData("/dpa")]
+    [InlineData("/autorizacao-certificado/1.0")]
+    [InlineData("/autorizacao-emissao-automatica")]
+    public async Task Versao_1_2_e_instrumentos_so_aparecem_depois_de_publicados(string url)
+    {
+        // JUR1: a 1.2 é publicada em 24/11/2026; antes disso o endereço não existe.
+        var publicada = DocumentosLegais.Publicada("1.2", DataBrasilia.Hoje()) is not null;
+        var cliente = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var resposta = await cliente.GetAsync(url);
+        Assert.Equal(publicada ? HttpStatusCode.OK : HttpStatusCode.NotFound, resposta.StatusCode);
+        if (publicada && !url.Contains("1.2"))
+            Assert.Contains("Identificação deste texto (SHA-256)", WebUtility.HtmlDecode(await resposta.Content.ReadAsStringAsync()));
     }
 
     [Fact]
@@ -155,7 +174,7 @@ public class TermosVersao11Tests
                 .Where(e => e.TenantId == tenant.Id && e.Tipo == TipoEmailCatalogo.NovosTermos).ToListAsync();
             var email = Assert.Single(emails);
             Assert.Equal(usuario.Email, email.Destinatario);
-            Assert.Contains(DocumentosLegais.VigentesDesde.ToString("dd/MM/yyyy"), email.Assunto);
+            Assert.Contains(DocumentosLegais.Atual(DataBrasilia.Hoje()).VigenteDesde.ToString("dd/MM/yyyy"), email.Assunto);
             Assert.Contains("/termos", email.CorpoHtml);
             Assert.DoesNotContain(emails, e => e.Destinatario == naoConfirmado.Email);
         }

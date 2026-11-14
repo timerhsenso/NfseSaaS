@@ -2,10 +2,19 @@
 //   - Dados da conta: cadastro (só leitura) e WhatsApp do responsável;
 //   - Segurança (SEG1): exigir a verificação em duas etapas de todos;
 //   - Logomarca (B9);
-//   - E-mail da nota: só o atalho para Modelos de e-mail (modelos-email.js).
+//   - E-mail da nota: só o atalho para Modelos de e-mail (modelos-email.js);
+//   - Documentos aceitos (JUR1): lista e comprovante em PDF.
 // Só o administrador muda (o servidor confere de novo); os demais veem só
 // para leitura. As cores do sistema NÃO ficam aqui: continuam no painel
 // Aparência (aparencia.js).
+
+// "12345678000195" → "12.345.678/0001-95"; CPF → "123.456.789-09".
+function formatarDocumento(d) {
+    d = d ?? '';
+    return d.length === 14
+        ? `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`
+        : d.length === 11 ? `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}` : d;
+}
 
 // ---------- Dados da conta ----------
 document.addEventListener('DOMContentLoaded', async function () {
@@ -14,10 +23,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     const campo = document.getElementById('whatsapp-conta');
     const autoriza = document.getElementById('autoriza-whatsapp-conta');
     aplicarMascaraWhatsApp(campo);
-
-    const formatarDocumento = d => d.length === 14
-        ? `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`
-        : d.length === 11 ? `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}` : d;
 
     function mostrar(dados) {
         document.getElementById('dado-nome').textContent = dados.nome;
@@ -225,3 +230,52 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
 });
 
+
+// ---------- Documentos aceitos (JUR1) ----------
+// Administrador: a conta toda; os demais: os próprios aceites (o servidor filtra).
+document.addEventListener('DOMContentLoaded', async function () {
+    const tabela = document.getElementById('tabela-documentos-aceitos');
+    if (!tabela) return;
+    const corpo = tabela.querySelector('tbody');
+
+    let itens;
+    try {
+        itens = await apiFetch('/api/legal/aceitos');
+    } catch (err) {
+        corpo.innerHTML = `<tr><td colspan="6" class="text-danger small">${escaparHtml(err.message)}</td></tr>`;
+        return;
+    }
+    if (!itens.length) {
+        corpo.innerHTML = '<tr><td colspan="6" class="text-muted small">Nenhum documento aceito ainda.</td></tr>';
+        return;
+    }
+
+    const quando = iso => new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    // Aceite de versão mais nova do mesmo documento (mesma pessoa e empresa) substitui o anterior.
+    const ordem = v => v.split('.').map(Number).reduce((total, n) => total * 1000 + n, 0);
+    const chave = d => `${d.tipo}|${d.usuarioEmail}|${d.cnpjEmpresa ?? ''}`;
+    const maisNova = new Map();
+    for (const d of itens.filter(x => !x.revogadoEm))
+        maisNova.set(chave(d), Math.max(maisNova.get(chave(d)) ?? 0, ordem(d.versao)));
+    corpo.innerHTML = itens.map(d => {
+        const empresa = d.empresa ? `<div class="small text-muted">${escaparHtml(d.empresa)}${d.cnpjEmpresa ? ` · ${escaparHtml(formatarDocumento(d.cnpjEmpresa))}` : ''}</div>` : '';
+        const situacao = d.revogadoEm
+            ? `<span class="badge text-bg-secondary" title="${escaparHtml(d.motivoRevogacao ?? '')}">Revogado em ${quando(d.revogadoEm)}</span>`
+            : ordem(d.versao) < maisNova.get(chave(d))
+                ? '<span class="badge text-bg-light border" title="Há aceite de versão mais nova deste documento.">Substituído</span>'
+                : '<span class="badge text-bg-success">Vigente</span>';
+        const hash = d.hashTexto ? ` title="SHA-256 do texto: ${escaparHtml(d.hashTexto)}"` : '';
+        return `<tr>
+            <td${hash}><a href="${escaparHtml(d.url)}" target="_blank" rel="noopener" class="${d.revogadoEm ? 'revogado' : ''}">${escaparHtml(d.nome)}</a>${empresa}</td>
+            <td class="col-curta">${escaparHtml(d.versao)}</td>
+            <td><span class="small">${escaparHtml(d.usuarioEmail)}</span>${d.ip ? `<div class="small text-muted">IP ${escaparHtml(d.ip)}</div>` : ''}</td>
+            <td class="col-curta">${quando(d.aceitoEm)}</td>
+            <td class="col-curta">${situacao}</td>
+            <td class="col-curta text-end">
+                <a class="btn btn-outline-secondary btn-sm" href="/api/legal/aceitos/${d.origem}/${d.id}/comprovante" title="Baixar comprovante em PDF">
+                    <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i><span class="visually-hidden">Comprovante</span>
+                </a>
+            </td>
+        </tr>`;
+    }).join('');
+});

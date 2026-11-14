@@ -24,6 +24,10 @@
         <nav class="legal-nav" aria-label="Documentos">
             <a href="/termos" class="@(Context.Request.Path.StartsWithSegments("/termos") ? "ativo" : null)">Termos de uso</a>
             <a href="/privacidade" class="@(Context.Request.Path.StartsWithSegments("/privacidade") ? "ativo" : null)">Política de privacidade</a>
+            @if (DocumentosLegais.Atual(NfseSaaS.Application.Common.DataBrasilia.Hoje()).VersaoDpa is not null)
+            {
+                <a href="/dpa" class="@(Context.Request.Path.StartsWithSegments("/dpa") ? "ativo" : null)">Tratamento de dados</a>
+            }
         </nav>
     </header>
 

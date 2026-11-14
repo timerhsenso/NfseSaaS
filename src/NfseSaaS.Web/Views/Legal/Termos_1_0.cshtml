@@ -6,8 +6,7 @@
 }
 
 <h1>Termos de uso</h1>
-<p class="legal-versao">Versão 1.0 · vigente de 04/11/2026 até @DocumentosLegais.VigentesDesde.AddDays(-1).ToString("dd/MM/yyyy")</p>
-<p class="alert alert-secondary small">Esta é a versão anterior, guardada como foi aceita. A versão atual está em <a href="/termos">Termos de uso</a>.</p>
+@await Html.PartialAsync("_VersaoLegal", (TipoDocumentoLegal.TermosDeUso, DocumentosLegais.Versao("1.0")))
 
 <p class="legal-resumo">
     <strong>Em poucas palavras:</strong> o @servico é uma plataforma para emitir e organizar notas fiscais de serviço

@@ -5,6 +5,39 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Jurídico (JUR1 — documentos legais 1.2)
+- **Termos de uso e Política de privacidade 1.2** (revisão do advogado),
+  publicados em **24/11/2026** e vigentes a partir de **09/12/2026**. Antes da
+  publicação nada muda; entre 24/11 e 08/12 vale a 1.1 e a 1.2 aparece em
+  aviso prévio (faixa no topo e e-mail, como na 1.1). Aceitar a mais nova vale
+  para as anteriores.
+- Cada versão tem endereço próprio e fica publicada como foi aceita:
+  `/termos/1.0`, `/termos/1.1`, `/termos/1.2` (idem `/privacidade/...`).
+  `/termos` e `/privacidade` mostram a mais nova publicada, com a vigência e
+  links para as outras versões.
+- Três documentos novos, com página própria e **aceite separado**, gravado com
+  versão, **hash SHA-256 do texto**, usuário, perfil, IP e navegador:
+  - **Acordo de Tratamento de Dados Pessoais (DPA)** — `/dpa`: aceito uma vez
+    por conta, pelo administrador (no cadastro já vem junto). A partir de
+    09/12/2026 o administrador que ainda não aceitou só usa o sistema depois
+    de aceitar;
+  - **Autorização do certificado digital A1** — `/autorizacao-certificado`:
+    por empresa que tem certificado guardado, com a impressão digital do
+    certificado;
+  - **Autorização de emissão automática** — `/autorizacao-emissao-automatica`:
+    por empresa com a Nota Mensal no modo automático; pede a senha.
+- Tela **Antes de continuar** mostra o que falta (termos, DPA e as autorizações
+  por empresa). Só as autorizações faltando: dá para deixar para depois, com
+  faixa no topo lembrando o administrador.
+- Configurações da conta › **Documentos aceitos**: todos os aceites (termos,
+  DPA e autorizações), com quem aceitou, quando, IP, situação (vigente,
+  substituído, revogado) e **comprovante em PDF** com o texto aceito. O
+  administrador vê os da conta inteira; os demais, os seus.
+- Novo aceite de uma autorização substitui (revoga) o anterior; revogar fica
+  na auditoria. Excluir a conta apaga também esses aceites.
+- A cobrança da autorização na emissão (certificado e Nota Mensal automática)
+  vem no JUR2.
+
 ### Segurança (SEG1 — verificação pré-produção)
 - **Verificação em duas etapas obrigatória** para o operador da plataforma (já,
   sem prazo) e para os administradores das contas (até 30/11/2026, ou 14 dias

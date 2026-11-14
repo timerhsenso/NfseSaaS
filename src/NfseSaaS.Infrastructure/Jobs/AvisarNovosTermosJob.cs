@@ -20,7 +20,7 @@ public interface IAvisarNovosTermosJob
 
 /// <summary>
 /// Diário, mas só faz alguma coisa enquanto a versão nova ainda não vale
-/// (DocumentosLegais.VigentesDesde no futuro): manda o aviso a quem ainda
+/// (versão publicada que ainda não vale, DocumentosLegais.EmAvisoPrevio): manda o aviso a quem ainda
 /// não recebeu (conta que surgiu depois, e-mail confirmado depois). Cada
 /// conta no PRÓPRIO escopo de DI com o Tenant dela; a falha de uma não
 /// impede as outras.
@@ -43,7 +43,7 @@ public sealed class AvisarNovosTermosJob : IAvisarNovosTermosJob
 
     public async Task ExecutarAsync()
     {
-        if (DocumentosLegais.VersaoAtualVigente(DataBrasilia.Hoje()))
+        if (!DocumentosLegais.EmAvisoPrevio(DataBrasilia.Hoje()))
             return;
 
         List<Guid> contas;
@@ -70,7 +70,7 @@ public sealed class AvisarNovosTermosJob : IAvisarNovosTermosJob
         }
 
         if (enviados > 0)
-            _logger.LogInformation("Aviso dos Termos/Política {Versao}: {Enviados} e-mail(s) na fila.", DocumentosLegais.VersaoTermosDeUso, enviados);
+            _logger.LogInformation("Aviso dos Termos/Política {Versao}: {Enviados} e-mail(s) na fila.", DocumentosLegais.Atual(DataBrasilia.Hoje()).Versao, enviados);
 
         if (falhas > 0 && falhas == contas.Count)
             throw new InvalidOperationException($"Aviso de novos termos falhou em todas as {falhas} conta(s) — ver log.");
