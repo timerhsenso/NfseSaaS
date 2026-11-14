@@ -5,6 +5,40 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Segurança (SEG1 — verificação pré-produção)
+- **Verificação em duas etapas obrigatória** para o operador da plataforma (já,
+  sem prazo) e para os administradores das contas (até 30/11/2026, ou 14 dias
+  depois do primeiro acesso para quem entrar depois). Enquanto corre o prazo,
+  aviso no topo das telas com "Ligar agora"; depois, o sistema só abre a tela
+  **Ligue a verificação em duas etapas** (API: 403 `duplo_fator_pendente`).
+  Obrigatória não pode ser desligada. O painel do Hangfire também exige.
+- Configurações da conta › **Segurança**: o administrador pode **exigir de
+  todos os usuários** (14 dias para cada um ligar) e vê quem ainda não ligou.
+  Exigir pede que ele já tenha ligado a dele.
+- **"Confirme a sua senha"** antes de operações sensíveis: trocar o
+  certificado A1, mudar o ambiente da empresa, mudar ou excluir grupo de
+  permissão, convidar, mudar grupo, resetar senha ou excluir usuário, exportar
+  os dados da conta e a exigência da conta. Vale por 15 minutos (o login já
+  conta). A janela abre sozinha, inclusive por cima de outra, e a ação é
+  repetida depois da senha.
+- **Auditoria do certificado A1**: envio e troca ficam registrados com titular,
+  CNPJ, validade e impressão digital (e qual certificado saiu); emissão e
+  cancelamento registram a impressão digital do certificado que assinou.
+- Arquivo do certificado na **versão 2**: o .pfx e a senha com finalidades
+  (subchaves) separadas do Data Protection. Os arquivos antigos passam para a
+  versão 2 sozinhos na subida do sistema; a leitura da versão 1 continua.
+- **Logs sem segredos**: senhas, tokens, chaves de API, cookies, links
+  assinados e CPF/CNPJ de respostas de terceiros (ex.: Asaas) são mascarados
+  antes de gravar no arquivo, no console e no e-mail de alerta ao operador.
+- Teste de isolamento entre contas estendido às rotas novas (documentos,
+  modelos e e-mails enviados, Nota Mensal, painel financeiro, exportações,
+  importação, confirmação de recebimento, certificado e segurança da conta).
+  Confirmações de recebimento de nota de outra conta agora respondem 404.
+- Novo `docs/operacao/incidentes.md`: roteiro de resposta a incidentes
+  (conter, guardar evidências, avaliar, comunicar à ANPD em 3 dias úteis,
+  registro por 5 anos) com modelos de e-mail.
+- Migração `DuploFatorObrigatorio`: coluna `tenants.DuploFatorObrigatorioDesde`.
+
 ### Adicionado (IM1 — importar clientes e contratos por planilha)
 - Tela **Importar planilha** (botão "Importar" em Clientes e em Contratos), em 3
   passos: escolher o arquivo (arrastar ou clicar), **conferir linha a linha** e

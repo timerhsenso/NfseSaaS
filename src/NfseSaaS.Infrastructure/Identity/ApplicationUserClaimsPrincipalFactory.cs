@@ -52,6 +52,9 @@ public sealed class ApplicationUserClaimsPrincipalFactory
         if (_plataforma.UsuariosOperadoresIds.Contains(user.Id))
             identity.AddClaim(new Claim(PlataformaClaims.Operador, "true"));
 
+        if (user.TwoFactorEnabled)
+            identity.AddClaim(new Claim(PlataformaClaims.DuploFatorLigado, "true"));
+
         if (user.GrupoId is { } grupoId)
         {
             var permissoes = await _db.GrupoTelas

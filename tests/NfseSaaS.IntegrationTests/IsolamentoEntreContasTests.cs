@@ -16,6 +16,9 @@ namespace NfseSaaS.IntegrationTests;
 /// apaga e não usa nada dela (empresa, cliente, serviço, contrato, nota,
 /// PDF, grupo, auditoria). Cada leitura tem o controle positivo: a própria
 /// conta A enxerga o mesmo id, então o 404 de B é o filtro, não um id errado.
+/// SEG1 estendeu para as rotas novas (documentos, modelos e e-mails, Nota
+/// Mensal, painel financeiro, exportações, importação, recebimento,
+/// certificado e segurança da conta).
 /// </summary>
 [Collection(AplicacaoEmMemoriaCollection.Nome)]
 public class IsolamentoEntreContasTests
@@ -154,6 +157,60 @@ public class IsolamentoEntreContasTests
             if (lote.IsSuccessStatusCode)
                 Assert.Contains(dados.NfseId.ToString(), string.Join(',', lote.Headers.TryGetValues("X-Nfse-Ids-Ignorados", out var v) ? v : []), StringComparison.OrdinalIgnoreCase);
 
+            // ---------- SEG1: rotas das entregas de 09 a 14/11 ----------
+            var extras = await CriarDadosExtrasAsync(a, dados);
+            string[] leiturasNovas =
+            [
+                $"/api/documentos-empresa?empresaId={a.EmpresaId}",
+                $"/api/documentos-empresa/historico?empresaId={a.EmpresaId}&tipo=1",
+                $"/api/documentos-empresa/escolha?empresaId={a.EmpresaId}",
+                $"/api/clientes/documentos-exigidos?clienteId={dados.ClienteId}&empresaId={a.EmpresaId}",
+                $"/api/nota-mensal/candidatos?empresaId={a.EmpresaId}&competencia=2026-11-01",
+                $"/api/nfse/{dados.NfseId}/recebimento",
+                $"/api/importacao/modelo?empresaId={a.EmpresaId}"
+            ];
+            foreach (var url in leiturasNovas)
+            {
+                var dono = await a.Cliente.GetAsync(url);
+                Assert.True(dono.StatusCode == HttpStatusCode.OK, $"A deveria ver {url}, veio {(int)dono.StatusCode}.");
+
+                var outro = await b.Cliente.GetAsync(url);
+                Assert.True(outro.StatusCode == HttpStatusCode.NotFound, $"B não pode ver {url}: veio {(int)outro.StatusCode}.");
+            }
+
+            // Listas de B (modelos de e-mail, e-mails enviados, exportações, painel) não trazem nada de A.
+            foreach (var url in new[]
+                     {
+                         "/api/modelos-email-nota",
+                         "/api/modelos-email-nota/opcoes",
+                         "/api/emails",
+                         "/api/dados-conta/exportacoes",
+                         "/api/documentos-empresa/resumo",
+                         $"/api/painel-financeiro?empresaAtualId={a.EmpresaId}&escopo=empresa",
+                         $"/api/painel-financeiro?empresaAtualId={a.EmpresaId}&escopo=todas",
+                         "/api/conta/seguranca"
+                     })
+            {
+                var resposta = await b.Cliente.GetAsync(url);
+                var corpo = await resposta.Content.ReadAsStringAsync();
+                Assert.True(resposta.StatusCode is HttpStatusCode.OK or HttpStatusCode.NotFound, $"{url}: veio {(int)resposta.StatusCode}.");
+                foreach (var marca in new[] { extras.ModeloId.ToString(), extras.EmailId.ToString(), extras.DocumentoId.ToString(), a.Cnpj, "Modelo da conta A", "emaildacontaa@teste.com", $"iso{a.Cnpj}@teste.com" })
+                    Assert.False(corpo.Contains(marca, StringComparison.OrdinalIgnoreCase), $"{url} trouxe {marca}: {corpo}");
+            }
+
+            await AssertNaoPassaAsync(b.Cliente.PutAsJsonAsync($"/api/modelos-email-nota/{extras.ModeloId}", new { nome = "Invasor", assunto = "x", mensagem = "x" }), "alterar modelo de e-mail de A");
+            await AssertNaoPassaAsync(b.Cliente.PostAsync($"/api/modelos-email-nota/{extras.ModeloId}/padrao", null), "tornar padrão o modelo de A");
+            await AssertNaoPassaAsync(b.Cliente.DeleteAsync($"/api/modelos-email-nota/{extras.ModeloId}"), "excluir modelo de e-mail de A");
+            await AssertNaoPassaAsync(b.Cliente.PostAsync($"/api/emails/{extras.EmailId}/reenviar", null), "reenviar e-mail de A");
+            await AssertNaoPassaAsync(b.Cliente.GetAsync($"/api/documentos-empresa/{extras.DocumentoId}/download"), "baixar documento de A");
+            await AssertNaoPassaAsync(b.Cliente.DeleteAsync($"/api/documentos-empresa/{extras.DocumentoId}"), "excluir documento de A");
+            using (var certificado = new MultipartFormDataContent())
+            {
+                certificado.Add(new ByteArrayContent([1, 2, 3]), "arquivo", "a.pfx");
+                certificado.Add(new StringContent("senha"), "senha");
+                await AssertNaoPassaAsync(b.Cliente.PostAsync($"/api/empresas/{a.EmpresaId}/certificado", certificado), "trocar o certificado da empresa de A");
+            }
+
             // ---------- Telas do operador: cliente comum não entra ----------
             foreach (var (metodo, url) in new[]
                      {
@@ -281,6 +338,34 @@ public class IsolamentoEntreContasTests
         return new DadosA(cliente.Id, servico.Id, contrato.Id, nota.Id);
     }
 
+    private sealed record DadosExtras(Guid ModeloId, Guid EmailId, Guid DocumentoId);
+
+    /// <summary>Modelo de e-mail, e-mail enviado e documento da empresa da conta A (SEG1).</summary>
+    private async Task<DadosExtras> CriarDadosExtrasAsync(Conta a, DadosA dados)
+    {
+        using var escopo = _factory.Services.CreateScope();
+        var db = escopo.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.TenantIdOverrideDeSistema = a.TenantId;
+
+        var modelo = new ModeloEmailNota { Nome = "Modelo da conta A", Assunto = "Nota [Número da nota]", Mensagem = "Olá", Padrao = false };
+        db.ModelosEmailNota.Add(modelo);
+        var email = new EmailLog
+        {
+            Tipo = "NfseTomador", Destinatario = "emaildacontaa@teste.com", Assunto = "Nota da conta A", CorpoHtml = "x",
+            Status = StatusEmailLog.Enviado, EnviadoEm = DateTimeOffset.UtcNow, NfseId = dados.NfseId
+        };
+        db.EmailLogs.Add(email);
+        var documento = new DocumentoEmpresa
+        {
+            EmpresaId = a.EmpresaId, Tipo = 1, NomeChave = string.Empty, DataEmissao = new DateOnly(2026, 11, 1),
+            ValidaAte = new DateOnly(2027, 5, 1), NomeArquivo = "cnd.pdf", TamanhoBytes = 10
+        };
+        db.DocumentosEmpresa.Add(documento);
+        await db.SaveChangesAsync();
+        db.TenantIdOverrideDeSistema = null;
+        return new DadosExtras(modelo.Id, email.Id, documento.Id);
+    }
+
     private async Task LimparAsync(IReadOnlyList<string> cnpjs)
     {
         using var escopo = _factory.Services.CreateScope();
@@ -294,6 +379,8 @@ public class IsolamentoEntreContasTests
         await db.Servicos.IgnoreQueryFilters().Where(x => ids.Contains(x.TenantId)).ExecuteDeleteAsync();
         await db.Clientes.IgnoreQueryFilters().Where(x => ids.Contains(x.TenantId)).ExecuteDeleteAsync();
         await db.EmailLogs.IgnoreQueryFilters().Where(x => ids.Contains(x.TenantId)).ExecuteDeleteAsync();
+        await db.ModelosEmailNota.IgnoreQueryFilters().Where(x => ids.Contains(x.TenantId)).ExecuteDeleteAsync();
+        await db.DocumentosEmpresa.IgnoreQueryFilters().Where(x => ids.Contains(x.TenantId)).ExecuteDeleteAsync();
         await db.AceitesTermos.IgnoreQueryFilters().Where(x => ids.Contains(x.TenantId)).ExecuteDeleteAsync();
         await db.AuditLogs.IgnoreQueryFilters().Where(x => ids.Contains(x.TenantId)).ExecuteDeleteAsync();
         await db.ContadoresDps.Where(x => db.Empresas.IgnoreQueryFilters().Any(e => e.Id == x.EmpresaId && ids.Contains(e.TenantId))).ExecuteDeleteAsync();

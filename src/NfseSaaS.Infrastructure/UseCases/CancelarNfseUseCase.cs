@@ -25,13 +25,16 @@ public sealed class CancelarNfseUseCase : ICancelarNfseUseCase
     private readonly INfseNacionalService _nfseNacionalService;
     private readonly IAuditLogWriter _auditLogWriter;
     private readonly INfseEventoWriter _nfseEventoWriter;
+    private readonly NfseSaaS.Infrastructure.Certificates.CertificadosUsadosNoEscopo? _certificadosUsados;
 
     public CancelarNfseUseCase(
         AppDbContext db,
         INfseNacionalService nfseNacionalService,
         IAuditLogWriter auditLogWriter,
-        INfseEventoWriter nfseEventoWriter)
+        INfseEventoWriter nfseEventoWriter,
+        NfseSaaS.Infrastructure.Certificates.CertificadosUsadosNoEscopo? certificadosUsados = null)
     {
+        _certificadosUsados = certificadosUsados;
         _db = db;
         _nfseNacionalService = nfseNacionalService;
         _auditLogWriter = auditLogWriter;
@@ -70,7 +73,7 @@ public sealed class CancelarNfseUseCase : ICancelarNfseUseCase
             nfse.Status = NfseStatus.Cancelada;
 
             _nfseEventoWriter.Registrar(nfse.Id, NfseEventoTipo.Cancelada, mensagem: request.Motivo);
-            _auditLogWriter.Registrar("CancelarNfse", "Nfse", nfse.Id, new { Sucesso = true, request.CodigoMotivo, request.Motivo });
+            _auditLogWriter.Registrar("CancelarNfse", "Nfse", nfse.Id, new { Sucesso = true, request.CodigoMotivo, request.Motivo, Certificado = _certificadosUsados?.Obter(nfse.EmpresaId)?.Thumbprint });
 
             await _db.SaveChangesAsync(cancellationToken);
 
@@ -86,7 +89,8 @@ public sealed class CancelarNfseUseCase : ICancelarNfseUseCase
             request.CodigoMotivo,
             request.Motivo,
             CodigoErro = resposta.Erro?.Codigo,
-            MensagemErro = resposta.Erro?.Descricao
+            MensagemErro = resposta.Erro?.Descricao,
+            Certificado = _certificadosUsados?.Obter(nfse.EmpresaId)?.Thumbprint
         });
 
         await _db.SaveChangesAsync(cancellationToken);

@@ -16,7 +16,8 @@ namespace NfseSaaS.IntegrationTests;
 /// B3 pela API: ligar com o código do e-mail, login pedindo o código,
 /// código errado recusado, certo entra; desligar pede a senha. O código é
 /// gerado no teste pelo mesmo provedor do Identity (TOTP do SecurityStamp:
-/// é o mesmo que foi para o e-mail).
+/// é o mesmo que foi para o e-mail). Desde o SEG1, administrador não
+/// desliga (é obrigatória): o desligar é testado fora do grupo administrador.
 /// </summary>
 [Collection(AplicacaoEmMemoriaCollection.Nome)]
 public class DuploFatorTests
@@ -78,8 +79,19 @@ public class DuploFatorTests
             var etapa2 = await cliente.PostAsJsonAsync("/api/auth/login-codigo", new { codigo = codigoLogin[..3] + " " + codigoLogin[3..] });
             Assert.Equal(HttpStatusCode.OK, etapa2.StatusCode);
 
-            // Entrou: desligar pede a senha.
+            // Entrou. Administrador (SEG1): a verificação é obrigatória, não desliga.
             await AtualizarCsrfAsync(cliente, "/api/auth/situacao");
+            var situacaoAdmin = await cliente.GetFromJsonAsync<JsonElement>("/api/auth/duplo-fator");
+            Assert.True(situacaoAdmin.GetProperty("obrigatoria").GetBoolean());
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, (await cliente.PostAsJsonAsync("/api/auth/duplo-fator/desligar", new { senha = Senha })).StatusCode);
+
+            // Fora do grupo administrador, desligar pede a senha.
+            using (var escopoGrupo = _factory.Services.CreateScope())
+            {
+                var dbGrupo = escopoGrupo.ServiceProvider.GetRequiredService<AppDbContext>();
+                var grupoComum = await dbGrupo.Grupos.IgnoreQueryFilters().Where(g => g.TenantId == tenantId && !g.EhAdministrador).Select(g => g.Id).FirstAsync();
+                await dbGrupo.Users.Where(u => u.Email == email).ExecuteUpdateAsync(u => u.SetProperty(x => x.GrupoId, grupoComum));
+            }
             Assert.Equal(HttpStatusCode.BadRequest, (await cliente.PostAsJsonAsync("/api/auth/duplo-fator/desligar", new { senha = "errada" })).StatusCode);
             Assert.Equal(HttpStatusCode.OK, (await cliente.PostAsJsonAsync("/api/auth/duplo-fator/desligar", new { senha = Senha })).StatusCode);
 

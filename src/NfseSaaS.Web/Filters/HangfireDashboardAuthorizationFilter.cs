@@ -17,10 +17,13 @@ namespace NfseSaaS.Web.Filters;
 /// O dashboard é middleware puro, não passa pelo pipeline de MVC, por
 /// isso a checagem é esta interface do Hangfire e não
 /// RequerOperadorPlataformaAttribute — a regra é a mesma
-/// (ClaimsPrincipalExtensions.EhOperadorPlataforma).
+/// (ClaimsPrincipalExtensions.EhOperadorPlataforma). Desde o SEG1 o
+/// operador também precisa da verificação em duas etapas ligada (o filtro
+/// global ExigeDuploFatorFilter não alcança o middleware).
 /// </summary>
 public sealed class HangfireDashboardAuthorizationFilter : IDashboardAuthorizationFilter
 {
     public bool Authorize(DashboardContext context) =>
-        context.GetHttpContext().User.EhOperadorPlataforma();
+        context.GetHttpContext().User.EhOperadorPlataforma()
+        && context.GetHttpContext().User.HasClaim(NfseSaaS.Application.Authorization.PlataformaClaims.DuploFatorLigado, "true");
 }

@@ -57,6 +57,70 @@ public class CertificateFileStoreTests : IDisposable
             () => store.CarregarAsync(Guid.NewGuid(), CancellationToken.None));
     }
 
+    // ---------- SEG1: finalidades separadas para o .pfx e a senha ----------
+
+    [Fact]
+    public async Task Arquivo_novo_e_versao_2_e_a_senha_nao_abre_com_a_finalidade_do_pfx()
+    {
+        var provedor = new EphemeralDataProtectionProvider();
+        var store = new CertificateFileStore(provedor, Options.Create(new CertificateStorageOptions { BasePath = _tempDir }));
+        var empresaId = Guid.NewGuid();
+        var pfxBytes = CriarPfxDeTeste(out var senha);
+
+        await store.SalvarAsync(empresaId, pfxBytes, senha, CancellationToken.None);
+
+        Assert.Equal(CertificateFileStore.VersaoAtualArquivo, await store.VersaoArquivoAsync(empresaId, CancellationToken.None));
+        using var json = System.Text.Json.JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(_tempDir, $"{empresaId:N}.cert.json")));
+        var senhaProtegida = json.RootElement.GetProperty("SenhaProtegida").GetString()!;
+        Assert.ThrowsAny<CryptographicException>(() => provedor.CreateProtector("NfseSaaS.Certificados.v1").Unprotect(senhaProtegida));
+
+        using var carregado = await store.CarregarAsync(empresaId, CancellationToken.None);
+        Assert.True(carregado.HasPrivateKey);
+    }
+
+    [Fact]
+    public async Task Arquivo_antigo_versao_1_continua_abrindo_e_regravar_passa_para_a_versao_2()
+    {
+        var provedor = new EphemeralDataProtectionProvider();
+        var store = new CertificateFileStore(provedor, Options.Create(new CertificateStorageOptions { BasePath = _tempDir }));
+        var empresaId = Guid.NewGuid();
+        var pfxBytes = CriarPfxDeTeste(out var senha);
+
+        // Formato de antes do SEG1: sem "Versao", senha com a finalidade do .pfx.
+        var antigo = provedor.CreateProtector("NfseSaaS.Certificados.v1");
+        Directory.CreateDirectory(_tempDir);
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, $"{empresaId:N}.cert.json"), System.Text.Json.JsonSerializer.Serialize(new
+        {
+            PfxProtegidoBase64 = Convert.ToBase64String(antigo.Protect(pfxBytes)),
+            SenhaProtegida = antigo.Protect(senha)
+        }));
+
+        Assert.Equal(1, await store.VersaoArquivoAsync(empresaId, CancellationToken.None));
+        using (var carregado = await store.CarregarAsync(empresaId, CancellationToken.None))
+            Assert.True(carregado.HasPrivateKey);
+
+        await store.ReprotegerAsync(empresaId, CancellationToken.None);
+
+        Assert.Equal(CertificateFileStore.VersaoAtualArquivo, await store.VersaoArquivoAsync(empresaId, CancellationToken.None));
+        using var depois = await store.CarregarAsync(empresaId, CancellationToken.None);
+        Assert.True(depois.HasPrivateKey);
+    }
+
+    [Fact]
+    public async Task Provedor_anota_qual_certificado_foi_usado_para_a_auditoria()
+    {
+        var store = CriarStore();
+        var empresaId = Guid.NewGuid();
+        var pfxBytes = CriarPfxDeTeste(out var senha);
+        await store.SalvarAsync(empresaId, pfxBytes, senha, CancellationToken.None);
+
+        var usados = new CertificadosUsadosNoEscopo();
+        using var certificado = await new FileCertificateProvider(store, usados).ObterCertificadoAsync(empresaId, CancellationToken.None);
+
+        Assert.Equal(certificado.Thumbprint, usados.Obter(empresaId)?.Thumbprint);
+        Assert.Null(usados.Obter(Guid.NewGuid()));
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_tempDir))

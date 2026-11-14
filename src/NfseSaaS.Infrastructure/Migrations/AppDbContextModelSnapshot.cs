@@ -2545,6 +2545,9 @@ namespace NfseSaaS.Infrastructure.Migrations
                         .HasMaxLength(14)
                         .HasColumnType("character varying(14)");
 
+                    b.Property<DateTimeOffset?>("DuploFatorObrigatorioDesde")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTimeOffset?>("EncerradaEm")
                         .HasColumnType("timestamp with time zone");
 

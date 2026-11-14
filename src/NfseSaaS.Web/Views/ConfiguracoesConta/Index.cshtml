@@ -37,6 +37,29 @@
     </div>
 </div>
 
+@* Segurança (SEG1): só o administrador vê (configuracoes-conta.js mostra quando a API responde). *@
+<div class="card config-conta-secao mb-3 d-none" id="seguranca">
+    <div class="card-header"><i class="bi bi-shield-lock" aria-hidden="true"></i> Segurança</div>
+    <div class="card-body">
+        <p class="small text-muted mb-2">
+            A verificação em duas etapas já é obrigatória para os administradores. Aqui você pode exigi-la também dos outros usuários:
+            quem ainda não ligou vê um aviso e tem <span id="seguranca-prazo">14</span> dias; depois disso, o sistema só abre com ela ligada.
+        </p>
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="seguranca-exigir-todos" />
+            <label class="form-check-label" for="seguranca-exigir-todos">Exigir a verificação em duas etapas de todos os usuários</label>
+        </div>
+        <div class="form-text" id="seguranca-desde"></div>
+        <div class="alert alert-warning small mt-2 mb-0 d-none" id="seguranca-ligue-a-sua">
+            Para exigir dos outros, ligue antes a sua:
+            <a href="#" data-bs-toggle="modal" data-bs-target="#modalDuploFator">Verificação em duas etapas</a>.
+        </div>
+        <hr />
+        <p class="small mb-1"><strong id="seguranca-contagem">—</strong></p>
+        <ul class="small text-muted mb-0 seguranca-pendentes" id="seguranca-pendentes"></ul>
+    </div>
+</div>
+
 <div class="card config-conta-secao" id="logomarca">
     <div class="card-header"><i class="bi bi-image" aria-hidden="true"></i> Logomarca</div>
     <div class="card-body">

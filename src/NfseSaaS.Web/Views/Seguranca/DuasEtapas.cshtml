@@ -1,0 +1,36 @@
+@using NfseSaaS.Application.Common
+@using NfseSaaS.Application.UseCases.Seguranca
+@model ExigenciaDuploFator
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Verificação em duas etapas";
+}
+
+<h5 class="card-title mb-2">Ligue a verificação em duas etapas</h5>
+<p class="text-muted small mb-3">
+    Ela é obrigatória @RegrasDuploFator.TextoMotivo(Model.Motivo). Depois da senha, o login pede um código enviado para o seu e-mail:
+    mesmo que alguém descubra a sua senha, não entra sem acesso ao seu e-mail.
+</p>
+
+<div id="erro-duas-etapas" class="alert alert-danger d-none"></div>
+<div id="sucesso-duas-etapas" class="alert alert-success d-none"></div>
+
+<div id="duas-etapas" data-return-url="@ViewData["ReturnUrl"]">
+    <button type="button" class="btn btn-primary w-100" id="btn-duas-etapas-enviar">
+        <i class="bi bi-envelope" aria-hidden="true"></i> Enviar código para o meu e-mail
+    </button>
+    <form id="form-duas-etapas" class="d-none mt-3" novalidate>
+        <label class="form-label" for="codigo-duas-etapas">Código recebido</label>
+        <input type="text" class="form-control mb-2" id="codigo-duas-etapas" inputmode="numeric" autocomplete="one-time-code" maxlength="9" placeholder="000000" />
+        <button type="submit" class="btn btn-success w-100">Ligar e continuar</button>
+        <button type="button" class="btn btn-link btn-sm w-100 mt-1" id="btn-duas-etapas-reenviar">Não chegou? Enviar outro código</button>
+    </form>
+</div>
+
+<div class="text-center mt-3">
+    <a href="#" id="link-sair-duas-etapas" class="small">Sair</a>
+</div>
+
+@section Scripts {
+    <script src="~/js/paginas/duas-etapas.js" asp-append-version="true"></script>
+}

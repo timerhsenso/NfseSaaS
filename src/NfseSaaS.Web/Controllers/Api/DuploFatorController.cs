@@ -10,6 +10,9 @@ using NfseSaaS.Application.UseCases.Plataforma;
 using NfseSaaS.Application.UseCases.Seguranca;
 using NfseSaaS.Infrastructure.Identity;
 using NfseSaaS.Infrastructure.Persistence;
+using NfseSaaS.Web.Filters;
+using NfseSaaS.Web.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace NfseSaaS.Web.Controllers.Api;
 
@@ -21,7 +24,12 @@ public sealed record AtivarDuploFatorRequest(string Codigo);
 public sealed record DesligarDuploFatorRequest(string Senha);
 
 /// <summary>Situação da verificação em duas etapas do usuário logado (menu do usuário).</summary>
-public sealed record SituacaoDuploFatorResponse(bool Ligado, string EmailMascarado, bool EmailConfirmado, int DiasLembrarNavegador);
+/// <param name="Obrigatoria">Exigida para este usuário (SEG1): não pode ser desligada.</param>
+/// <param name="Motivo">Por que é exigida ("para administradores da conta"…).</param>
+/// <param name="Prazo">Último dia para ligar (nulo = sem prazo ou não exigida).</param>
+public sealed record SituacaoDuploFatorResponse(
+    bool Ligado, string EmailMascarado, bool EmailConfirmado, int DiasLembrarNavegador,
+    bool Obrigatoria = false, string? Motivo = null, DateOnly? Prazo = null);
 
 /// <summary>
 /// Verificação em duas etapas por e-mail (B3) — ver RegrasDuploFator.
@@ -31,6 +39,7 @@ public sealed record SituacaoDuploFatorResponse(bool Ligado, string EmailMascara
 /// </summary>
 [ApiController]
 [Route("api/auth")]
+[PermitirSemDuploFator]
 public sealed class DuploFatorController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
@@ -40,6 +49,7 @@ public sealed class DuploFatorController : ControllerBase
     private readonly IAuditLogWriter _auditLogWriter;
     private readonly AppDbContext _db;
     private readonly ILogger<DuploFatorController> _logger;
+    private readonly IExigenciaDuploFatorService _exigencia;
 
     public DuploFatorController(
         UserManager<ApplicationUser> userManager,
@@ -48,7 +58,8 @@ public sealed class DuploFatorController : ControllerBase
         IEmailQueueService emailQueue,
         IAuditLogWriter auditLogWriter,
         AppDbContext db,
-        ILogger<DuploFatorController> logger)
+        ILogger<DuploFatorController> logger,
+        IExigenciaDuploFatorService exigencia)
     {
         _userManager = userManager;
         _signInManager = signInManager;
@@ -57,6 +68,7 @@ public sealed class DuploFatorController : ControllerBase
         _auditLogWriter = auditLogWriter;
         _db = db;
         _logger = logger;
+        _exigencia = exigencia;
     }
 
     // ---------- Login, etapa 2 ----------
@@ -74,7 +86,10 @@ public sealed class DuploFatorController : ControllerBase
             RegrasDuploFator.Provedor, RegrasDuploFator.NormalizarCodigo(request.Codigo), isPersistent: false, rememberClient: request.Lembrar);
 
         if (resultado.Succeeded)
+        {
+            HttpContext.RequestServices.GetRequiredService<IConfirmacaoSenhaRecente>().Marcar(HttpContext, usuario.Id);
             return Ok();
+        }
 
         if (resultado.IsLockedOut)
         {
@@ -145,8 +160,10 @@ public sealed class DuploFatorController : ControllerBase
         if (usuario is null)
             return Unauthorized();
 
+        var exigencia = await _exigencia.AvaliarAsync(usuario.Id, HttpContext.RequestAborted);
         return Ok(new SituacaoDuploFatorResponse(
-            usuario.TwoFactorEnabled, CodigoExclusaoConta.MascararEmail(usuario.Email ?? string.Empty), usuario.EmailConfirmed, RegrasDuploFator.DiasLembrarNavegador));
+            usuario.TwoFactorEnabled, CodigoExclusaoConta.MascararEmail(usuario.Email ?? string.Empty), usuario.EmailConfirmed, RegrasDuploFator.DiasLembrarNavegador,
+            exigencia.Exigida, exigencia.Exigida ? RegrasDuploFator.TextoMotivo(exigencia.Motivo) : null, exigencia.Prazo));
     }
 
     /// <summary>Manda o código que liga a verificação (prova que o e-mail recebe).</summary>
@@ -216,6 +233,10 @@ public sealed class DuploFatorController : ControllerBase
             return Unauthorized();
         if (!usuario.TwoFactorEnabled)
             return Ok();
+
+        var exigencia = await _exigencia.AvaliarAsync(usuario.Id, cancellationToken);
+        if (exigencia.Exigida)
+            return UnprocessableEntity(new { erro = $"A verificação em duas etapas é obrigatória {RegrasDuploFator.TextoMotivo(exigencia.Motivo)}: não dá para desligar." });
 
         if (!await _userManager.CheckPasswordAsync(usuario, request.Senha ?? string.Empty))
             return BadRequest(new { erro = "Senha incorreta." });

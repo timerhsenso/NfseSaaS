@@ -27,6 +27,9 @@ try
     builder.Host.UseSerilog((context, services, configuration) => configuration
         .ReadFrom.Configuration(context.Configuration)
         .Enrich.FromLogContext()
+        // Senhas, tokens e CPF/CNPJ de respostas de terceiros nunca chegam
+        // às saídas abaixo (SEG1) — ver MascaramentoLogEnricher.
+        .Enrich.With<NfseSaaS.Web.Monitoramento.MascaramentoLogEnricher>()
         // Error/Fatal também vira e-mail ao operador da plataforma
         // (agrupado e limitado) — ver AlertaErroSink.
         .WriteTo.Sink(new NfseSaaS.Web.Monitoramento.AlertaErroSink(
@@ -168,6 +171,11 @@ try
         // da Política de privacidade vai para a tela de aceite (API: 403
         // "termos_pendentes") — ver ExigeAceiteTermosFilter.
         options.Filters.Add<ExigeAceiteTermosFilter>();
+
+        // Verificação em duas etapas obrigatória (SEG1): acabou o prazo e
+        // ainda está desligada → só a tela de ligar abre (403 com codigo
+        // "duplo_fator_pendente" na API) — ver ExigeDuploFatorFilter.
+        options.Filters.Add<ExigeDuploFatorFilter>();
     });
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
@@ -185,6 +193,7 @@ try
     // Versão em produção (APP_VERSION/APP_COMMIT/APP_DEPLOY_EM, injetadas
     // no deploy) + CHANGELOG.md — usado pela tela Sobre.
     builder.Services.AddSingleton<NfseSaaS.Web.Services.IVersaoInfo, NfseSaaS.Web.Services.VersaoInfo>();
+    builder.Services.AddSingleton<NfseSaaS.Web.Services.IConfirmacaoSenhaRecente, NfseSaaS.Web.Services.ConfirmacaoSenhaRecente>();
 
     var app = builder.Build();
 
@@ -251,6 +260,7 @@ try
     await NfseSaaS.Infrastructure.Persistence.Seeders.CatalogoDocumentosSeeder.SeedAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.PlanosSeeder.SeedAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.NumeroNfseCorrecao.CorrigirAsync(app.Services);
+    await NfseSaaS.Infrastructure.Persistence.Seeders.CertificadoVersaoSeeder.AtualizarAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.NumeroContratoBackfill.PreencherAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.AutomacaoNotaMensalJobSincronizador.SincronizarAsync(app.Services);
     await NfseSaaS.Infrastructure.Persistence.Seeders.IndicesEconomicosJobSincronizador.SincronizarAsync(app.Services);

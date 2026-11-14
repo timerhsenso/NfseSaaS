@@ -12,6 +12,7 @@ using NfseSaaS.Application.UseCases.Clientes;
 using NfseSaaS.Application.UseCases.Nfse;
 using NfseSaaS.Domain.Enums;
 using NfseSaaS.Domain.Snapshots;
+using NfseSaaS.Infrastructure.Certificates;
 using NfseSaaS.Infrastructure.Contratos;
 using NfseSaaS.Infrastructure.Persistence;
 using NfseSaaS.Nacional.Exceptions;
@@ -54,6 +55,7 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
     private readonly ILogger<EmitirNfseUseCase> _logger;
     private readonly NfseSaaS.Application.UseCases.Cobranca.IVerificadorCobranca _verificadorCobranca;
     private readonly NfseNacionalOptions _nfseNacionalOptions;
+    private readonly CertificadosUsadosNoEscopo? _certificadosUsados;
 
     public EmitirNfseUseCase(
         AppDbContext db,
@@ -63,8 +65,10 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
         IEnviarNfsePorEmailUseCase enviarNfsePorEmail,
         ILogger<EmitirNfseUseCase> logger,
         NfseSaaS.Application.UseCases.Cobranca.IVerificadorCobranca verificadorCobranca,
-        IOptions<NfseNacionalOptions> nfseNacionalOptions)
+        IOptions<NfseNacionalOptions> nfseNacionalOptions,
+        CertificadosUsadosNoEscopo? certificadosUsados = null)
     {
+        _certificadosUsados = certificadosUsados;
         _verificadorCobranca = verificadorCobranca;
         _nfseNacionalOptions = nfseNacionalOptions.Value;
         _db = db;
@@ -518,7 +522,7 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
                 _nfseEventoWriter.Registrar(nfse.Id, NfseEventoTipo.Rejeitada, primeiroErro?.Codigo, primeiroErro?.Descricao);
             }
 
-            _auditLogWriter.Registrar("EmitirNfse", "Nfse", nfse.Id, new { nfse.Status, nfse.ChaveAcesso, nfse.ValorServico, nfse.CodigoErro, nfse.MensagemErro });
+            _auditLogWriter.Registrar("EmitirNfse", "Nfse", nfse.Id, new { nfse.Status, nfse.ChaveAcesso, nfse.ValorServico, nfse.CodigoErro, nfse.MensagemErro, Certificado = _certificadosUsados?.Obter(empresa.Id)?.Thumbprint });
 
             await _db.SaveChangesAsync(cancellationToken);
 
@@ -563,7 +567,7 @@ public sealed class EmitirNfseUseCase : IEmitirNfseUseCase
                     break;
             }
 
-            _auditLogWriter.Registrar("EmitirNfse", "Nfse", nfse.Id, new { nfse.Status, nfse.CodigoErro, Erro = ex.Message });
+            _auditLogWriter.Registrar("EmitirNfse", "Nfse", nfse.Id, new { nfse.Status, nfse.CodigoErro, Erro = ex.Message, Certificado = _certificadosUsados?.Obter(empresa.Id)?.Thumbprint });
 
             await _db.SaveChangesAsync(cancellationToken);
             throw;

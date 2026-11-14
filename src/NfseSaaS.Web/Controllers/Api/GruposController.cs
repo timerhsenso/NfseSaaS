@@ -155,6 +155,7 @@ public sealed class GruposController : ControllerBase
     /// engano.
     /// </summary>
     [RequerPermissao(TelaCatalogo.Grupos, AcaoPermissao.Alterar)]
+    [RequerConfirmacaoSenha]
     [HttpPut("{id:guid}/permissoes")]
     public async Task<IActionResult> AtualizarPermissoes(Guid id, [FromBody] AtualizarPermissoesRequest request, CancellationToken cancellationToken)
     {
@@ -216,6 +217,7 @@ public sealed class GruposController : ControllerBase
 
     /// <summary>Exclusão REAL — bloqueada pro grupo Administrador padrão e pra grupo com usuário vinculado.</summary>
     [RequerPermissao(TelaCatalogo.Grupos, AcaoPermissao.Excluir)]
+    [RequerConfirmacaoSenha]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Excluir(Guid id, CancellationToken cancellationToken)
     {

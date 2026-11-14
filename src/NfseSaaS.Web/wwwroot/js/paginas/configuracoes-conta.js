@@ -1,5 +1,6 @@
 // Configurações da conta — uma seção por assunto, sem misturar:
 //   - Dados da conta: cadastro (só leitura) e WhatsApp do responsável;
+//   - Segurança (SEG1): exigir a verificação em duas etapas de todos;
 //   - Logomarca (B9);
 //   - E-mail da nota: só o atalho para Modelos de e-mail (modelos-email.js).
 // Só o administrador muda (o servidor confere de novo); os demais veem só
@@ -63,6 +64,68 @@ document.addEventListener('DOMContentLoaded', async function () {
                 mostrarErro(err.message);
             }
         });
+    });
+});
+
+// ---------- Segurança (SEG1) ----------
+document.addEventListener('DOMContentLoaded', async function () {
+    const card = document.getElementById('seguranca');
+    if (!card) return;
+    const chave = document.getElementById('seguranca-exigir-todos');
+    const ligueASua = document.getElementById('seguranca-ligue-a-sua');
+
+    function mostrar(dados) {
+        card.classList.remove('d-none');
+        document.getElementById('seguranca-prazo').textContent = dados.diasPrazoAdesao;
+        chave.checked = dados.exigirDeTodos;
+        // Exigir pede a sua ligada; desligar a exigência sempre pode.
+        chave.disabled = !dados.exigirDeTodos && !dados.voceLigou;
+        ligueASua.classList.toggle('d-none', dados.voceLigou || dados.exigirDeTodos);
+        document.getElementById('seguranca-desde').textContent = dados.exigidoDesde
+            ? `Exigida de todos desde ${new Date(dados.exigidoDesde).toLocaleDateString('pt-BR')}.`
+            : '';
+        const plural = dados.usuarios === 1 ? 'usuário' : 'usuários';
+        document.getElementById('seguranca-contagem').textContent = dados.usuarios === dados.usuariosComDuploFator
+            ? (dados.usuarios === 1 ? 'O único usuário da conta já ligou.' : `Todos os ${dados.usuarios} usuários já ligaram.`)
+            : dados.usuarios === 1
+                ? 'O único usuário da conta ainda não ligou.'
+                : `${dados.usuariosComDuploFator} de ${dados.usuarios} ${plural} já ligaram. Ainda sem:`;
+        const lista = document.getElementById('seguranca-pendentes');
+        lista.classList.toggle('d-none', dados.usuarios === 1);
+        lista.replaceChildren(...dados.usuariosSemDuploFator.map(email => {
+            const li = document.createElement('li');
+            li.textContent = email;
+            return li;
+        }));
+    }
+
+    try {
+        mostrar(await apiFetch('/api/conta/seguranca'));
+    } catch {
+        return; // não é administrador: a seção fica escondida
+    }
+
+    // Ligou a própria verificação pelo menu do usuário: atualiza a seção.
+    document.getElementById('modalDuploFator')?.addEventListener('hidden.bs.modal', async () => {
+        try { mostrar(await apiFetch('/api/conta/seguranca')); } catch { /* segue como estava */ }
+    });
+
+    chave.addEventListener('change', async () => {
+        const exigir = chave.checked;
+        if (!exigir && !await confirmarAcao('Deixar de exigir dos outros usuários? Os administradores continuam obrigados.')) {
+            chave.checked = true;
+            return;
+        }
+        chave.disabled = true;
+        try {
+            const salvo = await apiFetch('/api/conta/seguranca', { method: 'PUT', body: JSON.stringify({ exigirDeTodos: exigir }) });
+            mostrar(salvo);
+            mostrarToast(exigir ? 'Verificação em duas etapas exigida de todos os usuários.' : 'Exigência para todos desligada.');
+        } catch (err) {
+            chave.checked = !exigir;
+            chave.disabled = false;
+            mostrarErro(err.message);
+        }
     });
 });
 

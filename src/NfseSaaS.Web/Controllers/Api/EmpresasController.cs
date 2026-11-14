@@ -142,6 +142,7 @@ public sealed class EmpresasController : ControllerBase
     /// mesmo ambiente atual não faz nada (204 do mesmo jeito).
     /// </summary>
     [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Alterar)]
+    [RequerConfirmacaoSenha]
     [HttpPut("{id:guid}/ambiente")]
     public async Task<IActionResult> AlterarAmbiente(Guid id, [FromBody] AlterarAmbienteEmpresaRequest request, CancellationToken cancellationToken)
     {
@@ -165,6 +166,7 @@ public sealed class EmpresasController : ControllerBase
     /// (o .pfx) + campo "senha".
     /// </summary>
     [RequerPermissao(TelaCatalogo.Empresas, AcaoPermissao.Alterar)]
+    [RequerConfirmacaoSenha]
     [HttpPost("{id:guid}/certificado")]
     [RequestSizeLimit(5 * 1024 * 1024)] // 5 MB é generoso pra um .pfx (tipicamente poucos KB)
     public async Task<IActionResult> EnviarCertificado(Guid id, IFormFile arquivo, [FromForm] string senha, CancellationToken cancellationToken)

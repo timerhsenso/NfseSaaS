@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.EntityFrameworkCore;
+using NfseSaaS.Application.Abstractions;
 using NfseSaaS.Application.Exceptions;
 using NfseSaaS.Application.UseCases.Certificados;
 using NfseSaaS.Infrastructure.Certificates;
@@ -22,11 +23,13 @@ public sealed class EnviarCertificadoUseCase : IEnviarCertificadoUseCase
 {
     private readonly AppDbContext _db;
     private readonly CertificateFileStore _store;
+    private readonly IAuditLogWriter _auditLogWriter;
 
-    public EnviarCertificadoUseCase(AppDbContext db, CertificateFileStore store)
+    public EnviarCertificadoUseCase(AppDbContext db, CertificateFileStore store, IAuditLogWriter auditLogWriter)
     {
         _db = db;
         _store = store;
+        _auditLogWriter = auditLogWriter;
     }
 
     public async Task<CertificadoStatusResponse> ExecutarAsync(Guid empresaId, byte[] pfxBytes, string senha, CancellationToken cancellationToken)
@@ -82,7 +85,22 @@ public sealed class EnviarCertificadoUseCase : IEnviarCertificadoUseCase
                 throw new RegraNegocioException(
                     $"Este certificado é do CNPJ {FormatarCnpj(cnpjCertificado)}, mas a empresa é {FormatarCnpj(cnpjEmpresa)}. Envie o certificado A1 da própria empresa.");
 
+            var anterior = await ImpressaoDigitalAtualAsync(empresaId, cancellationToken);
+
             await _store.SalvarAsync(empresaId, pfxBytes, senha, cancellationToken);
+
+            // Auditoria (SEG1): quem trocou, por qual certificado e qual saiu.
+            // Só dados públicos do certificado — nunca o arquivo nem a senha.
+            _auditLogWriter.Registrar("EnviarCertificado", "Empresa", empresaId, new
+            {
+                Titular = certificadoTeste.Subject,
+                CnpjCertificado = cnpjCertificado,
+                ValidoDe = certificadoTeste.NotBefore,
+                ValidoAte = certificadoTeste.NotAfter,
+                ImpressaoDigital = certificadoTeste.Thumbprint,
+                Substituiu = anterior
+            });
+            await _db.SaveChangesAsync(cancellationToken);
 
             return new CertificadoStatusResponse(
                 Existe: true,
@@ -90,6 +108,22 @@ public sealed class EnviarCertificadoUseCase : IEnviarCertificadoUseCase
                 ValidoDe: certificadoTeste.NotBefore,
                 ValidoAte: certificadoTeste.NotAfter,
                 Valido: true);
+        }
+    }
+
+    /// <summary>Impressão digital do certificado que está guardado (nulo se não tem ou não abre).</summary>
+    private async Task<string?> ImpressaoDigitalAtualAsync(Guid empresaId, CancellationToken cancellationToken)
+    {
+        if (!_store.ExisteCertificado(empresaId))
+            return null;
+        try
+        {
+            using var atual = await _store.CarregarAsync(empresaId, cancellationToken, validarPeriodoDeValidade: false);
+            return atual.Thumbprint;
+        }
+        catch (NfseSaaS.Nacional.Exceptions.NfseCertificateException)
+        {
+            return "ilegível";
         }
     }
 

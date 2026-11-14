@@ -12,4 +12,10 @@ namespace NfseSaaS.Application.Authorization;
 public static class PlataformaClaims
 {
     public const string Operador = "plataforma:operador";
+
+    /// <summary>
+    /// Usuário com a verificação em duas etapas ligada (SEG1). Serve para o
+    /// que não passa pelo ExigeDuploFatorFilter, como o painel do Hangfire.
+    /// </summary>
+    public const string DuploFatorLigado = "seguranca:duplo_fator";
 }

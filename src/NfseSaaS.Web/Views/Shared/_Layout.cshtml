@@ -3,6 +3,7 @@
 @inject NfseSaaS.Application.UseCases.Aparencia.IAparenciaUseCase AparenciaUseCase
 @inject NfseSaaS.Application.Abstractions.IAceiteTermosService AceiteTermos
 @inject NfseSaaS.Application.Abstractions.ICurrentUser UsuarioAtual
+@inject NfseSaaS.Application.UseCases.Seguranca.IExigenciaDuploFatorService ExigenciaDuploFator
 @{
     var papelAdministrador = User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Usuarios)
         || User.TemAcesso(NfseSaaS.Application.Authorization.TelaCatalogo.Grupos)
@@ -21,6 +22,12 @@
     var avisoNovosTermos = !NfseSaaS.Domain.Legal.DocumentosLegais.VersaoAtualVigente(NfseSaaS.Application.Common.DataBrasilia.Hoje())
         && UsuarioAtual.UserId is { } usuarioIdTermos
         && !await AceiteTermos.AceitouVersaoAtualAsync(usuarioIdTermos, Context.RequestAborted);
+    // Verificação em duas etapas obrigatória (SEG1): enquanto corre o prazo,
+    // aviso no topo com o atalho para ligar (depois do prazo, o filtro
+    // ExigeDuploFatorFilter já não deixa chegar aqui).
+    var exigenciaDuploFator = UsuarioAtual.UserId is { } usuarioIdDuploFator
+        ? await ExigenciaDuploFator.AvaliarAsync(usuarioIdDuploFator, Context.RequestAborted)
+        : NfseSaaS.Application.UseCases.Seguranca.ExigenciaDuploFator.NaoExigida;
     var preferencias = aparencia.Preferencias;
     string Ativo(string caminho) => caminhoAtual.Equals(caminho, StringComparison.OrdinalIgnoreCase) ? "active" : "";
     var nomeUsuario = User.Identity?.Name ?? "Usuário";
@@ -276,6 +283,16 @@
                         </div>
                     </div>
                 }
+                @if (exigenciaDuploFator.Pendente && exigenciaDuploFator.Prazo is not null)
+                {
+                    <div class="alert alert-warning d-flex align-items-start gap-2" role="status" id="aviso-duplo-fator">
+                        <i class="bi bi-shield-lock mt-1" aria-hidden="true"></i>
+                        <div>
+                            @NfseSaaS.Application.UseCases.Seguranca.RegrasDuploFator.TextoAvisoPrazo(exigenciaDuploFator, NfseSaaS.Application.Common.DataBrasilia.Hoje())
+                            <a href="#" data-bs-toggle="modal" data-bs-target="#modalDuploFator">Ligar agora</a>
+                        </div>
+                    </div>
+                }
                 @RenderBody()
             </section>
         </main>
@@ -374,6 +391,7 @@
 
                     <div id="duplo-fator-ligado" class="d-none">
                         <p><span class="badge text-bg-success">Ligada</span></p>
+                        <p class="small text-muted d-none" id="duplo-fator-obrigatoria"></p>
                         <form id="form-duplo-fator-desligar" novalidate>
                             <label class="form-label" for="senha-duplo-fator">Para desligar, confirme a sua senha</label>
                             <div class="input-group">
@@ -387,6 +405,31 @@
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    @* "Confirme a sua senha" antes de operação sensível (SEG1) — lógica em site.js (confirmarSenha). *@
+    <div class="modal fade" id="modalConfirmarSenha" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-sm">
+            <form class="modal-content" id="form-confirmar-senha" novalidate>
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-shield-lock" aria-hidden="true"></i> Confirme a sua senha</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted">Por segurança, esta ação pede a sua senha. Depois disso, ela não é pedida de novo por @NfseSaaS.Web.Services.ConfirmacaoSenhaRecente.Minutos minutos.</p>
+                    <div id="erro-confirmar-senha" class="alert alert-danger d-none"></div>
+                    <label class="form-label" for="senha-confirmar">Senha</label>
+                    <div class="input-group">
+                        <input type="password" class="form-control" id="senha-confirmar" autocomplete="current-password" />
+                        <button type="button" class="btn btn-outline-secondary btn-toggle-senha" tabindex="-1" title="Mostrar/ocultar senha"><i class="bi bi-eye"></i></button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btn-confirmar-senha">Confirmar</button>
+                </div>
+            </form>
         </div>
     </div>
 

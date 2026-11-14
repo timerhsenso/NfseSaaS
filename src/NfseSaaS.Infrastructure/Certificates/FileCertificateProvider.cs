@@ -12,12 +12,18 @@ namespace NfseSaaS.Infrastructure.Certificates;
 public sealed class FileCertificateProvider : ICertificateProvider
 {
     private readonly CertificateFileStore _store;
+    private readonly CertificadosUsadosNoEscopo? _usados;
 
-    public FileCertificateProvider(CertificateFileStore store)
+    public FileCertificateProvider(CertificateFileStore store, CertificadosUsadosNoEscopo? usados = null)
     {
         _store = store;
+        _usados = usados;
     }
 
-    public Task<X509Certificate2> ObterCertificadoAsync(Guid empresaId, CancellationToken cancellationToken) =>
-        _store.CarregarAsync(empresaId, cancellationToken);
+    public async Task<X509Certificate2> ObterCertificadoAsync(Guid empresaId, CancellationToken cancellationToken)
+    {
+        var certificado = await _store.CarregarAsync(empresaId, cancellationToken);
+        _usados?.Registrar(empresaId, certificado); // auditoria: qual certificado assinou (SEG1)
+        return certificado;
+    }
 }

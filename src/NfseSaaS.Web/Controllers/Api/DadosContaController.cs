@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using NfseSaaS.Application.UseCases.DadosConta;
+using NfseSaaS.Web.Filters;
 
 namespace NfseSaaS.Web.Controllers.Api;
 
@@ -47,6 +48,7 @@ public sealed class DadosContaController : ControllerBase
     public async Task<IActionResult> Listar(CancellationToken cancellationToken)
         => Ok(await _exportacao.ListarAsync(cancellationToken));
 
+    [RequerConfirmacaoSenha]
     [HttpPost("exportacoes")]
     public async Task<IActionResult> Solicitar(CancellationToken cancellationToken)
         => Ok(await _exportacao.SolicitarAsync(cancellationToken));

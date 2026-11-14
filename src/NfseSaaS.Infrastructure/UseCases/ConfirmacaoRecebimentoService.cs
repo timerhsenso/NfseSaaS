@@ -162,10 +162,17 @@ public sealed class ConfirmacaoRecebimentoService : IConfirmacaoRecebimentoUseCa
         return new ResultadoConfirmacaoRecebimento(nota.Empresa, mascarado, false);
     }
 
-    public async Task<IReadOnlyList<ConfirmacaoRecebimentoResponse>> ListarDaNotaAsync(Guid nfseId, CancellationToken cancellationToken) =>
-        await _db.ConfirmacoesRecebimentoNota.AsNoTracking()
+    public async Task<IReadOnlyList<ConfirmacaoRecebimentoResponse>> ListarDaNotaAsync(Guid nfseId, CancellationToken cancellationToken)
+    {
+        // Nota de outra conta: 404, como no detalhe da nota (o filtro de conta
+        // já escondia as confirmações; agora também não confirma que a nota existe).
+        if (!await _db.NotasFiscais.AsNoTracking().AnyAsync(n => n.Id == nfseId, cancellationToken))
+            throw new RecursoNaoEncontradoException($"Nfse {nfseId} não encontrada.");
+
+        return await _db.ConfirmacoesRecebimentoNota.AsNoTracking()
             .Where(c => c.NfseId == nfseId)
             .OrderBy(c => c.ConfirmadoEm)
             .Select(c => new ConfirmacaoRecebimentoResponse(c.Email, c.Principal, c.Ip, c.ConfirmadoEm))
             .ToListAsync(cancellationToken);
+    }
 }

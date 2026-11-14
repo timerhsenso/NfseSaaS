@@ -50,7 +50,7 @@ function obterCsrfHeader() {
  * 401 (sessão expirou → login) e 400/422 (erro de validação/regra de
  * negócio → mostrar mensagem).
  */
-async function apiFetch(url, options) {
+async function apiFetch(url, options, jaConfirmouSenha) {
     const resposta = await fetch(url, {
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json', ...obterCsrfHeader() },
@@ -70,7 +70,17 @@ async function apiFetch(url, options) {
             window.location.href = (corpo.url || '/Legal/Aceitar') + '?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
             throw new Error(corpo.erro);
         }
-        throw new Error('Você não tem permissão para esta ação.');
+        // Verificação em duas etapas obrigatória e o prazo acabou (SEG1).
+        if (corpo?.codigo === 'duplo_fator_pendente') {
+            window.location.href = (corpo.url || '/Seguranca/DuasEtapas') + '?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
+            throw new Error(corpo.erro);
+        }
+        // Operação sensível (SEG1): pede a senha e repete a chamada uma vez.
+        if (corpo?.codigo === 'confirmar_senha' && !jaConfirmouSenha) {
+            if (await confirmarSenha()) return apiFetch(url, options, true);
+            throw new Error('Ação cancelada: a senha não foi confirmada.');
+        }
+        throw new Error(corpo?.erro || 'Você não tem permissão para esta ação.');
     }
 
     if (!resposta.ok) {
@@ -113,7 +123,19 @@ async function executarComBotaoDesabilitado(botao, acaoAsync) {
  * fetch porque só ele informa o progresso do envio. Devolve o corpo JSON
  * da resposta (ou null); erro vira Error com a mensagem da API.
  */
-function enviarArquivoComProgresso(url, dados, opcoes) {
+async function enviarArquivoComProgresso(url, dados, opcoes) {
+    // Operação sensível (ex.: certificado A1, SEG1): o servidor pede a senha,
+    // a janela "Confirme a sua senha" abre e o envio é repetido uma vez.
+    try {
+        return await enviarArquivoComProgressoUmaVez(url, dados, opcoes);
+    } catch (err) {
+        if (err.codigo !== 'confirmar_senha') throw err;
+        if (!await confirmarSenha()) throw new Error('Envio cancelado: a senha não foi confirmada.');
+        return await enviarArquivoComProgressoUmaVez(url, dados, opcoes);
+    }
+}
+
+function enviarArquivoComProgressoUmaVez(url, dados, opcoes) {
     const { metodo = 'POST', botao = null, barra = null } = opcoes ?? {};
     const preenchimento = barra?.querySelector('.progress-bar');
     const ehRotulo = botao?.tagName === 'LABEL';
@@ -166,13 +188,104 @@ function enviarArquivoComProgresso(url, dados, opcoes) {
             restaurar();
             let corpo = null;
             try { corpo = xhr.responseText ? JSON.parse(xhr.responseText) : null; } catch { /* resposta sem JSON (ex.: erro do proxy) */ }
-            if (xhr.status >= 200 && xhr.status < 300) resolve(corpo);
-            else reject(new Error(extrairMensagemDeErro(corpo) ?? mensagemErroEnvioArquivo(xhr.status)));
+            if (xhr.status >= 200 && xhr.status < 300) { resolve(corpo); return; }
+            if (xhr.status === 403 && corpo?.codigo === 'duplo_fator_pendente') {
+                window.location.href = (corpo.url || '/Seguranca/DuasEtapas') + '?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
+            }
+            const erro = new Error(extrairMensagemDeErro(corpo) ?? mensagemErroEnvioArquivo(xhr.status));
+            erro.codigo = corpo?.codigo;
+            reject(erro);
         });
         xhr.addEventListener('error', () => { restaurar(); reject(new Error('Não foi possível falar com o servidor. Confira a internet e tente de novo.')); });
         xhr.addEventListener('abort', () => { restaurar(); reject(new Error('O envio foi interrompido. Tente de novo.')); });
         xhr.send(dados);
     });
+}
+
+/**
+ * Janela "Confirme a sua senha" (SEG1, _Layout #modalConfirmarSenha):
+ * devolve true quando a senha foi aceita (POST api/auth/confirmar-senha),
+ * false se a pessoa cancelou. Usada pelo apiFetch e pelo envio de arquivo
+ * quando a API responde 403 { codigo: "confirmar_senha" }.
+ */
+let confirmacaoSenhaEmAndamento = null;
+function confirmarSenha() {
+    if (confirmacaoSenhaEmAndamento) return confirmacaoSenhaEmAndamento;
+
+    const modalEl = document.getElementById('modalConfirmarSenha');
+    if (!modalEl) return Promise.resolve(false);
+
+    const form = document.getElementById('form-confirmar-senha');
+    const campo = document.getElementById('senha-confirmar');
+    const erroDiv = document.getElementById('erro-confirmar-senha');
+    const botao = document.getElementById('btn-confirmar-senha');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+    confirmacaoSenhaEmAndamento = new Promise(resolve => {
+        let confirmada = false;
+
+        async function aoEnviar(e) {
+            e.preventDefault();
+            erroDiv.classList.add('d-none');
+            if (!campo.value) {
+                erroDiv.textContent = 'Digite a sua senha.';
+                erroDiv.classList.remove('d-none');
+                return;
+            }
+            botao.disabled = true;
+            try {
+                const resposta = await fetch('/api/auth/confirmar-senha', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', ...obterCsrfHeader() },
+                    body: JSON.stringify({ senha: campo.value })
+                });
+                if (resposta.status === 401 || resposta.status === 423) {
+                    const corpo = await resposta.json().catch(() => null);
+                    window.alert(corpo?.erro || 'Sua sessão terminou. Entre de novo.');
+                    window.location.href = '/Account/Login?returnUrl=' + encodeURIComponent(window.location.pathname);
+                    return;
+                }
+                if (!resposta.ok) {
+                    const corpo = await resposta.json().catch(() => null);
+                    erroDiv.textContent = extrairMensagemDeErro(corpo) ?? 'Não foi possível confirmar a senha.';
+                    erroDiv.classList.remove('d-none');
+                    campo.select();
+                    return;
+                }
+                confirmada = true;
+                modal.hide();
+            } catch {
+                erroDiv.textContent = 'Não foi possível falar com o servidor. Tente de novo.';
+                erroDiv.classList.remove('d-none');
+            } finally {
+                botao.disabled = false;
+            }
+        }
+
+        function aoFechar() {
+            form.removeEventListener('submit', aoEnviar);
+            modalEl.removeEventListener('hidden.bs.modal', aoFechar);
+            form.reset();
+            erroDiv.classList.add('d-none');
+            confirmacaoSenhaEmAndamento = null;
+            // O Bootstrap tira a trava de rolagem ao fechar, mesmo com a janela de baixo aberta.
+            if (document.querySelector('.modal.show')) document.body.classList.add('modal-open');
+            resolve(confirmada);
+        }
+
+        form.addEventListener('submit', aoEnviar);
+        modalEl.addEventListener('hidden.bs.modal', aoFechar);
+        modalEl.addEventListener('shown.bs.modal', () => {
+            // Aberta por cima de outra janela (ex.: certificado, grupos): o
+            // fundo escuro desta fica entre as duas.
+            const fundos = document.querySelectorAll('.modal-backdrop');
+            if (fundos.length > 1) fundos[fundos.length - 1].classList.add('modal-backdrop-sobreposto');
+            campo.focus();
+        }, { once: true });
+        modal.show();
+    });
+    return confirmacaoSenhaEmAndamento;
 }
 
 /** Mensagem para envio recusado sem explicação da API (ex.: o Nginx barra pelo tamanho antes do sistema). */
@@ -772,6 +885,11 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('email-duplo-fator').textContent = situacao.emailMascarado;
         blocoLigado.classList.toggle('d-none', !situacao.ligado);
         blocoDesligado.classList.toggle('d-none', situacao.ligado);
+        // Obrigatória (SEG1): ligada não pode ser desligada.
+        const obrigatoria = document.getElementById('duplo-fator-obrigatoria');
+        obrigatoria.textContent = situacao.obrigatoria ? `Obrigatória ${situacao.motivo}: não pode ser desligada.` : '';
+        obrigatoria.classList.toggle('d-none', !situacao.obrigatoria);
+        document.getElementById('form-duplo-fator-desligar').classList.toggle('d-none', !!situacao.obrigatoria);
         formAtivar.classList.add('d-none');
         formAtivar.reset();
         document.getElementById('form-duplo-fator-desligar').reset();
@@ -809,6 +927,7 @@ document.addEventListener('DOMContentLoaded', function () {
             await apiFetch('/api/auth/duplo-fator/ativar', { method: 'POST', body: JSON.stringify({ codigo }) });
             await carregar();
             mensagem(sucesso, 'Verificação em duas etapas ligada. No próximo login, o código será pedido.');
+            document.getElementById('aviso-duplo-fator')?.remove();
         } catch (err) {
             mensagem(erro, err.message);
         }

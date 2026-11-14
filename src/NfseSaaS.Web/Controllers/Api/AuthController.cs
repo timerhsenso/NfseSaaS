@@ -19,6 +19,7 @@ using NfseSaaS.Infrastructure.Email;
 using NfseSaaS.Infrastructure.Identity;
 using NfseSaaS.Infrastructure.Persistence;
 using NfseSaaS.Web.Filters;
+using NfseSaaS.Web.Services;
 
 namespace NfseSaaS.Web.Controllers.Api;
 
@@ -43,6 +44,8 @@ public sealed record RegistrarRequest(
     bool AutorizaWhatsApp = false);
 
 public sealed record LoginRequest(string Email, string Senha);
+
+public sealed record ConfirmarSenhaRequest(string Senha);
 
 public sealed record AlterarSenhaRequest(string SenhaAtual, string NovaSenha);
 
@@ -113,6 +116,7 @@ public sealed class AuthController : ControllerBase
     private readonly IConfirmacaoEmailService _confirmacaoEmail;
     private readonly IEmailSender _emailSender;
     private readonly ILogger<AuthController> _logger;
+    private readonly IConfirmacaoSenhaRecente _confirmacaoSenha;
 
     public AuthController(
         AppDbContext db,
@@ -131,7 +135,8 @@ public sealed class AuthController : ControllerBase
         ICriarEmpresaInicialService empresaInicial,
         IConfirmacaoEmailService confirmacaoEmail,
         IEmailSender emailSender,
-        ILogger<AuthController> logger)
+        ILogger<AuthController> logger,
+        IConfirmacaoSenhaRecente confirmacaoSenha)
     {
         _db = db;
         _userManager = userManager;
@@ -150,6 +155,7 @@ public sealed class AuthController : ControllerBase
         _confirmacaoEmail = confirmacaoEmail;
         _emailSender = emailSender;
         _logger = logger;
+        _confirmacaoSenha = confirmacaoSenha;
     }
 
     /// <summary>
@@ -279,6 +285,7 @@ public sealed class AuthController : ControllerBase
         _aceiteTermos.MarcarComoAceito(user.Id);
 
         await _signInManager.SignInAsync(user, isPersistent: false);
+        _confirmacaoSenha.Marcar(HttpContext, user.Id);
 
         // Fora da transação: falha no e-mail não desfaz a conta (o aviso do
         // topo tem "Reenviar").
@@ -405,7 +412,11 @@ public sealed class AuthController : ControllerBase
             });
         }
 
-        return resultado.Succeeded ? Ok() : Unauthorized();
+        if (!resultado.Succeeded)
+            return Unauthorized();
+
+        _confirmacaoSenha.Marcar(HttpContext, usuario!.Id);
+        return Ok();
     }
 
     [PermitirSemAceiteTermos]
@@ -413,7 +424,40 @@ public sealed class AuthController : ControllerBase
     public async Task<IActionResult> Logout()
     {
         await _signInManager.SignOutAsync();
+        _confirmacaoSenha.Limpar(HttpContext);
         return Ok();
+    }
+
+    /// <summary>
+    /// "Confirme a sua senha" antes de uma operação sensível (SEG1, ver
+    /// RequerConfirmacaoSenhaAttribute): senha certa libera por
+    /// ConfirmacaoSenhaRecente.Minutos minutos. Errada conta como tentativa
+    /// de login (5 → bloqueio de 15 minutos, como no login).
+    /// </summary>
+    [Authorize]
+    [PermitirSemDuploFator]
+    [EnableRateLimiting("AuthSensivel")]
+    [HttpPost("confirmar-senha")]
+    public async Task<IActionResult> ConfirmarSenha([FromBody] ConfirmarSenhaRequest request, CancellationToken cancellationToken)
+    {
+        var usuario = await _userManager.GetUserAsync(User);
+        if (usuario is null)
+            return Unauthorized();
+
+        var resultado = await _signInManager.CheckPasswordSignInAsync(usuario, request.Senha ?? string.Empty, lockoutOnFailure: true);
+        if (resultado.IsLockedOut)
+        {
+            _auditLogWriter.Registrar("LoginBloqueadoPorTentativas", "ApplicationUser", usuario.Id, null);
+            await _db.SaveChangesAsync(cancellationToken);
+            await _signInManager.SignOutAsync();
+            _confirmacaoSenha.Limpar(HttpContext);
+            return StatusCode(StatusCodes.Status423Locked, new { erro = "Muitas tentativas erradas. Sua conta foi bloqueada temporariamente — entre de novo em alguns minutos." });
+        }
+        if (!resultado.Succeeded)
+            return BadRequest(new { erro = "Senha incorreta." });
+
+        _confirmacaoSenha.Marcar(HttpContext, usuario.Id);
+        return Ok(new { minutos = ConfirmacaoSenhaRecente.Minutos });
     }
 
     /// <summary>
@@ -530,6 +574,7 @@ public sealed class AuthController : ControllerBase
         }
 
         await _signInManager.SignInAsync(usuario, isPersistent: false);
+        _confirmacaoSenha.Marcar(HttpContext, usuario.Id);
 
         _auditLogWriter.Registrar("RedefinirSenha", "ApplicationUser", usuario.Id, null);
         await _db.SaveChangesAsync(cancellationToken);
@@ -549,6 +594,7 @@ public sealed class AuthController : ControllerBase
     /// E-mails.
     /// </summary>
     [RequerPermissao(TelaCatalogo.Usuarios, AcaoPermissao.Incluir)]
+    [RequerConfirmacaoSenha]
     [HttpPost("convidar")]
     public async Task<IActionResult> Convidar([FromBody] ConvidarRequest request,
         [FromServices] NfseSaaS.Application.UseCases.Recursos.IRecursosConta recursos, CancellationToken cancellationToken)
@@ -649,6 +695,7 @@ public sealed class AuthController : ControllerBase
         _aceiteTermos.MarcarComoAceito(usuario.Id);
 
         await _signInManager.SignInAsync(usuario, isPersistent: false);
+        _confirmacaoSenha.Marcar(HttpContext, usuario.Id);
 
         return Ok();
     }
@@ -706,6 +753,7 @@ public sealed class AuthController : ControllerBase
     /// próprio Tenant ficaria sem ninguém pra gerenciar usuários.
     /// </summary>
     [RequerPermissao(TelaCatalogo.Usuarios, AcaoPermissao.Alterar)]
+    [RequerConfirmacaoSenha]
     [HttpPut("usuarios/{id:guid}/grupo")]
     public async Task<IActionResult> AlterarGrupo(Guid id, [FromBody] AlterarGrupoRequest request, CancellationToken cancellationToken)
     {
@@ -806,6 +854,7 @@ public sealed class AuthController : ControllerBase
     /// aqui ela já morre na hora do clique do Administrador.
     /// </summary>
     [RequerPermissao(TelaCatalogo.Usuarios, AcaoPermissao.Alterar)]
+    [RequerConfirmacaoSenha]
     [HttpPost("usuarios/{id:guid}/resetar-senha")]
     public async Task<IActionResult> ResetarSenha(Guid id, CancellationToken cancellationToken)
     {
@@ -893,6 +942,7 @@ public sealed class AuthController : ControllerBase
     /// Tenant.
     /// </summary>
     [RequerPermissao(TelaCatalogo.Usuarios, AcaoPermissao.Excluir)]
+    [RequerConfirmacaoSenha]
     [HttpDelete("usuarios/{id:guid}")]
     public async Task<IActionResult> ExcluirUsuario(Guid id, CancellationToken cancellationToken)
     {

@@ -20,16 +20,43 @@ namespace NfseSaaS.Infrastructure.Certificates;
 public sealed class CertificateFileStore
 {
     private const string ProtectorPurpose = "NfseSaaS.Certificados.v1";
+
+    /// <summary>
+    /// Finalidade própria da senha (SEG1, arquivo versão 2): o .pfx e a senha
+    /// são cifrados com subchaves diferentes — abrir um não abre o outro.
+    /// Arquivos versão 1 (senha com a finalidade do .pfx) continuam sendo
+    /// lidos; "Regravar certificados" (Plataforma › Proteção das chaves) e
+    /// qualquer novo envio já gravam na versão 2.
+    /// </summary>
+    private const string FinalidadeSenha = "NfseSaaS.Certificados.Senha.v2";
+
+    /// <summary>Versão do arquivo gravada hoje (ver <see cref="FinalidadeSenha"/>).</summary>
+    public const int VersaoAtualArquivo = 2;
+
     private const string SufixoArquivo = ".cert.json";
 
     private readonly IDataProtector _protector;
+    private readonly IDataProtector _protetorSenha;
     private readonly CertificateStorageOptions _options;
 
     public CertificateFileStore(IDataProtectionProvider dataProtectionProvider, IOptions<CertificateStorageOptions> options)
     {
         _protector = dataProtectionProvider.CreateProtector(ProtectorPurpose);
+        _protetorSenha = dataProtectionProvider.CreateProtector(FinalidadeSenha);
         _options = options.Value;
     }
+
+    private IDataProtector ProtetorDaSenha(CertificadoEnvelope envelope) =>
+        envelope.Versao >= 2 ? _protetorSenha : _protector;
+
+    private CertificadoEnvelope Proteger(byte[] pfxBytes, string senha) => new(
+        PfxProtegidoBase64: Convert.ToBase64String(_protector.Protect(pfxBytes)),
+        SenhaProtegida: _protetorSenha.Protect(senha),
+        Versao: VersaoAtualArquivo);
+
+    /// <summary>Versão do arquivo da Empresa (1 = senha com a finalidade do .pfx; 2 = finalidades separadas).</summary>
+    public async Task<int> VersaoArquivoAsync(Guid empresaId, CancellationToken cancellationToken) =>
+        (await LerEnvelopeAsync(empresaId, cancellationToken)).Versao;
 
     /// <summary>
     /// Criptografa e grava o .pfx e a senha de uma Empresa. Usado no
@@ -43,9 +70,7 @@ public sealed class CertificateFileStore
 
         Directory.CreateDirectory(_options.BasePath);
 
-        var envelope = new CertificadoEnvelope(
-            PfxProtegidoBase64: Convert.ToBase64String(_protector.Protect(pfxBytes)),
-            SenhaProtegida: _protector.Protect(senha));
+        var envelope = Proteger(pfxBytes, senha);
 
         var json = JsonSerializer.Serialize(envelope);
         await File.WriteAllTextAsync(CaminhoArquivo(empresaId), json, cancellationToken);
@@ -87,7 +112,7 @@ public sealed class CertificateFileStore
         try
         {
             pfxBytes = _protector.Unprotect(Convert.FromBase64String(envelope.PfxProtegidoBase64));
-            senha = _protector.Unprotect(envelope.SenhaProtegida);
+            senha = ProtetorDaSenha(envelope).Unprotect(envelope.SenhaProtegida);
         }
         catch (Exception ex)
         {
@@ -176,7 +201,7 @@ public sealed class CertificateFileStore
 
     /// <summary>
     /// Regrava o arquivo da Empresa protegido com a chave ATUAL do Data
-    /// Protection. Confere que o conteúdo novo abre igual ao antigo antes de
+    /// Protection (e na versão atual do arquivo). Confere que o conteúdo novo abre igual ao antigo antes de
     /// substituir o arquivo, e a troca é atômica (grava num .tmp e renomeia).
     /// </summary>
     public async Task ReprotegerAsync(Guid empresaId, CancellationToken cancellationToken)
@@ -188,7 +213,7 @@ public sealed class CertificateFileStore
         try
         {
             pfxBytes = _protector.Unprotect(Convert.FromBase64String(envelope.PfxProtegidoBase64));
-            senha = _protector.Unprotect(envelope.SenhaProtegida);
+            senha = ProtetorDaSenha(envelope).Unprotect(envelope.SenhaProtegida);
         }
         catch (Exception ex)
         {
@@ -196,12 +221,11 @@ public sealed class CertificateFileStore
                 $"Não foi possível descriptografar o certificado da empresa {empresaId} para regravá-lo.", ex);
         }
 
-        var novo = new CertificadoEnvelope(
-            PfxProtegidoBase64: Convert.ToBase64String(_protector.Protect(pfxBytes)),
-            SenhaProtegida: _protector.Protect(senha));
+        // Regravar também passa o arquivo para a versão atual (finalidades separadas).
+        var novo = Proteger(pfxBytes, senha);
 
         if (!_protector.Unprotect(Convert.FromBase64String(novo.PfxProtegidoBase64)).AsSpan().SequenceEqual(pfxBytes)
-            || _protector.Unprotect(novo.SenhaProtegida) != senha)
+            || _protetorSenha.Unprotect(novo.SenhaProtegida) != senha)
         {
             throw new NfseCertificateException($"Conferência falhou ao regravar o certificado da empresa {empresaId}; o arquivo original foi mantido.");
         }
@@ -238,5 +262,6 @@ public sealed class CertificateFileStore
 
     private string CaminhoArquivo(Guid empresaId) => Path.Combine(_options.BasePath, $"{empresaId:N}{SufixoArquivo}");
 
-    private sealed record CertificadoEnvelope(string PfxProtegidoBase64, string SenhaProtegida);
+    /// <param name="Versao">Ausente nos arquivos antigos (= 1). Ver <see cref="FinalidadeSenha"/>.</param>
+    private sealed record CertificadoEnvelope(string PfxProtegidoBase64, string SenhaProtegida, int Versao = 1);
 }

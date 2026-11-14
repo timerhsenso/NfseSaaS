@@ -109,6 +109,8 @@ public static class DependencyInjection
         services.AddScoped<IEnviarNfsePorEmailUseCase, EnviarNfsePorEmailUseCase>();
         services.AddScoped<IEnvioEmailNfseUseCase, EnvioEmailNfseService>();
         services.AddScoped<NfseSaaS.Application.UseCases.EmailNota.IModeloEmailNotaUseCase, ModeloEmailNotaService>();
+        services.AddScoped<NfseSaaS.Application.UseCases.Seguranca.IExigenciaDuploFatorService, ExigenciaDuploFatorService>();
+        services.AddScoped<NfseSaaS.Application.UseCases.Seguranca.ISegurancaContaUseCase, SegurancaContaService>();
         services.AddHostedService<EmailDispatchHostedService>();
 
         services
@@ -494,6 +496,7 @@ public static class DependencyInjection
         services.AddScoped<IConsultarProtecaoChavesUseCase>(sp => sp.GetRequiredService<ProtecaoChavesService>());
         services.AddScoped<IReprotegerChavesUseCase>(sp => sp.GetRequiredService<ProtecaoChavesService>());
         services.AddScoped<ICertificateProvider, FileCertificateProvider>();
+        services.AddScoped<CertificadosUsadosNoEscopo>();
     }
 
     /// <summary>Raiz de disco pros documentos de Contrato — separada da raiz de certificados, sem criptografia (decisão do usuário).</summary>

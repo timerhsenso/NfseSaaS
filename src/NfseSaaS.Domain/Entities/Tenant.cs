@@ -96,4 +96,12 @@ public sealed class Tenant : BaseEntity
 
     /// <summary>Quando os dados não fiscais foram apagados (a conta não pode mais ser reaberta).</summary>
     public DateTimeOffset? DadosExpurgadosEm { get; set; }
+
+    /// <summary>
+    /// Desde quando o administrador exige a verificação em duas etapas de
+    /// TODOS os usuários da conta (SEG1). Nulo = só o que a plataforma já
+    /// exige (administradores e operador). Quem ainda não ligou tem
+    /// RegrasDuploFator.DiasPrazoAdesao dias a partir desta data.
+    /// </summary>
+    public DateTimeOffset? DuploFatorObrigatorioDesde { get; set; }
 }

@@ -4669,3 +4669,17 @@ html[data-theme="dark"] .painel-aparencia .btn-close { filter: invert(1) graysca
         width: 100%;
     }
 }
+
+/* ===== SEG1: confirmar senha por cima de outra janela; segurança da conta ===== */
+#modalConfirmarSenha {
+    z-index: 1070;
+}
+
+.modal-backdrop.modal-backdrop-sobreposto {
+    z-index: 1065;
+}
+
+.seguranca-pendentes {
+    max-height: 9rem;
+    overflow-y: auto;
+}
