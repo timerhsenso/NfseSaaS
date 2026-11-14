@@ -68,6 +68,7 @@
             rota: ['/clientes'],
             passos: () => [
                 { elemento: '#btn-novo-cliente', titulo: 'Novo cliente', texto: 'Com o CNPJ, os dados vêm da Receita. Na seção "Envio da nota" você informa o e-mail, as cópias e o modelo de e-mail.' },
+                { elemento: '#btn-importar-clientes', titulo: 'Importar planilha', texto: 'Tem muitos clientes? Traga todos de uma vez, do Excel ou de outro sistema. Você confere antes de gravar.' },
                 { elemento: '#tabela-clientes', titulo: 'Seus clientes', texto: 'Pesquise pelo nome, apelido ou documento. Nas ações você edita ou inativa.' }
             ]
         },
@@ -75,6 +76,7 @@
             rota: ['/contratos'],
             passos: () => [
                 { elemento: '#btn-novo-contrato', titulo: 'Novo contrato', texto: 'Cliente, serviços, valor, dia de faturamento e o índice de reajuste (IPCA, IGP-M…).' },
+                { elemento: '#btn-importar-contratos', titulo: 'Importar planilha', texto: 'Traga os contratos (e os clientes) de uma planilha. Os serviços precisam estar cadastrados.' },
                 { elemento: '#btn-verificar-reajustes', titulo: 'Reajustes', texto: 'O sistema confere os aniversários sozinho; aqui você força a conferência agora.' },
                 { elemento: '#tabela-contratos', titulo: 'Seus contratos', texto: 'No ⋯ de cada contrato: histórico de valores, simular reajuste pelo índice e documentos.' },
                 { elemento: '#totais-contratos', titulo: 'Totais', texto: 'A receita mensal dos contratos ativos e o total da lista filtrada.' }
@@ -100,6 +102,15 @@
                 { elemento: '#btn-escolher-documentos', titulo: 'Escolher documentos', texto: 'Marque os documentos que a sua empresa controla (certidões, contrato social…). Há pacotes prontos por ramo.' },
                 { elemento: '#btn-novo-documento', titulo: 'Enviar documento', texto: 'Guarde o PDF com a validade. O sistema avisa 15 dias antes de vencer.' },
                 { elemento: '#lista-documentos', titulo: 'Seus documentos', texto: 'Cada documento mostra se está em dia e o link oficial para tirar a versão nova. Os clientes podem exigir que eles vão junto com a nota.' }
+            ]
+        },
+        importar: {
+            rota: ['/importar'],
+            passos: () => [
+                { elemento: '#btn-baixar-modelo', titulo: 'Modelo', texto: 'Baixe o modelo com as abas Clientes e Contratos. Também serve a planilha de outro sistema.' },
+                { elemento: '#importar-zona', titulo: 'Sua planilha', texto: 'Arraste o arquivo aqui (.xlsx ou .csv). Com o CNPJ, o nome e o endereço que faltarem vêm da Receita.' },
+                { elemento: '#importar-atualizar', titulo: 'Já cadastrados', texto: 'Quem já está cadastrado não é duplicado. Marque aqui para atualizar com as células preenchidas.' },
+                { elemento: '#btn-conferir', titulo: 'Conferir', texto: 'Você vê cada linha (nova, atualiza, já existe ou com erro) antes de gravar. Nada é gravado sem você confirmar.' }
             ]
         },
         'modelos-email': {

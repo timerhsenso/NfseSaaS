@@ -279,6 +279,8 @@ public static class DependencyInjection
         services.AddScoped<NfseSaaS.Application.UseCases.DocumentosEmpresa.IEscolhaDocumentosEmpresaUseCase, EscolhaDocumentosEmpresaService>();
         services.AddScoped<NfseSaaS.Application.UseCases.DocumentosEmpresa.IAdministrarCatalogoDocumentosUseCase, AdministrarCatalogoDocumentosService>();
         services.AddScoped<NfseSaaS.Application.UseCases.PainelFinanceiro.IObterPainelFinanceiroUseCase, ObterPainelFinanceiroUseCase>();
+        // IM1: importar clientes e contratos por planilha.
+        services.AddScoped<NfseSaaS.Application.UseCases.Importacao.IImportacaoPlanilhaUseCase, ImportacaoPlanilhaService>();
         services.AddScoped<IEmitirNotaMensalLoteUseCase, EmitirNotaMensalLoteUseCase>();
         services.AddScoped<ICancelarNfseUseCase, CancelarNfseUseCase>();
         services.AddScoped<IListarEventosDaNfseUseCase, ListarEventosDaNfseUseCase>();

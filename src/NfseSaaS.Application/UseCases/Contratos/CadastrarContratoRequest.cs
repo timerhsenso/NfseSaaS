@@ -28,4 +28,6 @@ public sealed record CadastrarContratoRequest(
     // C2: local da prestação (IBGE) padrão das notas. Nulo/em branco = município da Empresa.
     string? CodigoMunicipioPrestacao = null,
     // Número do contrato (texto livre, único na empresa). Nulo/vazio = o próximo "ano/NNNN" da empresa.
-    string? Numero = null);
+    string? Numero = null,
+    // IM1: contrato que vem de outro sistema já com reajustes no valor. Nulo = nenhum reajuste ainda.
+    DateOnly? DataUltimoReajuste = null);

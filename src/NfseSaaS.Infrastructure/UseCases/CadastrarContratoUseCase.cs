@@ -67,7 +67,8 @@ public sealed class CadastrarContratoUseCase : ICadastrarContratoUseCase
             PermitirAlterarValorNaEmissao = request.PermitirAlterarValorNaEmissao,
             CodigoMunicipioPrestacao = localPrestacao,
             ReajusteAutomatico = request.ReajusteAutomatico,
-            AplicarIndiceNegativo = request.AplicarIndiceNegativo
+            AplicarIndiceNegativo = request.AplicarIndiceNegativo,
+            DataUltimoReajuste = request.DataUltimoReajuste
         };
 
         _db.Contratos.Add(contrato);

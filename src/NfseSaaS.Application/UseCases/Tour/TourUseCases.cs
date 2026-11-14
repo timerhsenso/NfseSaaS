@@ -25,7 +25,7 @@ public static class RegrasTour
     /// <summary>Um por tela com tour. Mesmo código em tour.js (TOURS).</summary>
     public static readonly IReadOnlySet<string> Codigos = new HashSet<string>(StringComparer.Ordinal)
     {
-        "painel", "notas", "clientes", "contratos", "servicos", "empresas", "documentos", "modelos-email"
+        "painel", "notas", "clientes", "contratos", "servicos", "empresas", "documentos", "modelos-email", "importar"
     };
 
     public static IReadOnlyList<string> Ler(string? gravado) =>

@@ -4,10 +4,18 @@
     // antigo do Identity ("Administrador"), que contas criadas pelo cadastro
     // e grupos personalizados não têm — a tela escondia os botões.
     var podeEditar = User.PodeAlterar(NfseSaaS.Application.Authorization.TelaCatalogo.Clientes);
+    var podeImportar = User.PodeIncluir(NfseSaaS.Application.Authorization.TelaCatalogo.Clientes);
 }
 
 @section AcoesPagina {
     <div id="botoes-exportacao-tabela-clientes"></div>
+    @if (podeImportar)
+    {
+        @* IM1: importar clientes (e contratos) por planilha. *@
+        <a class="btn btn-outline-primary btn-sm" href="/Importar" id="btn-importar-clientes" title="Importar clientes de uma planilha (Excel ou outro sistema)">
+            <i class="bi bi-upload" aria-hidden="true"></i> Importar
+        </a>
+    }
     @if (podeEditar)
     {
         <button type="button" class="btn btn-primary btn-sm" id="btn-novo-cliente" data-requer-empresa>

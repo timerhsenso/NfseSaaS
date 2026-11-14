@@ -60,6 +60,10 @@ internal static class ApelidoCliente
         throw new RegraNegocioException($"Não foi possível gerar um apelido único para o cliente '{nome}'.");
     }
 
+    /// <summary>IM1: o apelido já está em uso na lista onde o cliente vai aparecer (conferência da planilha, antes de gravar).</summary>
+    public static Task<bool> EmUsoAsync(AppDbContext db, Guid? empresaId, string apelido, string cpfCnpj, CancellationToken cancellationToken) =>
+        ExisteAsync(db, empresaId, apelido, cpfCnpj, null, cancellationToken);
+
     private static async Task<bool> ExisteAsync(
         AppDbContext db, Guid? empresaId, string apelido, string cpfCnpj, Guid? clienteIdIgnorado, CancellationToken cancellationToken)
     {

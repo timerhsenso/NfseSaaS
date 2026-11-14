@@ -5,6 +5,37 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 versionamento segue [SemVer](https://semver.org/lang/pt-BR/) (MAJOR.MINOR.PATCH).
 
 ## [Não lançado]
+### Adicionado (IM1 — importar clientes e contratos por planilha)
+- Tela **Importar planilha** (botão "Importar" em Clientes e em Contratos), em 3
+  passos: escolher o arquivo (arrastar ou clicar), **conferir linha a linha** e
+  gravar. Nada é gravado antes da confirmação.
+- Aceita **.xlsx** (Excel, LibreOffice, Google Planilhas) e **.csv** (separado
+  por ";" ou ",", UTF-8 ou o padrão do Excel em português), até 5 MB e 2.000
+  linhas. A planilha de outro sistema também serve: os nomes de coluna mais
+  comuns são reconhecidos (CNPJ/CPF, Razão social, Cidade, Valor mensal…) e o
+  cabeçalho pode estar abaixo de um título.
+- **Modelo para baixar** com as abas Clientes, Contratos e Instruções, ajuda em
+  cada coluna, listas para escolher (inclusive os serviços da empresa) e
+  CPF/CNPJ, CEP e IBGE como texto (o Excel não come o zero da frente).
+- Clientes: o CPF/CNPJ é a chave e **ninguém é duplicado**. "Atualizar os que
+  já existem" muda só as células preenchidas (célula vazia nunca apaga); a
+  conferência mostra cada mudança ("E-mail: antigo → novo"). Com CNPJ, o nome e
+  o endereço que faltarem vêm da Receita (até 100 consultas por vez). Município
+  pelo nome + UF, pelo código IBGE ou pelo CEP. Apelido pelo nome fantasia ou
+  pelo nome, sem repetir. Quem pediu para sair das cópias não volta.
+- Contratos: ligados ao cliente pelo CPF/CNPJ (já cadastrado ou da mesma
+  planilha) e ao serviço pela descrição; vários serviços = o mesmo nº em várias
+  linhas. Sem índice, IPCA. Sem a data do último reajuste, o valor é tratado
+  como já reajustado no último aniversário (nada de reajuste "atrasado" em
+  contrato antigo). Contrato que já existe nunca é alterado.
+- Cada linha mostra Novo, Atualiza, Já existe, Sem mudança ou Erro (com o
+  motivo), com filtros e contagens. **"Baixar linhas com erro"** devolve a
+  planilha só com elas e a coluna "Erro", para corrigir e mandar de novo.
+- A gravação usa os mesmos cadastros das telas: mesmas regras, auditoria,
+  histórico de valores e limite de clientes do plano. Evento
+  `ImportacaoPlanilha` na auditoria. Tour guiado da tela nova.
+- Biblioteca nova: ClosedXML 0.105.1 (MIT). Sem migração.
+
 ### Adicionado (TR1 — tour guiado das telas)
 - **Tour guiado** (Driver.js 1.3.6, licença MIT): escurece a tela e destaca
   cada parte com um balão "Próximo / Voltar". Abre sozinho na **primeira vez**

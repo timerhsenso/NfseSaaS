@@ -36,6 +36,19 @@ public sealed class CadastrarContratoRequestValidator : AbstractValidator<Cadast
 
         RuleFor(x => x.Observacao).MaximumLength(2000);
 
+        // IM1: data do último reajuste já aplicado (contrato vindo de outro sistema).
+        RuleFor(x => x.DataUltimoReajuste)
+            .Null().WithMessage("Último reajuste não se aplica a cobrança Avulsa.")
+            .When(x => x.TipoCobranca == TipoCobrancaContrato.Avulso);
+        RuleFor(x => x.DataUltimoReajuste)
+            .Must((x, data) => data > x.DataInicioContrato)
+            .WithMessage("O último reajuste tem que ser depois do início do contrato.")
+            .When(x => x.DataUltimoReajuste.HasValue);
+        RuleFor(x => x.DataUltimoReajuste)
+            .Must(data => data <= NfseSaaS.Application.Common.DataBrasilia.Hoje())
+            .WithMessage("O último reajuste não pode ser uma data futura.")
+            .When(x => x.DataUltimoReajuste.HasValue);
+
         RuleFor(x => x.DiasAlertaOverride).GreaterThan(0).When(x => x.DiasAlertaOverride.HasValue);
         RuleFor(x => x.DiasAlertaOverride)
             .Null().WithMessage("Alerta de reajuste não se aplica a cobrança Avulsa.")

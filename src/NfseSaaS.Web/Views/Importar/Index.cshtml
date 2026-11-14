@@ -1,0 +1,145 @@
+@{
+    ViewData["Title"] = "Importar planilha";
+    var podeClientes = User.PodeIncluir(NfseSaaS.Application.Authorization.TelaCatalogo.Clientes);
+    var podeAtualizar = User.PodeAlterar(NfseSaaS.Application.Authorization.TelaCatalogo.Clientes);
+    var podeContratos = User.PodeIncluir(NfseSaaS.Application.Authorization.TelaCatalogo.Contratos);
+    var voltar = Context.Request.Query["de"].ToString() == "contratos" ? "/Contratos" : "/Clientes";
+}
+
+@* IM1: importar clientes e contratos por planilha na Empresa selecionada no topo.
+   1) escolher o arquivo; 2) conferir linha a linha (nada é gravado); 3) gravar.
+   O arquivo fica só no navegador entre a conferência e a gravação (o servidor
+   confere de novo ao gravar). Dados via api/importacao. *@
+@section AcoesPagina {
+    <a class="btn btn-outline-secondary btn-sm" href="@voltar"><i class="bi bi-arrow-left" aria-hidden="true"></i> Voltar</a>
+    <a class="btn btn-primary btn-sm" id="btn-baixar-modelo" href="#">
+        <i class="bi bi-file-earmark-arrow-down" aria-hidden="true"></i> Baixar modelo
+    </a>
+}
+
+<div id="importar-pagina" data-pode-clientes="@(podeClientes ? "true" : "false")" data-pode-contratos="@(podeContratos ? "true" : "false")">
+
+    <section class="card mb-3" id="importar-passo-arquivo" aria-labelledby="titulo-passo-arquivo">
+        <div class="card-body">
+            <div class="importar-passos" aria-hidden="true">
+                <span class="importar-passo ativo" data-passo="1"><b>1</b> Planilha</span>
+                <span class="importar-passo" data-passo="2"><b>2</b> Conferir</span>
+                <span class="importar-passo" data-passo="3"><b>3</b> Gravar</span>
+            </div>
+
+            <h2 class="h6 mb-1" id="titulo-passo-arquivo">Traga seus clientes e contratos de uma vez</h2>
+            <p class="text-muted small mb-3">
+                Do Excel ou de outro sistema. Você confere linha por linha antes; <strong>nada é gravado sem a sua confirmação</strong>.
+            </p>
+
+            <div class="row g-3 align-items-stretch">
+                <div class="col-lg-7">
+                    <label class="importar-zona" id="importar-zona" for="importar-arquivo">
+                        <input type="file" id="importar-arquivo" class="visually-hidden" accept=".xlsx,.csv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />
+                        <i class="bi bi-file-earmark-spreadsheet importar-zona-icone" aria-hidden="true"></i>
+                        <span class="importar-zona-titulo" id="importar-zona-titulo">Arraste a planilha aqui ou clique para escolher</span>
+                        <span class="importar-zona-dica" id="importar-zona-dica">.xlsx ou .csv, até 5 MB e 2.000 linhas</span>
+                    </label>
+
+                    @if (podeAtualizar && podeClientes)
+                    {
+                        <div class="form-check mt-3">
+                            <input class="form-check-input" type="checkbox" id="importar-atualizar" />
+                            <label class="form-check-label" for="importar-atualizar">
+                                Atualizar os clientes que já existem
+                                <span class="d-block small text-muted">Só as células preenchidas mudam. Célula vazia nunca apaga nada.</span>
+                            </label>
+                        </div>
+                    }
+
+                    <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+                        <button type="button" class="btn btn-primary" id="btn-conferir" disabled data-requer-empresa>
+                            <i class="bi bi-search" aria-hidden="true"></i> Conferir planilha
+                        </button>
+                        <div class="progress flex-grow-1 importar-progresso" id="importar-progresso" role="progressbar" aria-label="Envio da planilha" aria-valuemin="0" aria-valuemax="100" hidden>
+                            <div class="progress-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="alert alert-danger mt-3 mb-0 d-none" id="importar-erro" role="alert"></div>
+                </div>
+
+                <div class="col-lg-5">
+                    <div class="importar-dicas h-100">
+                        <h3 class="h6"><i class="bi bi-lightbulb" aria-hidden="true"></i> Dicas</h3>
+                        <ul class="small mb-0">
+                            <li>Comece pelo <a href="#" id="link-baixar-modelo">modelo</a>: abas <strong>Clientes</strong> e <strong>Contratos</strong>, com listas para escolher.</li>
+                            <li>Planilha de outro sistema também serve: reconhecemos os nomes de coluna mais comuns (CNPJ, Razão social, Cidade…).</li>
+                            <li>Com o <strong>CNPJ</strong>, o nome e o endereço que faltarem vêm da Receita.</li>
+                            <li>Cliente já cadastrado (mesmo CPF/CNPJ) <strong>não é duplicado</strong>.</li>
+                            @if (podeContratos)
+                            {
+                                <li>Contratos usam os serviços já cadastrados em <a href="/Servicos">Serviços</a>. Contrato com vários serviços: repita o nº em várias linhas.</li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="card d-none" id="importar-resultado" aria-labelledby="titulo-resultado" aria-live="polite">
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-2">
+                <div>
+                    <h2 class="h6 mb-1" id="titulo-resultado">Conferência</h2>
+                    <p class="small text-muted mb-0" id="importar-arquivo-nome"></p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm d-none" id="btn-baixar-erros">
+                        <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Baixar linhas com erro
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-trocar-arquivo">
+                        <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Outro arquivo
+                    </button>
+                </div>
+            </div>
+
+            <div class="alert alert-success d-none" id="importar-sucesso" role="status"></div>
+            <div id="importar-avisos-gerais"></div>
+            <div class="importar-resumo" id="importar-resumo"></div>
+
+            <ul class="nav nav-pills importar-abas mb-2" id="importar-abas" role="tablist"></ul>
+            <div id="importar-colunas" class="small mb-2"></div>
+
+            <div class="btn-group btn-group-sm flex-wrap mb-2 importar-filtros" role="group" aria-label="Filtrar linhas" id="importar-filtros">
+                <button type="button" class="btn btn-outline-secondary active" data-filtro="">Todas</button>
+                <button type="button" class="btn btn-outline-secondary" data-filtro="1">Novas</button>
+                <button type="button" class="btn btn-outline-secondary" data-filtro="2">Atualizam</button>
+                <button type="button" class="btn btn-outline-secondary" data-filtro="3,4">Já existem</button>
+                <button type="button" class="btn btn-outline-secondary" data-filtro="5">Com erro</button>
+            </div>
+
+            <div class="table-responsive importar-tabela-caixa">
+                <table class="table table-sm align-middle tabela-cartoes importar-tabela" id="tabela-importacao">
+                    <thead>
+                        <tr>
+                            <th class="col-curta">Linha</th>
+                            <th class="col-curta">Situação</th>
+                            <th id="th-chave">CPF/CNPJ</th>
+                            <th id="th-descricao">Cliente</th>
+                            <th>Observações</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <p class="small text-muted text-center my-3 d-none" id="importar-vazio">Nenhuma linha neste filtro.</p>
+
+            <div class="importar-rodape" id="importar-rodape">
+                <span class="small text-muted" id="importar-rodape-texto"></span>
+                <button type="button" class="btn btn-success" id="btn-gravar" disabled>
+                    <i class="bi bi-check2-circle" aria-hidden="true"></i> <span id="btn-gravar-texto">Gravar</span>
+                </button>
+            </div>
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <script src="~/js/paginas/importar.js" asp-append-version="true"></script>
+}
